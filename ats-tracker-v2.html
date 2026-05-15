@@ -2320,6 +2320,23 @@ function renderRanking(){
   filterRankingVacs();
   // Ranking table con tabs
   document.getElementById('ranking-rec-wrap').innerHTML=`
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+      <div style="font-size:12px;color:var(--text3);font-weight:500">Período:</div>
+      <select id="ranking-periodo" onchange="onRankingPeriodoChange()" style="width:auto;min-width:130px">
+        <option value="todo">Todo el tiempo</option>
+        <option value="mes">Este mes</option>
+        <option value="mes_ant">Mes anterior</option>
+        <option value="trim">Este trimestre</option>
+        <option value="anio">Este año</option>
+        <option value="anio_ant">Año anterior</option>
+        <option value="custom">Personalizado</option>
+      </select>
+      <div id="ranking-custom-range" style="display:none;gap:8px;align-items:center">
+        <input type="date" id="ranking-fecha-ini" style="width:140px;color:var(--text)" onchange="onRankingPeriodoChange()">
+        <span style="color:var(--text3)">→</span>
+        <input type="date" id="ranking-fecha-fin" style="width:140px;color:var(--text)" onchange="onRankingPeriodoChange()">
+      </div>
+    </div>
     <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px" id="ranking-tabs">
       <div class="tab active" id="tab-colocados" onclick="switchRankingTab('colocados')">🏆 Por vacantes cubiertas</div>
       <div class="tab" id="tab-velocidad" onclick="switchRankingTab('velocidad')">⚡ Por velocidad de cobertura</div>
@@ -2335,15 +2352,66 @@ function switchRankingTab(tipo) {
   renderRankingTable(tipo);
 }
 
+function onRankingPeriodoChange() {
+  const val = document.getElementById('ranking-periodo').value;
+  document.getElementById('ranking-custom-range').style.display = val === 'custom' ? 'flex' : 'none';
+  const tipo = document.getElementById('tab-colocados').classList.contains('active') ? 'colocados' : 'velocidad';
+  renderRankingTable(tipo);
+}
+
+function getRankingDateRange() {
+  const periodo = (document.getElementById('ranking-periodo')||{}).value || 'todo';
+  const now = new Date();
+  let desde = null, hasta = null;
+  if (periodo === 'mes') {
+    desde = new Date(now.getFullYear(), now.getMonth(), 1);
+    hasta = new Date(now.getFullYear(), now.getMonth()+1, 0);
+  } else if (periodo === 'mes_ant') {
+    desde = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    hasta = new Date(now.getFullYear(), now.getMonth(), 0);
+  } else if (periodo === 'trim') {
+    const trim = Math.floor(now.getMonth()/3);
+    desde = new Date(now.getFullYear(), trim*3, 1);
+    hasta = new Date(now.getFullYear(), trim*3+3, 0);
+  } else if (periodo === 'anio') {
+    desde = new Date(now.getFullYear(), 0, 1);
+    hasta = new Date(now.getFullYear(), 11, 31);
+  } else if (periodo === 'anio_ant') {
+    desde = new Date(now.getFullYear()-1, 0, 1);
+    hasta = new Date(now.getFullYear()-1, 11, 31);
+  } else if (periodo === 'custom') {
+    const fi = document.getElementById('ranking-fecha-ini').value;
+    const ff = document.getElementById('ranking-fecha-fin').value;
+    if (fi) desde = new Date(fi);
+    if (ff) hasta = new Date(ff);
+  }
+  return { desde, hasta };
+}
+
+function inRange(fecha, desde, hasta) {
+  if (!fecha) return false;
+  const d = new Date(fecha);
+  if (desde && d < desde) return false;
+  if (hasta && d > hasta) return false;
+  return true;
+}
+
 function renderRankingTable(tipo) {
+  const { desde, hasta } = getRankingDateRange();
   const data = DB.reclutadores.map(r => {
     const vacs = DB.vacantes.filter(v => v.reclutador_id === r.id);
-    const cubiertas = vacs.filter(v => v.estado === 'Cubierta').length;
-    const activas = vacs.filter(v => v.estado === 'Abierta');
-    const diasArr = activas.filter(v => daysBetween(v.fecha_apertura) !== null).map(v => daysBetween(v.fecha_apertura));
+    const cubiertas = vacs.filter(v =>
+      v.estado === 'Cubierta' &&
+      (desde || hasta ? inRange(v.fecha_apertura, desde, hasta) : true)
+    ).length;
+    const activasFiltradas = vacs.filter(v =>
+      v.estado === 'Abierta' &&
+      (desde || hasta ? inRange(v.fecha_apertura, desde, hasta) : true)
+    );
+    const diasArr = activasFiltradas.filter(v => daysBetween(v.fecha_apertura) !== null).map(v => daysBetween(v.fecha_apertura));
     const avgDias = diasArr.length ? Math.round(diasArr.reduce((a,b)=>a+b,0)/diasArr.length) : null;
     const cands = DB.candidatos.filter(c => c.reclutador_id === r.id);
-    return { r, cubiertas, activas: activas.length, avgDias, totalVacs: vacs.length, cands: cands.length };
+    return { r, cubiertas, activas: activasFiltradas.length, avgDias, totalVacs: vacs.length, cands: cands.length };
   });
 
   let sorted;
@@ -2379,7 +2447,18 @@ function renderRankingTable(tipo) {
     ? '<th style="text-align:center">Vacantes cubiertas</th>'
     : '<th style="text-align:center">Días prom. vacantes abiertas</th>';
 
-  document.getElementById('ranking-rec-table').innerHTML = `<div class="table-wrap"><table>
+  const periodoLabel = {
+    'todo':'Todo el tiempo','mes':'Este mes','mes_ant':'Mes anterior',
+    'trim':'Este trimestre','anio':'Este año','anio_ant':'Año anterior','custom':'Rango personalizado'
+  }[document.getElementById('ranking-periodo')?.value||'todo'] || '';
+
+  const periodoIndicador = `<div style="font-size:11px;color:var(--text3);margin-bottom:8px">
+    <i class="fa fa-calendar"></i> Período: <strong>${periodoLabel}</strong>
+    ${desde?' · Desde '+fmt(desde.toISOString().split('T')[0]):''}
+    ${hasta?' · Hasta '+fmt(hasta.toISOString().split('T')[0]):''}
+  </div>`;
+
+  document.getElementById('ranking-rec-table').innerHTML = periodoIndicador + `<div class="table-wrap"><table>
     <thead><tr>
       <th style="text-align:center;width:60px">Pos.</th>
       <th>Reclutador</th>

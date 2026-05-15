@@ -1944,7 +1944,7 @@ function renderVacantesTable(){
       <td>${fmt(v.fecha_apertura)}</td>
       <td>${badgeVacEst(v.estado)}</td>
       <td>${garantiaBadge(v)}</td>
-      <td><span class="dpill ${dClass(dias)}">${dias}d</span></td>
+      <td><span class="dpill ${dClass(dias)}">${dias}d</span>${getSLABadge(v)}</td>
       <td>${act}/${cands.length}</td>
       <td>
         <button class="btn btn-ghost btn-sm" onclick="openVacanteModal('${v.id}')"><i class="fa fa-edit"></i></button>

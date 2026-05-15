@@ -486,7 +486,7 @@ input[type=date]{color:var(--text)}
       <div class="fr">
         <div class="fg"><label>Reclutador *</label><select id="cand-reclutador"><option value="">Seleccionar...</option></select></div>
         <div class="fg"><label>Fuente de reclutamiento</label>
-          <select id="cand-fuente"><option>LinkedIn</option><option>OCC</option><option>Indeed</option><option>Referido</option><option>Bolsa interna</option><option>Otro</option></select>
+          <select id="cand-fuente"><option>LinkedIn</option><option>OCC</option><option>Indeed</option><option>Computrabajo</option><option>Referido</option><option>Bolsa interna</option><option>Otro</option></select>
         </div>
       </div>
       <div class="sep">Etapa actual</div>
@@ -494,8 +494,6 @@ input[type=date]{color:var(--text)}
         <div class="fg"><label>Etapa del proceso</label><select id="cand-etapa" onchange="toggleDesFields()"><option value="">Seleccionar empresa primero</option></select></div>
         <div class="fg"></div>
       </div>
-      <div class="sep">Fechas del proceso</div>
-      <div id="cand-fechas-container"></div>
       <div id="des-fields" style="display:none">
         <div class="sep">Motivo de deserción / salida</div>
         <div class="fr full"><div class="fg"><label>Motivo</label><div class="rtags" id="rtags-c"></div></div></div>
@@ -1245,7 +1243,6 @@ function openCandModal(vacanteIdOrNull,reemplazaId=null){
   DB.empresas.forEach(e=>empSel.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
   document.getElementById('cand-vacante').innerHTML='<option value="">Seleccionar vacante...</option>';
   document.getElementById('cand-etapa').innerHTML='<option value="">Selecciona empresa/vacante primero</option>';
-  document.getElementById('cand-fechas-container').innerHTML='';
   populateRecSel('cand-reclutador','');
   buildRtags();
   toggleDesFields();
@@ -1327,7 +1324,6 @@ function onCandEmpresaChange(){
   vacs.forEach(v=>{const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};const label=`[${v.folio||'S/F'}] ${v.nombre} | ${rec.nombre||'Sin reclutador'} | ${fmt(v.fecha_apertura)}`;vacSel.innerHTML+=`<option value="${v.id}">${label}</option>`;});
   // clear etapas
   document.getElementById('cand-etapa').innerHTML='<option value="">Selecciona vacante</option>';
-  document.getElementById('cand-fechas-container').innerHTML='';
 }
 
 function onCandVacanteChange(){
@@ -1340,17 +1336,6 @@ function onCandVacanteChange(){
   etapaSel.innerHTML='';
   etapas.forEach(e=>etapaSel.innerHTML+=`<option value="${e.label}">${e.label}</option>`);
   ETAPAS_SALIDA.forEach(s=>etapaSel.innerHTML+=`<option value="${s}">${s}</option>`);
-  // Build date fields
-  const fc=document.getElementById('cand-fechas-container');
-  fc.innerHTML='';
-  const pairs=[];
-  for(let i=0;i<etapas.length;i+=2)pairs.push([i,i+1]);
-  pairs.forEach(([a,b])=>{
-    fc.innerHTML+=`<div class="fr">
-      ${a<etapas.length?`<div class="fg"><label>${etapas[a].label}</label><input type="date" id="cf_${a}" style="color:var(--text)"></div>`:'<div></div>'}
-      ${b<etapas.length?`<div class="fg"><label>${etapas[b].label}</label><input type="date" id="cf_${b}" style="color:var(--text)"></div>`:'<div></div>'}
-    </div>`;
-  });
   toggleDesFields();
 }
 

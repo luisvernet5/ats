@@ -301,7 +301,7 @@ input[type=date]{color:var(--text)}
     <div class="table-wrap" id="ranking-vac-table"></div>
     <br>
     <div class="sec-title">Ranking de reclutadores</div>
-    <div class="table-wrap" id="ranking-rec-table"></div>
+    <div id="ranking-rec-wrap"></div>
   </div>
 
   <!-- DESERCION -->
@@ -2318,30 +2318,78 @@ function renderRanking(){
     <input id="rk-posicion" placeholder="Buscar posición..." oninput="filterRankingVacs()" style="min-width:160px">
   `;
   filterRankingVacs();
-  // Ranking table
-  const medals=['🥇','🥈','🥉'];
-  const ranking=DB.reclutadores.map(r=>{
-    const vacsAct=DB.vacantes.filter(v=>v.reclutador_id===r.id&&v.estado==='Abierta').length;
-    const total=DB.candidatos.filter(c=>c.reclutador_id===r.id).length;
-    const validados=DB.candidatos.filter(c=>c.reclutador_id===r.id&&c.etapa==='Validado').length;
-    const dArr=DB.candidatos.filter(c=>c.reclutador_id===r.id&&c.etapa==='Validado'&&processTotal(c)!==null).map(c=>processTotal(c));
-    const avg=dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):null;
-    return{r,vacsAct,total,validados,avg};
-  }).sort((a,b)=>{
-    if(a.avg===null&&b.avg===null)return 0;
-    if(a.avg===null)return 1;
-    if(b.avg===null)return -1;
-    return a.avg-b.avg;
+  // Ranking table con tabs
+  document.getElementById('ranking-rec-wrap').innerHTML=`
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px" id="ranking-tabs">
+      <div class="tab active" id="tab-colocados" onclick="switchRankingTab('colocados')">🏆 Por vacantes cubiertas</div>
+      <div class="tab" id="tab-velocidad" onclick="switchRankingTab('velocidad')">⚡ Por velocidad de cobertura</div>
+    </div>
+    <div id="ranking-rec-table"></div>
+  `;
+  renderRankingTable('colocados');
+}
+
+function switchRankingTab(tipo) {
+  document.getElementById('tab-colocados').className = `tab ${tipo==='colocados'?'active':''}`;
+  document.getElementById('tab-velocidad').className = `tab ${tipo==='velocidad'?'active':''}`;
+  renderRankingTable(tipo);
+}
+
+function renderRankingTable(tipo) {
+  const data = DB.reclutadores.map(r => {
+    const vacs = DB.vacantes.filter(v => v.reclutador_id === r.id);
+    const cubiertas = vacs.filter(v => v.estado === 'Cubierta').length;
+    const activas = vacs.filter(v => v.estado === 'Abierta');
+    const diasArr = activas.filter(v => daysBetween(v.fecha_apertura) !== null).map(v => daysBetween(v.fecha_apertura));
+    const avgDias = diasArr.length ? Math.round(diasArr.reduce((a,b)=>a+b,0)/diasArr.length) : null;
+    const cands = DB.candidatos.filter(c => c.reclutador_id === r.id);
+    return { r, cubiertas, activas: activas.length, avgDias, totalVacs: vacs.length, cands: cands.length };
   });
-  const rankRows=ranking.map(({r,vacsAct,total,validados,avg},i)=>`<tr style="${i===0?'background:rgba(22,163,74,.08)':''}">
-    <td style="text-align:center;font-size:16px">${medals[i]||`<span style="font-family:var(--mono);color:var(--text3)">#${i+1}</span>`}</td>
-    <td class="td-p" style="${i===0?'color:var(--green);font-weight:600':''}">${r.nombre}</td>
-    <td style="text-align:center">${vacsAct}</td>
-    <td style="text-align:center">${total}</td>
-    <td style="text-align:center;color:var(--green);font-weight:500">${validados}</td>
-    <td>${avg!==null?`<span class="dpill ${dClass(avg)}">${avg}d</span>`:'—'}</td>
-  </tr>`).join('');
-  document.getElementById('ranking-rec-table').innerHTML=`<table><thead><tr><th style="text-align:center">Pos.</th><th>Reclutador</th><th style="text-align:center">Vac. activas</th><th style="text-align:center">Cands. totales</th><th style="text-align:center">Validados</th><th>Días prom.</th></tr></thead><tbody>${rankRows||'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin datos</td></tr>'}</tbody></table>`;
+
+  let sorted;
+  if (tipo === 'colocados') {
+    sorted = [...data].sort((a,b) => b.cubiertas - a.cubiertas);
+  } else {
+    sorted = [...data].sort((a,b) => {
+      if (a.avgDias === null && b.avgDias === null) return 0;
+      if (a.avgDias === null) return 1;
+      if (b.avgDias === null) return -1;
+      return a.avgDias - b.avgDias;
+    });
+  }
+
+  const medals = ['🥇','🥈','🥉'];
+  const rows = sorted.map((d, i) => {
+    const pos = medals[i] || `#${i+1}`;
+    const isTop = i === 0;
+    const metrica = tipo === 'colocados'
+      ? `<td style="text-align:center;font-weight:600;color:var(--green);font-family:var(--mono)">${d.cubiertas}</td>`
+      : `<td style="text-align:center">${d.avgDias !== null ? `<span class="dpill ${dClass(d.avgDias)}">${d.avgDias}d</span>` : '—'}</td>`;
+    return `<tr style="${isTop?'background:rgba(34,197,94,.06)':''}">
+      <td style="text-align:center;font-size:18px">${pos}</td>
+      <td class="td-p">${d.r.nombre}</td>
+      <td style="text-align:center">${d.activas}</td>
+      <td style="text-align:center">${d.totalVacs}</td>
+      <td style="text-align:center">${d.cands}</td>
+      ${metrica}
+    </tr>`;
+  }).join('');
+
+  const metricaHeader = tipo === 'colocados'
+    ? '<th style="text-align:center">Vacantes cubiertas</th>'
+    : '<th style="text-align:center">Días prom. vacantes abiertas</th>';
+
+  document.getElementById('ranking-rec-table').innerHTML = `<div class="table-wrap"><table>
+    <thead><tr>
+      <th style="text-align:center;width:60px">Pos.</th>
+      <th>Reclutador</th>
+      <th style="text-align:center">Vac. activas</th>
+      <th style="text-align:center">Total vac.</th>
+      <th style="text-align:center">Candidatos</th>
+      ${metricaHeader}
+    </tr></thead>
+    <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin datos</td></tr>'}</tbody>
+  </table></div>`;
 }
 function filterRankingVacs(){
   const empId=document.getElementById('rk-empresa')?.value||'';

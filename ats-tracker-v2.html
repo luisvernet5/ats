@@ -1716,7 +1716,10 @@ function renderVacantesTable(){
     const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
     const act=cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length;
     return`<tr>
-      <td class="td-p">${v.nombre}</td>
+      <td class="td-p" style="cursor:pointer" onclick="toggleVacanteDetail('${v.id}')">
+        <span id="icon-${v.id}" style="font-size:10px;margin-right:6px;color:var(--text3)">▶</span>
+        ${v.nombre}
+      </td>
       <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td>
       <td><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${emp.color||'#888'};flex-shrink:0"></span>${emp.nombre||'—'}</span></td>
       <td>${rec.nombre||'—'}</td>
@@ -1730,12 +1733,121 @@ function renderVacantesTable(){
         <button class="btn btn-primary btn-sm" onclick="openCandModal('${v.id}')"><i class="fa fa-user-plus"></i></button>
         ${v.estado==='Abierta'?`<button class="btn btn-ghost btn-sm" onclick="abrirCierreVacante('${v.id}')" title="Cerrar vacante"><i class="fa fa-times-circle"></i></button>`:`<span class="badge ${v.estado==='Cubierta'?'bg':'br'}">${v.estado}</span>`}
       </td>
+    </tr>
+    <tr id="detail-${v.id}" style="display:none">
+      <td colspan="10" style="padding:0;background:var(--surface2)">
+        <div style="padding:16px 20px">
+          <div id="resumen-${v.id}" style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-size:12px;font-weight:600;color:var(--text)">Candidatos asociados</div>
+            <button class="btn btn-green btn-sm" onclick="exportarCandidatosVacante('${v.id}')"><i class="fa fa-file-csv"></i> Exportar Excel</button>
+          </div>
+          <div id="cands-${v.id}"></div>
+        </div>
+      </td>
     </tr>`;
   }).join('');
   document.getElementById('vacantes-table').innerHTML=`<table>
     <thead><tr><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Estado</th><th>Garantía</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>
   </table>`;
+}
+
+function toggleVacanteDetail(vacId) {
+  const row = document.getElementById('detail-'+vacId);
+  const icon = document.getElementById('icon-'+vacId);
+  const isOpen = row.style.display !== 'none';
+  document.querySelectorAll('[id^="detail-"]').forEach(r => r.style.display='none');
+  document.querySelectorAll('[id^="icon-"]').forEach(i => i.textContent='▶');
+  if (!isOpen) {
+    row.style.display = 'table-row';
+    icon.textContent = '▼';
+    renderVacanteDetail(vacId);
+  }
+}
+
+function renderVacanteDetail(vacId) {
+  const v = DB.vacantes.find(x=>x.id===vacId)||{};
+  const etapas = getEmpresaEtapas(v.empresa_id);
+  const cands = DB.candidatos.filter(c=>c.vacante_id===vacId);
+  const activos = cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa));
+  const desertores = cands.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
+  const validados = cands.filter(c=>c.etapa==='Validado');
+  const d = daysBetween(v.fecha_apertura);
+  const dc = dClass(d);
+
+  document.getElementById('resumen-'+vacId).innerHTML = [
+    {label:'Total candidatos', val:cands.length, color:'var(--text)'},
+    {label:'En proceso', val:activos.length, color:'var(--accent)'},
+    {label:'Validados', val:validados.length, color:'var(--green)'},
+    {label:'Desertaron/Descartados', val:desertores.length, color:'var(--red)'},
+    {label:'Días abierta', val:d+'d', color:dc==='dover'?'var(--red)':dc==='dwarn'?'var(--amber)':'var(--green)'},
+  ].map(k=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;min-width:120px">
+    <div style="font-size:10px;color:var(--text3)">${k.label}</div>
+    <div style="font-size:18px;font-weight:600;font-family:var(--mono);color:${k.color}">${k.val}</div>
+  </div>`).join('');
+
+  if (!cands.length) {
+    document.getElementById('cands-'+vacId).innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px">Sin candidatos registrados para esta vacante.</div>';
+    return;
+  }
+  const rows = cands.map(c=>{
+    const r = DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
+    const pd = processTotal(c);
+    const cd = clienteDays(c);
+    const fechasHtml = etapas.map((e,i)=>{
+      const f = c['f_'+i];
+      return f ? `<span style="font-size:10px;color:var(--text3)">${e.label}: <b style="color:var(--text2)">${fmt(f)}</b></span>` : '';
+    }).filter(Boolean).join(' · ');
+    return `<tr>
+      <td class="td-p">${c.nombre}</td>
+      <td>${r.nombre||'—'}</td>
+      <td>${badgeEtapa(c.etapa, v.empresa_id)}</td>
+      <td style="font-size:11px;color:var(--text3);max-width:280px">${fechasHtml||'—'}</td>
+      <td>${pd!==null?`<span class="dpill ${dClass(pd)}">${pd}d</span>`:'—'}</td>
+      <td>${cd!==null?`<span class="dpill dwarn">${cd}d</span>`:'—'}</td>
+      <td style="color:var(--red);font-size:12px">${c.motivo_desercion||'—'}</td>
+      <td>${fmt(c.fecha_salida)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('cands-'+vacId).innerHTML=`<table style="width:100%;border-collapse:collapse">
+    <thead><tr style="background:var(--surface3)">
+      <th style="padding:8px 10px;font-size:10px;color:var(--text3);text-align:left">Candidato</th>
+      <th style="padding:8px 10px;font-size:10px;color:var(--text3);text-align:left">Reclutador</th>
+      <th style="padding:8px 10px;font-size:10px;color:var(--text3);text-align:left">Etapa</th>
+      <th style="padding:8px 10px;font-size:10px;color:var(--text3);text-align:left">Fechas del proceso</th>
+      <th style="padding:8px 10px;font-size:10px;color:var(--text3);text-align:left">Días proceso</th>
+      <th style="padding:8px 10px;font-size:10px;color:var(--text3);text-align:left">Días cliente</th>
+      <th style="padding:8px 10px;font-size:10px;color:var(--text3);text-align:left">Motivo salida</th>
+      <th style="padding:8px 10px;font-size:10px;color:var(--text3);text-align:left">Fecha salida</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function exportarCandidatosVacante(vacId) {
+  const v = DB.vacantes.find(x=>x.id===vacId)||{};
+  const etapas = getEmpresaEtapas(v.empresa_id);
+  const cands = DB.candidatos.filter(c=>c.vacante_id===vacId);
+  const header = ['Candidato','Reclutador','Etapa','Fuente',...etapas.map(e=>e.label),'Días proceso','Días cliente','Motivo salida','Fecha salida','Notas'];
+  const csvRows = [header];
+  cands.forEach(c=>{
+    const r = DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
+    csvRows.push([
+      c.nombre, r.nombre||'—', c.etapa, c.fuente||'—',
+      ...etapas.map((_,i)=>fmt(c['f_'+i])),
+      processTotal(c)||0, clienteDays(c)||0,
+      c.motivo_desercion||'—', fmt(c.fecha_salida), c.notas||'—'
+    ]);
+  });
+  const csv = csvRows.map(r=>r.map(val=>`"${String(val).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `candidatos_${v.folio||v.nombre}_${today()}.csv`;
+  a.click();
+  showToast('Exportado ✓');
 }
 
 /* ============================================================

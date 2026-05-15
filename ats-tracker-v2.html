@@ -981,6 +981,7 @@ function openEmpresaDetail(empId){
       <td class="td-p" style="cursor:pointer" onclick="toggleVacRow('${v.id}')">
         <span class="vac-expand-icon" id="icon-expand-${v.id}">▶</span>${v.nombre}
       </td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td>
       <td>${rec.nombre||'—'}</td>
       <td>${fmt(v.fecha_apertura)}</td>
       <td>${badgeVacEst(v.estado)}</td>
@@ -1066,7 +1067,7 @@ function openEmpresaDetail(empId){
       </div>
     </div>
     <div class="table-wrap">
-      <table><thead><tr><th>Vacante</th><th>Reclutador</th><th>Apertura</th><th>Estado</th><th>Días</th><th>Cands.</th><th>En proceso</th><th>Acción</th></tr></thead>
+      <table><thead><tr><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Apertura</th><th>Estado</th><th>Días</th><th>Cands.</th><th>En proceso</th><th>Acción</th></tr></thead>
       <tbody>${vacsRows||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes registradas</td></tr>'}</tbody>
       </table>
     </div>
@@ -1119,7 +1120,8 @@ function doExportDirect(empId,recId,est,tipo){
    VACANTE MODAL
    ============================================================ */
 function openVacanteModal(id=null,preEmpId=null){
-  document.getElementById('mod-vac-title').textContent=id?'Editar Vacante':'Nueva Vacante';
+  const vForFolio=id?DB.vacantes.find(x=>x.id===id):null;
+  document.getElementById('mod-vac-title').textContent=id?(vForFolio&&vForFolio.folio?`Editar Vacante — ${vForFolio.folio}`:'Editar Vacante'):'Nueva Vacante';
   document.getElementById('vac-id').value='';
   ['vac-nombre','vac-salario','vac-desc','vac-colaborador','vac-garantia-inicio','vac-garantia-dias','vac-garantia-venc'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('vac-fecha').value=today();
@@ -1210,7 +1212,7 @@ async function saveVacante(){
     garantia_venc:aplica_garantia?document.getElementById('vac-garantia-venc').value||null:null
   };
   if(id){const i=DB.vacantes.findIndex(v=>v.id===id);DB.vacantes[i]={...DB.vacantes[i],...data};showToast('Vacante actualizada ✓')}
-  else{DB.vacantes.push({id:uid(),...data});showToast('Vacante creada ✓')}
+  else{const folio='VAC-'+new Date().getFullYear()+'-'+String(DB.vacantes.length+1).padStart(3,'0');DB.vacantes.push({id:uid(),folio,...data});showToast('Vacante creada ✓')}
   const _vObj=id?DB.vacantes.find(v=>v.id===id):DB.vacantes[DB.vacantes.length-1];
   if(_vObj)await saveRecord('vacantes',_vObj);
   closeModal('modal-vacante');
@@ -1311,7 +1313,7 @@ function onCandEmpresaChange(){
   const vacSel=document.getElementById('cand-vacante');
   vacSel.innerHTML='<option value="">Seleccionar vacante...</option>';
   const vacs=DB.vacantes.filter(v=>v.empresa_id===empId);
-  vacs.forEach(v=>vacSel.innerHTML+=`<option value="${v.id}">${v.nombre}</option>`);
+  vacs.forEach(v=>{const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};const label=`[${v.folio||'S/F'}] ${v.nombre} | ${rec.nombre||'Sin reclutador'} | ${fmt(v.fecha_apertura)}`;vacSel.innerHTML+=`<option value="${v.id}">${label}</option>`;});
   // clear etapas
   document.getElementById('cand-etapa').innerHTML='<option value="">Selecciona vacante</option>';
   document.getElementById('cand-fechas-container').innerHTML='';
@@ -1643,6 +1645,7 @@ function renderVacantesTable(){
     const act=cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length;
     return`<tr>
       <td class="td-p">${v.nombre}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td>
       <td><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${emp.color||'#888'};flex-shrink:0"></span>${emp.nombre||'—'}</span></td>
       <td>${rec.nombre||'—'}</td>
       <td>${fmt(v.fecha_apertura)}</td>
@@ -1657,8 +1660,8 @@ function renderVacantesTable(){
     </tr>`;
   }).join('');
   document.getElementById('vacantes-table').innerHTML=`<table>
-    <thead><tr><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Estado</th><th>Garantía</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>
+    <thead><tr><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Estado</th><th>Garantía</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>
   </table>`;
 }
 

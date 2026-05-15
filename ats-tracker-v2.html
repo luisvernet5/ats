@@ -1,0 +1,2254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATS Tracker v2</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#F4F4F8;--surface:#FFFFFF;--surface2:#EBEBF2;--surface3:#E0E0EA;--border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);--accent:#2AAADE;--accent2:#1B7FAF;--glow:rgba(42,170,222,0.10);--text:#16162A;--text2:#4A4A6A;--text3:#8A8AA8;--green:#16A34A;--amber:#D97706;--red:#DC2626;--purple:#9333EA;--orange:#EA580C;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;--r:10px;--rl:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:224px;min-width:224px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column}
+.main{flex:1;overflow-y:auto;background:var(--bg)}
+.sb-logo{padding:20px 18px 16px;border-bottom:1px solid var(--border)}
+.sb-logo .brand{font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.08em;text-transform:uppercase}
+.sb-logo .sub{font-size:11px;color:var(--text3);margin-top:2px}
+.sb-nav{padding:10px 0;flex:1;overflow-y:auto}
+.nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);padding:12px 18px 5px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 18px;cursor:pointer;color:var(--text2);font-size:13px;border-left:2px solid transparent;transition:all .15s}
+.nav-item:hover{color:var(--text);background:var(--surface2)}
+.nav-item.active{color:var(--accent);background:var(--glow);border-left-color:var(--accent);font-weight:500}
+.nav-item i{width:16px;text-align:center;font-size:13px}
+.topbar{padding:14px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);position:sticky;top:0;z-index:10}
+.topbar-title{font-size:16px;font-weight:600}
+.topbar-actions{display:flex;gap:8px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;font-family:var(--font)}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent2)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}.btn-ghost:hover{background:var(--surface2);color:var(--text)}
+.btn-green{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.2)}.btn-green:hover{background:rgba(34,197,94,.2)}
+.btn-danger{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.page{padding:24px 28px;display:none}
+.page.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:18px 20px}
+.card-title{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:4px}
+.card-value{font-size:26px;font-weight:600;color:var(--text);font-family:var(--mono)}
+.card-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.sec-title{font-size:14px;font-weight:600;margin-bottom:14px;color:var(--text)}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead tr{background:var(--surface2)}
+th{padding:10px 14px;text-align:left;font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+td{padding:10px 14px;font-size:13px;border-top:1px solid var(--border);color:var(--text2);vertical-align:middle}
+tr:hover td{background:var(--surface2)}
+.td-p{color:var(--text)!important;font-weight:500}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:500}
+.bb{background:rgba(42,170,222,.12);color:var(--accent)}
+.bg{background:rgba(34,197,94,.12);color:var(--green)}
+.ba{background:rgba(245,158,11,.12);color:var(--amber)}
+.br{background:rgba(239,68,68,.12);color:var(--red)}
+.bp{background:rgba(168,85,247,.12);color:var(--purple)}
+.bx{background:var(--surface3);color:var(--text3)}
+.bo{background:rgba(249,115,22,.12);color:var(--orange)}
+.pipeline{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px}
+.stage-col{min-width:200px;flex:0 0 200px}
+.stage-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.stage-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em}
+.stage-n{font-size:11px;color:var(--text3);background:var(--surface2);padding:1px 7px;border-radius:10px}
+.cand-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:8px;cursor:pointer;transition:all .15s;border-top:2px solid transparent}
+.cand-card:hover{border-color:var(--border2);background:var(--surface2)}
+.cand-name{font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px}
+.cand-pos{font-size:11px;color:var(--text3);margin-bottom:7px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--rl);width:660px;max-width:96vw;max-height:90vh;overflow-y:auto}
+.modal-lg{width:780px}
+.mh{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--surface);z-index:1}
+.mh h3{font-size:15px;font-weight:600}
+.mb{padding:18px 22px}
+.mf{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.fr.full{grid-template-columns:1fr}
+.fr.g3c{grid-template-columns:1fr 1fr 1fr}
+.fg{display:flex;flex-direction:column;gap:5px}
+label{font-size:12px;color:var(--text2);font-weight:500}
+input,select,textarea{background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:8px 10px;font-size:13px;color:var(--text);font-family:var(--font);width:100%;transition:border .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+select option{background:var(--surface2)}
+textarea{resize:vertical;min-height:70px}
+input[type=date]{color:var(--text)}
+.divider{height:1px;background:var(--border);margin:16px 0}
+.sep{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin:14px 0 10px}
+.tl{display:flex;flex-direction:column}
+.tl-item{display:flex;gap:14px;padding-bottom:16px}
+.tl-item:last-child{padding-bottom:0}
+.tl-l{display:flex;flex-direction:column;align-items:center;width:28px}
+.tl-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--accent);background:var(--bg);flex-shrink:0;margin-top:2px}
+.tl-dot.on{background:var(--accent)}
+.tl-dot.off{border-color:var(--border2)}
+.tl-line{flex:1;width:1px;background:var(--border);margin-top:3px}
+.tl-c{flex:1}
+.tl-lbl{font-size:12px;font-weight:500;color:var(--text)}
+.tl-dt{font-size:11px;color:var(--text3);margin-top:2px}
+.tl-d{font-size:11px;color:var(--accent);margin-top:1px}
+.dp{position:fixed;right:0;top:0;bottom:0;width:480px;background:var(--surface);border-left:1px solid var(--border2);z-index:50;transform:translateX(100%);transition:transform .25s;overflow-y:auto}
+.dp.open{transform:translateX(0)}
+.dph{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;position:sticky;top:0;background:var(--surface);z-index:1}
+.dpb{padding:18px 20px}
+.xbtn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:2px}.xbtn:hover{color:var(--text)}
+.dpill{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:5px}
+.dok{background:rgba(34,197,94,.1);color:var(--green)}
+.dwarn{background:rgba(245,158,11,.1);color:var(--amber)}
+.dover{background:rgba(239,68,68,.1);color:var(--red)}
+.chart-box{position:relative;height:220px}
+.fbar{display:flex;gap:10px;margin-bottom:18px;align-items:center;flex-wrap:wrap}
+.fbar input,.fbar select{flex:none;width:auto;min-width:150px}
+.sp{flex:1}
+.alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.alert-i{background:rgba(42,170,222,.1);border:1px solid rgba(42,170,222,.2);color:var(--accent)}
+.rtags{display:flex;flex-wrap:wrap;gap:6px}
+.rtag{padding:3px 10px;border-radius:5px;font-size:11px;cursor:pointer;border:1px solid var(--border2);color:var(--text3);transition:all .15s}
+.rtag.sel{background:rgba(239,68,68,.12);color:var(--red);border-color:rgba(239,68,68,.3)}
+.rtag:hover{color:var(--text2)}
+.rec-av{width:32px;height:32px;border-radius:50%;background:var(--glow);border:1px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--accent);font-family:var(--mono)}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:12px 18px;font-size:13px;z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;max-width:320px}
+.toast.show{transform:translateY(0);opacity:1}
+.tok{border-left:3px solid var(--green)}.terr{border-left:3px solid var(--red)}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:3px}
+
+/* COMPANY CARDS */
+.empresa-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.empresa-card:hover{border-color:var(--border2);background:var(--surface2);transform:translateY(-1px)}
+.empresa-card .ec-accent{position:absolute;top:0;left:0;right:0;height:3px}
+.empresa-card .ec-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px}
+.empresa-card .ec-sector{font-size:11px;color:var(--text3);margin-bottom:12px}
+.empresa-card .ec-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.empresa-card .ec-stat{background:var(--surface3);border-radius:7px;padding:6px 8px;text-align:center}
+.empresa-card .ec-stat-v{font-size:16px;font-weight:600;font-family:var(--mono)}
+.empresa-card .ec-stat-l{font-size:10px;color:var(--text3);margin-top:1px}
+
+/* STAGE BUILDER */
+.stage-list{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.stage-row{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+.stage-row .drag-handle{color:var(--text3);cursor:grab;font-size:14px}
+.stage-row input{flex:1;background:transparent;border:none;padding:0;font-size:13px}
+.stage-row input:focus{outline:none;border:none}
+.stage-color-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.stage-type-badge{font-size:10px;padding:2px 6px;border-radius:4px}
+
+/* EMPRESA DETAIL PAGE */
+.empresa-detail-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:20px 24px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-start}
+.ed-left{}
+.ed-name{font-size:20px;font-weight:600;margin-bottom:4px}
+.ed-meta{font-size:12px;color:var(--text3);display:flex;gap:14px;flex-wrap:wrap}
+.ed-kpis{display:flex;gap:14px}
+.ed-kpi{background:var(--surface2);border-radius:9px;padding:10px 14px;text-align:center;min-width:80px}
+.ed-kpi-v{font-size:20px;font-weight:600;font-family:var(--mono)}
+.ed-kpi-l{font-size:10px;color:var(--text3)}
+
+/* VACANTE EXPAND ROW */
+.vac-expand-row{display:none}
+.vac-expand-row.open{display:table-row}
+.vac-expand-icon{display:inline-block;transition:transform .2s;font-size:9px;margin-right:5px;color:var(--text3)}
+.vac-expand-icon.expanded{transform:rotate(90deg)}
+.cand-expand-td{border-left:3px solid var(--accent)!important;background:var(--surface2)}
+</style>
+</head>
+<body>
+<div id="loading-screen" style="position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:12px">
+  <div style="font-size:15px;color:#555">Cargando datos...</div>
+</div>
+<div class="app">
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="brand">ATS Tracker</div>
+    <div class="sub">Gestión de candidatos</div>
+  </div>
+  <nav class="sb-nav">
+    <div class="nav-section">Principal</div>
+    <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard"><i class="fa fa-chart-pie"></i> Dashboard</div>
+    <div class="nav-item" onclick="showPage('empresas')" id="nav-empresas"><i class="fa fa-building"></i> Empresas cliente</div>
+    <div class="nav-item" onclick="showPage('pipeline')" id="nav-pipeline"><i class="fa fa-stream"></i> Pipeline</div>
+    <div class="nav-item" onclick="showPage('vacantes')" id="nav-vacantes"><i class="fa fa-briefcase"></i> Vacantes</div>
+    <div class="nav-item" onclick="showPage('candidatos')" id="nav-candidatos"><i class="fa fa-users"></i> Candidatos</div>
+    <div class="nav-section">Reportes</div>
+    <div class="nav-item" onclick="showPage('reclutadores')" id="nav-reclutadores"><i class="fa fa-user-tie"></i> Reclutadores</div>
+    <div class="nav-item" onclick="nav('tiempos')" id="nav-tiempos"><i class="fa fa-clock"></i> Análisis de tiempos</div>
+    <div class="nav-item" onclick="nav('ranking')" id="nav-ranking"><i class="fa fa-trophy"></i> Ranking reclutadores</div>
+    <div class="nav-item" onclick="showPage('desercion')" id="nav-desercion"><i class="fa fa-door-open"></i> Deserción</div>
+    <div class="nav-section">Config</div>
+    <div class="nav-item" onclick="showPage('config')" id="nav-config"><i class="fa fa-cog"></i> Configuración</div>
+  </nav>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="page-title">Dashboard</div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost" onclick="exportarCSV()"><i class="fa fa-download"></i> Exportar</button>
+      <button class="btn btn-ghost" onclick="nav('vacantes');setTimeout(openVacanteModal,80)"><i class="fa fa-plus"></i> Nueva vacante</button>
+      <button class="btn btn-primary" onclick="openCandModal(null)"><i class="fa fa-user-plus"></i> Agregar candidato</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="g4" id="dash-kpis"></div>
+    <div class="sec-title">Empresas cliente — resumen de vacantes</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:24px" id="dash-empresas"></div>
+    <div class="g2">
+      <div><div class="sec-title">Candidatos por etapa</div><div class="card"><div class="chart-box"><canvas id="chEtapas" role="img" aria-label="Candidatos por etapa"></canvas></div></div></div>
+      <div><div class="sec-title">Motivos de deserción</div><div class="card"><div class="chart-box"><canvas id="chDesercion" role="img" aria-label="Motivos de deserción"></canvas></div></div></div>
+    </div>
+  </div>
+
+  <!-- EMPRESAS -->
+  <div class="page" id="page-empresas">
+    <div class="fbar">
+      <input type="text" id="flt-emp-q" placeholder="Buscar empresa..." oninput="renderEmpresas()">
+      <span class="sp"></span>
+      <button class="btn btn-primary" onclick="openEmpresaModal()"><i class="fa fa-plus"></i> Nueva empresa</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px" id="empresas-grid"></div>
+  </div>
+
+  <!-- EMPRESA DETAIL -->
+  <div class="page" id="page-empresa-detail">
+    <div style="margin-bottom:14px">
+      <button class="btn btn-ghost btn-sm" onclick="nav('empresas')"><i class="fa fa-arrow-left"></i> Volver a empresas</button>
+    </div>
+    <div id="empresa-detail-content"></div>
+  </div>
+
+  <!-- PIPELINE -->
+  <div class="page" id="page-pipeline">
+    <div class="fbar">
+      <select id="flt-pip-emp" onchange="renderPipeline()"><option value="">Todas las empresas</option></select>
+      <select id="flt-pip-rec" onchange="renderPipeline()"><option value="">Todos los reclutadores</option></select>
+      <select id="flt-pip-vac" onchange="renderPipeline()"><option value="">Todas las vacantes</option></select>
+      <span class="sp"></span>
+    </div>
+    <div class="pipeline" id="pipeline-board"></div>
+  </div>
+
+  <!-- VACANTES -->
+  <div class="page" id="page-vacantes">
+    <div class="fbar">
+      <input type="text" id="flt-vac-q" placeholder="Buscar..." oninput="renderVacantesTable()">
+      <select id="flt-vac-emp" onchange="renderVacantesTable()"><option value="">Todas las empresas</option></select>
+      <select id="flt-vac-est" onchange="renderVacantesTable()">
+        <option value="">Todos los estados</option><option>Abierta</option><option>Cubierta</option><option>Cancelada</option>
+      </select>
+      <span class="sp"></span>
+      <button class="btn btn-green btn-sm" onclick="exportarCSV()"><i class="fa fa-file-csv"></i> Exportar</button>
+      <button class="btn btn-primary" onclick="openVacanteModal()"><i class="fa fa-plus"></i> Nueva</button>
+    </div>
+    <div class="table-wrap" id="vacantes-table"></div>
+  </div>
+
+  <!-- CANDIDATOS -->
+  <div class="page" id="page-candidatos">
+    <div class="fbar">
+      <input type="text" id="flt-cand-q" placeholder="Buscar candidato..." oninput="renderCandidatosTable()">
+      <select id="flt-cand-emp" onchange="renderCandidatosTable()"><option value="">Todas las empresas</option></select>
+      <select id="flt-cand-vac" onchange="renderCandidatosTable()"><option value="">Todas las vacantes</option></select>
+      <select id="flt-cand-etapa" onchange="renderCandidatosTable()"><option value="">Todas las etapas</option></select>
+      <span class="sp"></span>
+    </div>
+    <div class="table-wrap" id="candidatos-table"></div>
+  </div>
+
+  <!-- RECLUTADORES -->
+  <div class="page" id="page-reclutadores">
+    <div class="g3" id="rec-cards"></div>
+    <div class="sec-title">Detalle por reclutador</div>
+    <div class="table-wrap" id="rec-table"></div>
+  </div>
+
+  <!-- TIEMPOS -->
+  <div class="page" id="page-tiempos">
+    <div class="g4" id="tiempos-kpis"></div><br>
+    <div class="g2">
+      <div><div class="sec-title">Días promedio por transición</div><div class="card"><div class="chart-box" style="height:260px"><canvas id="chTiempos" role="img" aria-label="Días por etapa"></canvas></div></div></div>
+      <div><div class="sec-title">Tiempo interno vs cliente por reclutador</div><div class="card"><div class="chart-box" style="height:260px"><canvas id="chCliInt" role="img" aria-label="Tiempo cliente vs interno"></canvas></div></div></div>
+    </div><br>
+    <div class="sec-title">Vacantes abiertas</div>
+    <div id="tiempos-filtros"></div>
+    <div class="table-wrap" id="tiempos-vacs-table"></div><br>
+    <div class="sec-title">Ranking de reclutadores</div>
+    <div class="table-wrap" id="tiempos-ranking-table"></div>
+  </div>
+
+  <!-- RANKING -->
+  <div class="page" id="page-ranking">
+    <div class="g4" id="ranking-kpis"></div>
+    <br>
+    <div class="sec-title">Vacantes abiertas — días transcurridos</div>
+    <div class="fbar" id="ranking-filters"></div>
+    <div class="table-wrap" id="ranking-vac-table"></div>
+    <br>
+    <div class="sec-title">Ranking de reclutadores</div>
+    <div class="table-wrap" id="ranking-rec-table"></div>
+  </div>
+
+  <!-- DESERCION -->
+  <div class="page" id="page-desercion">
+    <div class="g4" id="des-kpis"></div><br>
+    <div class="g2">
+      <div><div class="sec-title">Por motivo</div><div class="card"><div class="chart-box" style="height:260px"><canvas id="chMotivos" role="img" aria-label="Motivos deserción"></canvas></div></div></div>
+      <div><div class="sec-title">Por etapa de abandono</div><div class="card"><div class="chart-box" style="height:260px"><canvas id="chDesEtapa" role="img" aria-label="Deserción por etapa"></canvas></div></div></div>
+    </div><br>
+    <div class="sec-title">Historial</div>
+    <div class="table-wrap" id="des-table"></div>
+  </div>
+
+  <!-- CONFIG -->
+  <div class="page" id="page-config">
+    <div class="g2" style="align-items:start">
+      <div>
+        <div class="sec-title">Reclutadores</div>
+        <div class="table-wrap" style="margin-bottom:14px" id="config-rec-table"></div>
+        <button class="btn btn-primary" onclick="openModal('modal-reclutador')"><i class="fa fa-user-plus"></i> Agregar reclutador</button>
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border)">
+          <div class="sec-title" style="color:var(--red);margin-bottom:8px">Zona de peligro</div>
+          <button class="btn btn-danger" onclick="resetearDatos()"><i class="fa fa-trash"></i> Resetear datos de prueba</button>
+        </div>
+      </div>
+      <div>
+        <div class="sec-title">Configuración de etapas por empresa</div>
+        <div class="card">
+          <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Cada empresa cliente puede tener su propio proceso de reclutamiento. Selecciona una empresa para editar sus etapas.</p>
+          <select id="cfg-emp-sel" onchange="renderStageBuilder()" style="margin-bottom:14px">
+            <option value="">Selecciona una empresa...</option>
+          </select>
+          <div id="stage-builder"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- ===== MODAL EMPRESA ===== -->
+<div class="modal-overlay" id="modal-empresa">
+  <div class="modal">
+    <div class="mh"><h3 id="mod-emp-title">Nueva Empresa Cliente</h3><button class="xbtn" onclick="closeModal('modal-empresa')"><i class="fa fa-times"></i></button></div>
+    <div class="mb">
+      <input type="hidden" id="emp-id">
+      <div class="fr">
+        <div class="fg"><label>Nombre de la empresa *</label><input id="emp-nombre" placeholder="Ej. Industrial Vallejo S.A."></div>
+        <div class="fg"><label>Sector / Industria</label><input id="emp-sector" placeholder="Manufactura, Servicios..."></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Contacto principal</label><input id="emp-contacto" placeholder="Nombre del contacto"></div>
+        <div class="fg"><label>Teléfono / Email del contacto</label><input id="emp-tel" placeholder="tel o email"></div>
+      </div>
+      <div class="fr full">
+        <div class="fg"><label>Dirección / Ciudad</label><input id="emp-dir" placeholder="Ciudad o municipio"></div>
+      </div>
+      <div class="fr full">
+        <div class="fg"><label>Notas</label><textarea id="emp-notas" placeholder="Información relevante sobre el cliente..."></textarea></div>
+      </div>
+      <div class="sep">Departamentos</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input id="emp-depto-input" placeholder="Ej. Recursos Humanos" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addEmpChip('departamentos')}">
+        <button class="btn btn-ghost btn-sm" onclick="addEmpChip('departamentos')"><i class="fa fa-plus"></i> Agregar</button>
+      </div>
+      <div id="emp-depto-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:24px;margin-bottom:4px"></div>
+      <div class="sep">Proyectos</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input id="emp-proy-input" placeholder="Ej. Expansión 2025" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addEmpChip('proyectos')}">
+        <button class="btn btn-ghost btn-sm" onclick="addEmpChip('proyectos')"><i class="fa fa-plus"></i> Agregar</button>
+      </div>
+      <div id="emp-proy-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:24px;margin-bottom:4px"></div>
+      <div class="sep">Color de identificación</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap" id="emp-color-picker"></div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-empresa')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEmpresa()">Guardar empresa</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL VACANTE ===== -->
+<div class="modal-overlay" id="modal-vacante">
+  <div class="modal">
+    <div class="mh"><h3 id="mod-vac-title">Nueva Vacante</h3><button class="xbtn" onclick="closeModal('modal-vacante')"><i class="fa fa-times"></i></button></div>
+    <div class="mb">
+      <input type="hidden" id="vac-id">
+      <div class="fr">
+        <div class="fg"><label>Nombre del puesto *</label><input id="vac-nombre" placeholder="Ej. Gerente de Logística"></div>
+        <div class="fg"><label>Empresa cliente *</label>
+          <select id="vac-empresa" onchange="autofillVacRec()"><option value="">Seleccionar...</option></select>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Departamento</label><select id="vac-depto"><option value="">Sin asignar</option></select></div>
+        <div class="fg"><label>Proyecto</label><select id="vac-proyecto"><option value="">Sin asignar</option></select></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Reclutador asignado *</label><select id="vac-reclutador"><option value="">Seleccionar...</option></select></div>
+        <div class="fg"><label>Fecha de apertura *</label><input type="date" id="vac-fecha"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Salario ofertado</label><input id="vac-salario" placeholder="$25,000 mensual"></div>
+        <div class="fg"><label>Estado</label>
+          <select id="vac-estado"><option>Abierta</option><option>Cubierta</option><option>Cancelada</option></select>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Tipo de vacante</label>
+          <select id="vac-tipo" onchange="toggleVacSustitucion()">
+            <option value="Nueva creación">Nueva creación</option>
+            <option value="Sustitución">Sustitución</option>
+          </select>
+        </div>
+        <div class="fg" id="vac-sust-div" style="display:none">
+          <label>Nombre del colaborador que se va</label>
+          <input id="vac-colaborador" placeholder="Nombre completo">
+        </div>
+      </div>
+      <div class="fr full"><div class="fg"><label>Descripción / Perfil</label><textarea id="vac-desc" placeholder="Competencias clave, requisitos..."></textarea></div></div>
+      <div style="display:flex;align-items:center;gap:8px;margin:8px 0 4px">
+        <input type="checkbox" id="vac-aplica-garantia" onchange="toggleVacGarantia()" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)">
+        <label for="vac-aplica-garantia" style="cursor:pointer;font-size:13px;color:var(--text2);margin:0">¿Aplica garantía de reclutamiento?</label>
+      </div>
+      <div id="vac-garantia-section" style="display:none">
+        <div class="sep" style="margin-top:4px">Garantía de reclutamiento</div>
+        <div class="fr g3c">
+          <div class="fg"><label>Inicio de garantía</label><input type="date" id="vac-garantia-inicio" oninput="calcVencGarantia()"></div>
+          <div class="fg"><label>Días de garantía</label><input type="number" id="vac-garantia-dias" min="0" placeholder="Ej. 90" oninput="calcVencGarantia()"></div>
+          <div class="fg"><label>Vencimiento (calculado)</label><input type="date" id="vac-garantia-venc" readonly style="opacity:.65;cursor:default"></div>
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-vacante')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveVacante()">Guardar vacante</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL CANDIDATO ===== -->
+<div class="modal-overlay" id="modal-candidato">
+  <div class="modal modal-lg">
+    <div class="mh"><h3 id="mod-cand-title">Nuevo Candidato</h3><button class="xbtn" onclick="closeModal('modal-candidato')"><i class="fa fa-times"></i></button></div>
+    <div class="mb">
+      <input type="hidden" id="cand-id">
+      <input type="hidden" id="cand-parent-id">
+      <div id="cand-remp-alert"></div>
+      <div class="sep">Datos del candidato</div>
+      <div class="fr">
+        <div class="fg"><label>Nombre completo *</label><input id="cand-nombre" placeholder="Nombre del candidato"></div>
+        <div class="fg"><label>Teléfono / Email</label><input id="cand-contacto" placeholder="tel o email"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Empresa cliente *</label>
+          <select id="cand-empresa" onchange="onCandEmpresaChange()"><option value="">Seleccionar empresa...</option></select>
+        </div>
+        <div class="fg"><label>Vacante *</label>
+          <select id="cand-vacante" onchange="onCandVacanteChange()"><option value="">Seleccionar vacante...</option></select>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Reclutador *</label><select id="cand-reclutador"><option value="">Seleccionar...</option></select></div>
+        <div class="fg"><label>Fuente de reclutamiento</label>
+          <select id="cand-fuente"><option>LinkedIn</option><option>OCC</option><option>Indeed</option><option>Referido</option><option>Bolsa interna</option><option>Otro</option></select>
+        </div>
+      </div>
+      <div class="sep">Etapa actual</div>
+      <div class="fr">
+        <div class="fg"><label>Etapa del proceso</label><select id="cand-etapa" onchange="toggleDesFields()"><option value="">Seleccionar empresa primero</option></select></div>
+        <div class="fg"></div>
+      </div>
+      <div class="sep">Fechas del proceso</div>
+      <div id="cand-fechas-container"></div>
+      <div id="des-fields" style="display:none">
+        <div class="sep">Motivo de deserción / salida</div>
+        <div class="fr full"><div class="fg"><label>Motivo</label><div class="rtags" id="rtags-c"></div></div></div>
+        <div class="fr full"><div class="fg"><label>Observaciones</label><textarea id="cand-obs-des" placeholder="Detalles adicionales..."></textarea></div></div>
+      </div>
+      <div class="fr full"><div class="fg"><label>Notas generales</label><textarea id="cand-notas" placeholder="Perfil, habilidades, comentarios..."></textarea></div></div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-candidato')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveCandidato()">Guardar candidato</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL RECLUTADOR ===== -->
+<div class="modal-overlay" id="modal-reclutador">
+  <div class="modal" style="width:400px">
+    <div class="mh"><h3>Nuevo Reclutador</h3><button class="xbtn" onclick="closeModal('modal-reclutador')"><i class="fa fa-times"></i></button></div>
+    <div class="mb">
+      <div class="fr full"><div class="fg"><label>Nombre completo *</label><input id="rec-nombre" placeholder="Nombre"></div></div>
+      <div class="fr full"><div class="fg"><label>Email</label><input type="email" id="rec-email" placeholder="correo@empresa.com"></div></div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-reclutador')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveReclutador()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL EXPORT ===== -->
+<div class="modal-overlay" id="modal-export">
+  <div class="modal" style="width:460px">
+    <div class="mh"><h3>Exportar datos</h3><button class="xbtn" onclick="closeModal('modal-export')"><i class="fa fa-times"></i></button></div>
+    <div class="mb">
+      <div class="fr full"><div class="fg"><label>Filtrar por empresa cliente</label>
+        <select id="exp-emp"><option value="">Todas las empresas</option></select>
+      </div></div>
+      <div class="fr full"><div class="fg"><label>Filtrar por reclutador</label>
+        <select id="exp-rec"><option value="">Todos los reclutadores</option></select>
+      </div></div>
+      <div class="fr full"><div class="fg"><label>Estado de vacante</label>
+        <select id="exp-est"><option value="">Todos</option><option>Abierta</option><option>Cubierta</option><option>Cancelada</option></select>
+      </div></div>
+      <div class="fr full"><div class="fg"><label>¿Qué exportar?</label>
+        <select id="exp-tipo"><option value="vacantes">Vacantes con candidatos (tabla concentrado)</option><option value="candidatos">Solo candidatos</option></select>
+      </div></div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-export')">Cancelar</button>
+      <button class="btn btn-green" onclick="doExport()"><i class="fa fa-download"></i> Descargar CSV</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL PANEL -->
+<div class="dp" id="dp">
+  <div class="dph">
+    <div>
+      <div style="font-size:15px;font-weight:600" id="dp-nombre"></div>
+      <div style="font-size:12px;color:var(--text3);margin-top:3px" id="dp-cargo"></div>
+    </div>
+    <button class="xbtn" onclick="closePanel()"><i class="fa fa-times"></i></button>
+  </div>
+  <div class="dpb" id="dp-body"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL='https://opvqdknqfjiolkldmnrn.supabase.co';
+const SUPABASE_KEY='REEMPLAZA_CON_TU_ANON_KEY_eyJ...';
+const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+async function loadDB(){
+  const [emp,vac,cand,rec]=await Promise.all([
+    supabase.from('empresas').select('*'),
+    supabase.from('vacantes').select('*'),
+    supabase.from('candidatos').select('*'),
+    supabase.from('reclutadores').select('*'),
+  ]);
+  DB.empresas=emp.data?.map(r=>r.data)||[];
+  DB.vacantes=vac.data?.map(r=>r.data)||[];
+  DB.candidatos=cand.data?.map(r=>r.data)||[];
+  DB.reclutadores=rec.data?.map(r=>r.data)||[];
+}
+async function saveRecord(tabla,objeto){
+  await supabase.from(tabla).upsert({id:objeto.id,data:objeto});
+}
+async function deleteRecord(tabla,id){
+  await supabase.from(tabla).delete().eq('id',id);
+}
+
+/* ============================================================
+   DATA STORE
+   ============================================================ */
+const EMPRESA_COLORS=['#2AAADE','#A855F7','#F59E0B','#22C55E','#EF4444','#F97316','#EC4899','#14B8A6','#6366F1','#84CC16'];
+
+const DB={
+  empresas:[],
+  vacantes:[],
+  candidatos:[],
+  reclutadores:[
+    {id:'r1',nombre:'Ana López',email:'ana@empresa.com'},
+    {id:'r2',nombre:'Carlos Méndez',email:'carlos@empresa.com'},
+    {id:'r3',nombre:'Sofía Ramos',email:'sofia@empresa.com'},
+  ],
+};
+
+const DEFAULT_ETAPAS=[
+  {id:'e1',label:'Entrevista RH',tipo:'interno',color:'#2AAADE'},
+  {id:'e2',label:'Enviado a valoración',tipo:'transicion',color:'#A855F7'},
+  {id:'e3',label:'Entrevista cliente',tipo:'cliente',color:'#F59E0B'},
+  {id:'e4',label:'Validado',tipo:'cierre',color:'#22C55E'},
+];
+const ETAPAS_SALIDA=['Desertó','No aceptó'];
+
+const MOTIVOS=[
+  'Contraoferta de otra empresa','Expectativas salariales no cumplidas','No se presentó a entrevista',
+  'Renuncia al proceso sin causa','Problemas personales/familiares','Distancia/traslado',
+  'No cumple perfil técnico','Rechazado por cliente','Mejor oferta paralela',
+  'No aceptó condiciones','Proceso tardó demasiado','Otro'
+];
+
+let selReason=null;
+let empColorSel=EMPRESA_COLORS[0];
+let empDepartamentos=[];
+let empProyectos=[];
+let charts={};
+let dragIdx=null;
+let openCandRows=new Set();
+
+/* ============================================================
+   UTILS
+   ============================================================ */
+function uid(){return Date.now().toString(36)+Math.random().toString(36).substr(2,5)}
+function today(){return new Date().toISOString().split('T')[0]}
+function fmt(d){if(!d)return'—';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`}
+function daysBetween(d1,d2){
+  if(!d1)return null;
+  return Math.max(0,Math.round((new Date(d2||new Date())-new Date(d1))/86400000));
+}
+function dClass(d){if(d===null||d===undefined)return'dok';if(d<=14)return'dok';if(d<=30)return'dwarn';return'dover'}
+function showToast(msg,t='ok'){const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${t==='ok'?'tok':'terr'} show`;setTimeout(()=>el.className='toast',2800)}
+function openModal(id){document.getElementById(id).classList.add('open')}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
+
+function getEmpresaEtapas(empId){
+  const e=DB.empresas.find(x=>x.id===empId);
+  if(!e||!e.etapas||!e.etapas.length)return DEFAULT_ETAPAS.map(x=>({...x}));
+  return e.etapas;
+}
+
+function processTotal(c){
+  const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+  const start=c.f_0||(v.fecha_apertura);
+  const etapas=getEmpresaEtapas(v.empresa_id);
+  const lastKey='f_'+(etapas.length-1);
+  const end=c[lastKey]||(ETAPAS_SALIDA.includes(c.etapa)?c.fecha_salida:null);
+  return daysBetween(start,end);
+}
+
+function clienteDays(c){
+  const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+  const etapas=getEmpresaEtapas(v.empresa_id);
+  const ciIdx=etapas.findIndex(e=>e.tipo==='cliente');
+  const finalIdx=etapas.findIndex(e=>e.tipo==='cierre');
+  if(ciIdx<0||finalIdx<0)return null;
+  return daysBetween(c['f_'+ciIdx],c['f_'+finalIdx]);
+}
+
+function getCandEtapaIdx(c){
+  const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+  const etapas=getEmpresaEtapas(v.empresa_id);
+  if(ETAPAS_SALIDA.includes(c.etapa))return-1;
+  return etapas.findIndex(e=>e.label===c.etapa);
+}
+
+/* ============================================================
+   NAV
+   ============================================================ */
+function nav(p){showPage(p)}
+function showPage(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  const pg=document.getElementById('page-'+p);
+  if(pg)pg.classList.add('active');
+  const ni=document.getElementById('nav-'+p);
+  if(ni)ni.classList.add('active');
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración'};
+  document.getElementById('page-title').textContent=titles[p]||p;
+  closePanel();
+  setTimeout(()=>renderPage(p),0);
+}
+function renderPage(p){
+  if(p==='dashboard')renderDashboard();
+  if(p==='empresas')renderEmpresas();
+  if(p==='pipeline')renderPipeline();
+  if(p==='vacantes')renderVacantesTable();
+  if(p==='candidatos')renderCandidatosTable();
+  if(p==='reclutadores')renderReclutadores();
+  if(p==='tiempos')renderTiempos();
+  if(p==='ranking')renderRanking();
+  if(p==='desercion')renderDesercion();
+  if(p==='config')renderConfig();
+}
+
+/* ============================================================
+   BADGES
+   ============================================================ */
+function badgeEtapa(etapa,empId){
+  if(ETAPAS_SALIDA.includes(etapa))return`<span class="badge br">${etapa}</span>`;
+  const etapas=getEmpresaEtapas(empId);
+  const e=etapas.find(x=>x.label===etapa);
+  const color=e?e.color:'#888';
+  return`<span class="badge" style="background:${color}22;color:${color}">${etapa}</span>`;
+}
+function badgeVacEst(e){const m={'Abierta':'bb','Cubierta':'bg','Cancelada':'br'};return`<span class="badge ${m[e]||'bx'}">${e}</span>`}
+function garantiaBadge(v){
+  if(!v.garantia_venc)return'—';
+  const diff=Math.round((new Date(v.garantia_venc)-new Date(today()))/86400000);
+  if(diff<0)return'<span class="badge br"><i class="fa fa-shield-alt"></i> Vencida</span>';
+  if(diff<=7)return`<span class="badge ba"><i class="fa fa-shield-alt"></i> ${diff}d</span>`;
+  return`<span class="badge bg"><i class="fa fa-shield-alt"></i> ${diff}d</span>`;
+}
+function calcVencGarantia(){
+  const inicio=document.getElementById('vac-garantia-inicio').value;
+  const dias=parseInt(document.getElementById('vac-garantia-dias').value);
+  const el=document.getElementById('vac-garantia-venc');
+  if(inicio&&dias>0){const d=new Date(inicio);d.setDate(d.getDate()+dias);el.value=d.toISOString().split('T')[0];}
+  else el.value='';
+}
+
+/* ============================================================
+   EXPORT MODAL / CSV
+   ============================================================ */
+function exportarCSV(){
+  // populate export modal selects
+  const expEmp=document.getElementById('exp-emp');
+  const expRec=document.getElementById('exp-rec');
+  expEmp.innerHTML='<option value="">Todas las empresas</option>';
+  DB.empresas.forEach(e=>expEmp.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
+  expRec.innerHTML='<option value="">Todos los reclutadores</option>';
+  DB.reclutadores.forEach(r=>expRec.innerHTML+=`<option value="${r.id}">${r.nombre}</option>`);
+  openModal('modal-export');
+}
+
+function doExport(){
+  const empId=document.getElementById('exp-emp').value;
+  const recId=document.getElementById('exp-rec').value;
+  const est=document.getElementById('exp-est').value;
+  const tipo=document.getElementById('exp-tipo').value;
+  closeModal('modal-export');
+
+  let rows=[];
+  if(tipo==='vacantes'){
+    let vacs=DB.vacantes;
+    if(empId)vacs=vacs.filter(v=>v.empresa_id===empId);
+    if(recId)vacs=vacs.filter(v=>v.reclutador_id===recId);
+    if(est)vacs=vacs.filter(v=>v.estado===est);
+    const header=['Vacante','Empresa','Reclutador','Fecha apertura','Estado','Días abierta','Total candidatos','Candidatos activos','Candidatos validados','Candidatos desertaron'];
+    rows.push(header);
+    vacs.forEach(v=>{
+      const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
+      const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+      const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
+      rows.push([
+        v.nombre,emp.nombre||'—',rec.nombre||'—',fmt(v.fecha_apertura),v.estado,
+        daysBetween(v.fecha_apertura)||0,
+        cands.length,
+        cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length,
+        cands.filter(c=>c.etapa==='Validado').length,
+        cands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).length,
+      ]);
+    });
+  } else {
+    let cands=DB.candidatos;
+    if(empId){const vIds=DB.vacantes.filter(v=>v.empresa_id===empId).map(v=>v.id);cands=cands.filter(c=>vIds.includes(c.vacante_id));}
+    if(recId)cands=cands.filter(c=>c.reclutador_id===recId);
+    const header=['Candidato','Vacante','Empresa','Reclutador','Etapa','Fuente','Días proceso','Días cliente','Motivo deserción','Fecha salida'];
+    rows.push(header);
+    cands.forEach(c=>{
+      const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+      const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
+      const rec=DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
+      rows.push([c.nombre,v.nombre||'—',emp.nombre||'—',rec.nombre||'—',c.etapa,c.fuente||'—',processTotal(c)||0,clienteDays(c)||0,c.motivo_desercion||'—',fmt(c.fecha_salida)]);
+    });
+  }
+
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`ats_export_${tipo}_${today()}.csv`;a.click();
+  showToast('Archivo CSV descargado ✓');
+}
+
+/* ============================================================
+   EMPRESA MODAL
+   ============================================================ */
+function buildColorPicker(sel){
+  const c=document.getElementById('emp-color-picker');
+  c.innerHTML=EMPRESA_COLORS.map(col=>`<div onclick="empColorSel='${col}';buildColorPicker('${col}')" style="width:28px;height:28px;border-radius:50%;background:${col};cursor:pointer;border:3px solid ${col===sel?'#fff':'transparent'};transition:border .15s"></div>`).join('');
+}
+
+function renderEmpChips(type){
+  const arr=type==='departamentos'?empDepartamentos:empProyectos;
+  const el=document.getElementById(type==='departamentos'?'emp-depto-chips':'emp-proy-chips');
+  if(!el)return;
+  el.innerHTML=arr.map((d,i)=>`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--text2)">${d}<button onclick="removeEmpChip('${type}',${i})" style="background:none;border:none;cursor:pointer;padding:0;margin-left:2px;color:var(--text3);font-size:14px;line-height:1">×</button></span>`).join('');
+}
+function addEmpChip(type){
+  const inputId=type==='departamentos'?'emp-depto-input':'emp-proy-input';
+  const val=document.getElementById(inputId).value.trim();
+  if(!val)return;
+  const arr=type==='departamentos'?empDepartamentos:empProyectos;
+  if(!arr.includes(val))arr.push(val);
+  document.getElementById(inputId).value='';
+  renderEmpChips(type);
+}
+function removeEmpChip(type,idx){
+  const arr=type==='departamentos'?empDepartamentos:empProyectos;
+  arr.splice(idx,1);
+  renderEmpChips(type);
+}
+function openEmpresaModal(id=null){
+  document.getElementById('mod-emp-title').textContent=id?'Editar Empresa':'Nueva Empresa Cliente';
+  document.getElementById('emp-id').value='';
+  ['emp-nombre','emp-sector','emp-contacto','emp-tel','emp-dir','emp-notas','emp-depto-input','emp-proy-input'].forEach(i=>document.getElementById(i).value='');
+  empDepartamentos=[];
+  empProyectos=[];
+  renderEmpChips('departamentos');
+  renderEmpChips('proyectos');
+  empColorSel=EMPRESA_COLORS[DB.empresas.length%EMPRESA_COLORS.length];
+  buildColorPicker(empColorSel);
+  if(id){
+    const e=DB.empresas.find(x=>x.id===id);
+    if(e){
+      document.getElementById('emp-id').value=e.id;
+      document.getElementById('emp-nombre').value=e.nombre;
+      document.getElementById('emp-sector').value=e.sector||'';
+      document.getElementById('emp-contacto').value=e.contacto||'';
+      document.getElementById('emp-tel').value=e.tel||'';
+      document.getElementById('emp-dir').value=e.dir||'';
+      document.getElementById('emp-notas').value=e.notas||'';
+      empDepartamentos=[...(e.departamentos||[])];
+      empProyectos=[...(e.proyectos||[])];
+      renderEmpChips('departamentos');
+      renderEmpChips('proyectos');
+      empColorSel=e.color||EMPRESA_COLORS[0];
+      buildColorPicker(empColorSel);
+    }
+  }
+  openModal('modal-empresa');
+}
+
+async function saveEmpresa(){
+  const nombre=document.getElementById('emp-nombre').value.trim();
+  if(!nombre){showToast('Ingresa el nombre de la empresa','err');return}
+  const id=document.getElementById('emp-id').value;
+  const data={nombre,sector:document.getElementById('emp-sector').value,contacto:document.getElementById('emp-contacto').value,tel:document.getElementById('emp-tel').value,dir:document.getElementById('emp-dir').value,notas:document.getElementById('emp-notas').value,color:empColorSel,departamentos:[...empDepartamentos],proyectos:[...empProyectos]};
+  if(id){const i=DB.empresas.findIndex(e=>e.id===id);DB.empresas[i]={...DB.empresas[i],...data};showToast('Empresa actualizada ✓')}
+  else{DB.empresas.push({id:uid(),...data,etapas:DEFAULT_ETAPAS.map(e=>({...e,id:uid()}))});showToast('Empresa creada ✓')}
+  const _eObj=id?DB.empresas.find(e=>e.id===id):DB.empresas[DB.empresas.length-1];
+  if(_eObj)await saveRecord('empresas',_eObj);
+  closeModal('modal-empresa');
+  renderPage(document.querySelector('.page.active').id.replace('page-',''));
+}
+
+async function deleteEmpresa(id){
+  const e=DB.empresas.find(x=>x.id===id);
+  if(!e)return;
+  const vacs=DB.vacantes.filter(v=>v.empresa_id===id).length;
+  const msg=vacs
+    ?`¿Eliminar "${e.nombre}"? Tiene ${vacs} vacante(s) asociada(s). Esta acción no se puede deshacer.`
+    :`¿Eliminar "${e.nombre}"? Esta acción no se puede deshacer.`;
+  if(!confirm(msg))return;
+  DB.empresas=DB.empresas.filter(x=>x.id!==id);
+  await deleteRecord('empresas',id);
+  showToast('Empresa eliminada');
+  renderPage(document.querySelector('.page.active').id.replace('page-',''));
+}
+
+/* ============================================================
+   EMPRESA RENDER
+   ============================================================ */
+function renderEmpresas(){
+  const q=(document.getElementById('flt-emp-q')||{}).value||'';
+  let list=DB.empresas.filter(e=>!q||e.nombre.toLowerCase().includes(q.toLowerCase()));
+  const grid=document.getElementById('empresas-grid');
+  if(!list.length){grid.innerHTML='<div style="color:var(--text3);padding:20px">Sin empresas registradas. Crea la primera.</div>';return}
+  grid.innerHTML=list.map(e=>{
+    const vacs=DB.vacantes.filter(v=>v.empresa_id===e.id);
+    const vacAct=vacs.filter(v=>v.estado==='Abierta').length;
+    const cands=DB.candidatos.filter(c=>DB.vacantes.find(v=>v.id===c.vacante_id&&v.empresa_id===e.id));
+    const validados=cands.filter(c=>c.etapa==='Validado').length;
+    return`<div class="empresa-card" onclick="openEmpresaDetail('${e.id}')">
+      <div class="ec-accent" style="background:${e.color||'var(--accent)'}"></div>
+      <div class="ec-name">${e.nombre}</div>
+      <div class="ec-sector">${e.sector||'Sin sector'} ${e.dir?'· '+e.dir:''}</div>
+      <div class="ec-stats">
+        <div class="ec-stat"><div class="ec-stat-v" style="color:${e.color||'var(--accent)'}">${vacAct}</div><div class="ec-stat-l">Abiertas</div></div>
+        <div class="ec-stat"><div class="ec-stat-v">${vacs.length}</div><div class="ec-stat-l">Total vac.</div></div>
+        <div class="ec-stat"><div class="ec-stat-v" style="color:var(--green)">${validados}</div><div class="ec-stat-l">Colocados</div></div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:12px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openEmpresaModal('${e.id}')"><i class="fa fa-edit"></i></button>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openVacanteModal(null,'${e.id}')"><i class="fa fa-plus"></i> Vacante</button>
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteEmpresa('${e.id}')"><i class="fa fa-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   EMPRESA DETAIL
+   ============================================================ */
+function openEmpresaDetail(empId){
+  const e=DB.empresas.find(x=>x.id===empId);
+  if(!e)return;
+  const vacs=DB.vacantes.filter(v=>v.empresa_id===empId);
+  const allCands=DB.candidatos.filter(c=>vacs.find(v=>v.id===c.vacante_id));
+  const vacAct=vacs.filter(v=>v.estado==='Abierta').length;
+  const validados=allCands.filter(c=>c.etapa==='Validado').length;
+  const desertores=allCands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).length;
+  const etapas=getEmpresaEtapas(empId);
+  const daysArr=allCands.filter(c=>c.etapa==='Validado'&&processTotal(c)).map(c=>processTotal(c));
+  const avgDays=daysArr.length?Math.round(daysArr.reduce((a,b)=>a+b,0)/daysArr.length):null;
+
+  const vacsRows=vacs.map(v=>{
+    const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+    const vcands=DB.candidatos.filter(c=>c.vacante_id===v.id);
+    const activos=vcands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa));
+    const dias=daysBetween(v.fecha_apertura);
+    const candRows=vcands.length
+      ?vcands.map(c=>{
+          const d=processTotal(c);const cd=clienteDays(c);
+          const cidx=getCandEtapaIdx(c);const cet=etapas[cidx]||{};
+          const etCol=ETAPAS_SALIDA.includes(c.etapa)?'var(--red)':(cet.color||'#888');
+          const etBg=ETAPAS_SALIDA.includes(c.etapa)?'rgba(239,68,68,.12)':(cet.color||'#888')+'22';
+          return`<tr>
+            <td style="padding:7px 10px;border-top:1px solid var(--border);color:var(--text)">${c.nombre}</td>
+            <td style="padding:7px 10px;border-top:1px solid var(--border)"><span class="badge" style="background:${etBg};color:${etCol}">${c.etapa}</span></td>
+            <td style="padding:7px 10px;border-top:1px solid var(--border)">${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:'—'}</td>
+            <td style="padding:7px 10px;border-top:1px solid var(--border)">${cd!==null?`<span class="dpill dwarn">${cd}d</span>`:'—'}</td>
+            <td style="padding:7px 10px;border-top:1px solid var(--border);color:var(--red);font-size:11px">${c.motivo_desercion||'—'}</td>
+            <td style="padding:7px 10px;border-top:1px solid var(--border)"><button class="btn btn-ghost btn-sm" onclick="openPanel('${c.id}')">Ver detalle</button></td>
+          </tr>`;
+        }).join('')
+      :`<tr><td colspan="6" style="padding:14px 10px;text-align:center;color:var(--text3);font-size:12px">Sin candidatos registrados</td></tr>`;
+    return`<tr id="tr-vac-${v.id}">
+      <td class="td-p" style="cursor:pointer" onclick="toggleVacRow('${v.id}')">
+        <span class="vac-expand-icon" id="icon-expand-${v.id}">▶</span>${v.nombre}
+      </td>
+      <td>${rec.nombre||'—'}</td>
+      <td>${fmt(v.fecha_apertura)}</td>
+      <td>${badgeVacEst(v.estado)}</td>
+      <td><span class="dpill ${dClass(dias)}">${dias}d</span></td>
+      <td>${activos.length} / ${vcands.length}</td>
+      <td>
+        ${activos.slice(0,2).map(c=>{
+          const idx=getCandEtapaIdx(c);
+          const etapa=etapas[idx]||{};
+          return`<span class="badge" style="background:${(etapa.color||'#888')}22;color:${etapa.color||'#888'};margin:1px">${c.nombre}</span>`;
+        }).join('')}
+        ${activos.length>2?`<span class="bx badge">+${activos.length-2}</span>`:''}
+      </td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="openVacanteModal('${v.id}')"><i class="fa fa-edit"></i></button>
+        <button class="btn btn-primary btn-sm" onclick="openCandModal('${v.id}')"><i class="fa fa-user-plus"></i></button>
+      </td>
+    </tr>
+    <tr class="vac-expand-row" id="tr-expand-${v.id}">
+      <td colspan="8" style="padding:0;background:var(--surface2)">
+        <div style="padding:8px 14px 12px">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="background:var(--surface3)">
+              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Candidato</th>
+              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Etapa</th>
+              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Días proceso</th>
+              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Días cliente</th>
+              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Motivo</th>
+              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em"></th>
+            </tr></thead>
+            <tbody>${candRows}</tbody>
+          </table>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Process flow for this company
+  const processHtml=etapas.map((et,i)=>{
+    const n=allCands.filter(c=>c.etapa===et.label).length;
+    return`<div style="display:flex;align-items:center;gap:6px">
+      <div style="background:${et.color}22;border:1px solid ${et.color}44;border-radius:8px;padding:8px 14px;min-width:100px;text-align:center">
+        <div style="font-size:18px;font-weight:600;color:${et.color};font-family:var(--mono)">${n}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">${et.label}</div>
+      </div>
+      ${i<etapas.length-1?`<i class="fa fa-chevron-right" style="color:var(--text3);font-size:12px"></i>`:''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('empresa-detail-content').innerHTML=`
+    <div class="empresa-detail-header">
+      <div class="ed-left">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+          <div style="width:8px;height:40px;border-radius:4px;background:${e.color||'var(--accent)'}"></div>
+          <div>
+            <div class="ed-name">${e.nombre}</div>
+            <div class="ed-meta">
+              ${e.sector?`<span><i class="fa fa-industry"></i> ${e.sector}</span>`:''}
+              ${e.dir?`<span><i class="fa fa-map-marker-alt"></i> ${e.dir}</span>`:''}
+              ${e.contacto?`<span><i class="fa fa-user"></i> ${e.contacto}</span>`:''}
+              ${e.tel?`<span><i class="fa fa-phone"></i> ${e.tel}</span>`:''}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ed-kpis">
+        <div class="ed-kpi"><div class="ed-kpi-v" style="color:${e.color||'var(--accent)'}">${vacAct}</div><div class="ed-kpi-l">Abiertas</div></div>
+        <div class="ed-kpi"><div class="ed-kpi-v">${vacs.length}</div><div class="ed-kpi-l">Total vac.</div></div>
+        <div class="ed-kpi"><div class="ed-kpi-v" style="color:var(--green)">${validados}</div><div class="ed-kpi-l">Colocados</div></div>
+        <div class="ed-kpi"><div class="ed-kpi-v" style="color:var(--amber)">${avgDays||'—'}</div><div class="ed-kpi-l">Días prom.</div></div>
+        <div class="ed-kpi"><div class="ed-kpi-v" style="color:var(--red)">${desertores}</div><div class="ed-kpi-l">Deserciones</div></div>
+      </div>
+    </div>
+    <div style="margin-bottom:20px">
+      <div class="sec-title">Proceso de reclutamiento configurado</div>
+      <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${processHtml}</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="sec-title" style="margin:0">Vacantes</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-green btn-sm" onclick="exportarCSVEmpresa('${empId}')"><i class="fa fa-download"></i> Exportar esta empresa</button>
+        <button class="btn btn-primary btn-sm" onclick="openVacanteModal(null,'${empId}')"><i class="fa fa-plus"></i> Nueva vacante</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr><th>Vacante</th><th>Reclutador</th><th>Apertura</th><th>Estado</th><th>Días</th><th>Cands.</th><th>En proceso</th><th>Acción</th></tr></thead>
+      <tbody>${vacsRows||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes registradas</td></tr>'}</tbody>
+      </table>
+    </div>
+  `;
+  document.getElementById('page-title').textContent=e.nombre;
+  showPage('empresa-detail');
+}
+
+function toggleVacRow(vid){
+  const row=document.getElementById('tr-expand-'+vid);
+  const icon=document.getElementById('icon-expand-'+vid);
+  if(!row)return;
+  if(row.classList.contains('open')){
+    row.classList.remove('open');
+    icon.classList.remove('expanded');
+  } else {
+    row.classList.add('open');
+    icon.classList.add('expanded');
+  }
+}
+
+function exportarCSVEmpresa(empId){
+  document.getElementById('exp-emp').value=empId;
+  doExportDirect(empId,'','','vacantes');
+}
+
+function doExportDirect(empId,recId,est,tipo){
+  let rows=[];
+  let vacs=DB.vacantes;
+  if(empId)vacs=vacs.filter(v=>v.empresa_id===empId);
+  if(recId)vacs=vacs.filter(v=>v.reclutador_id===recId);
+  if(est)vacs=vacs.filter(v=>v.estado===est);
+  const header=['Vacante','Empresa','Reclutador','Fecha apertura','Estado','Días abierta','Total candidatos','Activos','Validados','Deserciones'];
+  rows.push(header);
+  vacs.forEach(v=>{
+    const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+    const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
+    rows.push([v.nombre,emp.nombre||'—',rec.nombre||'—',fmt(v.fecha_apertura),v.estado,daysBetween(v.fecha_apertura)||0,cands.length,cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length,cands.filter(c=>c.etapa==='Validado').length,cands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).length]);
+  });
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  const empName=(DB.empresas.find(x=>x.id===empId)||{}).nombre||'todas';
+  a.download=`ats_${empName.replace(/\s/g,'_')}_${today()}.csv`;a.click();
+  showToast('CSV descargado ✓');
+}
+
+/* ============================================================
+   VACANTE MODAL
+   ============================================================ */
+function openVacanteModal(id=null,preEmpId=null){
+  document.getElementById('mod-vac-title').textContent=id?'Editar Vacante':'Nueva Vacante';
+  document.getElementById('vac-id').value='';
+  ['vac-nombre','vac-salario','vac-desc','vac-colaborador','vac-garantia-inicio','vac-garantia-dias','vac-garantia-venc'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('vac-fecha').value=today();
+  document.getElementById('vac-estado').value='Abierta';
+  document.getElementById('vac-tipo').value='Nueva creación';
+  document.getElementById('vac-sust-div').style.display='none';
+  document.getElementById('vac-aplica-garantia').checked=false;
+  document.getElementById('vac-garantia-section').style.display='none';
+  document.getElementById('vac-depto').innerHTML='<option value="">Sin asignar</option>';
+  document.getElementById('vac-proyecto').innerHTML='<option value="">Sin asignar</option>';
+  const empSel=document.getElementById('vac-empresa');
+  empSel.innerHTML='<option value="">Seleccionar...</option>';
+  DB.empresas.forEach(e=>empSel.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
+  if(preEmpId)empSel.value=preEmpId;
+  populateRecSel('vac-reclutador','');
+  if(preEmpId)autofillVacRec();
+  if(id){
+    const v=DB.vacantes.find(x=>x.id===id);
+    if(v){
+      document.getElementById('vac-id').value=v.id;
+      document.getElementById('vac-nombre').value=v.nombre;
+      document.getElementById('vac-empresa').value=v.empresa_id||'';
+      autofillVacRec();
+      document.getElementById('vac-depto').value=v.departamento||'';
+      document.getElementById('vac-proyecto').value=v.proyecto||'';
+      document.getElementById('vac-reclutador').value=v.reclutador_id||'';
+      document.getElementById('vac-fecha').value=v.fecha_apertura;
+      document.getElementById('vac-salario').value=v.salario||'';
+      document.getElementById('vac-estado').value=v.estado;
+      document.getElementById('vac-desc').value=v.descripcion||'';
+      document.getElementById('vac-tipo').value=v.tipo_vacante||'Nueva creación';
+      document.getElementById('vac-colaborador').value=v.colaborador_sustituido||'';
+      document.getElementById('vac-sust-div').style.display=v.tipo_vacante==='Sustitución'?'block':'none';
+      if(v.aplica_garantia){
+        document.getElementById('vac-aplica-garantia').checked=true;
+        document.getElementById('vac-garantia-section').style.display='block';
+      }
+      document.getElementById('vac-garantia-inicio').value=v.garantia_inicio||'';
+      document.getElementById('vac-garantia-dias').value=v.garantia_dias||'';
+      document.getElementById('vac-garantia-venc').value=v.garantia_venc||'';
+    }
+  }
+  openModal('modal-vacante');
+}
+
+function autofillVacRec(){
+  const empId=document.getElementById('vac-empresa').value;
+  const emp=DB.empresas.find(x=>x.id===empId)||{};
+  const deptoSel=document.getElementById('vac-depto');
+  const proySel=document.getElementById('vac-proyecto');
+  deptoSel.innerHTML='<option value="">Sin asignar</option>';
+  proySel.innerHTML='<option value="">Sin asignar</option>';
+  (emp.departamentos||[]).forEach(d=>deptoSel.innerHTML+=`<option value="${d}">${d}</option>`);
+  (emp.proyectos||[]).forEach(p=>proySel.innerHTML+=`<option value="${p}">${p}</option>`);
+}
+function toggleVacGarantia(){
+  const on=document.getElementById('vac-aplica-garantia').checked;
+  document.getElementById('vac-garantia-section').style.display=on?'block':'none';
+  if(!on){['vac-garantia-inicio','vac-garantia-dias','vac-garantia-venc'].forEach(i=>document.getElementById(i).value='');}
+}
+function toggleVacSustitucion(){
+  const isSust=document.getElementById('vac-tipo').value==='Sustitución';
+  document.getElementById('vac-sust-div').style.display=isSust?'block':'none';
+  if(!isSust)document.getElementById('vac-colaborador').value='';
+}
+
+async function saveVacante(){
+  const nombre=document.getElementById('vac-nombre').value.trim();
+  const empresa_id=document.getElementById('vac-empresa').value;
+  const reclutador_id=document.getElementById('vac-reclutador').value;
+  const fecha_apertura=document.getElementById('vac-fecha').value;
+  if(!nombre||!empresa_id||!reclutador_id||!fecha_apertura){showToast('Completa campos obligatorios','err');return}
+  const id=document.getElementById('vac-id').value;
+  const aplica_garantia=document.getElementById('vac-aplica-garantia').checked;
+  const tipo_vacante=document.getElementById('vac-tipo').value;
+  const data={
+    nombre,empresa_id,reclutador_id,fecha_apertura,
+    salario:document.getElementById('vac-salario').value,
+    estado:document.getElementById('vac-estado').value,
+    descripcion:document.getElementById('vac-desc').value,
+    departamento:document.getElementById('vac-depto').value||null,
+    proyecto:document.getElementById('vac-proyecto').value||null,
+    tipo_vacante,
+    colaborador_sustituido:tipo_vacante==='Sustitución'?document.getElementById('vac-colaborador').value.trim()||null:null,
+    aplica_garantia,
+    garantia_inicio:aplica_garantia?document.getElementById('vac-garantia-inicio').value||null:null,
+    garantia_dias:aplica_garantia?parseInt(document.getElementById('vac-garantia-dias').value)||null:null,
+    garantia_venc:aplica_garantia?document.getElementById('vac-garantia-venc').value||null:null
+  };
+  if(id){const i=DB.vacantes.findIndex(v=>v.id===id);DB.vacantes[i]={...DB.vacantes[i],...data};showToast('Vacante actualizada ✓')}
+  else{DB.vacantes.push({id:uid(),...data});showToast('Vacante creada ✓')}
+  const _vObj=id?DB.vacantes.find(v=>v.id===id):DB.vacantes[DB.vacantes.length-1];
+  if(_vObj)await saveRecord('vacantes',_vObj);
+  closeModal('modal-vacante');
+  renderPage(document.querySelector('.page.active').id.replace('page-',''));
+}
+
+/* ============================================================
+   CANDIDATO MODAL
+   ============================================================ */
+function openCandModal(vacanteIdOrNull,reemplazaId=null){
+  document.getElementById('mod-cand-title').textContent=reemplazaId?'Nuevo candidato (reemplazo)':'Nuevo Candidato';
+  document.getElementById('cand-id').value='';
+  document.getElementById('cand-parent-id').value=reemplazaId||'';
+  ['cand-nombre','cand-contacto','cand-notas','cand-obs-des'].forEach(i=>document.getElementById(i).value='');
+  selReason=null;
+  // populate empresa
+  const empSel=document.getElementById('cand-empresa');
+  empSel.innerHTML='<option value="">Seleccionar empresa...</option>';
+  DB.empresas.forEach(e=>empSel.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
+  document.getElementById('cand-vacante').innerHTML='<option value="">Seleccionar vacante...</option>';
+  document.getElementById('cand-etapa').innerHTML='<option value="">Selecciona empresa/vacante primero</option>';
+  document.getElementById('cand-fechas-container').innerHTML='';
+  populateRecSel('cand-reclutador','');
+  buildRtags();
+  toggleDesFields();
+  const alertEl=document.getElementById('cand-remp-alert');
+  if(reemplazaId){
+    const prev=DB.candidatos.find(c=>c.id===reemplazaId)||{};
+    alertEl.innerHTML=`<div class="alert alert-i"><i class="fa fa-info-circle"></i> Reemplazando a <strong>${prev.nombre||'candidato anterior'}</strong>. Su historial se conservará.</div>`;
+    // pre-fill empresa/vacante
+    const v=DB.vacantes.find(x=>x.id===prev.vacante_id)||{};
+    if(v.empresa_id){
+      empSel.value=v.empresa_id;
+      onCandEmpresaChange();
+      setTimeout(()=>{
+        document.getElementById('cand-vacante').value=v.id||'';
+        onCandVacanteChange();
+      },10);
+    }
+  } else {
+    alertEl.innerHTML='';
+    if(vacanteIdOrNull){
+      const v=DB.vacantes.find(x=>x.id===vacanteIdOrNull)||{};
+      if(v.empresa_id){
+        empSel.value=v.empresa_id;
+        onCandEmpresaChange();
+        setTimeout(()=>{
+          document.getElementById('cand-vacante').value=vacanteIdOrNull;
+          onCandVacanteChange();
+          if(v.reclutador_id)document.getElementById('cand-reclutador').value=v.reclutador_id;
+        },10);
+      }
+    }
+  }
+  document.getElementById('cand-fuente').value='LinkedIn';
+  openModal('modal-candidato');
+}
+
+function editCandidato(id){
+  const c=DB.candidatos.find(x=>x.id===id);if(!c)return;
+  const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+  document.getElementById('mod-cand-title').textContent='Editar candidato';
+  document.getElementById('cand-id').value=c.id;
+  document.getElementById('cand-parent-id').value='';
+  document.getElementById('cand-nombre').value=c.nombre;
+  document.getElementById('cand-contacto').value=c.contacto||'';
+  document.getElementById('cand-notas').value=c.notas||'';
+  document.getElementById('cand-obs-des').value=c.obs_des||'';
+  document.getElementById('cand-fuente').value=c.fuente||'LinkedIn';
+  selReason=c.motivo_desercion||null;
+  const empSel=document.getElementById('cand-empresa');
+  empSel.innerHTML='<option value="">Seleccionar empresa...</option>';
+  DB.empresas.forEach(e=>empSel.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
+  empSel.value=v.empresa_id||'';
+  onCandEmpresaChange();
+  setTimeout(()=>{
+    document.getElementById('cand-vacante').value=c.vacante_id||'';
+    onCandVacanteChange();
+    setTimeout(()=>{
+      document.getElementById('cand-etapa').value=c.etapa||'';
+      // fill dates
+      const etapas=getEmpresaEtapas(v.empresa_id);
+      etapas.forEach((_,i)=>{
+        const el=document.getElementById('cf_'+i);
+        if(el)el.value=c['f_'+i]||'';
+      });
+      populateRecSel('cand-reclutador',c.reclutador_id||'');
+      buildRtags();
+      toggleDesFields();
+    },20);
+  },10);
+  document.getElementById('cand-remp-alert').innerHTML='';
+  openModal('modal-candidato');
+}
+
+function onCandEmpresaChange(){
+  const empId=document.getElementById('cand-empresa').value;
+  const vacSel=document.getElementById('cand-vacante');
+  vacSel.innerHTML='<option value="">Seleccionar vacante...</option>';
+  const vacs=DB.vacantes.filter(v=>v.empresa_id===empId);
+  vacs.forEach(v=>vacSel.innerHTML+=`<option value="${v.id}">${v.nombre}</option>`);
+  // clear etapas
+  document.getElementById('cand-etapa').innerHTML='<option value="">Selecciona vacante</option>';
+  document.getElementById('cand-fechas-container').innerHTML='';
+}
+
+function onCandVacanteChange(){
+  const vacId=document.getElementById('cand-vacante').value;
+  const v=DB.vacantes.find(x=>x.id===vacId)||{};
+  if(v.reclutador_id)document.getElementById('cand-reclutador').value=v.reclutador_id;
+  const etapas=getEmpresaEtapas(v.empresa_id);
+  // Build etapa select
+  const etapaSel=document.getElementById('cand-etapa');
+  etapaSel.innerHTML='';
+  etapas.forEach(e=>etapaSel.innerHTML+=`<option value="${e.label}">${e.label}</option>`);
+  ETAPAS_SALIDA.forEach(s=>etapaSel.innerHTML+=`<option value="${s}">${s}</option>`);
+  // Build date fields
+  const fc=document.getElementById('cand-fechas-container');
+  fc.innerHTML='';
+  const pairs=[];
+  for(let i=0;i<etapas.length;i+=2)pairs.push([i,i+1]);
+  pairs.forEach(([a,b])=>{
+    fc.innerHTML+=`<div class="fr">
+      ${a<etapas.length?`<div class="fg"><label>${etapas[a].label}</label><input type="date" id="cf_${a}" style="color:var(--text)"></div>`:'<div></div>'}
+      ${b<etapas.length?`<div class="fg"><label>${etapas[b].label}</label><input type="date" id="cf_${b}" style="color:var(--text)"></div>`:'<div></div>'}
+    </div>`;
+  });
+  toggleDesFields();
+}
+
+function toggleDesFields(){
+  const etapa=document.getElementById('cand-etapa').value;
+  const show=ETAPAS_SALIDA.includes(etapa);
+  document.getElementById('des-fields').style.display=show?'block':'none';
+}
+
+function buildRtags(){
+  document.getElementById('rtags-c').innerHTML=MOTIVOS.map(m=>`<span class="rtag ${selReason===m?'sel':''}" onclick="selReason='${m}';buildRtags()">${m}</span>`).join('');
+}
+
+async function saveCandidato(){
+  const nombre=document.getElementById('cand-nombre').value.trim();
+  const vacante_id=document.getElementById('cand-vacante').value;
+  const reclutador_id=document.getElementById('cand-reclutador').value;
+  if(!nombre||!vacante_id||!reclutador_id){showToast('Completa nombre, vacante y reclutador','err');return}
+  const id=document.getElementById('cand-id').value;
+  const parent_id=document.getElementById('cand-parent-id').value;
+  const etapa=document.getElementById('cand-etapa').value;
+  const v=DB.vacantes.find(x=>x.id===vacante_id)||{};
+  const etapas=getEmpresaEtapas(v.empresa_id);
+  const fechas={};
+  etapas.forEach((_,i)=>{const el=document.getElementById('cf_'+i);if(el)fechas['f_'+i]=el.value||null;});
+  const data={nombre,vacante_id,reclutador_id,etapa,contacto:document.getElementById('cand-contacto').value,fuente:document.getElementById('cand-fuente').value,...fechas,motivo_desercion:ETAPAS_SALIDA.includes(etapa)?selReason:null,obs_des:document.getElementById('cand-obs-des').value,notas:document.getElementById('cand-notas').value,fecha_salida:ETAPAS_SALIDA.includes(etapa)?today():null,activo:!ETAPAS_SALIDA.includes(etapa),parent_id:parent_id||null};
+  if(id){const i=DB.candidatos.findIndex(c=>c.id===id);DB.candidatos[i]={...DB.candidatos[i],...data};showToast('Candidato actualizado ✓')}
+  else{
+    const nc={id:uid(),creado:today(),...data};
+    DB.candidatos.push(nc);
+    if(parent_id){const pi=DB.candidatos.findIndex(c=>c.id===parent_id);if(pi>=0){DB.candidatos[pi].reemplazado_por=nc.id;DB.candidatos[pi].activo=false;await saveRecord('candidatos',DB.candidatos[pi]);}}
+    showToast('Candidato agregado ✓');
+  }
+  const _cObj=id?DB.candidatos.find(c=>c.id===id):DB.candidatos[DB.candidatos.length-1];
+  if(_cObj)await saveRecord('candidatos',_cObj);
+  closeModal('modal-candidato');
+  renderPage(document.querySelector('.page.active').id.replace('page-',''));
+}
+
+/* ============================================================
+   RECLUTADOR
+   ============================================================ */
+function populateRecSel(selId,cur){
+  const sel=document.getElementById(selId);if(!sel)return;
+  sel.innerHTML='<option value="">Seleccionar...</option>';
+  DB.reclutadores.forEach(r=>sel.innerHTML+=`<option value="${r.id}" ${cur===r.id?'selected':''}>${r.nombre}</option>`);
+}
+
+async function saveReclutador(){
+  const nombre=document.getElementById('rec-nombre').value.trim();
+  if(!nombre){showToast('Ingresa el nombre','err');return}
+  DB.reclutadores.push({id:uid(),nombre,email:document.getElementById('rec-email').value});
+  await saveRecord('reclutadores',DB.reclutadores[DB.reclutadores.length-1]);
+  showToast('Reclutador agregado ✓');
+  closeModal('modal-reclutador');
+  renderPage('config');
+}
+
+async function deleteReclutador(id){
+  const r=DB.reclutadores.find(x=>x.id===id);
+  if(!r)return;
+  if(!confirm(`¿Eliminar al reclutador "${r.nombre}"? Esta acción no se puede deshacer.`))return;
+  DB.reclutadores=DB.reclutadores.filter(x=>x.id!==id);
+  await deleteRecord('reclutadores',id);
+  showToast('Reclutador eliminado');
+  renderConfig();
+}
+
+/* ============================================================
+   DETAIL PANEL
+   ============================================================ */
+function openPanel(candId){
+  const c=DB.candidatos.find(x=>x.id===candId);if(!c)return;
+  const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+  const r=DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
+  const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
+  const etapas=getEmpresaEtapas(v.empresa_id);
+  const total=processTotal(c);
+  const cliD=clienteDays(c);
+
+  document.getElementById('dp-nombre').textContent=c.nombre;
+  document.getElementById('dp-cargo').textContent=`${v.nombre||'—'} · ${emp.nombre||v.cliente||'—'}`;
+
+  // Timeline
+  let tlHtml='<div class="tl">';
+  const tlSteps=[{label:'Apertura vacante',date:v.fecha_apertura},...etapas.map((e,i)=>({label:e.label,date:c['f_'+i],color:e.color}))];
+  if(ETAPAS_SALIDA.includes(c.etapa))tlSteps.push({label:c.etapa,date:c.fecha_salida,salida:true});
+  tlSteps.forEach((s,i)=>{
+    const isLast=i===tlSteps.length-1;
+    let dStr='';
+    if(i>0&&s.date&&tlSteps[i-1].date){
+      const d=daysBetween(tlSteps[i-1].date,s.date);
+      dStr=`<div class="tl-d">→ ${d}d</div>`;
+    }
+    tlHtml+=`<div class="tl-item">
+      <div class="tl-l">
+        <div class="tl-dot ${s.date?'on':'off'}" style="${s.salida?'border-color:var(--red);background:var(--red)':s.color?`border-color:${s.color};${s.date?`background:${s.color}`:'`'}`:'' }"></div>
+        ${isLast?'':'<div class="tl-line"></div>'}
+      </div>
+      <div class="tl-c">
+        <div class="tl-lbl" style="${s.salida?'color:var(--red)':''}">${s.label}</div>
+        <div class="tl-dt">${fmt(s.date)}</div>
+        ${dStr}
+      </div>
+    </div>`;
+  });
+  tlHtml+='</div>';
+
+  // chain
+  const chain=getChain(c.id);
+  let chainHtml='';
+  if(chain.length>1){
+    chainHtml=`<div style="margin-top:18px"><div class="sep">Historial de candidatos para esta vacante</div>`;
+    chain.forEach(cx=>{
+      const isCur=cx.id===c.id;
+      chainHtml+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:12px;color:${isCur?'var(--text)':'var(--text3)'};font-weight:${isCur?500:400}">${cx.nombre}</span>
+        ${badgeEtapa(cx.etapa,v.empresa_id)}
+        ${cx.motivo_desercion?`<span style="font-size:11px;color:var(--text3)">${cx.motivo_desercion}</span>`:''}
+        ${!isCur?`<button class="btn btn-ghost btn-sm" onclick="openPanel('${cx.id}')">Ver</button>`:'<span style="font-size:11px;color:var(--accent)">← actual</span>'}
+      </div>`;
+    });
+    chainHtml+='</div>';
+  }
+
+  document.getElementById('dp-body').innerHTML=`
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      ${badgeEtapa(c.etapa,v.empresa_id)}
+      ${total!==null?`<span class="dpill ${dClass(total)}">${total}d total</span>`:''}
+      ${cliD!==null?`<span class="dpill dwarn">${cliD}d cliente</span>`:''}
+    </div>
+    <table style="width:100%;font-size:12px;margin-bottom:16px">
+      <tr><td style="color:var(--text3);padding:3px 0">Empresa</td><td style="color:var(--text2);text-align:right">${emp.nombre||'—'}</td></tr>
+      <tr><td style="color:var(--text3);padding:3px 0">Reclutador</td><td style="color:var(--text2);text-align:right">${r.nombre||'—'}</td></tr>
+      <tr><td style="color:var(--text3);padding:3px 0">Fuente</td><td style="color:var(--text2);text-align:right">${c.fuente||'—'}</td></tr>
+      ${c.contacto?`<tr><td style="color:var(--text3);padding:3px 0">Contacto</td><td style="color:var(--text2);text-align:right">${c.contacto}</td></tr>`:''}
+      ${c.motivo_desercion?`<tr><td style="color:var(--text3);padding:3px 0">Motivo</td><td style="color:var(--red);text-align:right">${c.motivo_desercion}</td></tr>`:''}
+    </table>
+    ${c.notas?`<div style="margin-bottom:14px"><div class="card-title" style="margin-bottom:5px">Notas</div><div style="font-size:12px;color:var(--text2);line-height:1.6">${c.notas}</div></div>`:''}
+    <div style="margin-bottom:16px"><div class="sep">Línea de tiempo</div>${tlHtml}</div>
+    ${chainHtml}
+    <div class="divider"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="editCandidato('${c.id}')"><i class="fa fa-edit"></i> Editar</button>
+      ${!c.activo||ETAPAS_SALIDA.includes(c.etapa)?`<button class="btn btn-primary btn-sm" onclick="closePanel();openCandModal('${c.vacante_id}','${c.id}')"><i class="fa fa-user-plus"></i> Nuevo candidato</button>`:''}
+    </div>
+  `;
+  document.getElementById('dp').classList.add('open');
+}
+function closePanel(){document.getElementById('dp').classList.remove('open')}
+
+function getChain(id){
+  const c=DB.candidatos.find(x=>x.id===id);if(!c)return[];
+  let cur=c;
+  while(cur.parent_id){const p=DB.candidatos.find(x=>x.id===cur.parent_id);if(!p)break;cur=p;}
+  const chain=[];
+  function walk(n){chain.push(n);const nx=DB.candidatos.find(x=>x.parent_id===n.id);if(nx)walk(nx);}
+  walk(cur);return chain;
+}
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+function renderDashboard(){
+  const vacAct=DB.vacantes.filter(v=>v.estado==='Abierta').length;
+  const activos=DB.candidatos.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length;
+  const validados=DB.candidatos.filter(c=>c.etapa==='Validado').length;
+  const dArr=DB.candidatos.filter(c=>c.etapa==='Validado'&&processTotal(c)).map(c=>processTotal(c));
+  const avgD=dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):null;
+
+  document.getElementById('dash-kpis').innerHTML=`
+    <div class="card"><div class="card-title">Vacantes activas</div><div class="card-value">${vacAct}</div><div class="card-sub">de ${DB.vacantes.length} total</div></div>
+    <div class="card"><div class="card-title">Empresas cliente</div><div class="card-value">${DB.empresas.length}</div><div class="card-sub">con proceso activo</div></div>
+    <div class="card"><div class="card-title">Candidatos colocados</div><div class="card-value" style="color:var(--green)">${validados}</div></div>
+    <div class="card"><div class="card-title">Días prom. cobertura</div><div class="card-value" style="color:var(--amber)">${avgD||'—'}</div></div>
+  `;
+
+  // Empresas cards in dashboard
+  const empEl=document.getElementById('dash-empresas');
+  if(!DB.empresas.length){empEl.innerHTML='<div style="color:var(--text3);font-size:13px;grid-column:1/-1;padding:16px">Sin empresas registradas. <button class="btn btn-primary btn-sm" onclick="nav(\'empresas\')">Agregar empresa</button></div>';return;}
+  empEl.innerHTML=DB.empresas.map(e=>{
+    const vacs=DB.vacantes.filter(v=>v.empresa_id===e.id);
+    const vacAct=vacs.filter(v=>v.estado==='Abierta').length;
+    const cands=DB.candidatos.filter(c=>vacs.find(v=>v.id===c.vacante_id));
+    const val=cands.filter(c=>c.etapa==='Validado').length;
+    return`<div class="empresa-card" onclick="openEmpresaDetail('${e.id}')">
+      <div class="ec-accent" style="background:${e.color||'var(--accent)'}"></div>
+      <div class="ec-name">${e.nombre}</div>
+      <div class="ec-sector">${e.sector||'Sin sector'}</div>
+      <div class="ec-stats">
+        <div class="ec-stat"><div class="ec-stat-v" style="color:${e.color||'var(--accent)'}">${vacAct}</div><div class="ec-stat-l">Abiertas</div></div>
+        <div class="ec-stat"><div class="ec-stat-v">${vacs.length}</div><div class="ec-stat-l">Total</div></div>
+        <div class="ec-stat"><div class="ec-stat-v" style="color:var(--green)">${val}</div><div class="ec-stat-l">Colocados</div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Charts
+  // Etapas - aggregate all company etapas
+  const etapaLabels={};
+  DB.candidatos.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).forEach(c=>{etapaLabels[c.etapa]=(etapaLabels[c.etapa]||0)+1;});
+  const etKeys=Object.keys(etapaLabels);
+  destroyChart('chEtapas');
+  charts['chEtapas']=new Chart(document.getElementById('chEtapas'),{
+    type:'doughnut',
+    data:{labels:etKeys,datasets:[{data:etKeys.map(k=>etapaLabels[k]),backgroundColor:['#2AAADE','#A855F7','#F59E0B','#22C55E','#F97316','#EC4899'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#9090A0',font:{size:11},boxWidth:10,padding:10}}}}
+  });
+
+  const desertores=DB.candidatos.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
+  const motCount={};
+  MOTIVOS.forEach(m=>{const n=desertores.filter(c=>c.motivo_desercion===m).length;if(n)motCount[m]=n;});
+  const topMot=Object.entries(motCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  destroyChart('chDesercion');
+  charts['chDesercion']=new Chart(document.getElementById('chDesercion'),{
+    type:'bar',
+    data:{labels:topMot.map(([k])=>k),datasets:[{data:topMot.map(([,v])=>v),backgroundColor:'rgba(239,68,68,.5)',borderColor:'#EF4444',borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#5A5A6A',stepSize:1},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#9090A0',font:{size:10}},grid:{display:false}}}}
+  });
+}
+
+/* ============================================================
+   PIPELINE
+   ============================================================ */
+function renderPipeline(){
+  const fEmp=(document.getElementById('flt-pip-emp')||{}).value||'';
+  const fRec=(document.getElementById('flt-pip-rec')||{}).value||'';
+  const fVac=(document.getElementById('flt-pip-vac')||{}).value||'';
+  // populate selects
+  ['flt-pip-emp','flt-pip-rec','flt-pip-vac'].forEach(id=>{
+    const sel=document.getElementById(id);if(!sel)return;
+    const cur=sel.value;
+    if(id==='flt-pip-emp'){sel.innerHTML='<option value="">Todas las empresas</option>';DB.empresas.forEach(e=>sel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
+    if(id==='flt-pip-rec'){sel.innerHTML='<option value="">Todos los reclutadores</option>';DB.reclutadores.forEach(r=>sel.innerHTML+=`<option value="${r.id}" ${cur===r.id?'selected':''}>${r.nombre}</option>`);}
+    if(id==='flt-pip-vac'){sel.innerHTML='<option value="">Todas las vacantes</option>';DB.vacantes.forEach(v=>sel.innerHTML+=`<option value="${v.id}" ${cur===v.id?'selected':''}>${v.nombre}</option>`);}
+  });
+  let cands=DB.candidatos;
+  if(fEmp){const vids=DB.vacantes.filter(v=>v.empresa_id===fEmp).map(v=>v.id);cands=cands.filter(c=>vids.includes(c.vacante_id));}
+  if(fRec)cands=cands.filter(c=>c.reclutador_id===fRec);
+  if(fVac)cands=cands.filter(c=>c.vacante_id===fVac);
+
+  // build unified stage list
+  const stageMap={};
+  cands.forEach(c=>{
+    const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+    const etapas=getEmpresaEtapas(v.empresa_id);
+    if(ETAPAS_SALIDA.includes(c.etapa)){
+      if(!stageMap['__salida'])stageMap['__salida']={label:'Desertó / No aceptó',color:'#EF4444',cands:[]};
+      stageMap['__salida'].cands.push(c);
+    } else {
+      const et=etapas.find(e=>e.label===c.etapa);
+      const key=c.etapa;
+      if(!stageMap[key])stageMap[key]={label:c.etapa,color:et?et.color:'#888',cands:[]};
+      stageMap[key].cands.push(c);
+    }
+  });
+
+  const board=document.getElementById('pipeline-board');
+  if(!Object.keys(stageMap).length){board.innerHTML='<div style="color:var(--text3);padding:20px;font-size:13px">Sin candidatos en el pipeline con los filtros seleccionados.</div>';return;}
+
+  board.innerHTML=Object.entries(stageMap).map(([key,s])=>`
+    <div class="stage-col">
+      <div class="stage-header">
+        <span class="stage-lbl" style="color:${s.color}">${s.label}</span>
+        <span class="stage-n">${s.cands.length}</span>
+      </div>
+      ${s.cands.map(c=>{
+        const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+        const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
+        const d=processTotal(c);
+        return`<div class="cand-card" style="border-top-color:${s.color}" onclick="openPanel('${c.id}')">
+          <div class="cand-name">${c.nombre}</div>
+          <div class="cand-pos">${v.nombre||'—'} · ${emp.nombre||'—'}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            ${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:''}
+            ${key==='__salida'&&c.motivo_desercion?`<span style="font-size:10px;color:var(--text3)">${c.motivo_desercion}</span>`:''}
+          </div>
+        </div>`;
+      }).join('')||`<div style="font-size:11px;color:var(--text3);padding:12px;text-align:center">Sin candidatos</div>`}
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   VACANTES TABLE
+   ============================================================ */
+function renderVacantesTable(){
+  const q=(document.getElementById('flt-vac-q')||{}).value||'';
+  const empId=(document.getElementById('flt-vac-emp')||{}).value||'';
+  const est=(document.getElementById('flt-vac-est')||{}).value||'';
+  // populate emp filter
+  const empSel=document.getElementById('flt-vac-emp');
+  if(empSel){const cur=empSel.value;empSel.innerHTML='<option value="">Todas las empresas</option>';DB.empresas.forEach(e=>empSel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
+  let list=DB.vacantes;
+  if(q)list=list.filter(v=>v.nombre.toLowerCase().includes(q.toLowerCase()));
+  if(empId)list=list.filter(v=>v.empresa_id===empId);
+  if(est)list=list.filter(v=>v.estado===est);
+  const rows=list.map(v=>{
+    const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+    const dias=daysBetween(v.fecha_apertura);
+    const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
+    const act=cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length;
+    return`<tr>
+      <td class="td-p">${v.nombre}</td>
+      <td><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${emp.color||'#888'};flex-shrink:0"></span>${emp.nombre||'—'}</span></td>
+      <td>${rec.nombre||'—'}</td>
+      <td>${fmt(v.fecha_apertura)}</td>
+      <td>${badgeVacEst(v.estado)}</td>
+      <td>${garantiaBadge(v)}</td>
+      <td><span class="dpill ${dClass(dias)}">${dias}d</span></td>
+      <td>${act}/${cands.length}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="openVacanteModal('${v.id}')"><i class="fa fa-edit"></i></button>
+        <button class="btn btn-primary btn-sm" onclick="openCandModal('${v.id}')"><i class="fa fa-user-plus"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('vacantes-table').innerHTML=`<table>
+    <thead><tr><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Estado</th><th>Garantía</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>
+  </table>`;
+}
+
+/* ============================================================
+   CANDIDATOS TABLE
+   ============================================================ */
+function renderCandidatosTable(){
+  const q=(document.getElementById('flt-cand-q')||{}).value||'';
+  const empId=(document.getElementById('flt-cand-emp')||{}).value||'';
+  const vacId=(document.getElementById('flt-cand-vac')||{}).value||'';
+  const etapaFlt=(document.getElementById('flt-cand-etapa')||{}).value||'';
+  // populate selects
+  const empSel=document.getElementById('flt-cand-emp');
+  if(empSel){const cur=empSel.value;empSel.innerHTML='<option value="">Todas las empresas</option>';DB.empresas.forEach(e=>empSel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
+  const vacSel=document.getElementById('flt-cand-vac');
+  if(vacSel){const cur=vacSel.value;vacSel.innerHTML='<option value="">Todas las vacantes</option>';DB.vacantes.forEach(v=>vacSel.innerHTML+=`<option value="${v.id}" ${cur===v.id?'selected':''}>${v.nombre}</option>`);}
+  // collect all etapas
+  const allEtapas=[...new Set(DB.candidatos.map(c=>c.etapa))];
+  const etapaSel=document.getElementById('flt-cand-etapa');
+  if(etapaSel){const cur=etapaSel.value;etapaSel.innerHTML='<option value="">Todas las etapas</option>';allEtapas.forEach(e=>etapaSel.innerHTML+=`<option value="${e}" ${cur===e?'selected':''}>${e}</option>`);}
+
+  let list=DB.candidatos;
+  if(q)list=list.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
+  if(empId){const vids=DB.vacantes.filter(v=>v.empresa_id===empId).map(v=>v.id);list=list.filter(c=>vids.includes(c.vacante_id));}
+  if(vacId)list=list.filter(c=>c.vacante_id===vacId);
+  if(etapaFlt)list=list.filter(c=>c.etapa===etapaFlt);
+
+  const rows=list.map(c=>{
+    const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+    const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const r=DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
+    const d=processTotal(c);const cd=clienteDays(c);
+    const empEtapas=getEmpresaEtapas(v.empresa_id);
+    const isSalida=ETAPAS_SALIDA.includes(c.etapa);
+    const etapaOpts=[...empEtapas.map(e=>e.label),...ETAPAS_SALIDA]
+      .map(lbl=>`<option value="${lbl}" ${c.etapa===lbl?'selected':''}>${lbl}</option>`).join('');
+    const motivoOpts=MOTIVOS.map(m=>`<option value="${m}" ${c.motivo_desercion===m?'selected':''}>${m}</option>`).join('');
+    const timelineRows=empEtapas.map((et,i)=>{
+      const dateVal=c['f_'+i]||'';
+      const prevDate=i===0?v.fecha_apertura:(c['f_'+(i-1)]||'');
+      const dDiff=(dateVal&&prevDate)?daysBetween(prevDate,dateVal):null;
+      return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${et.color};flex-shrink:0"></div>
+        <div style="font-size:12px;color:var(--text2);min-width:120px;flex-shrink:0">${et.label}</div>
+        <input type="date" id="ci-f-${c.id}-${i}" value="${dateVal}" style="font-size:12px;padding:4px 8px;width:130px;background:var(--surface);border:1px solid var(--border2);border-radius:6px;color:var(--text)">
+        ${dDiff!==null?`<span style="font-size:11px;color:var(--text3)">+${dDiff}d</span>`:''}
+      </div>`;
+    }).join('');
+    return`<tr>
+      <td class="td-p">
+        <span class="vac-expand-icon" id="cx-icon-${c.id}">▶</span>${c.nombre}
+      </td>
+      <td>${v.nombre||'—'}</td>
+      <td><span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${emp.color||'#888'}"></span>${emp.nombre||'—'}</span></td>
+      <td>${r.nombre||'—'}</td>
+      <td style="cursor:pointer" onclick="toggleCandRow('${c.id}')">${badgeEtapa(c.etapa,v.empresa_id)}<i class="fa fa-pencil-alt" style="font-size:10px;margin-left:5px;color:var(--text3)"></i></td>
+      <td>${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:'—'}</td>
+      <td>${cd!==null?`<span class="dpill dwarn">${cd}d</span>`:'—'}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="openPanel('${c.id}')"><i class="fa fa-eye"></i></button>
+        <button class="btn btn-ghost btn-sm" onclick="editCandidato('${c.id}')"><i class="fa fa-edit"></i></button>
+        ${isSalida||!c.activo?`<button class="btn btn-primary btn-sm" onclick="openCandModal('${c.vacante_id}','${c.id}')"><i class="fa fa-redo"></i></button>`:''}
+      </td>
+    </tr>
+    <tr class="vac-expand-row" id="cx-${c.id}">
+      <td colspan="8" class="cand-expand-td" style="padding:0">
+        <div style="display:grid;grid-template-columns:1fr 1fr">
+          <div style="padding:14px 16px;border-right:1px solid var(--border)">
+            <div class="sep" style="margin-top:0">Edición rápida</div>
+            <div class="fg" style="margin-bottom:10px">
+              <label>Etapa</label>
+              <select id="ci-etapa-${c.id}" onchange="candInlineEtapaChange('${c.id}')">${etapaOpts}</select>
+            </div>
+            <div id="ci-motivo-div-${c.id}" style="display:${isSalida?'block':'none'};margin-bottom:10px">
+              <div class="fg">
+                <label>Motivo deserción</label>
+                <select id="ci-motivo-${c.id}"><option value="">Sin especificar</option>${motivoOpts}</select>
+              </div>
+              <div class="fg" style="margin-top:8px">
+                <label>Fecha salida</label>
+                <input type="date" id="ci-fsalida-${c.id}" value="${c.fecha_salida||''}">
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="saveCandEtapa('${c.id}')"><i class="fa fa-save"></i> Guardar</button>
+          </div>
+          <div style="padding:14px 16px">
+            <div class="sep" style="margin-top:0">Fechas del proceso</div>
+            ${timelineRows||'<div style="font-size:12px;color:var(--text3)">Sin etapas configuradas</div>'}
+          </div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('candidatos-table').innerHTML=`<table>
+    <thead><tr><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Etapa</th><th>Días proceso</th><th>Días cliente</th><th>Acción</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos</td></tr>'}</tbody>
+  </table>`;
+  openCandRows.forEach(cid=>{
+    const row=document.getElementById('cx-'+cid);
+    const icon=document.getElementById('cx-icon-'+cid);
+    if(row){row.classList.add('open');if(icon)icon.classList.add('expanded');}
+  });
+}
+function toggleCandRow(cid){
+  const row=document.getElementById('cx-'+cid);
+  const icon=document.getElementById('cx-icon-'+cid);
+  if(!row)return;
+  if(row.classList.contains('open')){
+    row.classList.remove('open');icon.classList.remove('expanded');openCandRows.delete(cid);
+  } else {
+    row.classList.add('open');icon.classList.add('expanded');openCandRows.add(cid);
+  }
+}
+function candInlineEtapaChange(cid){
+  const etapa=document.getElementById('ci-etapa-'+cid).value;
+  const mDiv=document.getElementById('ci-motivo-div-'+cid);
+  if(mDiv)mDiv.style.display=ETAPAS_SALIDA.includes(etapa)?'block':'none';
+}
+function saveCandEtapa(cid){
+  const c=DB.candidatos.find(x=>x.id===cid);if(!c)return;
+  const etapa=document.getElementById('ci-etapa-'+cid).value;
+  const isSalida=ETAPAS_SALIDA.includes(etapa);
+  const motivoEl=document.getElementById('ci-motivo-'+cid);
+  const fsalidaEl=document.getElementById('ci-fsalida-'+cid);
+  const motivo_desercion=isSalida&&motivoEl?motivoEl.value||null:null;
+  const fecha_salida=isSalida?(fsalidaEl&&fsalidaEl.value?fsalidaEl.value:c.fecha_salida||today()):c.fecha_salida;
+  Object.assign(c,{etapa,motivo_desercion,fecha_salida,activo:!isSalida});
+  const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+  getEmpresaEtapas(v.empresa_id).forEach((_,i)=>{
+    const el=document.getElementById('ci-f-'+cid+'-'+i);
+    if(el)c['f_'+i]=el.value||null;
+  });
+  openCandRows.delete(cid);
+  showToast('Guardado ✓');
+  renderCandidatosTable();
+}
+
+/* ============================================================
+   RECLUTADORES
+   ============================================================ */
+function renderReclutadores(){
+  document.getElementById('rec-cards').innerHTML=DB.reclutadores.map(r=>{
+    const vacs=DB.vacantes.filter(v=>v.reclutador_id===r.id);
+    const vacAct=vacs.filter(v=>v.estado==='Abierta').length;
+    const cands=DB.candidatos.filter(c=>c.reclutador_id===r.id);
+    const val=cands.filter(c=>c.etapa==='Validado').length;
+    const des=cands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).length;
+    const dArr=cands.filter(c=>c.etapa==='Validado'&&processTotal(c)).map(c=>processTotal(c));
+    const avg=dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):null;
+    const ini=r.nombre.split(' ').map(n=>n[0]).join('').substr(0,2).toUpperCase();
+    return`<div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div class="rec-av">${ini}</div>
+        <div><div style="font-weight:500;font-size:14px">${r.nombre}</div><div style="font-size:11px;color:var(--text3)">${r.email||'—'}</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Vacantes abiertas</div><div style="font-size:18px;font-weight:600;font-family:var(--mono)">${vacAct}</div></div>
+        <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Colocados</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--green)">${val}</div></div>
+        <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Días prom.</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--amber)">${avg||'—'}</div></div>
+        <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Deserciones</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--red)">${des}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+  const rows=DB.reclutadores.map(r=>{
+    const vacs=DB.vacantes.filter(v=>v.reclutador_id===r.id);
+    const vacAct=vacs.filter(v=>v.estado==='Abierta');
+    const cands=DB.candidatos.filter(c=>c.reclutador_id===r.id);
+    const dArr=cands.filter(c=>c.etapa==='Validado'&&processTotal(c)).map(c=>processTotal(c));
+    const avg=dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):null;
+
+    const vacSubRows=vacs.length
+      ?vacs.map(v=>{
+          const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
+          const vcands=DB.candidatos.filter(c=>c.vacante_id===v.id);
+          const vval=vcands.filter(c=>c.etapa==='Validado').length;
+          const dias=daysBetween(v.fecha_apertura);
+          const candSubRows=vcands.length
+            ?vcands.map(c=>{
+                const d=processTotal(c);
+                return`<tr>
+                  <td style="padding:5px 10px;border-top:1px solid var(--border);color:var(--text);font-size:11px">${c.nombre}</td>
+                  <td style="padding:5px 10px;border-top:1px solid var(--border)">${badgeEtapa(c.etapa,v.empresa_id)}</td>
+                  <td style="padding:5px 10px;border-top:1px solid var(--border)">${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:'—'}</td>
+                  <td style="padding:5px 10px;border-top:1px solid var(--border);color:var(--red);font-size:11px">${c.motivo_desercion||'—'}</td>
+                  <td style="padding:5px 10px;border-top:1px solid var(--border)"><button class="btn btn-ghost btn-sm" onclick="openPanel('${c.id}')">Ver</button></td>
+                </tr>`;
+              }).join('')
+            :`<tr><td colspan="5" style="padding:10px;text-align:center;color:var(--text3);font-size:11px">Sin registros</td></tr>`;
+          return`<tr>
+            <td style="padding:7px 10px;border-top:1px solid var(--border);font-size:12px;font-weight:500;color:var(--text)">${v.nombre}</td>
+            <td style="padding:7px 10px;border-top:1px solid var(--border)"><span style="display:flex;align-items:center;gap:4px;font-size:12px"><span style="width:7px;height:7px;border-radius:50%;background:${emp.color||'#888'}"></span>${emp.nombre||'—'}</span></td>
+            <td style="padding:7px 10px;border-top:1px solid var(--border)">${badgeVacEst(v.estado)}</td>
+            <td style="padding:7px 10px;border-top:1px solid var(--border)"><span class="dpill ${dClass(dias)}">${dias}d</span></td>
+            <td style="padding:7px 10px;border-top:1px solid var(--border);cursor:pointer" onclick="toggleRecCandRow('${v.id}')">
+              <span class="vac-expand-icon" id="rc-icon-${v.id}">▶</span><span style="font-weight:500">${vcands.length}</span>
+            </td>
+            <td style="padding:7px 10px;border-top:1px solid var(--border);color:var(--green);font-weight:500;font-size:12px">${vval}</td>
+          </tr>
+          <tr class="vac-expand-row" id="rc-cands-${v.id}">
+            <td colspan="6" style="padding:0;background:var(--surface3)">
+              <div style="padding:6px 12px 10px">
+                <table style="width:100%;border-collapse:collapse">
+                  <thead><tr style="background:var(--surface2)">
+                    <th style="padding:5px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Candidato</th>
+                    <th style="padding:5px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Etapa</th>
+                    <th style="padding:5px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Días</th>
+                    <th style="padding:5px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Motivo</th>
+                    <th style="padding:5px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em"></th>
+                  </tr></thead>
+                  <tbody>${candSubRows}</tbody>
+                </table>
+              </div>
+            </td>
+          </tr>`;
+        }).join('')
+      :`<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3);font-size:12px">Sin registros</td></tr>`;
+
+    return`<tr>
+      <td class="td-p" style="cursor:pointer" onclick="toggleRecRow('${r.id}')">
+        <span class="vac-expand-icon" id="rec-icon-${r.id}">▶</span>${r.nombre}
+      </td>
+      <td>${vacAct.map(v=>`<span class="badge bb" style="margin:1px">${v.nombre}</span>`).join('')||'—'}</td>
+      <td style="text-align:center">${vacAct.length}</td>
+      <td style="text-align:center">${cands.length}</td>
+      <td style="text-align:center;color:var(--green);font-weight:500">${cands.filter(c=>c.etapa==='Validado').length}</td>
+      <td>${avg!==null?`<span class="dpill ${dClass(avg)}">${avg}d</span>`:'—'}</td>
+    </tr>
+    <tr class="vac-expand-row" id="rec-expand-${r.id}">
+      <td colspan="6" style="padding:0;background:var(--surface2)">
+        <div style="padding:8px 14px 12px">
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="background:var(--surface3)">
+              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Vacante</th>
+              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Empresa</th>
+              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Estado</th>
+              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Días</th>
+              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Candidatos</th>
+              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Validados</th>
+            </tr></thead>
+            <tbody>${vacSubRows}</tbody>
+          </table>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('rec-table').innerHTML=`<table>
+    <thead><tr><th>Reclutador</th><th>Vacantes activas</th><th>Abiertas</th><th>Candidatos</th><th>Validados</th><th>Días prom.</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+function toggleRecRow(rid){
+  const row=document.getElementById('rec-expand-'+rid);
+  const icon=document.getElementById('rec-icon-'+rid);
+  if(!row)return;
+  if(row.classList.contains('open')){row.classList.remove('open');icon.classList.remove('expanded');}
+  else{row.classList.add('open');icon.classList.add('expanded');}
+}
+function toggleRecCandRow(vid){
+  const row=document.getElementById('rc-cands-'+vid);
+  const icon=document.getElementById('rc-icon-'+vid);
+  if(!row)return;
+  if(row.classList.contains('open')){row.classList.remove('open');icon.classList.remove('expanded');}
+  else{row.classList.add('open');icon.classList.add('expanded');}
+}
+
+/* ============================================================
+   TIEMPOS
+   ============================================================ */
+function renderTiempos(){
+  const validados=DB.candidatos.filter(c=>c.etapa==='Validado');
+  const avgTotal=validados.filter(c=>processTotal(c)).map(c=>processTotal(c));
+  const avgTD=avgTotal.length?Math.round(avgTotal.reduce((a,b)=>a+b,0)/avgTotal.length):null;
+  const cliDArr=DB.candidatos.filter(c=>{
+    const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+    return clienteDays(c)!==null;
+  }).map(c=>clienteDays(c));
+  const avgCli=cliDArr.length?Math.round(cliDArr.reduce((a,b)=>a+b,0)/cliDArr.length):null;
+  document.getElementById('tiempos-kpis').innerHTML=`
+    <div class="card"><div class="card-title">Prom. días proceso total</div><div class="card-value">${avgTD||'—'}</div><div class="card-sub">apertura → validación</div></div>
+    <div class="card"><div class="card-title">Prom. días cliente</div><div class="card-value" style="color:var(--amber)">${avgCli||'—'}</div><div class="card-sub">valoración → validación</div></div>
+    <div class="card"><div class="card-title">Candidatos validados</div><div class="card-value" style="color:var(--green)">${validados.length}</div></div>
+    <div class="card"><div class="card-title">Empresas activas</div><div class="card-value">${DB.empresas.filter(e=>DB.vacantes.find(v=>v.empresa_id===e.id&&v.estado==='Abierta')).length}</div></div>
+  `;
+  const recL=DB.reclutadores.map(r=>r.nombre.split(' ')[0]);
+  const recInt=DB.reclutadores.map(r=>{
+    const rc=DB.candidatos.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return c.reclutador_id===r.id&&v&&c.f_0&&c.f_1;});
+    const d=rc.map(c=>daysBetween(c.f_0,c.f_1));
+    return d.length?Math.round(d.reduce((a,b)=>a+b,0)/d.length):0;
+  });
+  const recCli=DB.reclutadores.map(r=>{
+    const rc=DB.candidatos.filter(c=>{const cd=clienteDays(c);return c.reclutador_id===r.id&&cd!==null;});
+    const d=rc.map(c=>clienteDays(c));
+    return d.length?Math.round(d.reduce((a,b)=>a+b,0)/d.length):0;
+  });
+  destroyChart('chTiempos');
+  charts['chTiempos']=new Chart(document.getElementById('chTiempos'),{
+    type:'bar',data:{labels:recL.length?recL:['Sin datos'],datasets:[{label:'Días internos',data:recInt,backgroundColor:'rgba(42,170,222,.5)',borderColor:'#2AAADE',borderWidth:1},{label:'Días cliente',data:recCli,backgroundColor:'rgba(245,158,11,.5)',borderColor:'#F59E0B',borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#9090A0',font:{size:11},boxWidth:10}}},scales:{y:{ticks:{color:'#5A5A6A'},grid:{color:'rgba(255,255,255,.04)'}},x:{ticks:{color:'#9090A0'},grid:{display:false}}}}
+  });
+  // Tiempos por empresa
+  const empL=DB.empresas.map(e=>e.nombre);
+  const empD=DB.empresas.map(e=>{
+    const vids=DB.vacantes.filter(v=>v.empresa_id===e.id).map(v=>v.id);
+    const cands=DB.candidatos.filter(c=>vids.includes(c.vacante_id)&&processTotal(c));
+    const d=cands.map(c=>processTotal(c));
+    return d.length?Math.round(d.reduce((a,b)=>a+b,0)/d.length):0;
+  });
+  destroyChart('chCliInt');
+  charts['chCliInt']=new Chart(document.getElementById('chCliInt'),{
+    type:'bar',data:{labels:empL.length?empL:['Sin datos'],datasets:[{label:'Días prom. proceso',data:empD,backgroundColor:DB.empresas.map(e=>(e.color||'#2AAADE')+'88'),borderColor:DB.empresas.map(e=>e.color||'#2AAADE'),borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{color:'#5A5A6A'},grid:{color:'rgba(255,255,255,.04)'}},x:{ticks:{color:'#9090A0'},grid:{display:false}}}}
+  });
+  // Filtros + tabla vacantes abiertas
+  const empOptsF=DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+  const recOptsF=DB.reclutadores.map(r=>`<option value="${r.id}">${r.nombre}</option>`).join('');
+  document.getElementById('tiempos-filtros').innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+    <select id="tf-empresa" onchange="filterTiemposVacs()" style="min-width:160px"><option value="">Todas las empresas</option>${empOptsF}</select>
+    <select id="tf-reclutador" onchange="filterTiemposVacs()" style="min-width:160px"><option value="">Todos los reclutadores</option>${recOptsF}</select>
+    <input id="tf-posicion" placeholder="Buscar posición..." oninput="filterTiemposVacs()" style="min-width:160px">
+  </div>`;
+  filterTiemposVacs();
+  // Ranking reclutadores
+  const ranking=DB.reclutadores.map(r=>{
+    const vacsAct=DB.vacantes.filter(v=>v.reclutador_id===r.id&&v.estado==='Abierta').length;
+    const dArr=DB.candidatos.filter(c=>c.reclutador_id===r.id&&c.etapa==='Validado'&&processTotal(c)!==null).map(c=>processTotal(c));
+    const avg=dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):null;
+    return{r,vacsAct,avg};
+  }).sort((a,b)=>{
+    if(a.avg===null&&b.avg===null)return 0;
+    if(a.avg===null)return 1;
+    if(b.avg===null)return -1;
+    return a.avg-b.avg;
+  });
+  const rankRows=ranking.map(({r,vacsAct,avg},i)=>`<tr style="${i===0?'background:rgba(22,163,74,.08)':''}">
+    <td style="font-weight:600;font-family:var(--mono);color:${i===0?'var(--green)':'var(--text2)'};text-align:center">#${i+1}</td>
+    <td class="td-p" style="${i===0?'color:var(--green);font-weight:600':''}">${r.nombre}</td>
+    <td style="text-align:center">${vacsAct}</td>
+    <td>${avg!==null?`<span class="dpill ${dClass(avg)}">${avg}d</span>`:'—'}</td>
+  </tr>`).join('');
+  document.getElementById('tiempos-ranking-table').innerHTML=`<table><thead><tr><th style="text-align:center">Pos.</th><th>Reclutador</th><th style="text-align:center">Vacantes activas</th><th>Días prom. cobertura</th></tr></thead><tbody>${rankRows||'<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px">Sin datos</td></tr>'}</tbody></table>`;
+}
+
+function filterTiemposVacs(){
+  const empId=document.getElementById('tf-empresa')?.value||'';
+  const recId=document.getElementById('tf-reclutador')?.value||'';
+  const q=(document.getElementById('tf-posicion')?.value||'').toLowerCase().trim();
+  let vacs=DB.vacantes.filter(v=>v.estado==='Abierta');
+  if(empId)vacs=vacs.filter(v=>v.empresa_id===empId);
+  if(recId)vacs=vacs.filter(v=>v.reclutador_id===recId);
+  if(q)vacs=vacs.filter(v=>v.nombre.toLowerCase().includes(q));
+  const rows=vacs.map(v=>{
+    const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const r=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+    const dias=v.fecha_apertura?daysBetween(v.fecha_apertura,today()):null;
+    return{v,emp,r,dias};
+  }).sort((a,b)=>(b.dias||0)-(a.dias||0)).map(({v,emp,r,dias})=>`<tr>
+    <td class="td-p">${v.nombre}</td>
+    <td><span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${emp.color||'#888'}"></span>${emp.nombre||'—'}</span></td>
+    <td>${r.nombre||'—'}</td>
+    <td>${fmt(v.fecha_apertura)}</td>
+    <td>${dias!==null?`<span class="dpill ${dClass(dias)}">${dias}d</span>`:'—'}</td>
+  </tr>`).join('');
+  const el=document.getElementById('tiempos-vacs-table');
+  if(el)el.innerHTML=`<table><thead><tr><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Días abierta</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes abiertas</td></tr>'}</tbody></table>`;
+}
+
+/* ============================================================
+   RANKING RECLUTADORES
+   ============================================================ */
+function renderRanking(){
+  const vacsAbiertas=DB.vacantes.filter(v=>v.estado==='Abierta');
+  const diasArr=vacsAbiertas.filter(v=>v.fecha_apertura).map(v=>daysBetween(v.fecha_apertura,today()));
+  const avgDiasGlobal=diasArr.length?Math.round(diasArr.reduce((a,b)=>a+b,0)/diasArr.length):null;
+  // reclutador más rápido
+  const recSpeed=DB.reclutadores.map(r=>{
+    const d=DB.candidatos.filter(c=>c.reclutador_id===r.id&&c.etapa==='Validado'&&processTotal(c)!==null).map(c=>processTotal(c));
+    return{r,avg:d.length?Math.round(d.reduce((a,b)=>a+b,0)/d.length):null};
+  }).filter(x=>x.avg!==null).sort((a,b)=>a.avg-b.avg);
+  const masRapido=recSpeed[0]||null;
+  // reclutador con más colocados
+  const masColocados=DB.reclutadores.map(r=>({
+    r,val:DB.candidatos.filter(c=>c.reclutador_id===r.id&&c.etapa==='Validado').length
+  })).sort((a,b)=>b.val-a.val)[0]||null;
+  document.getElementById('ranking-kpis').innerHTML=`
+    <div class="card"><div class="card-title">Vacantes abiertas</div><div class="card-value">${vacsAbiertas.length}</div><div class="card-sub">en curso</div></div>
+    <div class="card"><div class="card-title">Días promedio abierta</div><div class="card-value ${dClass(avgDiasGlobal||0)}">${avgDiasGlobal!==null?avgDiasGlobal+'d':'—'}</div><div class="card-sub">global</div></div>
+    <div class="card"><div class="card-title">Reclutador más rápido</div><div class="card-value" style="font-size:14px;color:var(--green)">${masRapido?masRapido.r.nombre:'—'}</div><div class="card-sub">${masRapido?masRapido.avg+'d prom.':''}</div></div>
+    <div class="card"><div class="card-title">Más colocados</div><div class="card-value" style="font-size:14px;color:var(--accent)">${masColocados&&masColocados.val?masColocados.r.nombre:'—'}</div><div class="card-sub">${masColocados&&masColocados.val?masColocados.val+' validados':''}</div></div>
+  `;
+  // Filtros
+  const empOptsR=DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+  const recOptsR=DB.reclutadores.map(r=>`<option value="${r.id}">${r.nombre}</option>`).join('');
+  document.getElementById('ranking-filters').innerHTML=`
+    <select id="rk-empresa" onchange="filterRankingVacs()"><option value="">Todas las empresas</option>${empOptsR}</select>
+    <select id="rk-reclutador" onchange="filterRankingVacs()"><option value="">Todos los reclutadores</option>${recOptsR}</select>
+    <input id="rk-posicion" placeholder="Buscar posición..." oninput="filterRankingVacs()" style="min-width:160px">
+  `;
+  filterRankingVacs();
+  // Ranking table
+  const medals=['🥇','🥈','🥉'];
+  const ranking=DB.reclutadores.map(r=>{
+    const vacsAct=DB.vacantes.filter(v=>v.reclutador_id===r.id&&v.estado==='Abierta').length;
+    const total=DB.candidatos.filter(c=>c.reclutador_id===r.id).length;
+    const validados=DB.candidatos.filter(c=>c.reclutador_id===r.id&&c.etapa==='Validado').length;
+    const dArr=DB.candidatos.filter(c=>c.reclutador_id===r.id&&c.etapa==='Validado'&&processTotal(c)!==null).map(c=>processTotal(c));
+    const avg=dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):null;
+    return{r,vacsAct,total,validados,avg};
+  }).sort((a,b)=>{
+    if(a.avg===null&&b.avg===null)return 0;
+    if(a.avg===null)return 1;
+    if(b.avg===null)return -1;
+    return a.avg-b.avg;
+  });
+  const rankRows=ranking.map(({r,vacsAct,total,validados,avg},i)=>`<tr style="${i===0?'background:rgba(22,163,74,.08)':''}">
+    <td style="text-align:center;font-size:16px">${medals[i]||`<span style="font-family:var(--mono);color:var(--text3)">#${i+1}</span>`}</td>
+    <td class="td-p" style="${i===0?'color:var(--green);font-weight:600':''}">${r.nombre}</td>
+    <td style="text-align:center">${vacsAct}</td>
+    <td style="text-align:center">${total}</td>
+    <td style="text-align:center;color:var(--green);font-weight:500">${validados}</td>
+    <td>${avg!==null?`<span class="dpill ${dClass(avg)}">${avg}d</span>`:'—'}</td>
+  </tr>`).join('');
+  document.getElementById('ranking-rec-table').innerHTML=`<table><thead><tr><th style="text-align:center">Pos.</th><th>Reclutador</th><th style="text-align:center">Vac. activas</th><th style="text-align:center">Cands. totales</th><th style="text-align:center">Validados</th><th>Días prom.</th></tr></thead><tbody>${rankRows||'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin datos</td></tr>'}</tbody></table>`;
+}
+function filterRankingVacs(){
+  const empId=document.getElementById('rk-empresa')?.value||'';
+  const recId=document.getElementById('rk-reclutador')?.value||'';
+  const q=(document.getElementById('rk-posicion')?.value||'').toLowerCase().trim();
+  let vacs=DB.vacantes.filter(v=>v.estado==='Abierta');
+  if(empId)vacs=vacs.filter(v=>v.empresa_id===empId);
+  if(recId)vacs=vacs.filter(v=>v.reclutador_id===recId);
+  if(q)vacs=vacs.filter(v=>v.nombre.toLowerCase().includes(q));
+  const rows=vacs.map(v=>{
+    const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const r=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+    const dias=v.fecha_apertura?daysBetween(v.fecha_apertura,today()):null;
+    return{v,emp,r,dias};
+  }).sort((a,b)=>(b.dias||0)-(a.dias||0)).map(({v,emp,r,dias})=>`<tr>
+    <td class="td-p">${v.nombre}</td>
+    <td><span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${emp.color||'#888'}"></span>${emp.nombre||'—'}</span></td>
+    <td>${r.nombre||'—'}</td>
+    <td>${fmt(v.fecha_apertura)}</td>
+    <td>${dias!==null?`<span class="dpill ${dClass(dias)}">${dias}d</span>`:'—'}</td>
+  </tr>`).join('');
+  const el=document.getElementById('ranking-vac-table');
+  if(el)el.innerHTML=`<table><thead><tr><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Días abierta</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes abiertas</td></tr>'}</tbody></table>`;
+}
+
+/* ============================================================
+   DESERCION
+   ============================================================ */
+function renderDesercion(){
+  const des=DB.candidatos.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
+  const pct=DB.candidatos.length?Math.round(des.length/DB.candidatos.length*100):0;
+  const motC={};MOTIVOS.forEach(m=>{const n=des.filter(c=>c.motivo_desercion===m).length;if(n)motC[m]=n;});
+  const topM=Object.entries(motC).sort((a,b)=>b[1]-a[1]);
+  const etC={};
+  des.forEach(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};const et=getEmpresaEtapas(v.empresa_id);const last=[...et].reverse().find(e=>c['f_'+(et.indexOf(e))])||null;const key=last?last.label:'Sin etapa previa';etC[key]=(etC[key]||0)+1;});
+  document.getElementById('des-kpis').innerHTML=`
+    <div class="card"><div class="card-title">Total deserciones</div><div class="card-value" style="color:var(--red)">${des.length}</div></div>
+    <div class="card"><div class="card-title">Tasa de deserción</div><div class="card-value">${pct}%</div></div>
+    <div class="card"><div class="card-title">Motivo más frecuente</div><div class="card-value" style="font-size:14px">${topM[0]?topM[0][0]:'—'}</div><div class="card-sub">${topM[0]?topM[0][1]+' casos':''}</div></div>
+    <div class="card"><div class="card-title">Con motivo registrado</div><div class="card-value">${des.filter(c=>c.motivo_desercion).length}</div><div class="card-sub">de ${des.length}</div></div>
+  `;
+  destroyChart('chMotivos');
+  charts['chMotivos']=new Chart(document.getElementById('chMotivos'),{
+    type:'bar',data:{labels:topM.map(([k])=>k.length>22?k.substr(0,22)+'…':k),datasets:[{data:topM.map(([,v])=>v),backgroundColor:'rgba(239,68,68,.45)',borderColor:'#EF4444',borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#5A5A6A',stepSize:1},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#9090A0',font:{size:10}},grid:{display:false}}}}
+  });
+  const etK=Object.keys(etC);
+  destroyChart('chDesEtapa');
+  charts['chDesEtapa']=new Chart(document.getElementById('chDesEtapa'),{
+    type:'doughnut',data:{labels:etK,datasets:[{data:etK.map(k=>etC[k]),backgroundColor:['rgba(42,170,222,.6)','rgba(168,85,247,.6)','rgba(245,158,11,.6)','rgba(34,197,94,.6)','rgba(100,100,100,.6)'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#9090A0',font:{size:11},boxWidth:10,padding:10}}}}
+  });
+  const rows=des.map(c=>{
+    const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+    const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const r=DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
+    const d=processTotal(c);
+    return`<tr><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td>${emp.nombre||'—'}</td><td>${r.nombre||'—'}</td><td>${badgeEtapa(c.etapa,v.empresa_id)}</td><td style="color:var(--red)">${c.motivo_desercion||'—'}</td><td>${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:'—'}</td><td>${fmt(c.fecha_salida)}</td></tr>`;
+  }).join('');
+  document.getElementById('des-table').innerHTML=`<table><thead><tr><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Tipo</th><th>Motivo</th><th>Días</th><th>Fecha</th></tr></thead><tbody>${rows||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">Sin deserciones</td></tr>'}</tbody></table>`;
+}
+
+/* ============================================================
+   CONFIG / STAGE BUILDER
+   ============================================================ */
+function renderConfig(){
+  // Populate empresa select in config
+  const cfgSel=document.getElementById('cfg-emp-sel');
+  const cur=cfgSel.value;
+  cfgSel.innerHTML='<option value="">Selecciona una empresa...</option>';
+  DB.empresas.forEach(e=>cfgSel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);
+  // Reclutadores table
+  const rows=DB.reclutadores.map(r=>`<tr><td class="td-p">${r.nombre}</td><td>${r.email||'—'}</td><td><button class="btn btn-danger btn-sm" onclick="deleteReclutador('${r.id}')"><i class="fa fa-trash"></i></button></td></tr>`).join('');
+  document.getElementById('config-rec-table').innerHTML=`<table><thead><tr><th>Nombre</th><th>Email</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:16px">Sin reclutadores</td></tr>'}</tbody></table>`;
+  renderStageBuilder();
+}
+
+function renderStageBuilder(){
+  const empId=document.getElementById('cfg-emp-sel').value;
+  const sb=document.getElementById('stage-builder');
+  if(!empId){sb.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0">Selecciona una empresa para configurar sus etapas.</div>';return;}
+  const emp=DB.empresas.find(x=>x.id===empId);
+  if(!emp)return;
+  const etapas=emp.etapas&&emp.etapas.length?emp.etapas:[...DEFAULT_ETAPAS.map(e=>({...e,id:uid()}))];
+  const TIPOS=['interno','transicion','cliente','cierre','otro'];
+  sb.innerHTML=`
+    <div class="sep">Etapas del proceso — ${emp.nombre}</div>
+    <div class="stage-list" id="sl-${empId}">
+      ${etapas.map((e,i)=>`
+        <div class="stage-row" id="sr-${e.id}" draggable="true" ondragstart="dragIdx=${i}" ondragover="event.preventDefault()" ondrop="dropStage('${empId}',${i})">
+          <span class="drag-handle"><i class="fa fa-grip-vertical"></i></span>
+          <div class="stage-color-dot" style="background:${e.color}"></div>
+          <input value="${e.label}" id="sl-lbl-${e.id}" placeholder="Nombre de la etapa" onchange="updateStageLabel('${empId}','${e.id}',this.value)">
+          <select style="width:110px;font-size:11px;padding:4px 6px" onchange="updateStageType('${empId}','${e.id}',this.value)">
+            ${TIPOS.map(t=>`<option value="${t}" ${e.tipo===t?'selected':''}>${t}</option>`).join('')}
+          </select>
+          <div style="display:flex;gap:3px;align-items:center">
+            ${['#2AAADE','#A855F7','#F59E0B','#22C55E','#EF4444','#F97316','#EC4899','#14B8A6','#6366F1','#84CC16'].map(c=>`<div onclick="updateStageColor('${empId}','${e.id}','${c}')" style="width:18px;height:18px;border-radius:50%;background:${c};cursor:pointer;border:2px solid ${e.color===c?'#fff':'transparent'};flex-shrink:0"></div>`).join('')}
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="removeStage('${empId}','${e.id}')" ${etapas.length<=2?'disabled':''}>×</button>
+        </div>
+      `).join('')}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn btn-ghost btn-sm" onclick="addStage('${empId}')"><i class="fa fa-plus"></i> Agregar etapa</button>
+      <button class="btn btn-danger btn-sm" onclick="clearStages('${empId}')"><i class="fa fa-times"></i> Limpiar todo</button>
+      <button class="btn btn-primary btn-sm" onclick="saveStages('${empId}')"><i class="fa fa-save"></i> Guardar etapas</button>
+    </div>
+    <div style="margin-top:12px;padding:10px;background:var(--surface2);border-radius:8px">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Vista previa del proceso</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        ${etapas.map((e,i)=>`<span style="background:${e.color}22;border:1px solid ${e.color}55;border-radius:6px;padding:3px 9px;font-size:11px;color:${e.color}">${e.label}</span>${i<etapas.length-1?'<i class="fa fa-chevron-right" style="color:var(--text3);font-size:9px"></i>':''}`).join('')}
+        <i class="fa fa-chevron-right" style="color:var(--text3);font-size:9px"></i>
+        <span style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:6px;padding:3px 9px;font-size:11px;color:var(--red)">Desertó / No aceptó</span>
+      </div>
+    </div>
+  `;
+}
+
+function updateStageLabel(empId,stageId,val){
+  const e=DB.empresas.find(x=>x.id===empId);if(!e)return;
+  const s=e.etapas.find(x=>x.id===stageId);if(s)s.label=val;
+}
+function updateStageType(empId,stageId,val){
+  const e=DB.empresas.find(x=>x.id===empId);if(!e)return;
+  const s=e.etapas.find(x=>x.id===stageId);if(s)s.tipo=val;
+}
+function updateStageColor(empId,stageId,val){
+  const e=DB.empresas.find(x=>x.id===empId);if(!e)return;
+  const s=e.etapas.find(x=>x.id===stageId);if(s){s.color=val;}
+  renderStageBuilder();
+}
+function addStage(empId){
+  const e=DB.empresas.find(x=>x.id===empId);if(!e)return;
+  if(!e.etapas||!e.etapas.length)e.etapas=[...DEFAULT_ETAPAS.map(x=>({...x,id:uid()}))];
+  e.etapas.push({id:uid(),label:'Nueva etapa',tipo:'otro',color:'#888888'});
+  renderStageBuilder();
+}
+function removeStage(empId,stageId){
+  const e=DB.empresas.find(x=>x.id===empId);if(!e||e.etapas.length<=2)return;
+  e.etapas=e.etapas.filter(x=>x.id!==stageId);
+  renderStageBuilder();
+}
+function saveStages(empId){
+  // re-read labels from inputs in case they weren't triggered
+  const e=DB.empresas.find(x=>x.id===empId);if(!e)return;
+  e.etapas.forEach(s=>{const el=document.getElementById('sl-lbl-'+s.id);if(el)s.label=el.value;});
+  showToast('Etapas guardadas ✓');
+  renderStageBuilder();
+}
+function clearStages(empId){
+  if(!confirm('¿Eliminar todas las etapas? Esta acción no se puede deshacer.'))return;
+  const e=DB.empresas.find(x=>x.id===empId);if(!e)return;
+  e.etapas=[];
+  renderStageBuilder();
+}
+function dropStage(empId,toIdx){
+  if(dragIdx===null||dragIdx===toIdx){dragIdx=null;return;}
+  const e=DB.empresas.find(x=>x.id===empId);if(!e)return;
+  e.etapas.forEach(s=>{const el=document.getElementById('sl-lbl-'+s.id);if(el)s.label=el.value;});
+  const moved=e.etapas.splice(dragIdx,1)[0];
+  e.etapas.splice(toIdx,0,moved);
+  dragIdx=null;
+  renderStageBuilder();
+}
+
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+
+function resetearDatos(){
+  if(confirm('¿Borrar todos los datos?')&&confirm('¿Estás seguro? Esta acción no se puede deshacer.')){
+    Promise.all([
+      supabase.from('empresas').delete().neq('id',''),
+      supabase.from('vacantes').delete().neq('id',''),
+      supabase.from('candidatos').delete().neq('id',''),
+      supabase.from('reclutadores').delete().neq('id',''),
+    ]).then(()=>location.reload());
+  }
+}
+
+/* ============================================================
+   SEED DATA
+   ============================================================ */
+function seedData(){
+  DB.empresas=[
+    {id:'e1',nombre:'Industrial Vallejo S.A.',sector:'Manufactura',contacto:'Ing. Pérez',tel:'222-100-1000',dir:'Puebla, Pue.',color:'#2AAADE',notas:'',etapas:[
+      {id:'ev1',label:'Entrevista RH',tipo:'interno',color:'#2AAADE'},
+      {id:'ev2',label:'Evaluación técnica',tipo:'interno',color:'#6366F1'},
+      {id:'ev3',label:'Enviado a gerente',tipo:'transicion',color:'#A855F7'},
+      {id:'ev4',label:'Entrevista gerente',tipo:'cliente',color:'#F59E0B'},
+      {id:'ev5',label:'Validado',tipo:'cierre',color:'#22C55E'},
+    ]},
+    {id:'e2',nombre:'Distribuidora del Centro',sector:'Comercio',contacto:'Lic. García',tel:'222-200-2000',dir:'Cholula, Pue.',color:'#A855F7',notas:'',etapas:[
+      {id:'ed1',label:'Entrevista RH',tipo:'interno',color:'#2AAADE'},
+      {id:'ed2',label:'Enviado al cliente',tipo:'transicion',color:'#A855F7'},
+      {id:'ed3',label:'Entrevista directivo',tipo:'cliente',color:'#F59E0B'},
+      {id:'ed4',label:'Aceptado',tipo:'cierre',color:'#22C55E'},
+    ]},
+    {id:'e3',nombre:'Grupo Bernal',sector:'Servicios',contacto:'Lic. Bernal',tel:'',dir:'Puebla, Pue.',color:'#22C55E',notas:'',etapas:null},
+  ];
+  DB.vacantes=[
+    {id:'v1',nombre:'Gerente de Logística',empresa_id:'e1',reclutador_id:'r1',fecha_apertura:'2025-03-01',salario:'$35,000',estado:'Abierta',descripcion:''},
+    {id:'v2',nombre:'Analista de Nómina',empresa_id:'e2',reclutador_id:'r2',fecha_apertura:'2025-03-10',salario:'$18,000',estado:'Abierta',descripcion:''},
+    {id:'v3',nombre:'Supervisor de Producción',empresa_id:'e1',reclutador_id:'r1',fecha_apertura:'2025-02-15',salario:'$28,000',estado:'Cubierta',descripcion:''},
+    {id:'v4',nombre:'Coordinador de RRHH',empresa_id:'e3',reclutador_id:'r3',fecha_apertura:'2025-03-18',salario:'$22,000',estado:'Abierta',descripcion:''},
+  ];
+  DB.candidatos=[
+    {id:'c1',nombre:'Mario García Torres',vacante_id:'v1',reclutador_id:'r1',etapa:'Enviado a gerente',fuente:'LinkedIn',contacto:'mario@mail.com',f_0:'2025-03-05',f_1:'2025-03-10',f_2:'2025-03-12',f_3:null,f_4:null,notas:'8 años exp.',activo:true,creado:'2025-03-05',parent_id:null},
+    {id:'c2',nombre:'Laura Pérez Ríos',vacante_id:'v1',reclutador_id:'r1',etapa:'Desertó',fuente:'OCC',contacto:'',f_0:'2025-03-06',f_1:'2025-03-11',f_2:'2025-03-13',f_3:'2025-03-18',f_4:null,motivo_desercion:'Contraoferta de otra empresa',obs_des:'',notas:'',activo:false,creado:'2025-03-06',parent_id:null,fecha_salida:'2025-03-20',reemplazado_por:'c5'},
+    {id:'c3',nombre:'Roberto Sánchez Luna',vacante_id:'v2',reclutador_id:'r2',etapa:'Entrevista directivo',fuente:'Indeed',contacto:'roberto@mail.com',f_0:'2025-03-14',f_1:'2025-03-20',f_2:'2025-03-26',f_3:null,notas:'',activo:true,creado:'2025-03-14',parent_id:null},
+    {id:'c4',nombre:'Patricia Morales',vacante_id:'v3',reclutador_id:'r1',etapa:'Validado',fuente:'Referido',contacto:'',f_0:'2025-02-18',f_1:'2025-02-22',f_2:'2025-02-24',f_3:'2025-03-03',f_4:'2025-03-10',notas:'Excelente fit',activo:true,creado:'2025-02-18',parent_id:null},
+    {id:'c5',nombre:'Jorge Mendoza Cano',vacante_id:'v1',reclutador_id:'r1',etapa:'Entrevista gerente',fuente:'LinkedIn',contacto:'jorge@mail.com',f_0:'2025-03-22',f_1:'2025-03-26',f_2:'2025-03-28',f_3:'2025-04-03',f_4:null,notas:'Reemplazo',activo:true,creado:'2025-03-22',parent_id:'c2'},
+    {id:'c6',nombre:'Diana Fuentes Ríos',vacante_id:'v4',reclutador_id:'r3',etapa:'Entrevista RH',fuente:'Bolsa interna',contacto:'',f_0:'2025-03-20',f_1:null,f_2:null,f_3:null,notas:'',activo:true,creado:'2025-03-20',parent_id:null},
+    {id:'c7',nombre:'Alejandro Castro',vacante_id:'v2',reclutador_id:'r2',etapa:'No aceptó',fuente:'OCC',contacto:'',f_0:'2025-03-16',f_1:'2025-03-22',f_2:'2025-03-28',f_3:null,motivo_desercion:'Expectativas salariales no cumplidas',obs_des:'',notas:'',activo:false,creado:'2025-03-16',parent_id:null,fecha_salida:'2025-03-30'},
+  ];
+}
+
+loadDB().then(()=>{
+  if(!DB.empresas.length&&!DB.reclutadores.length)seedData();
+  document.getElementById('loading-screen').style.display='none';
+  renderDashboard();
+});
+</script>
+</body>
+</html>

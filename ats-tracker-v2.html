@@ -1388,7 +1388,7 @@ async function saveReclutador(){
   await saveRecord('reclutadores',DB.reclutadores[DB.reclutadores.length-1]);
   showToast('Reclutador agregado ✓');
   closeModal('modal-reclutador');
-  renderPage('config');
+  setTimeout(()=>renderConfig(),100);
 }
 
 async function deleteReclutador(id){

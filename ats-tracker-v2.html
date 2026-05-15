@@ -167,8 +167,25 @@ input[type=date]{color:var(--text)}
 </style>
 </head>
 <body>
-<div id="loading-screen" style="position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:12px">
-  <div style="font-size:15px;color:#555">Cargando datos...</div>
+<div id="auth-screen" style="position:fixed;inset:0;background:#F4F6F9;display:flex;align-items:center;justify-content:center;z-index:9999">
+  <div style="background:#fff;border:1px solid #E5E7EB;border-radius:16px;padding:36px 40px;width:380px;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:22px;font-weight:700;color:#111">ATS Tracker</div>
+      <div style="font-size:13px;color:#888;margin-top:4px">Inicia sesión para continuar</div>
+    </div>
+    <div id="auth-error" style="display:none;background:#FEE2E2;color:#DC2626;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:14px"></div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label style="font-size:12px;color:#555;font-weight:500">Email</label>
+        <input id="login-email" type="email" placeholder="tu@email.com" style="margin-top:4px">
+      </div>
+      <div><label style="font-size:12px;color:#555;font-weight:500">Contraseña</label>
+        <input id="login-password" type="password" placeholder="••••••••" style="margin-top:4px" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:6px;padding:10px" onclick="doLogin()">
+        <span id="login-btn-text">Iniciar sesión</span>
+      </button>
+    </div>
+  </div>
 </div>
 <div class="app">
 <aside class="sidebar">
@@ -645,6 +662,74 @@ const SUPABASE_URL='https://opvqdknqfjiolkldmnrn.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wdnFka25xZmppb2xrbGRtbnJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3ODkwNTEsImV4cCI6MjA5NDM2NTA1MX0.f21LazGmNBqRN6wCWUAXoyZaNbDPR69gjzB2sqyRy6E';
 const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let SANDBOX_MODE = localStorage.getItem('sandbox_mode') === 'true';
+let currentUser = null;
+let currentUserData = null;
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('auth-error');
+  const btnText = document.getElementById('login-btn-text');
+  if(!email || !password) { errEl.textContent='Completa todos los campos'; errEl.style.display='block'; return; }
+  btnText.textContent = 'Entrando...';
+  errEl.style.display = 'none';
+  try {
+    const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+    if(error) throw error;
+    currentUser = data.user;
+    await initSession();
+  } catch(e) {
+    errEl.textContent = 'Email o contraseña incorrectos';
+    errEl.style.display = 'block';
+    btnText.textContent = 'Iniciar sesión';
+  }
+}
+
+async function initSession() {
+  const { data: userData } = await sbClient.from('usuarios').select('*').eq('id', currentUser.id).single();
+  currentUserData = userData;
+  if(!currentUserData) {
+    currentUserData = { rol: 'admin', nombre: currentUser.email };
+  }
+  document.getElementById('auth-screen').style.display = 'none';
+  await loadDB();
+  adaptUIToRole();
+  renderDashboard();
+}
+
+function adaptUIToRole() {
+  const rol = currentUserData?.rol || 'admin';
+  const sb = document.querySelector('.sb-logo');
+  if(sb) sb.innerHTML += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+    <div style="font-size:11px;color:var(--text2);font-weight:500">${currentUserData.nombre||currentUser.email}</div>
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">${rol}</div>
+  </div>`;
+  if(rol === 'rh_cliente') {
+    ['nav-empresas','nav-pipeline','nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-config'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.style.display='none';
+    });
+    document.querySelector('.topbar-actions').style.display = 'none';
+  } else if(rol === 'reclutador') {
+    ['nav-empresas','nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-config'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.style.display='none';
+    });
+  }
+  const nav = document.querySelector('.sb-nav');
+  if(nav) nav.innerHTML += `<div style="padding:12px 18px;margin-top:auto;border-top:1px solid var(--border)">
+    <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick="doLogout()">
+      <i class="fa fa-sign-out-alt"></i> Cerrar sesión
+    </button>
+  </div>`;
+}
+
+async function doLogout() {
+  if(!confirm('¿Cerrar sesión?')) return;
+  await sbClient.auth.signOut();
+  currentUser = null;
+  currentUserData = null;
+  DB.empresas=[]; DB.vacantes=[]; DB.candidatos=[]; DB.reclutadores=[];
+  document.getElementById('auth-screen').style.display = 'flex';
+}
 
 async function loadDB(){
   try{
@@ -668,7 +753,6 @@ async function loadDB(){
   }catch(e){
     console.error('Error:',e);
   }finally{
-    document.getElementById('loading-screen').style.display='none';
     if(!DB.empresas.length&&!DB.reclutadores.length)seedData();
     updateSandboxUI();
     renderDashboard();
@@ -2833,6 +2917,36 @@ function renderConfig(){
   const rows=DB.reclutadores.map(r=>`<tr><td class="td-p">${r.nombre}</td><td>${r.email||'—'}</td><td><button class="btn btn-danger btn-sm" onclick="deleteReclutador('${r.id}')"><i class="fa fa-trash"></i></button></td></tr>`).join('');
   document.getElementById('config-rec-table').innerHTML=`<table><thead><tr><th>Nombre</th><th>Email</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:16px">Sin reclutadores</td></tr>'}</tbody></table>`;
   renderStageBuilder();
+  if(currentUserData?.rol === 'admin') {
+    document.getElementById('page-config').insertAdjacentHTML('beforeend', `
+      <div style="margin-top:24px">
+        <div class="sec-title">Gestión de usuarios</div>
+        <div class="alert alert-i" style="margin-bottom:14px"><i class="fa fa-info-circle"></i> Para crear usuarios ve a Supabase → Authentication → Users → Invite user. Luego asigna su rol aquí.</div>
+        <div class="table-wrap" id="usuarios-table"></div>
+        <div style="padding:12px 16px" id="usuarios-list-loading">Cargando usuarios...</div>
+      </div>
+    `);
+    loadUsuarios();
+  }
+}
+
+async function loadUsuarios() {
+  const { data } = await sbClient.from('usuarios').select('*');
+  const usuarios = data || [];
+  const rows = usuarios.map(u => `<tr>
+    <td class="td-p">${u.nombre||'—'}</td>
+    <td>${u.email||'—'}</td>
+    <td><span class="badge ${u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':'bg'}">${u.rol}</span></td>
+    <td>${u.empresa_id||'—'}</td>
+    <td>${u.reclutador_id||'—'}</td>
+  </tr>`).join('');
+  const tableEl = document.getElementById('usuarios-table');
+  if(tableEl) tableEl.innerHTML = `<table>
+    <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Empresa ID</th><th>Reclutador ID</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin usuarios registrados aún</td></tr>'}</tbody>
+  </table>`;
+  const loadingEl = document.getElementById('usuarios-list-loading');
+  if(loadingEl) loadingEl.remove();
 }
 
 function renderStageBuilder(){
@@ -2991,7 +3105,15 @@ function seedData(){
   ];
 }
 
-loadDB();
+// Verificar sesión activa al cargar
+sbClient.auth.getSession().then(({ data: { session } }) => {
+  if(session) {
+    currentUser = session.user;
+    initSession();
+  } else {
+    document.getElementById('auth-screen').style.display = 'flex';
+  }
+});
 </script>
 </body>
 </html>

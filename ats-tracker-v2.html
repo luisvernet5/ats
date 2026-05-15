@@ -122,6 +122,8 @@ input[type=date]{color:var(--text)}
 .toast{position:fixed;bottom:24px;right:24px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:12px 18px;font-size:13px;z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;max-width:320px}
 .toast.show{transform:translateY(0);opacity:1}
 .tok{border-left:3px solid var(--green)}.terr{border-left:3px solid var(--red)}
+.menu-item{padding:8px 14px;font-size:13px;cursor:pointer;color:var(--text2);display:flex;align-items:center;gap:8px;transition:background .15s}
+.menu-item:hover{background:var(--surface2);color:var(--text)}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:3px}
@@ -578,6 +580,31 @@ input[type=date]{color:var(--text)}
     <div class="mf">
       <button class="btn btn-ghost" onclick="closeModal('modal-cierre-vacante')">Cancelar</button>
       <button class="btn btn-danger" onclick="confirmarCierreVacante()"><i class="fa fa-times-circle"></i> Cerrar vacante</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL SALIDA CANDIDATO ===== -->
+<div class="modal-overlay" id="modal-salida-cand">
+  <div class="modal" style="width:480px">
+    <div class="mh"><h3 id="salida-titulo">Salida del proceso</h3><button class="xbtn" onclick="closeModal('modal-salida-cand')"><i class="fa fa-times"></i></button></div>
+    <div class="mb">
+      <input type="hidden" id="salida-cand-id">
+      <input type="hidden" id="salida-tipo">
+      <div id="salida-cand-info" style="background:var(--surface2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px"></div>
+      <div class="fr">
+        <div class="fg"><label>Motivo *</label>
+          <select id="salida-motivo"><option value="">Seleccionar...</option></select>
+        </div>
+        <div class="fg"><label>Fecha último contacto</label>
+          <input type="date" id="salida-fecha" style="color:var(--text)">
+        </div>
+      </div>
+      <div class="fr full"><div class="fg"><label>Observaciones</label><textarea id="salida-obs" placeholder="Detalles adicionales..."></textarea></div></div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-salida-cand')">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarSalidaCand()"><i class="fa fa-check"></i> Confirmar</button>
     </div>
   </div>
 </div>
@@ -1758,6 +1785,66 @@ function renderVacantesTable(){
 }
 
 /* ============================================================
+   MENÚ ACCIONES CANDIDATO
+   ============================================================ */
+function toggleAccionesCand(id){
+  document.querySelectorAll('[id^="menu-"]').forEach(m=>{if(m.id!=='menu-'+id)m.style.display='none';});
+  const m=document.getElementById('menu-'+id);
+  m.style.display=m.style.display==='none'?'block':'none';
+}
+function closeMenuCand(id){const m=document.getElementById('menu-'+id);if(m)m.style.display='none';}
+document.addEventListener('click',e=>{if(!e.target.closest('[id^="menu-"]')&&!e.target.closest('.btn'))document.querySelectorAll('[id^="menu-"]').forEach(m=>m.style.display='none');});
+
+const MOTIVOS_DESCARTE=['No cumple perfil técnico','Pretensiones salariales fuera de rango','Sin experiencia requerida','Rechazado en entrevista RH','Rechazado por cliente','Referencias negativas','Otro'];
+const MOTIVOS_ABANDONO=['No se presentó a entrevista','Dejó de contestar','Aceptó otra oferta','Contraoferta de empresa actual','Problemas personales/familiares','Distancia o traslado','Proceso muy largo','Otro'];
+
+function abrirDescarte(candId){
+  closeMenuCand(candId);
+  const c=DB.candidatos.find(x=>x.id===candId);if(!c)return;
+  document.getElementById('salida-cand-id').value=candId;
+  document.getElementById('salida-tipo').value='descarte';
+  document.getElementById('salida-titulo').textContent='Descartar candidato';
+  document.getElementById('salida-cand-info').textContent=`${c.nombre} · ${c.etapa}`;
+  document.getElementById('salida-fecha').value=today();
+  document.getElementById('salida-obs').value='';
+  const sel=document.getElementById('salida-motivo');
+  sel.innerHTML='<option value="">Seleccionar...</option>'+MOTIVOS_DESCARTE.map(m=>`<option>${m}</option>`).join('');
+  openModal('modal-salida-cand');
+}
+
+function abrirAbandono(candId){
+  closeMenuCand(candId);
+  const c=DB.candidatos.find(x=>x.id===candId);if(!c)return;
+  document.getElementById('salida-cand-id').value=candId;
+  document.getElementById('salida-tipo').value='abandono';
+  document.getElementById('salida-titulo').textContent='Abandonó el proceso';
+  document.getElementById('salida-cand-info').textContent=`${c.nombre} · ${c.etapa}`;
+  document.getElementById('salida-fecha').value=today();
+  document.getElementById('salida-obs').value='';
+  const sel=document.getElementById('salida-motivo');
+  sel.innerHTML='<option value="">Seleccionar...</option>'+MOTIVOS_ABANDONO.map(m=>`<option>${m}</option>`).join('');
+  openModal('modal-salida-cand');
+}
+
+async function confirmarSalidaCand(){
+  const candId=document.getElementById('salida-cand-id').value;
+  const tipo=document.getElementById('salida-tipo').value;
+  const motivo=document.getElementById('salida-motivo').value;
+  if(!motivo){showToast('Selecciona un motivo','err');return;}
+  const ci=DB.candidatos.findIndex(x=>x.id===candId);
+  if(ci<0)return;
+  DB.candidatos[ci].etapa=tipo==='descarte'?'Desertó':'No aceptó';
+  DB.candidatos[ci].motivo_desercion=motivo;
+  DB.candidatos[ci].obs_des=document.getElementById('salida-obs').value;
+  DB.candidatos[ci].fecha_salida=document.getElementById('salida-fecha').value||today();
+  DB.candidatos[ci].activo=false;
+  await saveRecord('candidatos',DB.candidatos[ci]);
+  closeModal('modal-salida-cand');
+  showToast('Candidato actualizado ✓');
+  setTimeout(()=>renderCandidatosTable(),100);
+}
+
+/* ============================================================
    CANDIDATOS TABLE
    ============================================================ */
 function renderCandidatosTable(){
@@ -1815,10 +1902,18 @@ function renderCandidatosTable(){
       <td style="cursor:pointer" onclick="toggleCandRow('${c.id}')">${badgeEtapa(c.etapa,v.empresa_id)}<i class="fa fa-pencil-alt" style="font-size:10px;margin-left:5px;color:var(--text3)"></i></td>
       <td>${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:'—'}</td>
       <td>${cd!==null?`<span class="dpill dwarn">${cd}d</span>`:'—'}</td>
-      <td>
-        <button class="btn btn-ghost btn-sm" onclick="openPanel('${c.id}')"><i class="fa fa-eye"></i></button>
-        <button class="btn btn-ghost btn-sm" onclick="editCandidato('${c.id}')"><i class="fa fa-edit"></i></button>
-        ${isSalida||!c.activo?`<button class="btn btn-primary btn-sm" onclick="openCandModal('${c.vacante_id}','${c.id}')"><i class="fa fa-redo"></i></button>`:''}
+      <td style="position:relative">
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="openPanel('${c.id}')" title="Ver detalle"><i class="fa fa-eye"></i></button>
+          <button class="btn btn-ghost btn-sm" onclick="editCandidato('${c.id}')" title="Editar"><i class="fa fa-edit"></i></button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleAccionesCand('${c.id}')" title="Más acciones"><i class="fa fa-ellipsis-v"></i></button>
+          <div id="menu-${c.id}" style="display:none;position:absolute;right:0;top:32px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;z-index:50;min-width:220px;box-shadow:0 4px 20px rgba(0,0,0,.15);padding:6px 0">
+            <div style="padding:6px 14px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Acciones</div>
+            <div class="menu-item" onclick="abrirDescarte('${c.id}')"><i class="fa fa-user-times" style="width:16px"></i> Descartar candidato</div>
+            <div class="menu-item" onclick="abrirAbandono('${c.id}')"><i class="fa fa-door-open" style="width:16px"></i> Abandonó el proceso</div>
+            ${isSalida||!c.activo?`<div class="menu-item" onclick="closeMenuCand('${c.id}');openCandModal('${c.vacante_id}','${c.id}')"><i class="fa fa-redo" style="width:16px"></i> Nuevo candidato (reemplazo)</div>`:''}
+          </div>
+        </div>
       </td>
     </tr>
     <tr class="vac-expand-row" id="cx-${c.id}">

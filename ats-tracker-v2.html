@@ -1124,9 +1124,21 @@ function openEmpresaDetail(empId){
       <tbody>${vacsRows||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes registradas</td></tr>'}</tbody>
       </table>
     </div>
+    <div style="margin-top:24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div class="sec-title" style="margin:0">Analytics de la empresa</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px" id="analytics-tabs-${empId}">
+        <button class="btn btn-primary btn-sm" id="atab-general-${empId}" onclick="switchAnalyticsTab('${empId}','general')">General</button>
+        <button class="btn btn-ghost btn-sm" id="atab-depto-${empId}" onclick="switchAnalyticsTab('${empId}','depto')">Por departamento</button>
+        <button class="btn btn-ghost btn-sm" id="atab-proyecto-${empId}" onclick="switchAnalyticsTab('${empId}','proyecto')">Por proyecto</button>
+      </div>
+      <div id="analytics-content-${empId}"></div>
+    </div>
   `;
   document.getElementById('page-title').textContent=e.nombre;
   showPage('empresa-detail');
+  setTimeout(() => renderAnalyticsTab(empId, 'general'), 100);
 }
 
 function toggleVacRow(vid){
@@ -1140,6 +1152,158 @@ function toggleVacRow(vid){
     row.classList.add('open');
     icon.classList.add('expanded');
   }
+}
+
+function switchAnalyticsTab(empId, tab) {
+  ['general','depto','proyecto'].forEach(t => {
+    const btn = document.getElementById(`atab-${t}-${empId}`);
+    if(btn) btn.className = `btn btn-sm ${t===tab?'btn-primary':'btn-ghost'}`;
+  });
+  renderAnalyticsTab(empId, tab);
+}
+
+function renderAnalyticsTab(empId, tab) {
+  const container = document.getElementById(`analytics-content-${empId}`);
+  if(!container) return;
+  const vacs = DB.vacantes.filter(v => v.empresa_id === empId);
+  const vacIds = vacs.map(v => v.id);
+  const allCands = DB.candidatos.filter(c => vacIds.includes(c.vacante_id));
+  const desertores = allCands.filter(c => ETAPAS_SALIDA.includes(c.etapa));
+
+  function metricasPorGrupo(getKey) {
+    const grupos = {};
+    vacs.forEach(v => {
+      const key = getKey(v) || 'Sin asignar';
+      if(!grupos[key]) grupos[key] = { vacs:[], cands:[], des:[] };
+      grupos[key].vacs.push(v);
+      const vc = DB.candidatos.filter(c => c.vacante_id === v.id);
+      grupos[key].cands.push(...vc);
+      grupos[key].des.push(...vc.filter(c => ETAPAS_SALIDA.includes(c.etapa)));
+    });
+    return Object.entries(grupos).map(([key, g]) => {
+      const dArr = g.cands.filter(c => processTotal(c)).map(c => processTotal(c));
+      const avgDias = dArr.length ? Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length) : null;
+      const cliArr = g.cands.filter(c => clienteDays(c) !== null).map(c => clienteDays(c));
+      const avgCli = cliArr.length ? Math.round(cliArr.reduce((a,b)=>a+b,0)/cliArr.length) : null;
+      const motivos = {};
+      g.des.forEach(c => { if(c.motivo_desercion) motivos[c.motivo_desercion] = (motivos[c.motivo_desercion]||0)+1; });
+      const topMotivo = Object.entries(motivos).sort((a,b)=>b[1]-a[1])[0];
+      const vacMasCands = g.vacs.map(v => ({v, n: DB.candidatos.filter(c=>c.vacante_id===v.id).length})).sort((a,b)=>b.n-a.n)[0];
+      return { key, totalVacs: g.vacs.length, totalCands: g.cands.length, totalDes: g.des.length, avgDias, avgCli, topMotivo: topMotivo?`${topMotivo[0]} (${topMotivo[1]})`:'—', vacMasCands: vacMasCands?`${vacMasCands.v.nombre} (${vacMasCands.n})`:'—' };
+    });
+  }
+
+  if(tab === 'general') {
+    const dArr = allCands.filter(c=>processTotal(c)).map(c=>processTotal(c));
+    const avgDias = dArr.length ? Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length) : null;
+    const cliArr = allCands.filter(c=>clienteDays(c)!==null).map(c=>clienteDays(c));
+    const avgCli = cliArr.length ? Math.round(cliArr.reduce((a,b)=>a+b,0)/cliArr.length) : null;
+    const motivos = {};
+    desertores.forEach(c=>{ if(c.motivo_desercion) motivos[c.motivo_desercion]=(motivos[c.motivo_desercion]||0)+1; });
+    const topMotivos = Object.entries(motivos).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const vacMasCands = vacs.map(v=>({v, n:DB.candidatos.filter(c=>c.vacante_id===v.id).length})).sort((a,b)=>b.n-a.n)[0];
+    container.innerHTML = `
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+        <button class="btn btn-green btn-sm" onclick="exportAnalytics('${empId}','general')"><i class="fa fa-download"></i> Exportar</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+        <div class="card"><div class="card-title">Total candidatos</div><div class="card-value">${allCands.length}</div></div>
+        <div class="card"><div class="card-title">Días prom. proceso</div><div class="card-value" style="color:var(--amber)">${avgDias||'—'}</div></div>
+        <div class="card"><div class="card-title">Días prom. cliente valida</div><div class="card-value" style="color:var(--purple)">${avgCli||'—'}</div></div>
+        <div class="card"><div class="card-title">Tasa deserción</div><div class="card-value" style="color:var(--red)">${allCands.length?Math.round(desertores.length/allCands.length*100):0}%</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div>
+          <div class="sec-title">Top motivos de deserción</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Motivo</th><th style="text-align:center">Casos</th></tr></thead>
+            <tbody>${topMotivos.length ? topMotivos.map(([m,n])=>`<tr><td>${m}</td><td style="text-align:center;color:var(--red);font-weight:500">${n}</td></tr>`).join('') : '<tr><td colspan="2" style="text-align:center;color:var(--text3);padding:16px">Sin deserciones</td></tr>'}</tbody>
+          </table></div>
+        </div>
+        <div>
+          <div class="sec-title">Vacante con más candidatos</div>
+          <div class="card" style="font-size:15px;font-weight:600">${vacMasCands ? vacMasCands.v.nombre+' — '+vacMasCands.n+' candidatos' : '—'}</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const grupos = tab === 'depto'
+    ? metricasPorGrupo(v => v.departamento)
+    : metricasPorGrupo(v => v.proyecto);
+  const label = tab === 'depto' ? 'Departamento' : 'Proyecto';
+  const rows = grupos.map(g => `<tr>
+    <td class="td-p">${g.key}</td>
+    <td style="text-align:center">${g.totalVacs}</td>
+    <td style="text-align:center">${g.totalCands}</td>
+    <td style="text-align:center">${g.avgDias!==null?`<span class="dpill ${dClass(g.avgDias)}">${g.avgDias}d</span>`:'—'}</td>
+    <td style="text-align:center">${g.avgCli!==null?`<span class="dpill dwarn">${g.avgCli}d</span>`:'—'}</td>
+    <td style="color:var(--red);font-size:12px">${g.topMotivo}</td>
+    <td style="font-size:12px">${g.vacMasCands}</td>
+  </tr>`).join('');
+  container.innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+      <button class="btn btn-green btn-sm" onclick="exportAnalytics('${empId}','${tab}')"><i class="fa fa-download"></i> Exportar</button>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th>${label}</th>
+        <th style="text-align:center">Vacantes</th>
+        <th style="text-align:center">Candidatos</th>
+        <th style="text-align:center">Días prom. proceso</th>
+        <th style="text-align:center">Días prom. cliente</th>
+        <th>Top motivo deserción</th>
+        <th>Vacante con más candidatos</th>
+      </tr></thead>
+      <tbody>${rows||`<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes con ${label.toLowerCase()} asignado</td></tr>`}</tbody>
+    </table></div>`;
+}
+
+function exportAnalytics(empId, tab) {
+  const emp = DB.empresas.find(x=>x.id===empId)||{};
+  const vacs = DB.vacantes.filter(v=>v.empresa_id===empId);
+  const vacIds = vacs.map(v=>v.id);
+  const allCands = DB.candidatos.filter(c=>vacIds.includes(c.vacante_id));
+  let rows = [];
+  if(tab === 'general') {
+    rows.push(['Métrica','Valor']);
+    rows.push(['Total candidatos', allCands.length]);
+    rows.push(['Total vacantes', vacs.length]);
+    rows.push(['Deserciones', allCands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).length]);
+    const dArr = allCands.filter(c=>processTotal(c)).map(c=>processTotal(c));
+    rows.push(['Días prom. proceso', dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):'—']);
+    const motivos = {};
+    allCands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).forEach(c=>{if(c.motivo_desercion)motivos[c.motivo_desercion]=(motivos[c.motivo_desercion]||0)+1;});
+    Object.entries(motivos).sort((a,b)=>b[1]-a[1]).forEach(([m,n])=>rows.push([`Deserción: ${m}`,n]));
+  } else {
+    const getKey = tab==='depto' ? v=>v.departamento : v=>v.proyecto;
+    const label = tab==='depto'?'Departamento':'Proyecto';
+    rows.push([label,'Vacantes','Candidatos','Días prom. proceso','Días prom. cliente','Top motivo deserción','Vacante con más candidatos']);
+    const grupos = {};
+    vacs.forEach(v=>{
+      const key=getKey(v)||'Sin asignar';
+      if(!grupos[key])grupos[key]={vacs:[],cands:[]};
+      grupos[key].vacs.push(v);
+      grupos[key].cands.push(...DB.candidatos.filter(c=>c.vacante_id===v.id));
+    });
+    Object.entries(grupos).forEach(([key,g])=>{
+      const dArr=g.cands.filter(c=>processTotal(c)).map(c=>processTotal(c));
+      const avg=dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):'—';
+      const cArr=g.cands.filter(c=>clienteDays(c)!==null).map(c=>clienteDays(c));
+      const avgC=cArr.length?Math.round(cArr.reduce((a,b)=>a+b,0)/cArr.length):'—';
+      const mot={};g.cands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).forEach(c=>{if(c.motivo_desercion)mot[c.motivo_desercion]=(mot[c.motivo_desercion]||0)+1;});
+      const top=Object.entries(mot).sort((a,b)=>b[1]-a[1])[0];
+      const vacMax=g.vacs.map(v=>({v,n:DB.candidatos.filter(c=>c.vacante_id===v.id).length})).sort((a,b)=>b.n-a.n)[0];
+      rows.push([key,g.vacs.length,g.cands.length,avg,avgC,top?`${top[0]} (${top[1]})`:'—',vacMax?`${vacMax.v.nombre} (${vacMax.n})`:'—']);
+    });
+  }
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`analytics_${emp.nombre||empId}_${tab}_${today()}.csv`;
+  a.click();
+  showToast('Exportado ✓');
 }
 
 function exportarCSVEmpresa(empId){

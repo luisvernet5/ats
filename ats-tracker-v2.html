@@ -1202,8 +1202,16 @@ async function saveVacante(){
   const id=document.getElementById('vac-id').value;
   const aplica_garantia=document.getElementById('vac-aplica-garantia').checked;
   const tipo_vacante=document.getElementById('vac-tipo').value;
+  const folioManual=document.getElementById('vac-folio').value.trim();
+  const emp=DB.empresas.find(e=>e.id===empresa_id)||{};
+  const empPrefix=(emp.nombre||'EMP').substring(0,3).toUpperCase().replace(/\s/g,'');
+  const vacEmpresa=DB.vacantes.filter(v=>v.empresa_id===empresa_id).length+1;
+  const fecha=new Date();
+  const mesAnio=String(fecha.getMonth()+1).padStart(2,'0')+fecha.getFullYear().toString().substr(2);
+  const folioAuto=`${empPrefix}-${String(vacEmpresa).padStart(3,'0')}-${mesAnio}`;
+  const folio=folioManual||folioAuto;
   const data={
-    nombre,empresa_id,reclutador_id,fecha_apertura,
+    folio,nombre,empresa_id,reclutador_id,fecha_apertura,
     salario:document.getElementById('vac-salario').value,
     estado:document.getElementById('vac-estado').value,
     descripcion:document.getElementById('vac-desc').value,
@@ -1216,20 +1224,8 @@ async function saveVacante(){
     garantia_dias:aplica_garantia?parseInt(document.getElementById('vac-garantia-dias').value)||null:null,
     garantia_venc:aplica_garantia?document.getElementById('vac-garantia-venc').value||null:null
   };
-  if(id){const i=DB.vacantes.findIndex(v=>v.id===id);DB.vacantes[i]={...DB.vacantes[i],...data};showToast('Vacante actualizada ✓')}
-  else{
-    const emp=DB.empresas.find(e=>e.id===empresa_id)||{};
-    const empPrefix=(emp.nombre||'EMP').substring(0,3).toUpperCase().replace(/\s/g,'');
-    const vacEmpresa=DB.vacantes.filter(v=>v.empresa_id===empresa_id).length+1;
-    const fecha=new Date();
-    const mesAnio=String(fecha.getMonth()+1).padStart(2,'0')+fecha.getFullYear().toString().substr(2);
-    const folioGenerado=`${empPrefix}-${String(vacEmpresa).padStart(3,'0')}-${mesAnio}`;
-    const folioManual=document.getElementById('vac-folio').value.trim();
-    const folio=folioManual||folioGenerado;
-    DB.vacantes.push({id:uid(),folio,...data});showToast('Vacante creada ✓');
-  }
-  const _vObj=id?DB.vacantes.find(v=>v.id===id):DB.vacantes[DB.vacantes.length-1];
-  if(_vObj)await saveRecord('vacantes',_vObj);
+  if(id){const i=DB.vacantes.findIndex(v=>v.id===id);DB.vacantes[i]={...DB.vacantes[i],...data,folio};await saveRecord('vacantes',DB.vacantes[i]);showToast('Vacante actualizada ✓')}
+  else{DB.vacantes.push({id:uid(),...data});await saveRecord('vacantes',DB.vacantes[DB.vacantes.length-1]);showToast('Vacante creada ✓')}
   closeModal('modal-vacante');
   setTimeout(()=>renderPage(document.querySelector('.page.active').id.replace('page-','')),100);
 }

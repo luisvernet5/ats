@@ -1983,7 +1983,7 @@ function renderVacantesTable(){
   </table>`;
 }
 
-function openVacanteDetailView(vacId, empId) {
+function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {
   const v = DB.vacantes.find(x=>x.id===vacId)||{};
   const emp = DB.empresas.find(x=>x.id===empId)||{};
   const rec = DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
@@ -1995,7 +1995,13 @@ function openVacanteDetailView(vacId, empId) {
   const dArr = cands.filter(c=>processTotal(c)).map(c=>processTotal(c));
   const avgDias = dArr.length ? Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length) : null;
 
-  document.getElementById('vd-back-btn').onclick = () => openEmpresaDetail(empId);
+  if(origen === 'reclutador') {
+    document.getElementById('vd-back-btn').onclick = () => openReclutadorDetail(origenId);
+    document.getElementById('vd-back-btn').innerHTML = '<i class="fa fa-arrow-left"></i> Volver al reclutador';
+  } else {
+    document.getElementById('vd-back-btn').onclick = () => openEmpresaDetail(empId);
+    document.getElementById('vd-back-btn').innerHTML = '<i class="fa fa-arrow-left"></i> Volver a empresa';
+  }
 
   const slaHtml = getSLAStatus(v);
   const headerHtml = `
@@ -2383,7 +2389,7 @@ function openReclutadorDetail(recId) {
     const activos = vcands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa));
     const dias = daysBetween(v.fecha_apertura);
     const diasCierre = v.estado==='Cubierta' ? dias : null;
-    return `<tr style="cursor:pointer" onclick="openVacanteDetailView('${v.id}','${v.empresa_id}')">
+    return `<tr style="cursor:pointer" onclick="openVacanteDetailView('${v.id}','${v.empresa_id}','reclutador','${recId}')">
       <td class="td-p">
         ${v.nombre}
         ${v.folio?`<div style="font-size:10px;font-family:var(--mono);color:var(--text3)">${v.folio}</div>`:''}

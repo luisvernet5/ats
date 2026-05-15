@@ -282,8 +282,14 @@ input[type=date]{color:var(--text)}
   <!-- RECLUTADORES -->
   <div class="page" id="page-reclutadores">
     <div class="g3" id="rec-cards"></div>
-    <div class="sec-title">Detalle por reclutador</div>
-    <div class="table-wrap" id="rec-table"></div>
+  </div>
+
+  <!-- RECLUTADOR DETAIL -->
+  <div class="page" id="page-reclutador-detail">
+    <div style="margin-bottom:14px">
+      <button class="btn btn-ghost btn-sm" id="rd-back-btn"><i class="fa fa-arrow-left"></i> Volver a reclutadores</button>
+    </div>
+    <div id="reclutador-detail-content"></div>
   </div>
 
   <!-- TIEMPOS -->
@@ -2319,7 +2325,7 @@ function renderReclutadores(){
     const dArr=cands.filter(c=>c.etapa==='Validado'&&processTotal(c)).map(c=>processTotal(c));
     const avg=dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):null;
     const ini=r.nombre.split(' ').map(n=>n[0]).join('').substr(0,2).toUpperCase();
-    return`<div class="card">
+    return`<div class="card" style="cursor:pointer" onclick="openReclutadorDetail('${r.id}')">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
         <div class="rec-av">${ini}</div>
         <div><div style="font-weight:500;font-size:14px">${r.nombre}</div><div style="font-size:11px;color:var(--text3)">${r.email||'—'}</div></div>
@@ -2330,94 +2336,111 @@ function renderReclutadores(){
         <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Días prom.</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--amber)">${avg||'—'}</div></div>
         <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Deserciones</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--red)">${des}</div></div>
       </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--accent)"><i class="fa fa-chevron-right"></i> Ver detalle</div>
     </div>`;
   }).join('');
-  const rows=DB.reclutadores.map(r=>{
-    const vacs=DB.vacantes.filter(v=>v.reclutador_id===r.id);
-    const vacAct=vacs.filter(v=>v.estado==='Abierta');
-    const cands=DB.candidatos.filter(c=>c.reclutador_id===r.id);
-    const dArr=cands.filter(c=>c.etapa==='Validado'&&processTotal(c)).map(c=>processTotal(c));
-    const avg=dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):null;
+}
 
-    const vacSubRows=vacs.length
-      ?vacs.map(v=>{
-          const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
-          const vcands=DB.candidatos.filter(c=>c.vacante_id===v.id);
-          const vval=vcands.filter(c=>c.etapa==='Validado').length;
-          const dias=daysBetween(v.fecha_apertura);
-          const candSubRows=vcands.length
-            ?vcands.map(c=>{
-                const d=processTotal(c);
-                return`<tr>
-                  <td style="padding:5px 10px;border-top:1px solid var(--border);color:var(--text);font-size:11px">${c.nombre}</td>
-                  <td style="padding:5px 10px;border-top:1px solid var(--border)">${badgeEtapa(c.etapa,v.empresa_id)}</td>
-                  <td style="padding:5px 10px;border-top:1px solid var(--border)">${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:'—'}</td>
-                  <td style="padding:5px 10px;border-top:1px solid var(--border);color:var(--red);font-size:11px">${c.motivo_desercion||'—'}</td>
-                  <td style="padding:5px 10px;border-top:1px solid var(--border)"><button class="btn btn-ghost btn-sm" onclick="openPanel('${c.id}')">Ver</button></td>
-                </tr>`;
-              }).join('')
-            :`<tr><td colspan="5" style="padding:10px;text-align:center;color:var(--text3);font-size:11px">Sin registros</td></tr>`;
-          return`<tr>
-            <td style="padding:7px 10px;border-top:1px solid var(--border);font-size:12px;font-weight:500;color:var(--text)">${v.nombre}</td>
-            <td style="padding:7px 10px;border-top:1px solid var(--border)"><span style="display:flex;align-items:center;gap:4px;font-size:12px"><span style="width:7px;height:7px;border-radius:50%;background:${emp.color||'#888'}"></span>${emp.nombre||'—'}</span></td>
-            <td style="padding:7px 10px;border-top:1px solid var(--border)">${badgeVacEst(v.estado)}</td>
-            <td style="padding:7px 10px;border-top:1px solid var(--border)"><span class="dpill ${dClass(dias)}">${dias}d</span></td>
-            <td style="padding:7px 10px;border-top:1px solid var(--border);cursor:pointer" onclick="toggleRecCandRow('${v.id}')">
-              <span class="vac-expand-icon" id="rc-icon-${v.id}">▶</span><span style="font-weight:500">${vcands.length}</span>
-            </td>
-            <td style="padding:7px 10px;border-top:1px solid var(--border);color:var(--green);font-weight:500;font-size:12px">${vval}</td>
-          </tr>
-          <tr class="vac-expand-row" id="rc-cands-${v.id}">
-            <td colspan="6" style="padding:0;background:var(--surface3)">
-              <div style="padding:6px 12px 10px">
-                <table style="width:100%;border-collapse:collapse">
-                  <thead><tr style="background:var(--surface2)">
-                    <th style="padding:5px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Candidato</th>
-                    <th style="padding:5px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Etapa</th>
-                    <th style="padding:5px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Días</th>
-                    <th style="padding:5px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Motivo</th>
-                    <th style="padding:5px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em"></th>
-                  </tr></thead>
-                  <tbody>${candSubRows}</tbody>
-                </table>
-              </div>
-            </td>
-          </tr>`;
-        }).join('')
-      :`<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3);font-size:12px">Sin registros</td></tr>`;
+function openReclutadorDetail(recId) {
+  const r = DB.reclutadores.find(x=>x.id===recId);
+  if(!r) return;
+  const vacs = DB.vacantes.filter(v=>v.reclutador_id===recId);
+  const allCands = DB.candidatos.filter(c=>c.reclutador_id===recId);
+  const validados = allCands.filter(c=>c.etapa==='Validado');
+  const desertores = allCands.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
+  const dArr = validados.filter(c=>processTotal(c)).map(c=>processTotal(c));
+  const avgDias = dArr.length ? Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length) : null;
+  const ini = r.nombre.split(' ').map(n=>n[0]).join('').substr(0,2).toUpperCase();
 
-    return`<tr>
-      <td class="td-p" style="cursor:pointer" onclick="toggleRecRow('${r.id}')">
-        <span class="vac-expand-icon" id="rec-icon-${r.id}">▶</span>${r.nombre}
-      </td>
-      <td>${vacAct.map(v=>`<span class="badge bb" style="margin:1px">${v.nombre}</span>`).join('')||'—'}</td>
-      <td style="text-align:center">${vacAct.length}</td>
-      <td style="text-align:center">${cands.length}</td>
-      <td style="text-align:center;color:var(--green);font-weight:500">${cands.filter(c=>c.etapa==='Validado').length}</td>
-      <td>${avg!==null?`<span class="dpill ${dClass(avg)}">${avg}d</span>`:'—'}</td>
-    </tr>
-    <tr class="vac-expand-row" id="rec-expand-${r.id}">
-      <td colspan="6" style="padding:0;background:var(--surface2)">
-        <div style="padding:8px 14px 12px">
-          <table style="width:100%;border-collapse:collapse">
-            <thead><tr style="background:var(--surface3)">
-              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Vacante</th>
-              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Empresa</th>
-              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Estado</th>
-              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Días</th>
-              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Candidatos</th>
-              <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Validados</th>
-            </tr></thead>
-            <tbody>${vacSubRows}</tbody>
-          </table>
+  document.getElementById('rd-back-btn').onclick = () => nav('reclutadores');
+
+  const headerHtml = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:20px 24px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div class="rec-av" style="width:48px;height:48px;font-size:16px">${ini}</div>
+        <div>
+          <div style="font-size:18px;font-weight:600">${r.nombre}</div>
+          <div style="font-size:12px;color:var(--text3)">${r.email||'Sin email'}</div>
         </div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-green btn-sm" onclick="exportarReclutador('${recId}')"><i class="fa fa-download"></i> Exportar vacantes</button>
+      </div>
+    </div>`;
+
+  const kpisHtml = `
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
+      <div class="card"><div class="card-title">Total vacantes</div><div class="card-value">${vacs.length}</div></div>
+      <div class="card"><div class="card-title">Abiertas</div><div class="card-value" style="color:var(--accent)">${vacs.filter(v=>v.estado==='Abierta').length}</div></div>
+      <div class="card"><div class="card-title">Cubiertas</div><div class="card-value" style="color:var(--green)">${vacs.filter(v=>v.estado==='Cubierta').length}</div></div>
+      <div class="card"><div class="card-title">Candidatos totales</div><div class="card-value">${allCands.length}</div></div>
+      <div class="card"><div class="card-title">Días prom. cobertura</div><div class="card-value" style="color:var(--amber)">${avgDias||'—'}</div></div>
+    </div>`;
+
+  const rows = vacs.length ? vacs.map(v=>{
+    const emp = DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const vcands = DB.candidatos.filter(c=>c.vacante_id===v.id);
+    const activos = vcands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa));
+    const dias = daysBetween(v.fecha_apertura);
+    const diasCierre = v.estado==='Cubierta' ? dias : null;
+    return `<tr style="cursor:pointer" onclick="openVacanteDetailView('${v.id}','${v.empresa_id}')">
+      <td class="td-p">
+        ${v.nombre}
+        ${v.folio?`<div style="font-size:10px;font-family:var(--mono);color:var(--text3)">${v.folio}</div>`:''}
       </td>
+      <td><span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${emp.color||'#888'}"></span>${emp.nombre||'—'}</span></td>
+      <td>${fmt(v.fecha_apertura)}</td>
+      <td>${badgeVacEst(v.estado)}</td>
+      <td><span class="dpill ${dClass(dias)}">${dias}d</span></td>
+      <td style="text-align:center">${vcands.length}</td>
+      <td style="text-align:center;color:var(--accent)">${activos.length}</td>
+      <td>${diasCierre!==null?`<span class="dpill ${dClass(diasCierre)}">${diasCierre}d</span>`:'—'}</td>
+      <td>${getSLAStatus(v)}</td>
     </tr>`;
-  }).join('');
-  document.getElementById('rec-table').innerHTML=`<table>
-    <thead><tr><th>Reclutador</th><th>Vacantes activas</th><th>Abiertas</th><th>Candidatos</th><th>Validados</th><th>Días prom.</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>`;
+  }).join('') : `<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes asignadas</td></tr>`;
+
+  const tablaHtml = `
+    <div class="sec-title">Vacantes asignadas <span style="font-size:12px;color:var(--text3);font-weight:400">(clic en vacante para ver candidatos)</span></div>
+    <div class="table-wrap">
+      <table><thead><tr>
+        <th>Vacante</th><th>Empresa</th><th>Apertura</th><th>Estado</th>
+        <th>Días abierta</th><th>Total cands.</th><th>En proceso</th><th>Días al cierre</th><th>SLA</th>
+      </tr></thead>
+      <tbody>${rows}</tbody></table>
+    </div>`;
+
+  document.getElementById('reclutador-detail-content').innerHTML = headerHtml + kpisHtml + tablaHtml;
+  document.getElementById('page-title').textContent = r.nombre;
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-reclutador-detail').classList.add('active');
+}
+
+function exportarReclutador(recId) {
+  const r = DB.reclutadores.find(x=>x.id===recId)||{};
+  const vacs = DB.vacantes.filter(v=>v.reclutador_id===recId);
+  const header = ['Vacante','Folio','Empresa','Fecha apertura','Estado','Días abierta','Total candidatos','En proceso','Validados','Días al cierre','SLA (días límite)'];
+  const rows = [header];
+  vacs.forEach(v=>{
+    const emp = DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const vcands = DB.candidatos.filter(c=>c.vacante_id===v.id);
+    const activos = vcands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa));
+    const dias = daysBetween(v.fecha_apertura)||0;
+    rows.push([
+      v.nombre, v.folio||'—', emp.nombre||'—', fmt(v.fecha_apertura),
+      v.estado, dias, vcands.length, activos.length,
+      vcands.filter(c=>c.etapa==='Validado').length,
+      v.estado==='Cubierta'?dias:'—',
+      v.sla_dias||'Sin límite'
+    ]);
+  });
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`vacantes_${r.nombre.replace(/\s/g,'_')}_${today()}.csv`;
+  a.click();
+  showToast('Exportado ✓');
 }
 function toggleRecRow(rid){
   const row=document.getElementById('rec-expand-'+rid);

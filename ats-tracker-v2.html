@@ -545,20 +545,28 @@ input[type=date]{color:var(--text)}
 
 <script>
 const SUPABASE_URL='https://opvqdknqfjiolkldmnrn.supabase.co';
-const SUPABASE_KEY='REEMPLAZA_CON_TU_ANON_KEY_eyJ...';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wdnFka25xZmppb2xrbGRtbnJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3ODkwNTEsImV4cCI6MjA5NDM2NTA1MX0.f21LazGmNBqRN6wCWUAXoyZaNbDPR69gjzB2sqyRy6E';
 const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 async function loadDB(){
-  const [emp,vac,cand,rec]=await Promise.all([
-    supabase.from('empresas').select('*'),
-    supabase.from('vacantes').select('*'),
-    supabase.from('candidatos').select('*'),
-    supabase.from('reclutadores').select('*'),
-  ]);
-  DB.empresas=emp.data?.map(r=>r.data)||[];
-  DB.vacantes=vac.data?.map(r=>r.data)||[];
-  DB.candidatos=cand.data?.map(r=>r.data)||[];
-  DB.reclutadores=rec.data?.map(r=>r.data)||[];
+  try{
+    const [emp,vac,cand,rec]=await Promise.all([
+      supabase.from('empresas').select('*'),
+      supabase.from('vacantes').select('*'),
+      supabase.from('candidatos').select('*'),
+      supabase.from('reclutadores').select('*'),
+    ]);
+    DB.empresas=emp.data?.map(r=>r.data)||[];
+    DB.vacantes=vac.data?.map(r=>r.data)||[];
+    DB.candidatos=cand.data?.map(r=>r.data)||[];
+    DB.reclutadores=rec.data?.map(r=>r.data)||[];
+  }catch(e){
+    console.error('Error Supabase:',e);
+  }finally{
+    document.getElementById('loading-screen').style.display='none';
+    if(!DB.empresas.length&&!DB.reclutadores.length)seedData();
+    renderDashboard();
+  }
 }
 async function saveRecord(tabla,objeto){
   await supabase.from(tabla).upsert({id:objeto.id,data:objeto});
@@ -2244,11 +2252,7 @@ function seedData(){
   ];
 }
 
-loadDB().then(()=>{
-  if(!DB.empresas.length&&!DB.reclutadores.length)seedData();
-  document.getElementById('loading-screen').style.display='none';
-  renderDashboard();
-});
+loadDB();
 </script>
 </body>
 </html>

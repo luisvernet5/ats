@@ -425,9 +425,7 @@ input[type=date]{color:var(--text)}
       </div>
       <div class="fr">
         <div class="fg"><label>Salario ofertado</label><input id="vac-salario" placeholder="$25,000 mensual"></div>
-        <div class="fg"><label>Estado</label>
-          <select id="vac-estado"><option>Abierta</option><option>Cubierta</option><option>Cancelada</option></select>
-        </div>
+        <div></div>
       </div>
       <div class="fr">
         <div class="fg"><label>Tipo de vacante</label>
@@ -544,6 +542,42 @@ input[type=date]{color:var(--text)}
     <div class="mf">
       <button class="btn btn-ghost" onclick="closeModal('modal-export')">Cancelar</button>
       <button class="btn btn-green" onclick="doExport()"><i class="fa fa-download"></i> Descargar CSV</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL CIERRE VACANTE ===== -->
+<div class="modal-overlay" id="modal-cierre-vacante">
+  <div class="modal" style="width:500px">
+    <div class="mh"><h3 id="cierre-titulo">Cerrar vacante</h3><button class="xbtn" onclick="closeModal('modal-cierre-vacante')"><i class="fa fa-times"></i></button></div>
+    <div class="mb">
+      <input type="hidden" id="cierre-vac-id">
+      <div style="display:flex;gap:0;margin-bottom:18px;border:1px solid var(--border2);border-radius:8px;overflow:hidden">
+        <button id="tab-con-cand" class="btn btn-primary" style="flex:1;border-radius:0" onclick="switchCierreTab('con')">Con candidato</button>
+        <button id="tab-sin-cand" class="btn btn-ghost" style="flex:1;border-radius:0" onclick="switchCierreTab('sin')">Sin candidato</button>
+      </div>
+      <div id="cierre-con-cand">
+        <div class="sep">Selecciona el candidato contratado</div>
+        <div id="cierre-candidatos-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+      <div id="cierre-sin-cand" style="display:none">
+        <div class="sep">Motivo de cierre sin candidato</div>
+        <select id="cierre-motivo" style="margin-bottom:14px">
+          <option value="">Seleccionar motivo...</option>
+          <option>Cliente ya no continúa con el proceso</option>
+          <option>Posición cancelada por reestructura</option>
+          <option>Posición cubierta internamente</option>
+          <option>Error de captura de vacante</option>
+          <option>Presupuesto cancelado</option>
+          <option>Proceso congelado indefinidamente</option>
+          <option>Otro</option>
+        </select>
+        <div class="fg"><label>Observaciones</label><textarea id="cierre-obs" placeholder="Detalles adicionales..."></textarea></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-cierre-vacante')">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarCierreVacante()"><i class="fa fa-times-circle"></i> Cerrar vacante</button>
     </div>
   </div>
 </div>
@@ -1127,7 +1161,6 @@ function openVacanteModal(id=null,preEmpId=null){
   document.getElementById('vac-id').value='';
   ['vac-nombre','vac-folio','vac-salario','vac-desc','vac-colaborador','vac-garantia-inicio','vac-garantia-dias','vac-garantia-venc'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('vac-fecha').value=today();
-  document.getElementById('vac-estado').value='Abierta';
   document.getElementById('vac-tipo').value='Nueva creación';
   document.getElementById('vac-sust-div').style.display='none';
   document.getElementById('vac-aplica-garantia').checked=false;
@@ -1152,7 +1185,6 @@ function openVacanteModal(id=null,preEmpId=null){
       document.getElementById('vac-reclutador').value=v.reclutador_id||'';
       document.getElementById('vac-fecha').value=v.fecha_apertura;
       document.getElementById('vac-salario').value=v.salario||'';
-      document.getElementById('vac-estado').value=v.estado;
       document.getElementById('vac-desc').value=v.descripcion||'';
       document.getElementById('vac-tipo').value=v.tipo_vacante||'Nueva creación';
       document.getElementById('vac-colaborador').value=v.colaborador_sustituido||'';
@@ -1211,7 +1243,7 @@ async function saveVacante(){
   const data={
     folio,nombre,empresa_id,reclutador_id,fecha_apertura,
     salario:document.getElementById('vac-salario').value,
-    estado:document.getElementById('vac-estado').value,
+    estado:'Abierta',
     descripcion:document.getElementById('vac-desc').value,
     departamento:document.getElementById('vac-depto').value||null,
     proyecto:document.getElementById('vac-proyecto').value||null,
@@ -1222,7 +1254,7 @@ async function saveVacante(){
     garantia_dias:aplica_garantia?parseInt(document.getElementById('vac-garantia-dias').value)||null:null,
     garantia_venc:aplica_garantia?document.getElementById('vac-garantia-venc').value||null:null
   };
-  if(id){const i=DB.vacantes.findIndex(v=>v.id===id);DB.vacantes[i]={...DB.vacantes[i],...data,folio};await saveRecord('vacantes',DB.vacantes[i]);showToast('Vacante actualizada ✓')}
+  if(id){const i=DB.vacantes.findIndex(v=>v.id===id);DB.vacantes[i]={...DB.vacantes[i],...data,folio,estado:DB.vacantes[i].estado||'Abierta'};await saveRecord('vacantes',DB.vacantes[i]);showToast('Vacante actualizada ✓')}
   else{DB.vacantes.push({id:uid(),...data});await saveRecord('vacantes',DB.vacantes[DB.vacantes.length-1]);showToast('Vacante creada ✓')}
   closeModal('modal-vacante');
   setTimeout(()=>renderPage(document.querySelector('.page.active').id.replace('page-','')),100);
@@ -1620,6 +1652,69 @@ function renderPipeline(){
 }
 
 /* ============================================================
+   CIERRE VACANTE
+   ============================================================ */
+function abrirCierreVacante(vacId){
+  const v=DB.vacantes.find(x=>x.id===vacId);
+  if(!v)return;
+  document.getElementById('cierre-vac-id').value=vacId;
+  document.getElementById('cierre-titulo').textContent=`Cerrar — ${v.nombre} [${v.folio||''}]`;
+  const cands=DB.candidatos.filter(c=>c.vacante_id===vacId&&!ETAPAS_SALIDA.includes(c.etapa));
+  const list=document.getElementById('cierre-candidatos-list');
+  if(cands.length){
+    list.innerHTML=cands.map(c=>`
+      <label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border2);border-radius:8px;cursor:pointer">
+        <input type="radio" name="cierre-cand" value="${c.id}">
+        <div>
+          <div style="font-weight:500">${c.nombre}</div>
+          <div style="font-size:11px;color:var(--text3)">${c.etapa} · ${processTotal(c)||0} días en proceso</div>
+        </div>
+      </label>
+    `).join('');
+  }else{
+    list.innerHTML='<div style="color:var(--text3);font-size:13px;padding:12px">No hay candidatos activos en esta vacante.</div>';
+  }
+  switchCierreTab('con');
+  document.getElementById('cierre-motivo').value='';
+  document.getElementById('cierre-obs').value='';
+  openModal('modal-cierre-vacante');
+}
+
+function switchCierreTab(tab){
+  document.getElementById('cierre-con-cand').style.display=tab==='con'?'block':'none';
+  document.getElementById('cierre-sin-cand').style.display=tab==='sin'?'block':'none';
+  document.getElementById('tab-con-cand').className=`btn ${tab==='con'?'btn-primary':'btn-ghost'}`;
+  document.getElementById('tab-sin-cand').className=`btn ${tab==='sin'?'btn-primary':'btn-ghost'}`;
+  document.getElementById('tab-con-cand').style.cssText='flex:1;border-radius:0';
+  document.getElementById('tab-sin-cand').style.cssText='flex:1;border-radius:0';
+}
+
+async function confirmarCierreVacante(){
+  const vacId=document.getElementById('cierre-vac-id').value;
+  const vi=DB.vacantes.findIndex(x=>x.id===vacId);
+  if(vi<0)return;
+  const tabActiva=document.getElementById('cierre-sin-cand').style.display==='block'?'sin':'con';
+  if(tabActiva==='con'){
+    const sel=document.querySelector('input[name="cierre-cand"]:checked');
+    if(!sel){showToast('Selecciona un candidato','err');return;}
+    const ci=DB.candidatos.findIndex(c=>c.id===sel.value);
+    if(ci>=0){DB.candidatos[ci].etapa='Validado';DB.candidatos[ci].activo=true;await saveRecord('candidatos',DB.candidatos[ci]);}
+    DB.vacantes[vi].estado='Cubierta';
+    DB.vacantes[vi].candidato_contratado=sel.value;
+  }else{
+    const motivo=document.getElementById('cierre-motivo').value;
+    if(!motivo){showToast('Selecciona un motivo','err');return;}
+    DB.vacantes[vi].estado='Cancelada';
+    DB.vacantes[vi].motivo_cierre=motivo;
+    DB.vacantes[vi].obs_cierre=document.getElementById('cierre-obs').value;
+  }
+  await saveRecord('vacantes',DB.vacantes[vi]);
+  closeModal('modal-cierre-vacante');
+  showToast('Vacante cerrada ✓');
+  setTimeout(()=>renderVacantesTable(),100);
+}
+
+/* ============================================================
    VACANTES TABLE
    ============================================================ */
 function renderVacantesTable(){
@@ -1652,6 +1747,7 @@ function renderVacantesTable(){
       <td>
         <button class="btn btn-ghost btn-sm" onclick="openVacanteModal('${v.id}')"><i class="fa fa-edit"></i></button>
         <button class="btn btn-primary btn-sm" onclick="openCandModal('${v.id}')"><i class="fa fa-user-plus"></i></button>
+        ${v.estado==='Abierta'?`<button class="btn btn-ghost btn-sm" onclick="abrirCierreVacante('${v.id}')" title="Cerrar vacante"><i class="fa fa-times-circle"></i></button>`:`<span class="badge ${v.estado==='Cubierta'?'bg':'br'}">${v.estado}</span>`}
       </td>
     </tr>`;
   }).join('');

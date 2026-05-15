@@ -412,6 +412,10 @@ input[type=date]{color:var(--text)}
         </div>
       </div>
       <div class="fr">
+        <div class="fg"><label>Folio <span style="font-size:10px;color:var(--text3)">(se genera automático, puedes editarlo)</span></label><input id="vac-folio" placeholder="Se generará al guardar" style="font-family:var(--mono)"></div>
+        <div></div>
+      </div>
+      <div class="fr">
         <div class="fg"><label>Departamento</label><select id="vac-depto"><option value="">Sin asignar</option></select></div>
         <div class="fg"><label>Proyecto</label><select id="vac-proyecto"><option value="">Sin asignar</option></select></div>
       </div>
@@ -1123,7 +1127,7 @@ function openVacanteModal(id=null,preEmpId=null){
   const vForFolio=id?DB.vacantes.find(x=>x.id===id):null;
   document.getElementById('mod-vac-title').textContent=id?(vForFolio&&vForFolio.folio?`Editar Vacante — ${vForFolio.folio}`:'Editar Vacante'):'Nueva Vacante';
   document.getElementById('vac-id').value='';
-  ['vac-nombre','vac-salario','vac-desc','vac-colaborador','vac-garantia-inicio','vac-garantia-dias','vac-garantia-venc'].forEach(i=>document.getElementById(i).value='');
+  ['vac-nombre','vac-folio','vac-salario','vac-desc','vac-colaborador','vac-garantia-inicio','vac-garantia-dias','vac-garantia-venc'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('vac-fecha').value=today();
   document.getElementById('vac-estado').value='Abierta';
   document.getElementById('vac-tipo').value='Nueva creación';
@@ -1162,6 +1166,7 @@ function openVacanteModal(id=null,preEmpId=null){
       document.getElementById('vac-garantia-inicio').value=v.garantia_inicio||'';
       document.getElementById('vac-garantia-dias').value=v.garantia_dias||'';
       document.getElementById('vac-garantia-venc').value=v.garantia_venc||'';
+      document.getElementById('vac-folio').value=v.folio||'';
     }
   }
   openModal('modal-vacante');
@@ -1212,7 +1217,17 @@ async function saveVacante(){
     garantia_venc:aplica_garantia?document.getElementById('vac-garantia-venc').value||null:null
   };
   if(id){const i=DB.vacantes.findIndex(v=>v.id===id);DB.vacantes[i]={...DB.vacantes[i],...data};showToast('Vacante actualizada ✓')}
-  else{const folio='VAC-'+new Date().getFullYear()+'-'+String(DB.vacantes.length+1).padStart(3,'0');DB.vacantes.push({id:uid(),folio,...data});showToast('Vacante creada ✓')}
+  else{
+    const emp=DB.empresas.find(e=>e.id===empresa_id)||{};
+    const empPrefix=(emp.nombre||'EMP').substring(0,3).toUpperCase().replace(/\s/g,'');
+    const vacEmpresa=DB.vacantes.filter(v=>v.empresa_id===empresa_id).length+1;
+    const fecha=new Date();
+    const mesAnio=String(fecha.getMonth()+1).padStart(2,'0')+fecha.getFullYear().toString().substr(2);
+    const folioGenerado=`${empPrefix}-${String(vacEmpresa).padStart(3,'0')}-${mesAnio}`;
+    const folioManual=document.getElementById('vac-folio').value.trim();
+    const folio=folioManual||folioGenerado;
+    DB.vacantes.push({id:uid(),folio,...data});showToast('Vacante creada ✓');
+  }
   const _vObj=id?DB.vacantes.find(v=>v.id===id):DB.vacantes[DB.vacantes.length-1];
   if(_vObj)await saveRecord('vacantes',_vObj);
   closeModal('modal-vacante');

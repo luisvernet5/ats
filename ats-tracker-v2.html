@@ -427,7 +427,22 @@ input[type=date]{color:var(--text)}
       </div>
       <div class="fr">
         <div class="fg"><label>Salario ofertado</label><input id="vac-salario" placeholder="$25,000 mensual"></div>
-        <div></div>
+        <div class="fg">
+          <label>Días límite para cubrir <span style="font-size:10px;color:var(--text3)">(SLA)</span></label>
+          <select id="vac-sla" onchange="document.getElementById('vac-sla-custom').style.display=this.value==='custom'?'block':'none'">
+            <option value="">Sin límite</option>
+            <option value="7">7 días</option>
+            <option value="10">10 días</option>
+            <option value="15">15 días</option>
+            <option value="20">20 días</option>
+            <option value="30">30 días</option>
+            <option value="45">45 días</option>
+            <option value="60">60 días</option>
+            <option value="90">90 días</option>
+            <option value="custom">Personalizado...</option>
+          </select>
+          <input type="number" id="vac-sla-custom" placeholder="Número de días" style="display:none;margin-top:6px" min="1" max="365">
+        </div>
       </div>
       <div class="fr">
         <div class="fg"><label>Tipo de vacante</label>
@@ -1033,6 +1048,7 @@ function openEmpresaDetail(empId){
     return`<tr id="tr-vac-${v.id}">
       <td class="td-p" style="cursor:pointer" onclick="toggleVacRow('${v.id}')">
         <span class="vac-expand-icon" id="icon-expand-${v.id}">▶</span>${v.nombre}
+        ${getSLABadge(v)}
       </td>
       <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td>
       <td>${rec.nombre||'—'}</td>
@@ -1342,6 +1358,9 @@ function openVacanteModal(id=null,preEmpId=null){
   document.getElementById('vac-id').value='';
   ['vac-nombre','vac-folio','vac-salario','vac-desc','vac-colaborador','vac-garantia-inicio','vac-garantia-dias','vac-garantia-venc'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('vac-fecha').value=today();
+  document.getElementById('vac-sla').value='';
+  document.getElementById('vac-sla-custom').style.display='none';
+  document.getElementById('vac-sla-custom').value='';
   document.getElementById('vac-tipo').value='Nueva creación';
   document.getElementById('vac-sust-div').style.display='none';
   document.getElementById('vac-aplica-garantia').checked=false;
@@ -1378,6 +1397,16 @@ function openVacanteModal(id=null,preEmpId=null){
       document.getElementById('vac-garantia-dias').value=v.garantia_dias||'';
       document.getElementById('vac-garantia-venc').value=v.garantia_venc||'';
       document.getElementById('vac-folio').value=v.folio||'';
+      const slaVal=v.sla_dias||'';
+      const slaOpts=['7','10','15','20','30','45','60','90'];
+      if(slaVal&&!slaOpts.includes(String(slaVal))){
+        document.getElementById('vac-sla').value='custom';
+        document.getElementById('vac-sla-custom').style.display='block';
+        document.getElementById('vac-sla-custom').value=slaVal;
+      }else{
+        document.getElementById('vac-sla').value=slaVal||'';
+        document.getElementById('vac-sla-custom').style.display='none';
+      }
     }
   }
   openModal('modal-vacante');
@@ -1421,10 +1450,13 @@ async function saveVacante(){
   const mesAnio=String(fecha.getMonth()+1).padStart(2,'0')+fecha.getFullYear().toString().substr(2);
   const folioAuto=`${empPrefix}-${String(vacEmpresa).padStart(3,'0')}-${mesAnio}`;
   const folio=folioManual||folioAuto;
+  const slaSelect=document.getElementById('vac-sla').value;
+  const sla_dias=slaSelect==='custom'?parseInt(document.getElementById('vac-sla-custom').value)||null:slaSelect?parseInt(slaSelect):null;
   const data={
     folio,nombre,empresa_id,reclutador_id,fecha_apertura,
     salario:document.getElementById('vac-salario').value,
     estado:'Abierta',
+    sla_dias,
     descripcion:document.getElementById('vac-desc').value,
     departamento:document.getElementById('vac-depto').value||null,
     proyecto:document.getElementById('vac-proyecto').value||null,
@@ -1859,6 +1891,27 @@ async function confirmarCierreVacante(){
   setTimeout(()=>renderVacantesTable(),100);
 }
 
+function getSLABadge(v) {
+  if(!v.sla_dias || v.estado !== 'Abierta') return '';
+  const diasTranscurridos = daysBetween(v.fecha_apertura);
+  const diasRestantes = v.sla_dias - diasTranscurridos;
+  const pct = Math.round(diasTranscurridos / v.sla_dias * 100);
+  let color, label, icon;
+  if(diasRestantes < 0) {
+    color='var(--red)'; label=`${Math.abs(diasRestantes)}d excedido`; icon='🔴';
+  } else if(diasRestantes <= 3) {
+    color='var(--amber)'; label=`${diasRestantes}d restantes`; icon='🟡';
+  } else {
+    color='var(--green)'; label=`${diasRestantes}d restantes`; icon='🟢';
+  }
+  return `<div style="margin-top:3px">
+    <span style="font-size:10px;color:${color};font-weight:500">${icon} SLA: ${label} de ${v.sla_dias}d</span>
+    <div style="background:var(--surface3);border-radius:3px;height:3px;margin-top:2px;overflow:hidden">
+      <div style="height:100%;border-radius:3px;background:${color};width:${Math.min(pct,100)}%"></div>
+    </div>
+  </div>`;
+}
+
 /* ============================================================
    VACANTES TABLE
    ============================================================ */
@@ -1883,6 +1936,7 @@ function renderVacantesTable(){
       <td class="td-p" style="cursor:pointer" onclick="toggleVacanteDetail('${v.id}')">
         <span id="icon-${v.id}" style="font-size:10px;margin-right:6px;color:var(--text3)">▶</span>
         ${v.nombre}
+        ${getSLABadge(v)}
       </td>
       <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td>
       <td><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${emp.color||'#888'};flex-shrink:0"></span>${emp.nombre||'—'}</span></td>

@@ -1214,7 +1214,7 @@ async function saveVacante(){
   const _vObj=id?DB.vacantes.find(v=>v.id===id):DB.vacantes[DB.vacantes.length-1];
   if(_vObj)await saveRecord('vacantes',_vObj);
   closeModal('modal-vacante');
-  renderPage(document.querySelector('.page.active').id.replace('page-',''));
+  setTimeout(()=>renderPage(document.querySelector('.page.active').id.replace('page-','')),100);
 }
 
 /* ============================================================

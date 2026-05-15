@@ -1048,7 +1048,6 @@ function openEmpresaDetail(empId){
     return`<tr id="tr-vac-${v.id}">
       <td class="td-p" style="cursor:pointer" onclick="toggleVacRow('${v.id}')">
         <span class="vac-expand-icon" id="icon-expand-${v.id}">▶</span>${v.nombre}
-        ${getSLABadge(v)}
       </td>
       <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td>
       <td>${rec.nombre||'—'}</td>
@@ -1891,24 +1890,25 @@ async function confirmarCierreVacante(){
   setTimeout(()=>renderVacantesTable(),100);
 }
 
-function getSLABadge(v) {
-  if(!v.sla_dias || v.estado !== 'Abierta') return '';
+function getSLAStatus(v) {
+  if(!v.sla_dias || v.estado !== 'Abierta') return '<span style="color:var(--text3)">—</span>';
   const diasTranscurridos = daysBetween(v.fecha_apertura);
   const diasRestantes = v.sla_dias - diasTranscurridos;
-  const pct = Math.round(diasTranscurridos / v.sla_dias * 100);
-  let color, label, icon;
+  const pct = Math.min(Math.round(diasTranscurridos / v.sla_dias * 100), 100);
+  let color, label;
   if(diasRestantes < 0) {
-    color='var(--red)'; label=`${Math.abs(diasRestantes)}d excedido`; icon='🔴';
-  } else if(diasRestantes <= 3) {
-    color='var(--amber)'; label=`${diasRestantes}d restantes`; icon='🟡';
+    color='var(--red)'; label=`${Math.abs(diasRestantes)}d vencido`;
+  } else if(diasRestantes <= 5) {
+    color='var(--amber)'; label=`${diasRestantes}d restantes`;
   } else {
-    color='var(--green)'; label=`${diasRestantes}d restantes`; icon='🟢';
+    color='var(--green)'; label=`${diasRestantes}d restantes`;
   }
-  return `<div style="margin-top:3px">
-    <span style="font-size:10px;color:${color};font-weight:500">${icon} SLA: ${label} de ${v.sla_dias}d</span>
-    <div style="background:var(--surface3);border-radius:3px;height:3px;margin-top:2px;overflow:hidden">
-      <div style="height:100%;border-radius:3px;background:${color};width:${Math.min(pct,100)}%"></div>
+  return `<div style="min-width:100px">
+    <div style="font-size:11px;font-weight:600;color:${color};margin-bottom:3px">${label}</div>
+    <div style="background:var(--surface3);border-radius:3px;height:4px;overflow:hidden">
+      <div style="height:100%;border-radius:3px;background:${color};width:${pct}%"></div>
     </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:2px">de ${v.sla_dias}d límite</div>
   </div>`;
 }
 
@@ -1936,15 +1936,14 @@ function renderVacantesTable(){
       <td class="td-p" style="cursor:pointer" onclick="toggleVacanteDetail('${v.id}')">
         <span id="icon-${v.id}" style="font-size:10px;margin-right:6px;color:var(--text3)">▶</span>
         ${v.nombre}
-        ${getSLABadge(v)}
       </td>
       <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td>
       <td><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${emp.color||'#888'};flex-shrink:0"></span>${emp.nombre||'—'}</span></td>
       <td>${rec.nombre||'—'}</td>
       <td>${fmt(v.fecha_apertura)}</td>
       <td>${badgeVacEst(v.estado)}</td>
-      <td>${garantiaBadge(v)}</td>
-      <td><span class="dpill ${dClass(dias)}">${dias}d</span>${getSLABadge(v)}</td>
+      <td>${getSLAStatus(v)}</td>
+      <td><span class="dpill ${dClass(dias)}">${dias}d</span></td>
       <td>${act}/${cands.length}</td>
       <td>
         <button class="btn btn-ghost btn-sm" onclick="openVacanteModal('${v.id}')"><i class="fa fa-edit"></i></button>
@@ -1966,7 +1965,7 @@ function renderVacantesTable(){
     </tr>`;
   }).join('');
   document.getElementById('vacantes-table').innerHTML=`<table>
-    <thead><tr><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Estado</th><th>Garantía</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
+    <thead><tr><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Estado</th><th>SLA</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>
   </table>`;
 }

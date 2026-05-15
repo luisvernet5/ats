@@ -1865,7 +1865,6 @@ function renderCandidatosTable(){
             <div style="padding:6px 14px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Acciones</div>
             <div class="menu-item" onclick="abrirDescarte('${c.id}')"><i class="fa fa-user-times" style="width:16px"></i> Descartar candidato</div>
             <div class="menu-item" onclick="abrirAbandono('${c.id}')"><i class="fa fa-door-open" style="width:16px"></i> Abandonó el proceso</div>
-            ${isSalida||!c.activo?`<div class="menu-item" onclick="closeMenuCand('${c.id}');openCandModal('${c.vacante_id}','${c.id}')"><i class="fa fa-redo" style="width:16px"></i> Nuevo candidato (reemplazo)</div>`:''}
           </div>
         </div>
       </td>

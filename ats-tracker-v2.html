@@ -2425,7 +2425,7 @@ function openReclutadorDetail(recId) {
 function exportarReclutador(recId) {
   const r = DB.reclutadores.find(x=>x.id===recId)||{};
   const vacs = DB.vacantes.filter(v=>v.reclutador_id===recId);
-  const header = ['Vacante','Folio','Empresa','Fecha apertura','Estado','Días abierta','Total candidatos','En proceso','Validados','Días al cierre','SLA (días límite)'];
+  const header = ['Reclutador','Vacante','Folio','Empresa','Fecha apertura','Estado','Días abierta','Total candidatos','En proceso','Validados','Días al cierre','SLA (días límite)'];
   const rows = [header];
   vacs.forEach(v=>{
     const emp = DB.empresas.find(x=>x.id===v.empresa_id)||{};
@@ -2433,6 +2433,7 @@ function exportarReclutador(recId) {
     const activos = vcands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa));
     const dias = daysBetween(v.fecha_apertura)||0;
     rows.push([
+      r.nombre,
       v.nombre, v.folio||'—', emp.nombre||'—', fmt(v.fecha_apertura),
       v.estado, dias, vcands.length, activos.length,
       vcands.filter(c=>c.etapa==='Validado').length,

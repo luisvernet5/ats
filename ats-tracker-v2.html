@@ -643,6 +643,50 @@ input[type=date]{color:var(--text)}
   </div>
 </div>
 
+<!-- ===== MODAL USUARIO ===== -->
+<div class="modal-overlay" id="modal-usuario">
+  <div class="modal" style="width:500px">
+    <div class="mh"><h3 id="modal-usr-title">Nuevo usuario</h3><button class="xbtn" onclick="closeModal('modal-usuario')"><i class="fa fa-times"></i></button></div>
+    <div class="mb">
+      <input type="hidden" id="usr-id">
+      <div class="fr">
+        <div class="fg"><label>Nombre completo *</label><input id="usr-nombre" placeholder="Nombre"></div>
+        <div class="fg"><label>Email *</label><input type="email" id="usr-email" placeholder="correo@empresa.com"></div>
+      </div>
+      <div class="fr full">
+        <div class="fg"><label>Contraseña * <span style="font-size:10px;color:var(--text3)">(mín. 6 caracteres)</span></label>
+          <input type="password" id="usr-password" placeholder="Contraseña temporal">
+        </div>
+      </div>
+      <div class="fr full">
+        <div class="fg"><label>Rol *</label>
+          <select id="usr-rol" onchange="onUsrRolChange()">
+            <option value="">Seleccionar...</option>
+            <option value="admin">Admin — acceso total</option>
+            <option value="reclutador">Reclutador — solo sus vacantes</option>
+            <option value="rh_cliente">RH Cliente — solo su empresa</option>
+          </select>
+        </div>
+      </div>
+      <div id="usr-reclutador-field" style="display:none" class="fr full">
+        <div class="fg"><label>Reclutador asignado *</label>
+          <select id="usr-reclutador-sel"><option value="">Seleccionar reclutador...</option></select>
+        </div>
+      </div>
+      <div id="usr-empresa-field" style="display:none" class="fr full">
+        <div class="fg"><label>Empresa cliente asignada *</label>
+          <select id="usr-empresa-sel"><option value="">Seleccionar empresa...</option></select>
+        </div>
+      </div>
+      <div id="usr-edit-note" style="display:none" class="alert alert-i"><i class="fa fa-info-circle"></i> En modo edición no se cambia la contraseña. Para resetearla ve a Supabase → Authentication.</div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-usuario')">Cancelar</button>
+      <button class="btn btn-primary" id="usr-save-btn" onclick="saveUsuario()">Crear usuario</button>
+    </div>
+  </div>
+</div>
+
 <!-- DETAIL PANEL -->
 <div class="dp" id="dp">
   <div class="dph">
@@ -2920,33 +2964,114 @@ function renderConfig(){
   if(currentUserData?.rol === 'admin') {
     document.getElementById('page-config').insertAdjacentHTML('beforeend', `
       <div style="margin-top:24px">
-        <div class="sec-title">Gestión de usuarios</div>
-        <div class="alert alert-i" style="margin-bottom:14px"><i class="fa fa-info-circle"></i> Para crear usuarios ve a Supabase → Authentication → Users → Invite user. Luego asigna su rol aquí.</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div class="sec-title" style="margin:0">Gestión de usuarios</div>
+          <button class="btn btn-primary btn-sm" onclick="openUsuarioModal()"><i class="fa fa-user-plus"></i> Nuevo usuario</button>
+        </div>
         <div class="table-wrap" id="usuarios-table"></div>
-        <div style="padding:12px 16px" id="usuarios-list-loading">Cargando usuarios...</div>
       </div>
     `);
     loadUsuarios();
   }
 }
 
+function onUsrRolChange() {
+  const rol = document.getElementById('usr-rol').value;
+  document.getElementById('usr-reclutador-field').style.display = rol==='reclutador' ? 'grid' : 'none';
+  document.getElementById('usr-empresa-field').style.display = rol==='rh_cliente' ? 'grid' : 'none';
+}
+
+function openUsuarioModal(usrId=null) {
+  document.getElementById('modal-usr-title').textContent = usrId ? 'Editar usuario' : 'Nuevo usuario';
+  document.getElementById('usr-id').value = usrId||'';
+  document.getElementById('usr-save-btn').textContent = usrId ? 'Guardar cambios' : 'Crear usuario';
+  document.getElementById('usr-edit-note').style.display = usrId ? 'flex' : 'none';
+  document.getElementById('usr-password').style.display = usrId ? 'none' : 'block';
+  ['usr-nombre','usr-email','usr-password'].forEach(i => document.getElementById(i).value='');
+  document.getElementById('usr-rol').value = '';
+  onUsrRolChange();
+  const recSel = document.getElementById('usr-reclutador-sel');
+  recSel.innerHTML = '<option value="">Seleccionar reclutador...</option>';
+  DB.reclutadores.forEach(r => recSel.innerHTML += `<option value="${r.id}">${r.nombre}</option>`);
+  const empSel = document.getElementById('usr-empresa-sel');
+  empSel.innerHTML = '<option value="">Seleccionar empresa...</option>';
+  DB.empresas.forEach(e => empSel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`);
+  if(usrId) {
+    sbClient.from('usuarios').select('*').eq('id', usrId).single().then(({data}) => {
+      if(!data) return;
+      document.getElementById('usr-nombre').value = data.nombre||'';
+      document.getElementById('usr-email').value = data.email||'';
+      document.getElementById('usr-rol').value = data.rol||'';
+      onUsrRolChange();
+      if(data.reclutador_id) document.getElementById('usr-reclutador-sel').value = data.reclutador_id;
+      if(data.empresa_id) document.getElementById('usr-empresa-sel').value = data.empresa_id;
+    });
+  }
+  openModal('modal-usuario');
+}
+
+async function saveUsuario() {
+  const usrId = document.getElementById('usr-id').value;
+  const nombre = document.getElementById('usr-nombre').value.trim();
+  const email = document.getElementById('usr-email').value.trim();
+  const rol = document.getElementById('usr-rol').value;
+  const password = document.getElementById('usr-password').value;
+  if(!nombre || !email || !rol) { showToast('Completa nombre, email y rol', 'err'); return; }
+  if(!usrId && password.length < 6) { showToast('La contraseña debe tener mínimo 6 caracteres', 'err'); return; }
+  const reclutador_id = rol==='reclutador' ? document.getElementById('usr-reclutador-sel').value : null;
+  const empresa_id = rol==='rh_cliente' ? document.getElementById('usr-empresa-sel').value : null;
+  if(rol==='reclutador' && !reclutador_id) { showToast('Selecciona el reclutador', 'err'); return; }
+  if(rol==='rh_cliente' && !empresa_id) { showToast('Selecciona la empresa', 'err'); return; }
+  try {
+    if(!usrId) {
+      const { data: authData, error: authError } = await sbClient.auth.admin.createUser({
+        email, password, email_confirm: true
+      });
+      if(authError) throw authError;
+      const newId = authData.user.id;
+      await sbClient.from('usuarios').insert({ id: newId, nombre, email, rol, reclutador_id, empresa_id });
+      showToast('Usuario creado ✓');
+    } else {
+      await sbClient.from('usuarios').update({ nombre, rol, reclutador_id, empresa_id }).eq('id', usrId);
+      showToast('Usuario actualizado ✓');
+    }
+    closeModal('modal-usuario');
+    loadUsuarios();
+  } catch(e) {
+    showToast('Error: '+e.message, 'err');
+  }
+}
+
+async function eliminarUsuario(usrId) {
+  if(!confirm('¿Eliminar este usuario? Perderá acceso a la plataforma.')) return;
+  await sbClient.from('usuarios').delete().eq('id', usrId);
+  showToast('Usuario eliminado ✓');
+  loadUsuarios();
+}
+
 async function loadUsuarios() {
-  const { data } = await sbClient.from('usuarios').select('*');
-  const usuarios = data || [];
-  const rows = usuarios.map(u => `<tr>
-    <td class="td-p">${u.nombre||'—'}</td>
-    <td>${u.email||'—'}</td>
-    <td><span class="badge ${u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':'bg'}">${u.rol}</span></td>
-    <td>${u.empresa_id||'—'}</td>
-    <td>${u.reclutador_id||'—'}</td>
-  </tr>`).join('');
+  const { data: usuarios } = await sbClient.from('usuarios').select('*');
+  const list = usuarios || [];
+  const rows = list.map(u => {
+    const emp = DB.empresas.find(e=>e.id===u.empresa_id)||{};
+    const rec = DB.reclutadores.find(r=>r.id===u.reclutador_id)||{};
+    const rolBadge = u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':'bg';
+    return `<tr>
+      <td class="td-p">${u.nombre||'—'}</td>
+      <td>${u.email||'—'}</td>
+      <td><span class="badge ${rolBadge}">${u.rol}</span></td>
+      <td>${u.rol==='rh_cliente'?emp.nombre||u.empresa_id||'—':u.rol==='reclutador'?rec.nombre||u.reclutador_id||'—':'—'}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="openUsuarioModal('${u.id}')"><i class="fa fa-edit"></i></button>
+        ${u.id !== currentUser?.id ? `<button class="btn btn-danger btn-sm" onclick="eliminarUsuario('${u.id}')"><i class="fa fa-trash"></i></button>` : '<span style="font-size:11px;color:var(--text3)">tú</span>'}
+      </td>
+    </tr>`;
+  }).join('');
   const tableEl = document.getElementById('usuarios-table');
   if(tableEl) tableEl.innerHTML = `<table>
-    <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Empresa ID</th><th>Reclutador ID</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin usuarios registrados aún</td></tr>'}</tbody>
+    <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Asignado a</th><th>Acción</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin usuarios registrados</td></tr>'}</tbody>
   </table>`;
-  const loadingEl = document.getElementById('usuarios-list-loading');
-  if(loadingEl) loadingEl.remove();
 }
 
 function renderStageBuilder(){

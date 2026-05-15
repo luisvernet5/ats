@@ -489,16 +489,6 @@ input[type=date]{color:var(--text)}
           <select id="cand-fuente"><option>LinkedIn</option><option>OCC</option><option>Indeed</option><option>Computrabajo</option><option>Referido</option><option>Bolsa interna</option><option>Otro</option></select>
         </div>
       </div>
-      <div class="sep">Etapa actual</div>
-      <div class="fr">
-        <div class="fg"><label>Etapa del proceso</label><select id="cand-etapa" onchange="toggleDesFields()"><option value="">Seleccionar empresa primero</option></select></div>
-        <div class="fg"></div>
-      </div>
-      <div id="des-fields" style="display:none">
-        <div class="sep">Motivo de deserción / salida</div>
-        <div class="fr full"><div class="fg"><label>Motivo</label><div class="rtags" id="rtags-c"></div></div></div>
-        <div class="fr full"><div class="fg"><label>Observaciones</label><textarea id="cand-obs-des" placeholder="Detalles adicionales..."></textarea></div></div>
-      </div>
       <div class="fr full"><div class="fg"><label>Notas generales</label><textarea id="cand-notas" placeholder="Perfil, habilidades, comentarios..."></textarea></div></div>
     </div>
     <div class="mf">
@@ -1294,17 +1284,13 @@ function openCandModal(vacanteIdOrNull,reemplazaId=null){
   document.getElementById('mod-cand-title').textContent=reemplazaId?'Nuevo candidato (reemplazo)':'Nuevo Candidato';
   document.getElementById('cand-id').value='';
   document.getElementById('cand-parent-id').value=reemplazaId||'';
-  ['cand-nombre','cand-contacto','cand-notas','cand-obs-des'].forEach(i=>document.getElementById(i).value='');
-  selReason=null;
+  ['cand-nombre','cand-contacto','cand-notas'].forEach(i=>document.getElementById(i).value='');
   // populate empresa
   const empSel=document.getElementById('cand-empresa');
   empSel.innerHTML='<option value="">Seleccionar empresa...</option>';
   DB.empresas.forEach(e=>empSel.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
   document.getElementById('cand-vacante').innerHTML='<option value="">Seleccionar vacante...</option>';
-  document.getElementById('cand-etapa').innerHTML='<option value="">Selecciona empresa/vacante primero</option>';
   populateRecSel('cand-reclutador','');
-  buildRtags();
-  toggleDesFields();
   const alertEl=document.getElementById('cand-remp-alert');
   if(reemplazaId){
     const prev=DB.candidatos.find(c=>c.id===reemplazaId)||{};
@@ -1347,9 +1333,7 @@ function editCandidato(id){
   document.getElementById('cand-nombre').value=c.nombre;
   document.getElementById('cand-contacto').value=c.contacto||'';
   document.getElementById('cand-notas').value=c.notas||'';
-  document.getElementById('cand-obs-des').value=c.obs_des||'';
   document.getElementById('cand-fuente').value=c.fuente||'LinkedIn';
-  selReason=c.motivo_desercion||null;
   const empSel=document.getElementById('cand-empresa');
   empSel.innerHTML='<option value="">Seleccionar empresa...</option>';
   DB.empresas.forEach(e=>empSel.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
@@ -1359,16 +1343,7 @@ function editCandidato(id){
     document.getElementById('cand-vacante').value=c.vacante_id||'';
     onCandVacanteChange();
     setTimeout(()=>{
-      document.getElementById('cand-etapa').value=c.etapa||'';
-      // fill dates
-      const etapas=getEmpresaEtapas(v.empresa_id);
-      etapas.forEach((_,i)=>{
-        const el=document.getElementById('cf_'+i);
-        if(el)el.value=c['f_'+i]||'';
-      });
       populateRecSel('cand-reclutador',c.reclutador_id||'');
-      buildRtags();
-      toggleDesFields();
     },20);
   },10);
   document.getElementById('cand-remp-alert').innerHTML='';
@@ -1389,23 +1364,6 @@ function onCandVacanteChange(){
   const vacId=document.getElementById('cand-vacante').value;
   const v=DB.vacantes.find(x=>x.id===vacId)||{};
   if(v.reclutador_id)document.getElementById('cand-reclutador').value=v.reclutador_id;
-  const etapas=getEmpresaEtapas(v.empresa_id);
-  // Build etapa select
-  const etapaSel=document.getElementById('cand-etapa');
-  etapaSel.innerHTML='';
-  etapas.forEach(e=>etapaSel.innerHTML+=`<option value="${e.label}">${e.label}</option>`);
-  ETAPAS_SALIDA.forEach(s=>etapaSel.innerHTML+=`<option value="${s}">${s}</option>`);
-  toggleDesFields();
-}
-
-function toggleDesFields(){
-  const etapa=document.getElementById('cand-etapa').value;
-  const show=ETAPAS_SALIDA.includes(etapa);
-  document.getElementById('des-fields').style.display=show?'block':'none';
-}
-
-function buildRtags(){
-  document.getElementById('rtags-c').innerHTML=MOTIVOS.map(m=>`<span class="rtag ${selReason===m?'sel':''}" onclick="selReason='${m}';buildRtags()">${m}</span>`).join('');
 }
 
 async function saveCandidato(){
@@ -1415,12 +1373,10 @@ async function saveCandidato(){
   if(!nombre||!vacante_id||!reclutador_id){showToast('Completa nombre, vacante y reclutador','err');return}
   const id=document.getElementById('cand-id').value;
   const parent_id=document.getElementById('cand-parent-id').value;
-  const etapa=document.getElementById('cand-etapa').value;
   const v=DB.vacantes.find(x=>x.id===vacante_id)||{};
   const etapas=getEmpresaEtapas(v.empresa_id);
-  const fechas={};
-  etapas.forEach((_,i)=>{const el=document.getElementById('cf_'+i);if(el)fechas['f_'+i]=el.value||null;});
-  const data={nombre,vacante_id,reclutador_id,etapa,contacto:document.getElementById('cand-contacto').value,fuente:document.getElementById('cand-fuente').value,...fechas,motivo_desercion:ETAPAS_SALIDA.includes(etapa)?selReason:null,obs_des:document.getElementById('cand-obs-des').value,notas:document.getElementById('cand-notas').value,fecha_salida:ETAPAS_SALIDA.includes(etapa)?today():null,activo:!ETAPAS_SALIDA.includes(etapa),parent_id:parent_id||null};
+  const etapa=id?(DB.candidatos.find(c=>c.id===id)||{}).etapa||(etapas[0]?.label||'Entrevista RH'):(etapas[0]?.label||'Entrevista RH');
+  const data={nombre,vacante_id,reclutador_id,etapa,contacto:document.getElementById('cand-contacto').value,fuente:document.getElementById('cand-fuente').value,notas:document.getElementById('cand-notas').value,activo:true,parent_id:parent_id||null};
   if(id){const i=DB.candidatos.findIndex(c=>c.id===id);DB.candidatos[i]={...DB.candidatos[i],...data};showToast('Candidato actualizado ✓')}
   else{
     const nc={id:uid(),creado:today(),...data};

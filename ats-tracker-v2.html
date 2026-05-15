@@ -319,7 +319,7 @@ input[type=date]{color:var(--text)}
       <div>
         <div class="sec-title">Reclutadores</div>
         <div class="table-wrap" style="margin-bottom:14px" id="config-rec-table"></div>
-        <button class="btn btn-primary" onclick="openModal('modal-reclutador')"><i class="fa fa-user-plus"></i> Agregar reclutador</button>
+        <button class="btn btn-primary" onclick="openReclutadorModal()"><i class="fa fa-user-plus"></i> Agregar reclutador</button>
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border)">
           <div style="margin-bottom:16px">
             <div style="font-size:13px;font-weight:600;margin-bottom:8px">Modo Sandbox</div>
@@ -667,6 +667,11 @@ function daysBetween(d1,d2){
 function dClass(d){if(d===null||d===undefined)return'dok';if(d<=14)return'dok';if(d<=30)return'dwarn';return'dover'}
 function showToast(msg,t='ok'){const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${t==='ok'?'tok':'terr'} show`;setTimeout(()=>el.className='toast',2800)}
 function openModal(id){document.getElementById(id).classList.add('open')}
+function openReclutadorModal(){
+  document.getElementById('rec-nombre').value='';
+  document.getElementById('rec-email').value='';
+  openModal('modal-reclutador');
+}
 function closeModal(id){document.getElementById(id).classList.remove('open')}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
 

@@ -195,6 +195,7 @@ input[type=date]{color:var(--text)}
   <div class="topbar">
     <div class="topbar-title" id="page-title">Dashboard</div>
     <div class="topbar-actions">
+      <div id="mode-badge" style="font-size:11px;padding:3px 8px;border-radius:5px;font-weight:500"></div>
       <button class="btn btn-ghost" onclick="exportarCSV()"><i class="fa fa-download"></i> Exportar</button>
       <button class="btn btn-ghost" onclick="nav('vacantes');setTimeout(openVacanteModal,80)"><i class="fa fa-plus"></i> Nueva vacante</button>
       <button class="btn btn-primary" onclick="openCandModal(null)"><i class="fa fa-user-plus"></i> Agregar candidato</button>
@@ -320,6 +321,15 @@ input[type=date]{color:var(--text)}
         <div class="table-wrap" style="margin-bottom:14px" id="config-rec-table"></div>
         <button class="btn btn-primary" onclick="openModal('modal-reclutador')"><i class="fa fa-user-plus"></i> Agregar reclutador</button>
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border)">
+          <div style="margin-bottom:16px">
+            <div style="font-size:13px;font-weight:600;margin-bottom:8px">Modo Sandbox</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div id="sandbox-indicator" style="width:10px;height:10px;border-radius:50%"></div>
+              <span id="sandbox-label" style="font-size:13px"></span>
+              <button class="btn btn-ghost btn-sm" onclick="toggleSandbox()">Cambiar modo</button>
+            </div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">Sandbox: datos guardados localmente en este navegador. Producción: datos guardados en Supabase.</div>
+          </div>
           <div class="sec-title" style="color:var(--red);margin-bottom:8px">Zona de peligro</div>
           <button class="btn btn-danger" onclick="resetearDatos()"><i class="fa fa-trash"></i> Resetear datos de prueba</button>
         </div>
@@ -547,31 +557,54 @@ input[type=date]{color:var(--text)}
 const SUPABASE_URL='https://opvqdknqfjiolkldmnrn.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wdnFka25xZmppb2xrbGRtbnJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3ODkwNTEsImV4cCI6MjA5NDM2NTA1MX0.f21LazGmNBqRN6wCWUAXoyZaNbDPR69gjzB2sqyRy6E';
 const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let SANDBOX_MODE = localStorage.getItem('sandbox_mode') === 'true';
 
 async function loadDB(){
   try{
-    const [emp,vac,cand,rec]=await Promise.all([
-      sbClient.from('empresas').select('*'),
-      sbClient.from('vacantes').select('*'),
-      sbClient.from('candidatos').select('*'),
-      sbClient.from('reclutadores').select('*'),
-    ]);
-    DB.empresas=emp.data?.map(r=>r.data)||[];
-    DB.vacantes=vac.data?.map(r=>r.data)||[];
-    DB.candidatos=cand.data?.map(r=>r.data)||[];
-    DB.reclutadores=rec.data?.map(r=>r.data)||[];
+    if(SANDBOX_MODE){
+      DB.empresas=JSON.parse(localStorage.getItem('sandbox_empresas')||'[]');
+      DB.vacantes=JSON.parse(localStorage.getItem('sandbox_vacantes')||'[]');
+      DB.candidatos=JSON.parse(localStorage.getItem('sandbox_candidatos')||'[]');
+      DB.reclutadores=JSON.parse(localStorage.getItem('sandbox_reclutadores')||'[]');
+    }else{
+      const [emp,vac,cand,rec]=await Promise.all([
+        sbClient.from('empresas').select('*'),
+        sbClient.from('vacantes').select('*'),
+        sbClient.from('candidatos').select('*'),
+        sbClient.from('reclutadores').select('*'),
+      ]);
+      DB.empresas=emp.data?.map(r=>r.data)||[];
+      DB.vacantes=vac.data?.map(r=>r.data)||[];
+      DB.candidatos=cand.data?.map(r=>r.data)||[];
+      DB.reclutadores=rec.data?.map(r=>r.data)||[];
+    }
   }catch(e){
-    console.error('Error Supabase:',e);
+    console.error('Error:',e);
   }finally{
     document.getElementById('loading-screen').style.display='none';
     if(!DB.empresas.length&&!DB.reclutadores.length)seedData();
+    updateSandboxUI();
     renderDashboard();
   }
 }
 async function saveRecord(tabla,objeto){
+  if(SANDBOX_MODE){
+    const key='sandbox_'+tabla;
+    const arr=JSON.parse(localStorage.getItem(key)||'[]');
+    const idx=arr.findIndex(x=>x.id===objeto.id);
+    if(idx>=0)arr[idx]=objeto;else arr.push(objeto);
+    localStorage.setItem(key,JSON.stringify(arr));
+    return;
+  }
   await sbClient.from(tabla).upsert({id:objeto.id,data:objeto});
 }
 async function deleteRecord(tabla,id){
+  if(SANDBOX_MODE){
+    const key='sandbox_'+tabla;
+    const arr=JSON.parse(localStorage.getItem(key)||'[]').filter(x=>x.id!==id);
+    localStorage.setItem(key,JSON.stringify(arr));
+    return;
+  }
   await sbClient.from(tabla).delete().eq('id',id);
 }
 
@@ -2101,7 +2134,38 @@ function renderDesercion(){
 /* ============================================================
    CONFIG / STAGE BUILDER
    ============================================================ */
+function toggleSandbox(){
+  if(!confirm(`¿Cambiar a modo ${SANDBOX_MODE?'Producción (Supabase)':'Sandbox (local)'}?`))return;
+  SANDBOX_MODE=!SANDBOX_MODE;
+  localStorage.setItem('sandbox_mode',SANDBOX_MODE);
+  updateSandboxUI();
+  location.reload();
+}
+
+function updateSandboxUI(){
+  const ind=document.getElementById('sandbox-indicator');
+  const lbl=document.getElementById('sandbox-label');
+  const badge=document.getElementById('mode-badge');
+  if(ind){
+    if(SANDBOX_MODE){
+      ind.style.background='#F59E0B';
+      lbl.textContent='Sandbox activo — datos locales';
+      lbl.style.color='#F59E0B';
+    }else{
+      ind.style.background='#22C55E';
+      lbl.textContent='Producción — datos en Supabase';
+      lbl.style.color='#22C55E';
+    }
+  }
+  if(badge){
+    badge.textContent=SANDBOX_MODE?'🟡 Sandbox':'🟢 Producción';
+    badge.style.background=SANDBOX_MODE?'rgba(245,158,11,.12)':'rgba(34,197,94,.12)';
+    badge.style.color=SANDBOX_MODE?'#D97706':'#16A34A';
+  }
+}
+
 function renderConfig(){
+  updateSandboxUI();
   // Populate empresa select in config
   const cfgSel=document.getElementById('cfg-emp-sel');
   const cur=cfgSel.value;

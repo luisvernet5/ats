@@ -331,7 +331,14 @@ input[type=date]{color:var(--text)}
             <div style="font-size:11px;color:var(--text3);margin-top:4px">Sandbox: datos guardados localmente en este navegador. Producción: datos guardados en Supabase.</div>
           </div>
           <div class="sec-title" style="color:var(--red);margin-bottom:8px">Zona de peligro</div>
-          <button class="btn btn-danger" onclick="resetearDatos()"><i class="fa fa-trash"></i> Resetear datos de prueba</button>
+          <div style="margin-top:10px">
+            <div style="font-size:13px;font-weight:600;margin-bottom:6px">Datos de ejemplo</div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Carga empresas, vacantes y candidatos ficticios para explorar la app. Al limpiar se borran todos los datos.</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost btn-sm" onclick="cargarEjemplos()"><i class="fa fa-database"></i> Cargar ejemplos</button>
+              <button class="btn btn-danger btn-sm" onclick="limpiarTodo()"><i class="fa fa-trash"></i> Limpiar todos los datos</button>
+            </div>
+          </div>
         </div>
       </div>
       <div>
@@ -2268,15 +2275,32 @@ function dropStage(empId,toIdx){
 
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
 
-function resetearDatos(){
-  if(confirm('¿Borrar todos los datos?')&&confirm('¿Estás seguro? Esta acción no se puede deshacer.')){
-    Promise.all([
+async function cargarEjemplos(){
+  if(!confirm('¿Cargar datos de ejemplo? Esto agregará empresas, vacantes y candidatos ficticios.'))return;
+  seedData();
+  for(const e of DB.empresas)await saveRecord('empresas',e);
+  for(const v of DB.vacantes)await saveRecord('vacantes',v);
+  for(const c of DB.candidatos)await saveRecord('candidatos',c);
+  for(const r of DB.reclutadores)await saveRecord('reclutadores',r);
+  showToast('Datos de ejemplo cargados ✓');
+  renderDashboard();
+}
+
+async function limpiarTodo(){
+  if(!confirm('¿Borrar TODOS los datos?')||!confirm('¿Estás seguro? Esta acción no se puede deshacer.'))return;
+  if(SANDBOX_MODE){
+    ['sandbox_empresas','sandbox_vacantes','sandbox_candidatos','sandbox_reclutadores'].forEach(k=>localStorage.removeItem(k));
+  }else{
+    await Promise.all([
       sbClient.from('empresas').delete().neq('id',''),
       sbClient.from('vacantes').delete().neq('id',''),
       sbClient.from('candidatos').delete().neq('id',''),
       sbClient.from('reclutadores').delete().neq('id',''),
-    ]).then(()=>location.reload());
+    ]);
   }
+  DB.empresas=[];DB.vacantes=[];DB.candidatos=[];DB.reclutadores=[];
+  showToast('Datos eliminados ✓');
+  renderDashboard();
 }
 
 /* ============================================================

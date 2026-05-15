@@ -1902,12 +1902,12 @@ function renderCandidatosTable(){
       <td style="cursor:pointer" onclick="toggleCandRow('${c.id}')">${badgeEtapa(c.etapa,v.empresa_id)}<i class="fa fa-pencil-alt" style="font-size:10px;margin-left:5px;color:var(--text3)"></i></td>
       <td>${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:'—'}</td>
       <td>${cd!==null?`<span class="dpill dwarn">${cd}d</span>`:'—'}</td>
-      <td style="position:relative">
+      <td style="position:relative;overflow:visible">
         <div style="display:flex;gap:6px;align-items:center">
           <button class="btn btn-ghost btn-sm" onclick="openPanel('${c.id}')" title="Ver detalle"><i class="fa fa-eye"></i></button>
           <button class="btn btn-ghost btn-sm" onclick="editCandidato('${c.id}')" title="Editar"><i class="fa fa-edit"></i></button>
           <button class="btn btn-ghost btn-sm" onclick="toggleAccionesCand('${c.id}')" title="Más acciones"><i class="fa fa-ellipsis-v"></i></button>
-          <div id="menu-${c.id}" style="display:none;position:absolute;right:0;top:32px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;z-index:50;min-width:220px;box-shadow:0 4px 20px rgba(0,0,0,.15);padding:6px 0">
+          <div id="menu-${c.id}" style="display:none;position:absolute;right:0;bottom:32px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;z-index:50;min-width:220px;box-shadow:0 4px 20px rgba(0,0,0,.15);padding:6px 0">
             <div style="padding:6px 14px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Acciones</div>
             <div class="menu-item" onclick="abrirDescarte('${c.id}')"><i class="fa fa-user-times" style="width:16px"></i> Descartar candidato</div>
             <div class="menu-item" onclick="abrirAbandono('${c.id}')"><i class="fa fa-door-open" style="width:16px"></i> Abandonó el proceso</div>
@@ -1949,6 +1949,9 @@ function renderCandidatosTable(){
     <thead><tr><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Etapa</th><th>Días proceso</th><th>Días cliente</th><th>Acción</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos</td></tr>'}</tbody>
   </table>`;
+  document.getElementById('candidatos-table').style.overflow='visible';
+  const tbl=document.getElementById('candidatos-table').querySelector('table');
+  if(tbl)tbl.style.overflow='visible';
   openCandRows.forEach(cid=>{
     const row=document.getElementById('cx-'+cid);
     const icon=document.getElementById('cx-icon-'+cid);

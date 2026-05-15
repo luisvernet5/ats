@@ -1324,29 +1324,29 @@ function openCandModal(vacanteIdOrNull,reemplazaId=null){
   openModal('modal-candidato');
 }
 
-function editCandidato(id){
-  const c=DB.candidatos.find(x=>x.id===id);if(!c)return;
-  const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
-  document.getElementById('mod-cand-title').textContent='Editar candidato';
-  document.getElementById('cand-id').value=c.id;
-  document.getElementById('cand-parent-id').value='';
-  document.getElementById('cand-nombre').value=c.nombre;
-  document.getElementById('cand-contacto').value=c.contacto||'';
-  document.getElementById('cand-notas').value=c.notas||'';
-  document.getElementById('cand-fuente').value=c.fuente||'LinkedIn';
-  const empSel=document.getElementById('cand-empresa');
-  empSel.innerHTML='<option value="">Seleccionar empresa...</option>';
-  DB.empresas.forEach(e=>empSel.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
-  empSel.value=v.empresa_id||'';
+function editCandidato(id) {
+  const c = DB.candidatos.find(x => x.id === id);
+  if (!c) return;
+  const v = DB.vacantes.find(x => x.id === c.vacante_id) || {};
+  document.getElementById('mod-cand-title').textContent = 'Editar candidato';
+  document.getElementById('cand-id').value = c.id;
+  document.getElementById('cand-parent-id').value = '';
+  document.getElementById('cand-nombre').value = c.nombre || '';
+  document.getElementById('cand-contacto').value = c.contacto || '';
+  document.getElementById('cand-notas').value = c.notas || '';
+  document.getElementById('cand-fuente').value = c.fuente || 'LinkedIn';
+  const empSel = document.getElementById('cand-empresa');
+  empSel.innerHTML = '<option value="">Seleccionar empresa...</option>';
+  DB.empresas.forEach(e => empSel.innerHTML += `<option value="${e.id}" ${v.empresa_id === e.id ? 'selected' : ''}>${e.nombre}</option>`);
   onCandEmpresaChange();
-  setTimeout(()=>{
-    document.getElementById('cand-vacante').value=c.vacante_id||'';
+  setTimeout(() => {
+    document.getElementById('cand-vacante').value = c.vacante_id || '';
     onCandVacanteChange();
-    setTimeout(()=>{
-      populateRecSel('cand-reclutador',c.reclutador_id||'');
-    },20);
-  },10);
-  document.getElementById('cand-remp-alert').innerHTML='';
+    setTimeout(() => {
+      populateRecSel('cand-reclutador', c.reclutador_id || '');
+    }, 20);
+  }, 10);
+  document.getElementById('cand-remp-alert').innerHTML = '';
   openModal('modal-candidato');
 }
 
@@ -1356,8 +1356,6 @@ function onCandEmpresaChange(){
   vacSel.innerHTML='<option value="">Seleccionar vacante...</option>';
   const vacs=DB.vacantes.filter(v=>v.empresa_id===empId);
   vacs.forEach(v=>{const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};const label=`[${v.folio||'S/F'}] ${v.nombre} | ${rec.nombre||'Sin reclutador'} | ${fmt(v.fecha_apertura)}`;vacSel.innerHTML+=`<option value="${v.id}">${label}</option>`;});
-  // clear etapas
-  document.getElementById('cand-etapa').innerHTML='<option value="">Selecciona vacante</option>';
 }
 
 function onCandVacanteChange(){

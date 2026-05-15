@@ -1710,7 +1710,10 @@ function renderCandidatosTable(){
       <td class="td-p">
         <span class="vac-expand-icon" id="cx-icon-${c.id}">▶</span>${c.nombre}
       </td>
-      <td>${v.nombre||'—'}</td>
+      <td>
+        <div style="font-weight:500;color:var(--text)">${v.nombre||'—'}</div>
+        ${v.folio?`<div style="font-size:10px;font-family:var(--mono);color:var(--text3)">${v.folio}</div>`:''}
+      </td>
       <td><span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${emp.color||'#888'}"></span>${emp.nombre||'—'}</span></td>
       <td>${r.nombre||'—'}</td>
       <td style="cursor:pointer" onclick="toggleCandRow('${c.id}')">${badgeEtapa(c.etapa,v.empresa_id)}<i class="fa fa-pencil-alt" style="font-size:10px;margin-left:5px;color:var(--text3)"></i></td>

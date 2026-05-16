@@ -3275,10 +3275,11 @@ function removeStage(empId,stageId){
   e.etapas=e.etapas.filter(x=>x.id!==stageId);
   renderStageBuilder();
 }
-function saveStages(empId){
+async function saveStages(empId){
   // re-read labels from inputs in case they weren't triggered
   const e=DB.empresas.find(x=>x.id===empId);if(!e)return;
   e.etapas.forEach(s=>{const el=document.getElementById('sl-lbl-'+s.id);if(el)s.label=el.value;});
+  await saveRecord('empresas',e);
   showToast('Etapas guardadas ✓');
   renderStageBuilder();
 }

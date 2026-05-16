@@ -426,6 +426,18 @@ input[type=date]{color:var(--text)}
       <div class="fr full">
         <div class="fg"><label>Notas</label><textarea id="emp-notas" placeholder="Información relevante sobre el cliente..."></textarea></div>
       </div>
+      <div class="fr full" style="margin-top:14px">
+        <div class="fg">
+          <label>Logo de la empresa</label>
+          <div style="display:flex;align-items:center;gap:10px">
+            <img id="emp-logo-preview" src="" style="width:48px;height:48px;object-fit:contain;border-radius:8px;border:1px solid var(--border2);display:none">
+            <div style="flex:1">
+              <input type="file" id="emp-logo-file" accept="image/*" style="font-size:12px" onchange="previewEmpLogo()">
+              <div style="font-size:11px;color:var(--text3);margin-top:4px">PNG, JPG o SVG. Máx 500KB.</div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="sep">Departamentos</div>
       <div style="display:flex;gap:6px;margin-bottom:8px">
         <input id="emp-depto-input" placeholder="Ej. Recursos Humanos" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addEmpChip('departamentos')}">
@@ -1149,6 +1161,25 @@ function removeEmpChip(type,idx){
   arr.splice(idx,1);
   renderEmpChips(type);
 }
+function previewEmpLogo(){
+  const file = document.getElementById('emp-logo-file').files[0];
+  if(!file) return;
+  const preview = document.getElementById('emp-logo-preview');
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = 'block';
+}
+
+async function uploadEmpLogo(empId){
+  const file = document.getElementById('emp-logo-file').files[0];
+  if(!file) return null;
+  const ext = file.name.split('.').pop();
+  const path = `${empId}.${ext}`;
+  const { error } = await sbClient.storage.from('logos').upload(path, file, { upsert: true });
+  if(error) throw error;
+  const { data } = sbClient.storage.from('logos').getPublicUrl(path);
+  return data.publicUrl + '?t=' + Date.now();
+}
+
 function openEmpresaModal(id=null){
   document.getElementById('mod-emp-title').textContent=id?'Editar Empresa':'Nueva Empresa Cliente';
   document.getElementById('emp-id').value='';
@@ -1175,6 +1206,10 @@ function openEmpresaModal(id=null){
       renderEmpChips('proyectos');
       empColorSel=e.color||EMPRESA_COLORS[0];
       buildColorPicker(empColorSel);
+      const preview = document.getElementById('emp-logo-preview');
+      if(e.logo){ preview.src = e.logo; preview.style.display='block'; }
+      else { preview.src=''; preview.style.display='none'; }
+      document.getElementById('emp-logo-file').value = '';
     }
   }
   openModal('modal-empresa');
@@ -1188,7 +1223,11 @@ async function saveEmpresa(){
   if(id){const i=DB.empresas.findIndex(e=>e.id===id);DB.empresas[i]={...DB.empresas[i],...data};showToast('Empresa actualizada ✓')}
   else{DB.empresas.push({id:uid(),...data,etapas:DEFAULT_ETAPAS.map(e=>({...e,id:uid()}))});showToast('Empresa creada ✓')}
   const _eObj=id?DB.empresas.find(e=>e.id===id):DB.empresas[DB.empresas.length-1];
-  if(_eObj)await saveRecord('empresas',_eObj);
+  if(_eObj){
+    const logoUrl = await uploadEmpLogo(_eObj.id);
+    if(logoUrl) _eObj.logo = logoUrl;
+    await saveRecord('empresas',_eObj);
+  }
   closeModal('modal-empresa');
   renderPage(document.querySelector('.page.active').id.replace('page-',''));
 }
@@ -1964,6 +2003,8 @@ function renderDashboard(){
     const val=cands.filter(c=>c.etapa==='Validado').length;
     return`<div class="empresa-card" onclick="openEmpresaDetail('${e.id}')">
       <div class="ec-accent" style="background:${e.color||'var(--accent)'}"></div>
+      ${e.logo?`<img src="${e.logo}" style="width:36px;height:36px;object-fit:contain;border-radius:6px;margin-bottom:6px">`:
+      `<div style="width:36px;height:36px;border-radius:6px;background:${e.color||'var(--accent)'}22;display:flex;align-items:center;justify-content:center;margin-bottom:6px;font-size:16px;font-weight:700;color:${e.color||'var(--accent)'};">${e.nombre.charAt(0)}</div>`}
       <div class="ec-name">${e.nombre}</div>
       <div class="ec-sector">${e.sector||'Sin sector'}</div>
       <div class="ec-stats">

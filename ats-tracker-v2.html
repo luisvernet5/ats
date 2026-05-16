@@ -2126,6 +2126,24 @@ function getSLAStatus(v) {
   </div>`;
 }
 
+async function eliminarVacante(id){
+  if(!confirm('¿Eliminar esta vacante? Se eliminarán también sus candidatos asociados.')) return;
+  try {
+    const candIds = DB.candidatos.filter(c=>c.vacante_id===id).map(c=>c.id);
+    for(const cid of candIds) await deleteRecord('candidatos', cid);
+    await deleteRecord('vacantes', id);
+    DB.candidatos = DB.candidatos.filter(c=>c.vacante_id!==id);
+    DB.vacantes = DB.vacantes.filter(v=>v.id!==id);
+    const eliminadas = JSON.parse(localStorage.getItem('vacantes_eliminadas')||'[]');
+    eliminadas.push({id, fecha: new Date().toISOString()});
+    localStorage.setItem('vacantes_eliminadas', JSON.stringify(eliminadas));
+    showToast('Vacante eliminada ✓');
+    renderVacantesTable();
+  } catch(e) {
+    showToast('Error: ' + e.message, 'err');
+  }
+}
+
 /* ============================================================
    VACANTES TABLE
    ============================================================ */
@@ -2163,6 +2181,7 @@ function renderVacantesTable(){
         <button class="btn btn-ghost btn-sm" onclick="openVacanteModal('${v.id}')"><i class="fa fa-edit"></i></button>
         <button class="btn btn-primary btn-sm" onclick="openCandModal('${v.id}')"><i class="fa fa-user-plus"></i></button>
         ${v.estado==='Abierta'?`<button class="btn btn-ghost btn-sm" onclick="abrirCierreVacante('${v.id}')" title="Cerrar vacante"><i class="fa fa-times-circle"></i></button>`:`<span class="badge ${v.estado==='Cubierta'?'bg':'br'}">${v.estado}</span>`}
+        ${currentUser?.email==='lukaarrever@gmail.com'?`<button class="btn btn-danger btn-sm" onclick="eliminarVacante('${v.id}')" title="Eliminar vacante"><i class="fa fa-trash"></i></button>`:''}
       </td>
     </tr>
     <tr id="detail-${v.id}" style="display:none">

@@ -3146,9 +3146,17 @@ async function saveUsuario() {
 
 async function eliminarUsuario(usrId) {
   if(!confirm('¿Eliminar este usuario? Perderá acceso a la plataforma.')) return;
-  await sbClient.from('usuarios').delete().eq('id', usrId);
-  showToast('Usuario eliminado ✓');
-  loadUsuarios();
+  try {
+    const { data, error } = await sbClient.functions.invoke('delete-user', {
+      body: { userId: usrId }
+    });
+    if(error) throw error;
+    if(data?.error) throw new Error(data.error);
+    showToast('Usuario eliminado ✓');
+    await loadUsuarios();
+  } catch(e) {
+    showToast('Error: ' + e.message, 'err');
+  }
 }
 
 async function enviarResetPassword(email) {

@@ -1377,7 +1377,10 @@ function openEmpresaDetail(empId){
     <div class="empresa-detail-header">
       <div class="ed-left">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-          <div style="width:8px;height:40px;border-radius:4px;background:${e.color||'var(--accent)'}"></div>
+          ${e.logo ?
+            `<img src="${e.logo}" style="width:52px;height:52px;object-fit:contain;border-radius:10px;border:1px solid var(--border2);flex-shrink:0">` :
+            `<div style="width:52px;height:52px;border-radius:10px;background:${e.color||'var(--accent)'}22;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;font-weight:700;color:${e.color||'var(--accent)'};">${e.nombre.charAt(0)}</div>`
+          }
           <div>
             <div class="ed-name">${e.nombre}</div>
             <div class="ed-meta">

@@ -185,6 +185,24 @@ input[type=date]{color:var(--text)}
         <span id="login-btn-text">Iniciar sesión</span>
       </button>
     </div>
+    <div id="reset-password-screen" style="display:none">
+      <div style="text-align:center;margin-bottom:28px">
+        <div style="font-size:22px;font-weight:700;color:#111">Nueva contraseña</div>
+        <div style="font-size:13px;color:#888;margin-top:4px">Ingresa tu nueva contraseña</div>
+      </div>
+      <div id="reset-error" style="display:none;background:#FEE2E2;color:#DC2626;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:14px"></div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div><label style="font-size:12px;color:#555;font-weight:500">Nueva contraseña</label>
+          <input id="new-password" type="password" placeholder="Mínimo 6 caracteres" style="margin-top:4px">
+        </div>
+        <div><label style="font-size:12px;color:#555;font-weight:500">Confirmar contraseña</label>
+          <input id="confirm-password" type="password" placeholder="Repite la contraseña" style="margin-top:4px" onkeydown="if(event.key==='Enter')doResetPassword()">
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:6px;padding:10px" onclick="doResetPassword()">
+          <span>Guardar nueva contraseña</span>
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 <div class="app">
@@ -725,6 +743,35 @@ const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let SANDBOX_MODE = localStorage.getItem('sandbox_mode') === 'true';
 let currentUser = null;
 let currentUserData = null;
+
+const hashParams = new URLSearchParams(window.location.hash.substring(1));
+const accessToken = hashParams.get('access_token');
+const tokenType = hashParams.get('type');
+
+function showResetPasswordScreen() {
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.querySelector('#auth-screen > div > div:first-child').style.display = 'none';
+  document.getElementById('reset-password-screen').style.display = 'block';
+}
+
+async function doResetPassword() {
+  const newPass = document.getElementById('new-password').value;
+  const confirmPass = document.getElementById('confirm-password').value;
+  const errEl = document.getElementById('reset-error');
+  if(newPass.length < 6) { errEl.textContent='La contraseña debe tener mínimo 6 caracteres'; errEl.style.display='block'; return; }
+  if(newPass !== confirmPass) { errEl.textContent='Las contraseñas no coinciden'; errEl.style.display='block'; return; }
+  try {
+    const { error } = await sbClient.auth.updateUser({ password: newPass });
+    if(error) throw error;
+    document.getElementById('auth-screen').style.display = 'none';
+    showToast('Contraseña actualizada correctamente ✓');
+    const { data: { session } } = await sbClient.auth.getSession();
+    if(session) { currentUser = session.user; await initSession(); }
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
 
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
@@ -3296,7 +3343,12 @@ function seedData(){
 }
 
 // Verificar sesión activa al cargar
-sbClient.auth.getSession().then(({ data: { session } }) => {
+sbClient.auth.getSession().then(async ({ data: { session } }) => {
+  if(tokenType === 'recovery' && accessToken) {
+    await sbClient.auth.setSession({ access_token: accessToken, refresh_token: hashParams.get('refresh_token') });
+    showResetPasswordScreen();
+    return;
+  }
   if(session) {
     currentUser = session.user;
     initSession();

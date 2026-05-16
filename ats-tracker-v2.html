@@ -1424,6 +1424,8 @@ function openEmpresaDetail(empId){
         <button class="btn btn-primary btn-sm" id="atab-general-${empId}" onclick="switchAnalyticsTab('${empId}','general')">General</button>
         <button class="btn btn-ghost btn-sm" id="atab-depto-${empId}" onclick="switchAnalyticsTab('${empId}','depto')">Por departamento</button>
         <button class="btn btn-ghost btn-sm" id="atab-proyecto-${empId}" onclick="switchAnalyticsTab('${empId}','proyecto')">Por proyecto</button>
+        <button class="btn btn-ghost btn-sm" id="atab-desercion-${empId}" onclick="switchAnalyticsTab('${empId}','desercion')">Deserción</button>
+        <button class="btn btn-ghost btn-sm" id="atab-top-vacantes-${empId}" onclick="switchAnalyticsTab('${empId}','top-vacantes')">Top vacantes</button>
       </div>
       <div id="analytics-content-${empId}"></div>
     </div>
@@ -1447,11 +1449,19 @@ function toggleVacRow(vid){
 }
 
 function switchAnalyticsTab(empId, tab) {
-  ['general','depto','proyecto'].forEach(t => {
+  ['general','depto','proyecto','desercion','top-vacantes'].forEach(t => {
     const btn = document.getElementById(`atab-${t}-${empId}`);
     if(btn) btn.className = `btn btn-sm ${t===tab?'btn-primary':'btn-ghost'}`;
   });
-  renderAnalyticsTab(empId, tab);
+  if(tab==='desercion'||tab==='top-vacantes') {
+    renderAnalyticsTab(empId,'general');
+    document.getElementById('emp-tab-desercion-'+empId).style.display='none';
+    document.getElementById('emp-tab-top-vacantes-'+empId).style.display='none';
+    if(tab==='desercion') document.getElementById('emp-tab-desercion-'+empId).style.display='block';
+    if(tab==='top-vacantes') document.getElementById('emp-tab-top-vacantes-'+empId).style.display='block';
+  } else {
+    renderAnalyticsTab(empId, tab);
+  }
 }
 
 function renderAnalyticsTab(empId, tab) {
@@ -1504,18 +1514,16 @@ function renderAnalyticsTab(empId, tab) {
         <div class="card"><div class="card-title">Días prom. cliente valida</div><div class="card-value" style="color:var(--purple)">${avgCli||'—'}</div></div>
         <div class="card"><div class="card-title">Tasa deserción</div><div class="card-value" style="color:var(--red)">${allCands.length?Math.round(desertores.length/allCands.length*100):0}%</div></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-        <div>
-          <div class="sec-title">Top motivos de deserción</div>
-          <div class="table-wrap"><table>
-            <thead><tr><th>Motivo</th><th style="text-align:center">Casos</th></tr></thead>
-            <tbody>${topMotivos.length ? topMotivos.map(([m,n])=>`<tr><td>${m}</td><td style="text-align:center;color:var(--red);font-weight:500">${n}</td></tr>`).join('') : '<tr><td colspan="2" style="text-align:center;color:var(--text3);padding:16px">Sin deserciones</td></tr>'}</tbody>
-          </table></div>
-        </div>
-        <div>
-          <div class="sec-title">Vacante con más candidatos</div>
-          <div class="card" style="font-size:15px;font-weight:600">${vacMasCands ? vacMasCands.v.nombre+' — '+vacMasCands.n+' candidatos' : '—'}</div>
-        </div>
+      <div id="emp-tab-desercion-${empId}" style="display:none">
+        <div class="sec-title">Top motivos de deserción</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Motivo</th><th style="text-align:center">Casos</th></tr></thead>
+          <tbody>${topMotivos.length ? topMotivos.map(([m,n])=>`<tr><td>${m}</td><td style="text-align:center;color:var(--red);font-weight:500">${n}</td></tr>`).join('') : '<tr><td colspan="2" style="text-align:center;color:var(--text3);padding:16px">Sin deserciones</td></tr>'}</tbody>
+        </table></div>
+      </div>
+      <div id="emp-tab-top-vacantes-${empId}" style="display:none">
+        <div class="sec-title">Vacante con más candidatos</div>
+        <div class="card" style="font-size:15px;font-weight:600">${vacMasCands ? vacMasCands.v.nombre+' — '+vacMasCands.n+' candidatos' : '—'}</div>
       </div>`;
     return;
   }

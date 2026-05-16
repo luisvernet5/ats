@@ -1916,24 +1916,28 @@ function getChain(id){
    DASHBOARD
    ============================================================ */
 function renderDashboard(){
-  const vacAct=DB.vacantes.filter(v=>v.estado==='Abierta').length;
-  const activos=DB.candidatos.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length;
-  const validados=DB.candidatos.filter(c=>c.etapa==='Validado').length;
-  const dArr=DB.candidatos.filter(c=>c.etapa==='Validado'&&processTotal(c)).map(c=>processTotal(c));
+  const recId = currentUserData?.rol === 'reclutador' ? currentUserData?.reclutador_id : null;
+  const vacantes = recId ? DB.vacantes.filter(v=>v.reclutador_id===recId) : DB.vacantes;
+  const candidatos = recId ? DB.candidatos.filter(c=>vacantes.find(v=>v.id===c.vacante_id)) : DB.candidatos;
+  const empresas = recId ? DB.empresas.filter(e=>vacantes.find(v=>v.empresa_id===e.id)) : DB.empresas;
+  const vacAct=vacantes.filter(v=>v.estado==='Abierta').length;
+  const activos=candidatos.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length;
+  const validados=candidatos.filter(c=>c.etapa==='Validado').length;
+  const dArr=candidatos.filter(c=>c.etapa==='Validado'&&processTotal(c)).map(c=>processTotal(c));
   const avgD=dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):null;
 
   document.getElementById('dash-kpis').innerHTML=`
-    <div class="card"><div class="card-title">Vacantes activas</div><div class="card-value">${vacAct}</div><div class="card-sub">de ${DB.vacantes.length} total</div></div>
-    <div class="card"><div class="card-title">Empresas cliente</div><div class="card-value">${DB.empresas.length}</div><div class="card-sub">con proceso activo</div></div>
+    <div class="card"><div class="card-title">Vacantes activas</div><div class="card-value">${vacAct}</div><div class="card-sub">de ${vacantes.length} total</div></div>
+    <div class="card"><div class="card-title">Empresas cliente</div><div class="card-value">${empresas.length}</div><div class="card-sub">con proceso activo</div></div>
     <div class="card"><div class="card-title">Candidatos colocados</div><div class="card-value" style="color:var(--green)">${validados}</div></div>
     <div class="card"><div class="card-title">Días prom. cobertura</div><div class="card-value" style="color:var(--amber)">${avgD||'—'}</div></div>
   `;
 
   // Empresas cards in dashboard
   const empEl=document.getElementById('dash-empresas');
-  if(!DB.empresas.length){empEl.innerHTML='<div style="color:var(--text3);font-size:13px;grid-column:1/-1;padding:16px">Sin empresas registradas. <button class="btn btn-primary btn-sm" onclick="nav(\'empresas\')">Agregar empresa</button></div>';return;}
-  empEl.innerHTML=DB.empresas.map(e=>{
-    const vacs=DB.vacantes.filter(v=>v.empresa_id===e.id);
+  if(!empresas.length){empEl.innerHTML='<div style="color:var(--text3);font-size:13px;grid-column:1/-1;padding:16px">Sin empresas registradas. <button class="btn btn-primary btn-sm" onclick="nav(\'empresas\')">Agregar empresa</button></div>';return;}
+  empEl.innerHTML=empresas.map(e=>{
+    const vacs=vacantes.filter(v=>v.empresa_id===e.id);
     const vacAct=vacs.filter(v=>v.estado==='Abierta').length;
     const cands=DB.candidatos.filter(c=>vacs.find(v=>v.id===c.vacante_id));
     const val=cands.filter(c=>c.etapa==='Validado').length;
@@ -1952,7 +1956,7 @@ function renderDashboard(){
   // Charts
   // Etapas - aggregate all company etapas
   const etapaLabels={};
-  DB.candidatos.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).forEach(c=>{etapaLabels[c.etapa]=(etapaLabels[c.etapa]||0)+1;});
+  candidatos.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).forEach(c=>{etapaLabels[c.etapa]=(etapaLabels[c.etapa]||0)+1;});
   const etKeys=Object.keys(etapaLabels);
   destroyChart('chEtapas');
   charts['chEtapas']=new Chart(document.getElementById('chEtapas'),{
@@ -1961,7 +1965,7 @@ function renderDashboard(){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#9090A0',font:{size:11},boxWidth:10,padding:10}}}}
   });
 
-  const desertores=DB.candidatos.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
+  const desertores=candidatos.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
   const motCount={};
   MOTIVOS.forEach(m=>{const n=desertores.filter(c=>c.motivo_desercion===m).length;if(n)motCount[m]=n;});
   const topMot=Object.entries(motCount).sort((a,b)=>b[1]-a[1]).slice(0,6);

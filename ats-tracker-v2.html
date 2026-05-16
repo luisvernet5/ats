@@ -2147,6 +2147,15 @@ function getSLAStatus(v) {
   </div>`;
 }
 
+function borrarVacantePermanente(vacId){
+  if(!confirm('¿Eliminar permanentemente? Esta acción no se puede deshacer.')) return;
+  const eliminadas = JSON.parse(localStorage.getItem('vacantes_eliminadas')||'[]');
+  const nuevas = eliminadas.filter(x=>x.id!==vacId);
+  localStorage.setItem('vacantes_eliminadas', JSON.stringify(nuevas));
+  showToast('Eliminada permanentemente ✓');
+  renderVacantesEliminadas();
+}
+
 function renderVacantesEliminadas(){
   const page = document.getElementById('page-vacantes-eliminadas');
   if(!page) return;
@@ -2179,6 +2188,9 @@ function renderVacantesEliminadas(){
         <td>
           <button class="btn btn-green btn-sm" onclick="event.stopPropagation();reactivarVacante('${item.id}')">
             <i class="fa fa-undo"></i> Reactivar
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();borrarVacantePermanente('${item.id}')">
+            <i class="fa fa-trash"></i>
           </button>
         </td>
       </tr>

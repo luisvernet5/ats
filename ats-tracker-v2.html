@@ -1224,8 +1224,12 @@ async function saveEmpresa(){
   else{DB.empresas.push({id:uid(),...data,etapas:DEFAULT_ETAPAS.map(e=>({...e,id:uid()}))});showToast('Empresa creada ✓')}
   const _eObj=id?DB.empresas.find(e=>e.id===id):DB.empresas[DB.empresas.length-1];
   if(_eObj){
-    const logoUrl = await uploadEmpLogo(_eObj.id);
-    if(logoUrl) _eObj.logo = logoUrl;
+    try {
+      const logoUrl = await uploadEmpLogo(_eObj.id);
+      if(logoUrl) _eObj.logo = logoUrl;
+    } catch(e) {
+      showToast('Error subiendo logo: ' + e.message, 'err');
+    }
     await saveRecord('empresas',_eObj);
   }
   closeModal('modal-empresa');
@@ -1261,6 +1265,8 @@ function renderEmpresas(){
     const validados=cands.filter(c=>c.etapa==='Validado').length;
     return`<div class="empresa-card" onclick="openEmpresaDetail('${e.id}')">
       <div class="ec-accent" style="background:${e.color||'var(--accent)'}"></div>
+      ${e.logo?`<img src="${e.logo}" style="width:40px;height:40px;object-fit:contain;border-radius:8px;margin-bottom:8px;border:1px solid var(--border)">`:
+      `<div style="width:40px;height:40px;border-radius:8px;background:${e.color||'var(--accent)'}22;display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:18px;font-weight:700;color:${e.color||'var(--accent)'};">${e.nombre.charAt(0)}</div>`}
       <div class="ec-name">${e.nombre}</div>
       <div class="ec-sector">${e.sector||'Sin sector'} ${e.dir?'· '+e.dir:''}</div>
       <div class="ec-stats">

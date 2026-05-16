@@ -808,10 +808,12 @@ async function initSession() {
 function adaptUIToRole() {
   const rol = currentUserData?.rol || 'admin';
   const sb = document.querySelector('.sb-logo');
-  if(sb) sb.innerHTML += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
-    <div style="font-size:11px;color:var(--text2);font-weight:500">${currentUserData.nombre||currentUser.email}</div>
-    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">${rol}</div>
-  </div>`;
+  if(sb && !document.getElementById('user-info-sidebar')) {
+    sb.innerHTML += `<div id="user-info-sidebar" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--text2);font-weight:500">${currentUserData.nombre||currentUser.email}</div>
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">${rol}</div>
+    </div>`;
+  }
   if(rol === 'rh_cliente') {
     ['nav-empresas','nav-pipeline','nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-config'].forEach(id => {
       const el = document.getElementById(id); if(el) el.style.display='none';
@@ -823,11 +825,13 @@ function adaptUIToRole() {
     });
   }
   const nav = document.querySelector('.sb-nav');
-  if(nav) nav.innerHTML += `<div style="padding:12px 18px;margin-top:auto;border-top:1px solid var(--border)">
-    <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick="doLogout()">
-      <i class="fa fa-sign-out-alt"></i> Cerrar sesión
-    </button>
-  </div>`;
+  if(nav && !document.getElementById('logout-btn')) {
+    nav.innerHTML += `<div style="padding:12px 18px;border-top:1px solid var(--border)">
+      <button id="logout-btn" class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick="doLogout()">
+        <i class="fa fa-sign-out-alt"></i> Cerrar sesión
+      </button>
+    </div>`;
+  }
 }
 
 async function doLogout() {

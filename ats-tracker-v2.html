@@ -2155,11 +2155,10 @@ function renderVacantesEliminadas(){
     page.innerHTML='<div style="padding:24px 28px"><div style="color:var(--text3);font-size:13px">No hay vacantes eliminadas.</div></div>';
     return;
   }
-  const cards = eliminadas.map(item=>{
-    const v = item.vacante;
-    if(!v) return '';
-    const emp = item.empresa || {};
-    const cands = item.candidatos || [];
+  const rows = eliminadas.map(item=>{
+    const v = item.vacante||{};
+    const emp = item.empresa||{};
+    const cands = item.candidatos||[];
     const fecha = item.fecha ? new Date(item.fecha).toLocaleDateString('es-MX') : '—';
     const candRows = cands.length ? cands.map(c=>`
       <tr>
@@ -2169,27 +2168,51 @@ function renderVacantesEliminadas(){
         <td>${c.fuente||'—'}</td>
         <td>${c.notas||'—'}</td>
       </tr>`).join('') : `<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:12px">Sin candidatos</td></tr>`;
-    return`<div class="card" style="margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-        <div>
-          <div style="font-size:15px;font-weight:600;color:var(--text)">${v.nombre||'—'}</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:2px">${emp.nombre||'—'} · ${v.folio||'Sin folio'} · Eliminada: ${fecha}</div>
-        </div>
-        <button class="btn btn-green btn-sm" onclick="reactivarVacante('${item.id}')"><i class="fa fa-undo"></i> Reactivar</button>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
-        <div class="card" style="padding:10px 14px"><div class="card-title">Estado original</div><div style="font-size:13px;font-weight:500">${v.estado||'—'}</div></div>
-        <div class="card" style="padding:10px 14px"><div class="card-title">Salario</div><div style="font-size:13px;font-weight:500">${v.salario||'—'}</div></div>
-        <div class="card" style="padding:10px 14px"><div class="card-title">Apertura</div><div style="font-size:13px;font-weight:500">${v.fecha_apertura||'—'}</div></div>
-        <div class="card" style="padding:10px 14px"><div class="card-title">Candidatos</div><div style="font-size:13px;font-weight:500">${cands.length}</div></div>
-      </div>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Candidato</th><th>Etapa</th><th>Contacto</th><th>Fuente</th><th>Notas</th></tr></thead>
-        <tbody>${candRows}</tbody>
-      </table></div>
-    </div>`;
+    return`
+      <tr style="cursor:pointer" onclick="toggleVacEliminada('${item.id}')">
+        <td class="td-p">${v.nombre||'—'}</td>
+        <td>${emp.nombre||'—'}</td>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td>
+        <td>${v.estado||'—'}</td>
+        <td>${fecha}</td>
+        <td>${cands.length}</td>
+        <td>
+          <button class="btn btn-green btn-sm" onclick="event.stopPropagation();reactivarVacante('${item.id}')">
+            <i class="fa fa-undo"></i> Reactivar
+          </button>
+        </td>
+      </tr>
+      <tr id="veli-${item.id}" style="display:none">
+        <td colspan="7" style="padding:0;background:var(--surface2)">
+          <div style="padding:16px 20px">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+              <div class="card" style="padding:10px 14px"><div class="card-title">Salario</div><div style="font-size:13px;font-weight:500">${v.salario||'—'}</div></div>
+              <div class="card" style="padding:10px 14px"><div class="card-title">Apertura</div><div style="font-size:13px;font-weight:500">${v.fecha_apertura||'—'}</div></div>
+              <div class="card" style="padding:10px 14px"><div class="card-title">Tipo</div><div style="font-size:13px;font-weight:500">${v.tipo_vacante||'—'}</div></div>
+              <div class="card" style="padding:10px 14px"><div class="card-title">Candidatos</div><div style="font-size:13px;font-weight:500">${cands.length}</div></div>
+            </div>
+            <div class="table-wrap"><table>
+              <thead><tr><th>Candidato</th><th>Etapa</th><th>Contacto</th><th>Fuente</th><th>Notas</th></tr></thead>
+              <tbody>${candRows}</tbody>
+            </table></div>
+          </div>
+        </td>
+      </tr>`;
   }).join('');
-  page.innerHTML=`<div style="padding:24px 28px">${cards}</div>`;
+  page.innerHTML=`<div style="padding:24px 28px">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Vacante</th><th>Empresa</th><th>Folio</th><th>Estado</th><th>Eliminada</th><th>Cands.</th><th>Acción</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function toggleVacEliminada(id){
+  const row = document.getElementById('veli-'+id);
+  if(!row) return;
+  row.style.display = row.style.display==='none' ? 'table-row' : 'none';
 }
 
 async function reactivarVacante(vacId){

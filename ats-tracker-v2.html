@@ -833,7 +833,7 @@ function adaptUIToRole() {
         item.className = 'nav-item';
         item.id = 'nav-vacantes-eliminadas';
         item.innerHTML = '<i class="fa fa-trash-restore"></i> Vacantes eliminadas';
-        item.onclick = () => showPage('vacantes-eliminadas');
+        item.setAttribute('onclick', "showPage('vacantes-eliminadas')");
         configItem.parentNode.insertBefore(item, configItem);
       }
     }

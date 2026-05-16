@@ -824,6 +824,26 @@ function adaptUIToRole() {
       const el = document.getElementById(id); if(el) el.style.display='none';
     });
   }
+  if(currentUser?.email==='lukaarrever@gmail.com') {
+    const navEl = document.querySelector('.sb-nav');
+    if(navEl && !document.getElementById('nav-vacantes-eliminadas')) {
+      const configItem = document.getElementById('nav-config');
+      if(configItem) {
+        const item = document.createElement('div');
+        item.className = 'nav-item';
+        item.id = 'nav-vacantes-eliminadas';
+        item.innerHTML = '<i class="fa fa-trash-restore"></i> Vacantes eliminadas';
+        item.onclick = () => showPage('vacantes-eliminadas');
+        configItem.parentNode.insertBefore(item, configItem);
+      }
+    }
+    if(!document.getElementById('page-vacantes-eliminadas')) {
+      const page = document.createElement('div');
+      page.className = 'page';
+      page.id = 'page-vacantes-eliminadas';
+      document.querySelector('.main').appendChild(page);
+    }
+  }
   const nav = document.querySelector('.sb-nav');
   if(nav && !document.getElementById('logout-btn')) {
     nav.innerHTML += `<div style="padding:12px 18px;border-top:1px solid var(--border)">
@@ -993,7 +1013,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);
@@ -1009,6 +1029,7 @@ function renderPage(p){
   if(p==='ranking')renderRanking();
   if(p==='desercion')renderDesercion();
   if(p==='config')renderConfig();
+  if(p==='vacantes-eliminadas')renderVacantesEliminadas();
 }
 
 /* ============================================================
@@ -2124,6 +2145,73 @@ function getSLAStatus(v) {
     </div>
     <div style="font-size:10px;color:var(--text3);margin-top:2px">de ${v.sla_dias}d límite</div>
   </div>`;
+}
+
+function renderVacantesEliminadas(){
+  const page = document.getElementById('page-vacantes-eliminadas');
+  if(!page) return;
+  const eliminadas = JSON.parse(localStorage.getItem('vacantes_eliminadas')||'[]');
+  if(!eliminadas.length){
+    page.innerHTML='<div style="padding:24px 28px"><div style="color:var(--text3);font-size:13px">No hay vacantes eliminadas.</div></div>';
+    return;
+  }
+  const cards = eliminadas.map(item=>{
+    const v = item.vacante;
+    if(!v) return '';
+    const emp = item.empresa || {};
+    const cands = item.candidatos || [];
+    const fecha = item.fecha ? new Date(item.fecha).toLocaleDateString('es-MX') : '—';
+    const candRows = cands.length ? cands.map(c=>`
+      <tr>
+        <td class="td-p">${c.nombre||'—'}</td>
+        <td>${c.etapa||'—'}</td>
+        <td>${c.contacto||'—'}</td>
+        <td>${c.fuente||'—'}</td>
+        <td>${c.notas||'—'}</td>
+      </tr>`).join('') : `<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:12px">Sin candidatos</td></tr>`;
+    return`<div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <div>
+          <div style="font-size:15px;font-weight:600;color:var(--text)">${v.nombre||'—'}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">${emp.nombre||'—'} · ${v.folio||'Sin folio'} · Eliminada: ${fecha}</div>
+        </div>
+        <button class="btn btn-green btn-sm" onclick="reactivarVacante('${item.id}')"><i class="fa fa-undo"></i> Reactivar</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+        <div class="card" style="padding:10px 14px"><div class="card-title">Estado original</div><div style="font-size:13px;font-weight:500">${v.estado||'—'}</div></div>
+        <div class="card" style="padding:10px 14px"><div class="card-title">Salario</div><div style="font-size:13px;font-weight:500">${v.salario||'—'}</div></div>
+        <div class="card" style="padding:10px 14px"><div class="card-title">Apertura</div><div style="font-size:13px;font-weight:500">${v.fecha_apertura||'—'}</div></div>
+        <div class="card" style="padding:10px 14px"><div class="card-title">Candidatos</div><div style="font-size:13px;font-weight:500">${cands.length}</div></div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Candidato</th><th>Etapa</th><th>Contacto</th><th>Fuente</th><th>Notas</th></tr></thead>
+        <tbody>${candRows}</tbody>
+      </table></div>
+    </div>`;
+  }).join('');
+  page.innerHTML=`<div style="padding:24px 28px">${cards}</div>`;
+}
+
+async function reactivarVacante(vacId){
+  if(!confirm('¿Reactivar esta vacante? Se restaurará con estado Abierta.')) return;
+  try {
+    const eliminadas = JSON.parse(localStorage.getItem('vacantes_eliminadas')||'[]');
+    const item = eliminadas.find(x=>x.id===vacId);
+    if(!item) return;
+    const v = {...item.vacante, estado:'Abierta'};
+    await saveRecord('vacantes', v);
+    DB.vacantes.push(v);
+    for(const c of (item.candidatos||[])){
+      await saveRecord('candidatos', c);
+      DB.candidatos.push(c);
+    }
+    const nuevas = eliminadas.filter(x=>x.id!==vacId);
+    localStorage.setItem('vacantes_eliminadas', JSON.stringify(nuevas));
+    showToast('Vacante reactivada ✓');
+    renderVacantesEliminadas();
+  } catch(e) {
+    showToast('Error: ' + e.message, 'err');
+  }
 }
 
 async function eliminarVacante(id){

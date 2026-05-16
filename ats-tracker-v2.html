@@ -695,6 +695,7 @@ input[type=date]{color:var(--text)}
           <select id="usr-empresa-sel"><option value="">Seleccionar empresa...</option></select>
         </div>
       </div>
+      <div id="usr-edit-note" style="display:none" class="alert alert-i"></div>
     </div>
     <div class="mf">
       <button class="btn btn-ghost" onclick="closeModal('modal-usuario')">Cancelar</button>
@@ -3013,6 +3014,7 @@ function openUsuarioModal(usrId=null) {
   document.getElementById('usr-new-instructions').style.display = usrId ? 'none' : 'flex';
   document.getElementById('usr-invite-row').style.display = usrId ? 'none' : 'grid';
   document.getElementById('usr-uuid-field').style.display = usrId ? 'none' : 'grid';
+  document.getElementById('usr-edit-note').style.display = usrId ? 'flex' : 'none';
   if(!usrId) {
     document.getElementById('usr-send-invite').checked = false;
     document.getElementById('usr-uuid').value = '';
@@ -3036,6 +3038,16 @@ function openUsuarioModal(usrId=null) {
       onUsrRolChange();
       if(data.reclutador_id) document.getElementById('usr-reclutador-sel').value = data.reclutador_id;
       if(data.empresa_id) document.getElementById('usr-empresa-sel').value = data.empresa_id;
+      document.getElementById('usr-edit-note').innerHTML = `
+        <i class="fa fa-info-circle"></i>
+        <div>
+          <div>La contraseña se gestiona directamente en Supabase.</div>
+          <div style="margin-top:6px">
+            <button class="btn btn-ghost btn-sm" onclick="enviarResetPassword('${data.email}')">
+              <i class="fa fa-key"></i> Enviar reset de contraseña por email
+            </button>
+          </div>
+        </div>`;
     });
   }
   openModal('modal-usuario');
@@ -3088,6 +3100,19 @@ async function eliminarUsuario(usrId) {
   loadUsuarios();
 }
 
+async function enviarResetPassword(email) {
+  if(!confirm(`¿Enviar email de reset de contraseña a ${email}?`)) return;
+  try {
+    const { error } = await sbClient.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://ats-five-black.vercel.app/ats-tracker-v2.html'
+    });
+    if(error) throw error;
+    showToast('Email de reset enviado a ' + email + ' ✓');
+  } catch(e) {
+    showToast('Error: ' + e.message, 'err');
+  }
+}
+
 async function loadUsuarios() {
   const { data: usuarios } = await sbClient.from('usuarios').select('*');
   const list = usuarios || [];
@@ -3102,6 +3127,7 @@ async function loadUsuarios() {
       <td>${u.rol==='rh_cliente'?emp.nombre||u.empresa_id||'—':u.rol==='reclutador'?rec.nombre||u.reclutador_id||'—':'—'}</td>
       <td>
         <button class="btn btn-ghost btn-sm" onclick="openUsuarioModal('${u.id}')"><i class="fa fa-edit"></i></button>
+        <button class="btn btn-ghost btn-sm" onclick="enviarResetPassword('${u.email}')" title="Resetear contraseña"><i class="fa fa-key"></i></button>
         ${u.id !== currentUser?.id ? `<button class="btn btn-danger btn-sm" onclick="eliminarUsuario('${u.id}')"><i class="fa fa-trash"></i></button>` : '<span style="font-size:11px;color:var(--text3)">tú</span>'}
       </td>
     </tr>`;

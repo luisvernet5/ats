@@ -3030,15 +3030,17 @@ function renderConfig(){
   document.getElementById('config-rec-table').innerHTML=`<table><thead><tr><th>Nombre</th><th>Email</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:16px">Sin reclutadores</td></tr>'}</tbody></table>`;
   renderStageBuilder();
   if(currentUserData?.rol === 'admin') {
-    document.getElementById('page-config').insertAdjacentHTML('beforeend', `
-      <div style="margin-top:24px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <div class="sec-title" style="margin:0">Gestión de usuarios</div>
-          <button class="btn btn-primary btn-sm" onclick="openUsuarioModal()"><i class="fa fa-user-plus"></i> Nuevo usuario</button>
+    if(!document.getElementById('usuarios-table')) {
+      document.getElementById('page-config').insertAdjacentHTML('beforeend', `
+        <div style="margin-top:24px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <div class="sec-title" style="margin:0">Gestión de usuarios</div>
+            <button class="btn btn-primary btn-sm" onclick="openUsuarioModal()"><i class="fa fa-user-plus"></i> Nuevo usuario</button>
+          </div>
+          <div class="table-wrap" id="usuarios-table"></div>
         </div>
-        <div class="table-wrap" id="usuarios-table"></div>
-      </div>
-    `);
+      `);
+    }
     loadUsuarios();
   }
 }

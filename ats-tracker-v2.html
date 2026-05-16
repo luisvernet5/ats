@@ -1174,9 +1174,9 @@ async function uploadEmpLogo(empId){
   if(!file) return null;
   const ext = file.name.split('.').pop();
   const path = `${empId}.${ext}`;
-  const { error } = await sbClient.storage.from('logos').upload(path, file, { upsert: true });
+  const { error } = await sbClient.storage.from('Logos').upload(path, file, { upsert: true });
   if(error) throw error;
-  const { data } = sbClient.storage.from('logos').getPublicUrl(path);
+  const { data } = sbClient.storage.from('Logos').getPublicUrl(path);
   return data.publicUrl + '?t=' + Date.now();
 }
 

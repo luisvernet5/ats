@@ -2217,13 +2217,16 @@ async function reactivarVacante(vacId){
 async function eliminarVacante(id){
   if(!confirm('¿Eliminar esta vacante? Se eliminarán también sus candidatos asociados.')) return;
   try {
-    const candIds = DB.candidatos.filter(c=>c.vacante_id===id).map(c=>c.id);
-    for(const cid of candIds) await deleteRecord('candidatos', cid);
+    const v = DB.vacantes.find(x=>x.id===id);
+    if(!v) return;
+    const emp = DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const cands = DB.candidatos.filter(c=>c.vacante_id===id);
+    for(const cid of cands.map(c=>c.id)) await deleteRecord('candidatos', cid);
     await deleteRecord('vacantes', id);
     DB.candidatos = DB.candidatos.filter(c=>c.vacante_id!==id);
-    DB.vacantes = DB.vacantes.filter(v=>v.id!==id);
+    DB.vacantes = DB.vacantes.filter(x=>x.id!==id);
     const eliminadas = JSON.parse(localStorage.getItem('vacantes_eliminadas')||'[]');
-    eliminadas.push({id, fecha: new Date().toISOString()});
+    eliminadas.push({ id, fecha: new Date().toISOString(), vacante: v, empresa: emp, candidatos: cands });
     localStorage.setItem('vacantes_eliminadas', JSON.stringify(eliminadas));
     showToast('Vacante eliminada ✓');
     renderVacantesTable();

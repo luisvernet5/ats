@@ -651,7 +651,7 @@ input[type=date]{color:var(--text)}
       <input type="hidden" id="usr-id">
       <div id="usr-new-instructions" class="alert alert-i" style="margin-bottom:14px">
         <i class="fa fa-info-circle"></i>
-        <div>
+        <div id="usr-instructions-text">
           <div style="font-weight:500">Flujo para agregar usuario:</div>
           <div style="margin-top:4px">1. Crea el usuario en <a href="https://supabase.com/dashboard/project/opvqdknqfjiolkldmnrn/auth/users" target="_blank" style="color:var(--accent)">Supabase Auth</a> y copia su UUID</div>
           <div>2. Pega el UUID aquí y asigna el rol</div>
@@ -660,6 +660,14 @@ input[type=date]{color:var(--text)}
       <div class="fr">
         <div class="fg"><label>Nombre completo *</label><input id="usr-nombre" placeholder="Nombre"></div>
         <div class="fg"><label>Email *</label><input type="email" id="usr-email" placeholder="correo@empresa.com"></div>
+      </div>
+      <div class="fr full" id="usr-invite-row">
+        <div class="fg">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="usr-send-invite" onchange="toggleInviteMode()" style="width:auto;cursor:pointer">
+            <span>Enviar invitación por email <span style="font-size:10px;color:var(--text3)">(el usuario recibirá un correo para establecer su contraseña)</span></span>
+          </label>
+        </div>
       </div>
       <div class="fr full" id="usr-uuid-field">
         <div class="fg">
@@ -2991,14 +2999,11 @@ function onUsrRolChange() {
 
 function toggleInviteMode() {
   const sendInvite = document.getElementById('usr-send-invite').checked;
-  const passField = document.getElementById('usr-password');
-  const passParent = passField.closest('.fr');
-  if(sendInvite) {
-    passParent.style.display = 'none';
-    passField.value = '';
-  } else {
-    passParent.style.display = 'grid';
-  }
+  document.getElementById('usr-uuid-field').style.display = sendInvite ? 'none' : 'grid';
+  if(sendInvite) document.getElementById('usr-uuid').value = '';
+  document.getElementById('usr-instructions-text').innerHTML = sendInvite
+    ? '<div style="font-weight:500">Se enviará una invitación por email</div><div style="margin-top:4px">El usuario recibirá un enlace para establecer su contraseña y quedará registrado automáticamente.</div>'
+    : '<div style="font-weight:500">Flujo para agregar usuario:</div><div style="margin-top:4px">1. Crea el usuario en <a href="https://supabase.com/dashboard/project/opvqdknqfjiolkldmnrn/auth/users" target="_blank" style="color:var(--accent)">Supabase Auth</a> y copia su UUID</div><div>2. Pega el UUID aquí y asigna el rol</div>';
 }
 
 function openUsuarioModal(usrId=null) {
@@ -3006,8 +3011,13 @@ function openUsuarioModal(usrId=null) {
   document.getElementById('usr-id').value = usrId||'';
   document.getElementById('usr-save-btn').textContent = usrId ? 'Guardar cambios' : 'Registrar usuario';
   document.getElementById('usr-new-instructions').style.display = usrId ? 'none' : 'flex';
+  document.getElementById('usr-invite-row').style.display = usrId ? 'none' : 'grid';
   document.getElementById('usr-uuid-field').style.display = usrId ? 'none' : 'grid';
-  if(!usrId) document.getElementById('usr-uuid').value = '';
+  if(!usrId) {
+    document.getElementById('usr-send-invite').checked = false;
+    document.getElementById('usr-uuid').value = '';
+    toggleInviteMode();
+  }
   ['usr-nombre','usr-email'].forEach(i => document.getElementById(i).value='');
   document.getElementById('usr-rol').value = '';
   onUsrRolChange();
@@ -3043,6 +3053,18 @@ async function saveUsuario() {
   if(rol==='rh_cliente' && !empresa_id) { showToast('Selecciona la empresa', 'err'); return; }
   try {
     if(!usrId) {
+      const sendInvite = document.getElementById('usr-send-invite').checked;
+      if(sendInvite) {
+        const { data, error: fnError } = await sbClient.functions.invoke('invite-user', {
+          body: { email, nombre, rol, empresa_id, reclutador_id }
+        });
+        if(fnError) throw fnError;
+        if(data?.error) throw new Error(data.error);
+        showToast('Invitación enviada a ' + email + ' ✓');
+        closeModal('modal-usuario');
+        loadUsuarios();
+        return;
+      }
       const uuid = document.getElementById('usr-uuid').value.trim();
       if(!uuid) { showToast('Pega el UUID del usuario de Supabase Auth', 'err'); return; }
       const { error } = await sbClient.from('usuarios').insert({ id: uuid, nombre, email, rol, reclutador_id, empresa_id });

@@ -649,21 +649,22 @@ input[type=date]{color:var(--text)}
     <div class="mh"><h3 id="modal-usr-title">Nuevo usuario</h3><button class="xbtn" onclick="closeModal('modal-usuario')"><i class="fa fa-times"></i></button></div>
     <div class="mb">
       <input type="hidden" id="usr-id">
+      <div id="usr-new-instructions" class="alert alert-i" style="margin-bottom:14px">
+        <i class="fa fa-info-circle"></i>
+        <div>
+          <div style="font-weight:500">Flujo para agregar usuario:</div>
+          <div style="margin-top:4px">1. Crea el usuario en <a href="https://supabase.com/dashboard/project/opvqdknqfjiolkldmnrn/auth/users" target="_blank" style="color:var(--accent)">Supabase Auth</a> y copia su UUID</div>
+          <div>2. Pega el UUID aquí y asigna el rol</div>
+        </div>
+      </div>
       <div class="fr">
         <div class="fg"><label>Nombre completo *</label><input id="usr-nombre" placeholder="Nombre"></div>
         <div class="fg"><label>Email *</label><input type="email" id="usr-email" placeholder="correo@empresa.com"></div>
       </div>
-      <div class="fr full">
-        <div class="fg"><label>Contraseña * <span style="font-size:10px;color:var(--text3)">(mín. 6 caracteres)</span></label>
-          <input type="password" id="usr-password" placeholder="Contraseña temporal">
-        </div>
-      </div>
-      <div class="fr full" id="usr-invite-row">
+      <div class="fr full" id="usr-uuid-field">
         <div class="fg">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-            <input type="checkbox" id="usr-send-invite" onchange="toggleInviteMode()" style="width:auto;cursor:pointer">
-            <span>Enviar invitación por email <span style="font-size:10px;color:var(--text3)">(el usuario recibirá un correo para establecer su contraseña)</span></span>
-          </label>
+          <label>UUID del usuario * <span style="font-size:10px;color:var(--text3)">(cópialo de Supabase Auth)</span></label>
+          <input id="usr-uuid" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="font-family:var(--mono);font-size:12px">
         </div>
       </div>
       <div class="fr full">
@@ -686,7 +687,6 @@ input[type=date]{color:var(--text)}
           <select id="usr-empresa-sel"><option value="">Seleccionar empresa...</option></select>
         </div>
       </div>
-      <div id="usr-edit-note" style="display:none" class="alert alert-i"><i class="fa fa-info-circle"></i> En modo edición no se cambia la contraseña. Para resetearla ve a Supabase → Authentication.</div>
     </div>
     <div class="mf">
       <button class="btn btn-ghost" onclick="closeModal('modal-usuario')">Cancelar</button>
@@ -3004,13 +3004,11 @@ function toggleInviteMode() {
 function openUsuarioModal(usrId=null) {
   document.getElementById('modal-usr-title').textContent = usrId ? 'Editar usuario' : 'Nuevo usuario';
   document.getElementById('usr-id').value = usrId||'';
-  document.getElementById('usr-save-btn').textContent = usrId ? 'Guardar cambios' : 'Crear usuario';
-  document.getElementById('usr-edit-note').style.display = usrId ? 'flex' : 'none';
-  document.getElementById('usr-password').style.display = usrId ? 'none' : 'block';
-  document.getElementById('usr-invite-row').style.display = usrId ? 'none' : 'grid';
-  document.getElementById('usr-send-invite').checked = false;
-  document.getElementById('usr-password').closest('.fr').style.display = usrId ? 'none' : 'grid';
-  ['usr-nombre','usr-email','usr-password'].forEach(i => document.getElementById(i).value='');
+  document.getElementById('usr-save-btn').textContent = usrId ? 'Guardar cambios' : 'Registrar usuario';
+  document.getElementById('usr-new-instructions').style.display = usrId ? 'none' : 'flex';
+  document.getElementById('usr-uuid-field').style.display = usrId ? 'none' : 'grid';
+  if(!usrId) document.getElementById('usr-uuid').value = '';
+  ['usr-nombre','usr-email'].forEach(i => document.getElementById(i).value='');
   document.getElementById('usr-rol').value = '';
   onUsrRolChange();
   const recSel = document.getElementById('usr-reclutador-sel');
@@ -3038,7 +3036,6 @@ async function saveUsuario() {
   const nombre = document.getElementById('usr-nombre').value.trim();
   const email = document.getElementById('usr-email').value.trim();
   const rol = document.getElementById('usr-rol').value;
-  const password = document.getElementById('usr-password').value;
   if(!nombre || !email || !rol) { showToast('Completa nombre, email y rol', 'err'); return; }
   const reclutador_id = rol==='reclutador' ? document.getElementById('usr-reclutador-sel').value : null;
   const empresa_id = rol==='rh_cliente' ? document.getElementById('usr-empresa-sel').value : null;
@@ -3046,23 +3043,11 @@ async function saveUsuario() {
   if(rol==='rh_cliente' && !empresa_id) { showToast('Selecciona la empresa', 'err'); return; }
   try {
     if(!usrId) {
-      const sendInvite = document.getElementById('usr-send-invite').checked;
-      let newId;
-      if(sendInvite) {
-        const { data: authData, error: authError } = await sbClient.auth.admin.inviteUserByEmail(email);
-        if(authError) throw authError;
-        newId = authData.user.id;
-        showToast('Invitación enviada a ' + email + ' ✓');
-      } else {
-        if(password.length < 6) { showToast('La contraseña debe tener mínimo 6 caracteres', 'err'); return; }
-        const { data: authData, error: authError } = await sbClient.auth.admin.createUser({
-          email, password, email_confirm: true
-        });
-        if(authError) throw authError;
-        newId = authData.user.id;
-      }
-      await sbClient.from('usuarios').insert({ id: newId, nombre, email, rol, reclutador_id, empresa_id });
-      if(!sendInvite) showToast('Usuario creado ✓');
+      const uuid = document.getElementById('usr-uuid').value.trim();
+      if(!uuid) { showToast('Pega el UUID del usuario de Supabase Auth', 'err'); return; }
+      const { error } = await sbClient.from('usuarios').insert({ id: uuid, nombre, email, rol, reclutador_id, empresa_id });
+      if(error) { showToast('Error: UUID inválido o ya registrado', 'err'); return; }
+      showToast('Usuario registrado ✓');
     } else {
       await sbClient.from('usuarios').update({ nombre, rol, reclutador_id, empresa_id }).eq('id', usrId);
       showToast('Usuario actualizado ✓');

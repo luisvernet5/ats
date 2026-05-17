@@ -4006,8 +4006,8 @@ async function renderHeadCount(){
         <option value="">Selecciona una empresa...</option>${empOpts}
       </select>
       <input type="number" id="hc-semana" placeholder="No. semana" min="1" max="52" style="width:120px">
-      <input type="text" id="hc-fecha-ini" placeholder="Fecha inicio (ej. 11/05/2026)" style="width:180px">
-      <input type="text" id="hc-fecha-fin" placeholder="Fecha fin (ej. 15/05/2026)" style="width:180px">
+      <input type="date" id="hc-fecha-ini" style="width:150px" onchange="loadHC()">
+      <input type="date" id="hc-fecha-fin" style="width:150px" onchange="loadHC()">
       <div class="sp"></div>
       <button class="btn btn-ghost btn-sm" onclick="showHCTab('resumen')"><i class="fa fa-table"></i> Resumen</button>
       <button class="btn btn-ghost btn-sm" onclick="showHCTab('grafica')"><i class="fa fa-chart-bar"></i> Gráfica</button>

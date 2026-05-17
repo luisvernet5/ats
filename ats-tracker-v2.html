@@ -4219,15 +4219,9 @@ function openHCProyectoModal(empId){
         <label>Nombre</label>
         <input type="text" id="hc-new-proyecto" placeholder="Nombre del proyecto o departamento">
       </div>
-      <div class="fr" style="margin-bottom:18px">
-        <div class="fg">
-          <label>Plantilla autorizada</label>
-          <input type="number" id="hc-new-auth" placeholder="0" min="0">
-        </div>
-        <div class="fg">
-          <label>Plantilla actual</label>
-          <input type="number" id="hc-new-actual" placeholder="0" min="0">
-        </div>
+      <div class="fg" style="margin-bottom:18px">
+        <label>Plantilla autorizada</label>
+        <input type="number" id="hc-new-auth" placeholder="0" min="0">
       </div>
       <div style="display:flex;justify-content:flex-end;gap:8px">
         <button class="btn btn-ghost btn-sm" onclick="this.closest('div[style*=fixed]').remove()">Cancelar</button>
@@ -4257,7 +4251,6 @@ async function saveHCProyecto(empId){
   const id = empId+'-'+proyecto.replace(/\s+/g,'').substring(0,20)+'-'+Date.now();
   const { error } = await sbClient.from('hc_plantilla').upsert({
     id, empresa_id:empId, proyecto, plantilla_autorizada:auth,
-    actual: parseInt(document.getElementById('hc-new-actual')?.value||0),
     updated_at:new Date().toISOString()
   });
   if(error) showToast('Error: '+error.message,'err');

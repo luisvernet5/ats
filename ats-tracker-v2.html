@@ -275,6 +275,7 @@ input[type=date]{color:var(--text)}
     <div class="nav-item" onclick="nav('tiempos')" id="nav-tiempos" data-tooltip="Análisis de tiempos"><i class="fa fa-clock"></i><span class="nav-item-text"> Análisis de tiempos</span></div>
     <div class="nav-item" onclick="nav('ranking')" id="nav-ranking" data-tooltip="Ranking reclutadores"><i class="fa fa-trophy"></i><span class="nav-item-text"> Ranking reclutadores</span></div>
     <div class="nav-item" onclick="showPage('desercion')" id="nav-desercion" data-tooltip="Deserción"><i class="fa fa-door-open"></i><span class="nav-item-text"> Deserción</span></div>
+    <div class="nav-item" onclick="showPage('headcount')" id="nav-headcount" data-tooltip="HeadCount"><i class="fa fa-users"></i><span class="nav-item-text"> HeadCount</span></div>
     <div class="nav-item" onclick="showPage('contratados')" id="nav-contratados" data-tooltip="Contratados"><i class="fa fa-user-check"></i><span class="nav-item-text"> Contratados</span></div>
     <div class="nav-section">Config</div>
     <div class="nav-item" onclick="showPage('config')" id="nav-config" data-tooltip="Configuración"><i class="fa fa-cog"></i><span class="nav-item-text"> Configuración</span></div>
@@ -406,6 +407,7 @@ input[type=date]{color:var(--text)}
 
   <!-- CONTRATADOS -->
   <div class="page" id="page-contratados"></div>
+  <div class="page" id="page-headcount"></div>
 
   <!-- DESERCION -->
   <div class="page" id="page-desercion">
@@ -1480,7 +1482,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);
@@ -1496,6 +1498,7 @@ function renderPage(p){
   if(p==='ranking')renderRanking();
   if(p==='desercion')renderDesercion();
   if(p==='contratados')renderContratados();
+  if(p==='headcount')renderHeadCount();
   if(p==='garantias')renderGarantias();
   if(p==='activity-log')renderActivityLog();
   if(p==='config')renderConfig();
@@ -3985,6 +3988,330 @@ function toggleGarantiaRow(id){
   const row = document.getElementById('grow-'+id);
   if(!row) return;
   row.style.display = row.style.display==='none' ? 'table-row' : 'none';
+}
+
+/* ============================================================
+   HEADCOUNT
+   ============================================================ */
+async function renderHeadCount(){
+  const page = document.getElementById('page-headcount');
+  if(!page) return;
+  page.innerHTML='<div style="padding:24px 28px;color:var(--text3)">Cargando...</div>';
+
+  const empOpts = DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+
+  page.innerHTML=`<div style="padding:24px 28px">
+    <div class="fbar" style="margin-bottom:20px;gap:8px">
+      <select id="hc-emp-sel" onchange="loadHC()" style="min-width:220px">
+        <option value="">Selecciona una empresa...</option>${empOpts}
+      </select>
+      <input type="number" id="hc-semana" placeholder="No. semana" min="1" max="52" style="width:120px">
+      <input type="text" id="hc-fecha-ini" placeholder="Fecha inicio (ej. 11/05/2026)" style="width:180px">
+      <input type="text" id="hc-fecha-fin" placeholder="Fecha fin (ej. 15/05/2026)" style="width:180px">
+      <div class="sp"></div>
+      <button class="btn btn-ghost btn-sm" onclick="showHCTab('resumen')"><i class="fa fa-table"></i> Resumen</button>
+      <button class="btn btn-ghost btn-sm" onclick="showHCTab('grafica')"><i class="fa fa-chart-bar"></i> Gráfica</button>
+      <button class="btn btn-ghost btn-sm" onclick="showHCTab('historico')"><i class="fa fa-history"></i> Histórico</button>
+      <button class="btn btn-green btn-sm" onclick="exportarHC()"><i class="fa fa-file-excel"></i> Exportar</button>
+    </div>
+    <div id="hc-content"></div>
+  </div>`;
+}
+
+async function loadHC(){
+  const empId = document.getElementById('hc-emp-sel')?.value;
+  if(!empId) return;
+  showHCTab('resumen');
+}
+
+async function showHCTab(tab){
+  const empId = document.getElementById('hc-emp-sel')?.value;
+  if(!empId){ showToast('Selecciona una empresa primero','err'); return; }
+  const content = document.getElementById('hc-content');
+  if(!content) return;
+
+  const emp = DB.empresas.find(x=>x.id===empId)||{};
+  const semana = document.getElementById('hc-semana')?.value||'';
+  const fIni = document.getElementById('hc-fecha-ini')?.value||'';
+  const fFin = document.getElementById('hc-fecha-fin')?.value||'';
+
+  if(tab==='resumen'){
+    const { data: plantilla } = await sbClient.from('hc_plantilla').select('*').eq('empresa_id', empId);
+    const { data: resumen } = await sbClient.from('hc_resumen').select('*').eq('empresa_id', empId).eq('semana', semana||0);
+    const proyectos = (plantilla||[]).map(p=>p.proyecto);
+
+    const resumenMap = {};
+    (resumen||[]).forEach(r=>resumenMap[r.proyecto]=r);
+
+    const rows = proyectos.map(proy=>{
+      const r = resumenMap[proy]||{};
+      const auth = (plantilla||[]).find(p=>p.proyecto===proy)?.plantilla_autorizada||0;
+      const actual = r.actual||0;
+      const vacantes = r.vacantes||(auth-actual)||0;
+      const pct = actual>0 ? ((vacantes/auth)*100).toFixed(1)+'%' : '—';
+      return`<tr>
+        <td class="td-p" style="font-size:12px">${proy}</td>
+        <td style="text-align:center">${auth}</td>
+        <td style="text-align:center"><input type="number" class="hc-inp" value="${actual}"
+          onchange="updateHCRow('${empId}','${proy}',${auth},this,'actual')" style="width:60px;text-align:center"></td>
+        <td style="text-align:center;color:${vacantes>0?'var(--err)':'var(--ok)'}">${vacantes}</td>
+        <td style="text-align:center"><input type="number" class="hc-inp" value="${r.cartera||0}"
+          onchange="updateHCRow('${empId}','${proy}',${auth},this,'cartera')" style="width:50px;text-align:center"></td>
+        <td style="text-align:center"><input type="number" class="hc-inp" value="${r.entrevista||0}"
+          onchange="updateHCRow('${empId}','${proy}',${auth},this,'entrevista')" style="width:50px;text-align:center"></td>
+        <td style="text-align:center"><input type="number" class="hc-inp" value="${r.validacion||0}"
+          onchange="updateHCRow('${empId}','${proy}',${auth},this,'validacion')" style="width:50px;text-align:center"></td>
+        <td style="text-align:center"><input type="number" class="hc-inp" value="${r.proceso_contratacion||0}"
+          onchange="updateHCRow('${empId}','${proy}',${auth},this,'proceso_contratacion')" style="width:50px;text-align:center"></td>
+        <td style="text-align:center"><input type="number" class="hc-inp" value="${r.contratados||0}"
+          onchange="updateHCRow('${empId}','${proy}',${auth},this,'contratados')" style="width:50px;text-align:center"></td>
+        <td style="text-align:center"><input type="number" class="hc-inp" value="${r.bajas||0}"
+          onchange="updateHCRow('${empId}','${proy}',${auth},this,'bajas')" style="width:50px;text-align:center"></td>
+        <td style="text-align:center">${pct}</td>
+      </tr>`;
+    }).join('');
+
+    content.innerHTML=`
+      <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:14px;font-weight:600">${emp.nombre||''} — Semana ${semana} ${fIni&&fFin?'('+fIni+' al '+fFin+')':''}</div>
+        <button class="btn btn-primary btn-sm" onclick="openHCProyectoModal('${empId}')">
+          <i class="fa fa-plus"></i> Agregar proyecto
+        </button>
+      </div>
+      ${proyectos.length?`
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Proyecto</th><th>Autorizada</th><th>Actual</th><th>Vacantes</th>
+            <th>Cartera</th><th>Entrevista</th><th>Validación</th><th>Proc. Contrat.</th>
+            <th>Contratados</th><th>Bajas</th><th>%</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`:
+      '<div style="color:var(--text3);font-size:13px">Sin proyectos configurados. Agrega uno para comenzar.</div>'}`;
+  }
+
+  else if(tab==='grafica'){
+    const { data: plantilla } = await sbClient.from('hc_plantilla').select('*').eq('empresa_id', empId);
+    const { data: resumen } = await sbClient.from('hc_resumen').select('*').eq('empresa_id', empId).eq('semana', semana||0);
+    const resumenMap = {};
+    (resumen||[]).forEach(r=>resumenMap[r.proyecto]=r);
+
+    const labels = (plantilla||[]).map(p=>`"${p.proyecto.substring(0,15)}"`).join(',');
+    const dataAuth = (plantilla||[]).map(p=>p.plantilla_autorizada||0).join(',');
+    const dataActual = (plantilla||[]).map(p=>(resumenMap[p.proyecto]?.actual||0)).join(',');
+    const dataBajas = (plantilla||[]).map(p=>(resumenMap[p.proyecto]?.bajas||0)).join(',');
+
+    content.innerHTML=`
+      <div style="font-size:14px;font-weight:600;margin-bottom:16px">${emp.nombre||''} — Semana ${semana}</div>
+      <canvas id="hc-chart" style="max-height:400px"></canvas>
+      <script>
+        (function(){
+          const ctx = document.getElementById('hc-chart');
+          if(window._hcChart) window._hcChart.destroy();
+          window._hcChart = new Chart(ctx, {
+            type:'bar',
+            data:{
+              labels:[${labels}],
+              datasets:[
+                {label:'Autorizada',data:[${dataAuth}],backgroundColor:'rgba(42,170,222,0.7)'},
+                {label:'Activos',data:[${dataActual}],backgroundColor:'rgba(34,197,94,0.7)'},
+                {label:'Bajas',data:[${dataBajas}],backgroundColor:'rgba(239,68,68,0.7)'}
+              ]
+            },
+            options:{responsive:true,plugins:{legend:{position:'top'}},scales:{x:{ticks:{maxRotation:45}}}}
+          });
+        })();
+      <\/script>`;
+  }
+
+  else if(tab==='historico'){
+    const { data: hist } = await sbClient.from('hc_historico').select('*')
+      .eq('empresa_id', empId).order('semana_num', {ascending:true});
+
+    const rows = (hist||[]).map(h=>`
+      <tr>
+        <td class="td-p">${h.semana_label||'—'}</td>
+        <td style="text-align:center">${h.vacantes||0}</td>
+        <td style="text-align:center">${h.contrataciones||0}</td>
+        <td style="text-align:center">${h.plantilla_total||0}</td>
+        <td style="text-align:center">${h.plantilla_total?((h.vacantes/h.plantilla_total)*100).toFixed(1)+'%':'—'}</td>
+        <td>
+          <button class="btn btn-danger btn-sm" onclick="deleteHCHistorico('${h.id}','${empId}')">
+            <i class="fa fa-trash"></i>
+          </button>
+        </td>
+      </tr>`).join('');
+
+    content.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="font-size:14px;font-weight:600">${emp.nombre||''} — Histórico</div>
+        <button class="btn btn-primary btn-sm" onclick="openHCHistoricoModal('${empId}')">
+          <i class="fa fa-plus"></i> Agregar semana
+        </button>
+      </div>
+      ${hist?.length?`
+      <div class="table-wrap" style="max-width:700px">
+        <table>
+          <thead><tr><th>Semana</th><th>Vacantes</th><th>Contrataciones</th><th>Plantilla total</th><th>% Rotación</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`:
+      '<div style="color:var(--text3);font-size:13px">Sin historial registrado.</div>'}`;
+  }
+}
+
+async function updateHCRow(empId, proyecto, auth, el, campo){
+  const semana = parseInt(document.getElementById('hc-semana')?.value||0);
+  if(!semana){ showToast('Ingresa el número de semana primero','err'); return; }
+  const { data: existing } = await sbClient.from('hc_resumen').select('*')
+    .eq('empresa_id',empId).eq('proyecto',proyecto).eq('semana',semana).maybeSingle();
+  const row = existing || {
+    id: empId+'-'+proyecto.replace(/\s/g,'')+'-'+semana,
+    empresa_id: empId, proyecto, semana,
+    actual:0, vacantes:0, cartera:0, entrevista:0,
+    validacion:0, proceso_contratacion:0, contratados:0, bajas:0, detenidas:0
+  };
+  row[campo] = parseInt(el.value)||0;
+  if(campo==='actual') row.vacantes = Math.max(0, auth - row.actual);
+  row.updated_at = new Date().toISOString();
+  const { error } = await sbClient.from('hc_resumen').upsert(row);
+  if(error) showToast('Error: '+error.message,'err');
+  else showToast('Guardado ✓');
+}
+
+function openHCProyectoModal(empId){
+  const overlay = document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
+  overlay.innerHTML=`
+    <div style="background:var(--surface);border-radius:14px;padding:24px;width:420px;max-width:96vw">
+      <div style="font-size:15px;font-weight:600;margin-bottom:18px">Agregar proyecto / departamento</div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>Nombre del proyecto</label>
+        <input type="text" id="hc-new-proyecto" placeholder="Ej. NC14 SEMPAUM">
+      </div>
+      <div class="fg" style="margin-bottom:18px">
+        <label>Plantilla autorizada</label>
+        <input type="number" id="hc-new-auth" placeholder="0" min="0">
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="this.closest('div[style*=fixed]').remove()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="saveHCProyecto('${empId}')">
+          <i class="fa fa-save"></i> Guardar
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function saveHCProyecto(empId){
+  const proyecto = document.getElementById('hc-new-proyecto')?.value.trim();
+  const auth = parseInt(document.getElementById('hc-new-auth')?.value||0);
+  if(!proyecto){ showToast('Ingresa el nombre del proyecto','err'); return; }
+  const id = empId+'-'+proyecto.replace(/\s+/g,'')+'-'+Date.now();
+  const { error } = await sbClient.from('hc_plantilla').upsert({id, empresa_id:empId, proyecto, plantilla_autorizada:auth, updated_at:new Date().toISOString()});
+  if(error) showToast('Error: '+error.message,'err');
+  else {
+    showToast('Proyecto agregado ✓');
+    document.querySelector('div[style*="fixed"][style*="z-index: 200"]')?.remove();
+    showHCTab('resumen');
+  }
+}
+
+function openHCHistoricoModal(empId){
+  const overlay = document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
+  overlay.innerHTML=`
+    <div style="background:var(--surface);border-radius:14px;padding:24px;width:460px;max-width:96vw">
+      <div style="font-size:15px;font-weight:600;margin-bottom:18px">Agregar semana al histórico</div>
+      <div class="fr" style="margin-bottom:12px">
+        <div class="fg">
+          <label>Etiqueta (ej. Semana 20)</label>
+          <input type="text" id="hc-hist-label" placeholder="Semana 20">
+        </div>
+        <div class="fg">
+          <label>No. semana</label>
+          <input type="number" id="hc-hist-num" placeholder="20" min="1" max="52">
+        </div>
+      </div>
+      <div class="fr" style="margin-bottom:12px">
+        <div class="fg">
+          <label>Vacantes abiertas</label>
+          <input type="number" id="hc-hist-vac" placeholder="0" min="0">
+        </div>
+        <div class="fg">
+          <label>Contrataciones</label>
+          <input type="number" id="hc-hist-cont" placeholder="0" min="0">
+        </div>
+      </div>
+      <div class="fg" style="margin-bottom:18px">
+        <label>Plantilla total</label>
+        <input type="number" id="hc-hist-total" placeholder="0" min="0">
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="this.closest('div[style*=fixed]').remove()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="saveHCHistorico('${empId}')">
+          <i class="fa fa-save"></i> Guardar
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function saveHCHistorico(empId){
+  const label = document.getElementById('hc-hist-label')?.value.trim();
+  const num = parseInt(document.getElementById('hc-hist-num')?.value||0);
+  const vac = parseInt(document.getElementById('hc-hist-vac')?.value||0);
+  const cont = parseInt(document.getElementById('hc-hist-cont')?.value||0);
+  const total = parseInt(document.getElementById('hc-hist-total')?.value||0);
+  if(!label){ showToast('Ingresa la etiqueta de semana','err'); return; }
+  const id = empId+'-hist-'+num+'-'+Date.now();
+  const { error } = await sbClient.from('hc_historico').upsert({
+    id, empresa_id:empId, semana_label:label, semana_num:num,
+    vacantes:vac, contrataciones:cont, plantilla_total:total,
+    updated_at:new Date().toISOString()
+  });
+  if(error) showToast('Error: '+error.message,'err');
+  else {
+    showToast('Semana guardada ✓');
+    document.querySelector('div[style*="fixed"][style*="z-index: 200"]')?.remove();
+    showHCTab('historico');
+  }
+}
+
+async function deleteHCHistorico(id, empId){
+  if(!confirm('¿Eliminar esta semana del histórico?')) return;
+  const { error } = await sbClient.from('hc_historico').delete().eq('id',id);
+  if(error) showToast('Error: '+error.message,'err');
+  else { showToast('Eliminado ✓'); showHCTab('historico'); }
+}
+
+async function exportarHC(){
+  const empId = document.getElementById('hc-emp-sel')?.value;
+  if(!empId){ showToast('Selecciona una empresa primero','err'); return; }
+  const semana = document.getElementById('hc-semana')?.value||'';
+  const emp = DB.empresas.find(x=>x.id===empId)||{};
+  const { data: plantilla } = await sbClient.from('hc_plantilla').select('*').eq('empresa_id',empId);
+  const { data: resumen } = await sbClient.from('hc_resumen').select('*').eq('empresa_id',empId).eq('semana',semana||0);
+  const resumenMap = {};
+  (resumen||[]).forEach(r=>resumenMap[r.proyecto]=r);
+  const header = ['Proyecto','Plantilla autorizada','Actual','Vacantes','Cartera','Entrevista','Validación','Proc. Contrat.','Contratados','Bajas','%'];
+  const rows = (plantilla||[]).map(p=>{
+    const r = resumenMap[p.proyecto]||{};
+    const auth = p.plantilla_autorizada||0;
+    const actual = r.actual||0;
+    const vac = r.vacantes||(auth-actual)||0;
+    const pct = actual>0?((vac/auth)*100).toFixed(1)+'%':'0%';
+    return[p.proyecto,auth,actual,vac,r.cartera||0,r.entrevista||0,r.validacion||0,r.proceso_contratacion||0,r.contratados||0,r.bajas||0,pct];
+  });
+  const csv = [header,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const BOM='﻿';
+  const blob=new Blob([BOM+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`headcount_${emp.nombre||empId}_sem${semana}.csv`;
+  a.click();
 }
 
 /* ============================================================

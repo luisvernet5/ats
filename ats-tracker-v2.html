@@ -4182,14 +4182,42 @@ async function updateHCRow(empId, proyecto, auth, el, campo){
 }
 
 function openHCProyectoModal(empId){
+  const emp = DB.empresas.find(x=>x.id===empId)||{};
+  const proyectos = emp.proyectos||[];
+  const deptos = emp.departamentos||[];
+
+  if(!proyectos.length && !deptos.length){
+    showToast('Esta empresa no tiene proyectos ni departamentos configurados. Agrégalos en Empresas cliente.','err');
+    return;
+  }
+
+  const proyOpts = proyectos.map(p=>`<option value="${p}">${p}</option>`).join('');
+  const deptoOpts = deptos.map(d=>`<option value="${d}">${d}</option>`).join('');
+
   const overlay = document.createElement('div');
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
   overlay.innerHTML=`
-    <div style="background:var(--surface);border-radius:14px;padding:24px;width:420px;max-width:96vw">
+    <div style="background:var(--surface);border-radius:14px;padding:24px;width:460px;max-width:96vw">
       <div style="font-size:15px;font-weight:600;margin-bottom:18px">Agregar proyecto / departamento</div>
       <div class="fg" style="margin-bottom:12px">
-        <label>Nombre del proyecto</label>
-        <input type="text" id="hc-new-proyecto" placeholder="Ej. NC14 SEMPAUM">
+        <label>Tipo</label>
+        <select id="hc-tipo" onchange="toggleHCTipo()">
+          <option value="proyecto">Proyecto</option>
+          ${deptos.length?'<option value="departamento">Departamento</option>':''}
+          <option value="manual">Captura manual</option>
+        </select>
+      </div>
+      <div id="hc-sel-wrap" class="fg" style="margin-bottom:12px">
+        <label>Selecciona</label>
+        <select id="hc-sel-proyecto">${proyOpts}</select>
+      </div>
+      <div id="hc-dep-wrap" class="fg" style="margin-bottom:12px;display:none">
+        <label>Selecciona departamento</label>
+        <select id="hc-sel-depto">${deptoOpts}</select>
+      </div>
+      <div id="hc-manual-wrap" class="fg" style="margin-bottom:12px;display:none">
+        <label>Nombre</label>
+        <input type="text" id="hc-new-proyecto" placeholder="Nombre del proyecto o departamento">
       </div>
       <div class="fg" style="margin-bottom:18px">
         <label>Plantilla autorizada</label>
@@ -4205,15 +4233,29 @@ function openHCProyectoModal(empId){
   document.body.appendChild(overlay);
 }
 
+function toggleHCTipo(){
+  const tipo = document.getElementById('hc-tipo')?.value;
+  document.getElementById('hc-sel-wrap').style.display = tipo==='proyecto' ? '' : 'none';
+  document.getElementById('hc-dep-wrap').style.display = tipo==='departamento' ? '' : 'none';
+  document.getElementById('hc-manual-wrap').style.display = tipo==='manual' ? '' : 'none';
+}
+
 async function saveHCProyecto(empId){
-  const proyecto = document.getElementById('hc-new-proyecto')?.value.trim();
+  const tipo = document.getElementById('hc-tipo')?.value;
+  let proyecto = '';
+  if(tipo==='proyecto') proyecto = document.getElementById('hc-sel-proyecto')?.value;
+  else if(tipo==='departamento') proyecto = document.getElementById('hc-sel-depto')?.value;
+  else proyecto = document.getElementById('hc-new-proyecto')?.value.trim();
   const auth = parseInt(document.getElementById('hc-new-auth')?.value||0);
-  if(!proyecto){ showToast('Ingresa el nombre del proyecto','err'); return; }
-  const id = empId+'-'+proyecto.replace(/\s+/g,'')+'-'+Date.now();
-  const { error } = await sbClient.from('hc_plantilla').upsert({id, empresa_id:empId, proyecto, plantilla_autorizada:auth, updated_at:new Date().toISOString()});
+  if(!proyecto){ showToast('Selecciona o ingresa un nombre','err'); return; }
+  const id = empId+'-'+proyecto.replace(/\s+/g,'').substring(0,20)+'-'+Date.now();
+  const { error } = await sbClient.from('hc_plantilla').upsert({
+    id, empresa_id:empId, proyecto, plantilla_autorizada:auth,
+    updated_at:new Date().toISOString()
+  });
   if(error) showToast('Error: '+error.message,'err');
   else {
-    showToast('Proyecto agregado ✓');
+    showToast('Agregado ✓');
     document.querySelector('div[style*="fixed"][style*="z-index: 200"]')?.remove();
     showHCTab('resumen');
   }

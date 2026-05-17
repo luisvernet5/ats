@@ -884,7 +884,7 @@ function adaptUIToRole() {
       item.className = 'nav-item';
       item.id = 'nav-activity-log';
       item.innerHTML = '<i class="fa fa-history"></i> Log de actividad';
-      item.onclick = () => showPage('activity-log');
+      item.setAttribute('onclick', "showPage('activity-log')");
       configItem.parentNode.insertBefore(item, configItem.nextSibling);
     }
     if(!document.getElementById('page-activity-log')){
@@ -905,6 +905,7 @@ function adaptUIToRole() {
 }
 
 async function renderActivityLog(){
+  console.log('renderActivityLog ejecutado');
   const page = document.getElementById('page-activity-log');
   if(!page) return;
   page.innerHTML='<div style="padding:24px 28px;color:var(--text3)">Cargando...</div>';
@@ -1152,6 +1153,7 @@ function getCandEtapaIdx(c){
    ============================================================ */
 function nav(p){showPage(p)}
 function showPage(p){
+  console.log('showPage llamado con:', p);
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   const pg=document.getElementById('page-'+p);

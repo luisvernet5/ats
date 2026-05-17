@@ -4057,10 +4057,10 @@ async function showHCTab(tab){
       const contratados = r.contratados||0;
       const bajas       = r.bajas||0;
       const detenidas   = r.detenidas||0;
-      const vacantes       = auth - actual;
-      const statusPrev     = actual + contratados;
-      const pct            = statusPrev>0 ? ((auth/statusPrev)*100).toFixed(2)+'%' : '—';
-      const statusCierre   = statusPrev - bajas;
+      const vacantes        = auth - actual;
+      const statusPrev      = vacantes - contratados;
+      const pct             = auth>0 ? ((statusPrev/auth)*100).toFixed(2)+'%' : '—';
+      const statusCierre    = statusPrev - bajas;
       const plantillaCierre = auth - statusCierre - detenidas;
       tAuth+=auth; tActual+=actual; tVac+=vacantes; tCartera+=cartera;
       tEntrev+=entrevista; tValid+=validacion; tProc+=procCont;
@@ -4237,10 +4237,10 @@ function recalcHCRow(proyId){
   const contratados = parseInt(inp[5]?.value)||0;
   const bajas       = parseInt(inp[6]?.value)||0;
   const detenidas   = parseInt(inp[7]?.value)||0;
-  const vacantes       = auth - actual;
-  const statusPrev     = actual + contratados;
-  const pct            = statusPrev>0 ? ((auth/statusPrev)*100).toFixed(2)+'%' : '—';
-  const statusCierre   = statusPrev - bajas;
+  const vacantes        = auth - actual;
+  const statusPrev      = vacantes - contratados;
+  const pct             = auth>0 ? ((statusPrev/auth)*100).toFixed(2)+'%' : '—';
+  const statusCierre    = statusPrev - bajas;
   const plantillaCierre = auth - statusCierre - detenidas;
   const vacEl = document.getElementById('hc-vac-'+proyId);
   if(vacEl){ vacEl.textContent=vacantes; vacEl.style.color=vacantes>0?'var(--err)':'var(--ok)'; }
@@ -4272,14 +4272,15 @@ function recalcHCTotals(){
     const cont   = parseInt(inp[5]?.value)||0;
     const bajas  = parseInt(inp[6]?.value)||0;
     const det    = parseInt(inp[7]?.value)||0;
-    const prev   = actual + cont;
+    const vac    = auth - actual;
+    const prev   = vac - cont;
     const cierre = prev - bajas;
-    tAuth+=auth; tActual+=actual; tVac+=(auth-actual); tCartera+=cartera;
+    tAuth+=auth; tActual+=actual; tVac+=vac; tCartera+=cartera;
     tEntrev+=entrev; tValid+=valid; tProc+=proc; tCont+=cont; tBajas+=bajas;
     tPrev+=prev; tCierre+=cierre; tDet+=det; tPCant+=(auth-cierre-det);
   });
   // cell order: 0=TOTAL,1=auth,2=actual,3=vac,4=cartera,5=entrev,6=valid,7=proc,8=cont,9=bajas,10=prev,11=%,12=cierre,13=det,14=pcant
-  const tPct = tPrev>0 ? ((tAuth/tPrev)*100).toFixed(2)+'%' : '—';
+  const tPct = tAuth>0 ? ((tPrev/tAuth)*100).toFixed(2)+'%' : '—';
   const cells = totalsRow.querySelectorAll('td');
   [null,tAuth,tActual,tVac,tCartera,tEntrev,tValid,tProc,tCont,tBajas,tPrev,tPct,tCierre,tDet,tPCant]
     .forEach((v,i)=>{ if(v!==null && cells[i]) cells[i].textContent=v; });

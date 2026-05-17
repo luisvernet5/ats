@@ -2022,8 +2022,17 @@ function openVacanteModal(id=null,preEmpId=null){
   document.getElementById('vac-proyecto').innerHTML='<option value="">Sin asignar</option>';
   const empSel=document.getElementById('vac-empresa');
   empSel.innerHTML='<option value="">Seleccionar...</option>';
-  DB.empresas.forEach(e=>empSel.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
+  (currentUserData?.rol==='rh_cliente'
+    ? DB.empresas.filter(e=>e.id===currentUserData?.empresa_id)
+    : DB.empresas
+  ).forEach(e=>empSel.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
   if(preEmpId)empSel.value=preEmpId;
+  if(currentUserData?.rol==='rh_cliente'){
+    empSel.value = currentUserData?.empresa_id||'';
+    empSel.disabled = true;
+  } else {
+    empSel.disabled = false;
+  }
   populateRecSel('vac-reclutador','');
   if(preEmpId)autofillVacRec();
   if(id){
@@ -2032,6 +2041,12 @@ function openVacanteModal(id=null,preEmpId=null){
       document.getElementById('vac-id').value=v.id;
       document.getElementById('vac-nombre').value=v.nombre;
       document.getElementById('vac-empresa').value=v.empresa_id||'';
+      if(currentUserData?.rol==='rh_cliente'){
+        document.getElementById('vac-empresa').value = currentUserData?.empresa_id||'';
+        document.getElementById('vac-empresa').disabled = true;
+      } else {
+        document.getElementById('vac-empresa').disabled = false;
+      }
       autofillVacRec();
       document.getElementById('vac-depto').value=v.departamento||'';
       document.getElementById('vac-proyecto').value=v.proyecto||'';

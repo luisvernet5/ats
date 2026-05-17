@@ -4121,6 +4121,7 @@ function toggleSandbox(){
   localStorage.setItem('sandbox_mode',SANDBOX_MODE);
   updateSandboxUI();
   location.reload();
+  switchConfigTab('modo');
 }
 
 function updateSandboxUI(){

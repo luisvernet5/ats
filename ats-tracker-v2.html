@@ -859,6 +859,21 @@ function adaptUIToRole() {
       page.id = 'page-vacantes-eliminadas';
       document.querySelector('.main').appendChild(page);
     }
+    if(!document.getElementById('nav-garantias')) {
+      const garantiaItem = document.createElement('div');
+      garantiaItem.className = 'nav-item';
+      garantiaItem.id = 'nav-garantias';
+      garantiaItem.innerHTML = '<i class="fa fa-shield-alt"></i> Garantías';
+      garantiaItem.setAttribute('onclick', "showPage('garantias')");
+      const elimItem = document.getElementById('nav-vacantes-eliminadas');
+      if(elimItem) elimItem.parentNode.insertBefore(garantiaItem, elimItem.nextSibling);
+    }
+    if(!document.getElementById('page-garantias')) {
+      const pg = document.createElement('div');
+      pg.className = 'page';
+      pg.id = 'page-garantias';
+      document.querySelector('.main').appendChild(pg);
+    }
   }
   const nav = document.querySelector('.sb-nav');
   if(nav && !document.getElementById('logout-btn')) {
@@ -1029,7 +1044,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);
@@ -1045,6 +1060,7 @@ function renderPage(p){
   if(p==='ranking')renderRanking();
   if(p==='desercion')renderDesercion();
   if(p==='contratados')renderContratados();
+  if(p==='garantias')renderGarantias();
   if(p==='config')renderConfig();
   if(p==='vacantes-eliminadas')renderVacantesEliminadas();
 }
@@ -3164,6 +3180,156 @@ function filterRankingVacs(){
   </tr>`).join('');
   const el=document.getElementById('ranking-vac-table');
   if(el)el.innerHTML=`<table><thead><tr><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Días abierta</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes abiertas</td></tr>'}</tbody></table>`;
+}
+
+/* ============================================================
+   GARANTÍAS
+   ============================================================ */
+async function loadGarantiaData(){
+  if(SANDBOX_MODE) return;
+  const { data, error } = await sbClient.from('garantias').select('*').order('created_at',{ascending:false});
+  if(error){ showToast('Error cargando garantías: '+error.message,'err'); return; }
+  DB.garantias = data || [];
+}
+
+async function saveGarantiaData(obj){
+  if(SANDBOX_MODE){ saveRecord('garantias', obj); return; }
+  if(obj.id){
+    const { error } = await sbClient.from('garantias').update(obj).eq('id',obj.id);
+    if(error) throw error;
+  } else {
+    const { error } = await sbClient.from('garantias').insert(obj);
+    if(error) throw error;
+  }
+  await loadGarantiaData();
+}
+
+function renderGarantias(){
+  const page = document.getElementById('page-garantias');
+  if(!page) return;
+  loadGarantiaData().then(()=>{
+    const rows = (DB.garantias||[]).map(g=>{
+      const emp = DB.empresas.find(e=>e.id===g.empresa_id)||{};
+      const vac = DB.vacantes.find(v=>v.id===g.vacante_id)||{};
+      const cand = DB.candidatos.find(c=>c.id===g.candidato_id)||{};
+      const diasRestantes = g.fecha_fin ? daysBetween(today(), g.fecha_fin) : null;
+      const statusCls = g.estado==='activa' ? 'badge-ok' : g.estado==='reemplazada' ? 'badge-warn' : 'badge-err';
+      return `<tr onclick="toggleGarantiaRow('${g.id}')" style="cursor:pointer">
+        <td>${fmt(g.fecha_inicio)||'—'}</td>
+        <td>${fmt(g.fecha_fin)||'—'}</td>
+        <td>${emp.nombre||'—'}</td>
+        <td>${vac.titulo||'—'}</td>
+        <td>${cand.nombre||'—'}</td>
+        <td><span class="badge ${statusCls}">${g.estado||'—'}</span></td>
+        <td>${diasRestantes!==null ? (diasRestantes>=0?diasRestantes+' días':Math.abs(diasRestantes)+' días vencida') : '—'}</td>
+        <td>${g.notas||''}</td>
+      </tr>
+      <tr id="gar-expand-${g.id}" style="display:none;background:var(--bg2)">
+        <td colspan="8" style="padding:12px 20px">
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <button class="btn btn-s" onclick="event.stopPropagation();abrirEdicionGarantia('${g.id}')">Editar</button>
+            <button class="btn btn-s btn-err" onclick="event.stopPropagation();eliminarGarantia('${g.id}')">Eliminar</button>
+          </div>
+          ${g.notas?`<p style="margin-top:10px;color:var(--text2)">${g.notas}</p>`:''}
+        </td>
+      </tr>`;
+    }).join('');
+    page.innerHTML=`<div style="padding:24px 28px">
+      <div class="fbar" style="margin-bottom:18px">
+        <h3 style="margin:0">Garantías de colocación</h3>
+        <button class="btn btn-p" onclick="abrirNuevaGarantia()"><i class="fa fa-plus"></i> Nueva garantía</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table><thead><tr>
+          <th>Inicio</th><th>Fin</th><th>Empresa</th><th>Vacante</th><th>Candidato</th><th>Estado</th><th>Días restantes</th><th>Notas</th>
+        </tr></thead><tbody>
+          ${rows||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">Sin garantías registradas</td></tr>'}
+        </tbody></table>
+      </div>
+    </div>`;
+  });
+}
+
+function toggleGarantiaRow(id){
+  const el = document.getElementById('gar-expand-'+id);
+  if(!el) return;
+  el.style.display = el.style.display==='none' ? 'table-row' : 'none';
+}
+
+function abrirNuevaGarantia(){
+  const empOpts = DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+  const newId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+  const html=`<div style="padding:20px;max-width:480px;margin:0 auto">
+    <h3>Nueva garantía</h3>
+    <label>Empresa</label>
+    <select id="gar-emp" style="width:100%;margin-bottom:10px" onchange="actualizarVacantesGarantia()"><option value="">— Selecciona —</option>${empOpts}</select>
+    <label>Vacante</label>
+    <select id="gar-vac" style="width:100%;margin-bottom:10px" onchange="actualizarCandidatosGarantia()"><option value="">— Selecciona empresa —</option></select>
+    <label>Candidato</label>
+    <select id="gar-cand" style="width:100%;margin-bottom:10px"><option value="">— Selecciona vacante —</option></select>
+    <label>Fecha inicio</label>
+    <input id="gar-inicio" type="date" style="width:100%;margin-bottom:10px">
+    <label>Fecha fin</label>
+    <input id="gar-fin" type="date" style="width:100%;margin-bottom:10px">
+    <label>Estado</label>
+    <select id="gar-estado" style="width:100%;margin-bottom:10px">
+      <option value="activa">Activa</option>
+      <option value="reemplazada">Reemplazada</option>
+      <option value="vencida">Vencida</option>
+    </select>
+    <label>Notas</label>
+    <textarea id="gar-notas" rows="3" style="width:100%;margin-bottom:14px"></textarea>
+    <button class="btn btn-p" onclick="guardarNuevaGarantia('${newId}')">Guardar</button>
+  </div>`;
+  document.getElementById('panel-content').innerHTML=html;
+  document.getElementById('detail-panel').classList.add('open');
+}
+
+function actualizarVacantesGarantia(){
+  const empId = document.getElementById('gar-emp').value;
+  const vacs = DB.vacantes.filter(v=>v.empresa_id===empId);
+  document.getElementById('gar-vac').innerHTML='<option value="">— Selecciona —</option>'+vacs.map(v=>`<option value="${v.id}">${v.titulo}</option>`).join('');
+  document.getElementById('gar-cand').innerHTML='<option value="">— Selecciona vacante —</option>';
+}
+
+function actualizarCandidatosGarantia(){
+  const vacId = document.getElementById('gar-vac')?.value;
+  const cands = vacId ? DB.candidatos.filter(c=>c.vacante_id===vacId) : [];
+  const el = document.getElementById('gar-cand');
+  if(el) el.innerHTML='<option value="">— Selecciona —</option>'+cands.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
+}
+
+async function guardarNuevaGarantia(id){
+  const obj={
+    id,
+    empresa_id: document.getElementById('gar-emp').value,
+    vacante_id: document.getElementById('gar-vac').value,
+    candidato_id: document.getElementById('gar-cand').value,
+    fecha_inicio: document.getElementById('gar-inicio').value||null,
+    fecha_fin: document.getElementById('gar-fin').value||null,
+    estado: document.getElementById('gar-estado').value,
+    notas: document.getElementById('gar-notas').value,
+    created_at: new Date().toISOString()
+  };
+  try{
+    await saveGarantiaData(obj);
+    closePanel();
+    renderGarantias();
+    showToast('Garantía guardada ✓');
+  }catch(e){ showToast('Error: '+e.message,'err'); }
+}
+
+async function eliminarGarantia(id){
+  if(!confirm('¿Eliminar esta garantía?')) return;
+  try{
+    if(!SANDBOX_MODE){
+      const { error } = await sbClient.from('garantias').delete().eq('id',id);
+      if(error) throw error;
+    }
+    DB.garantias = (DB.garantias||[]).filter(g=>g.id!==id);
+    renderGarantias();
+    showToast('Garantía eliminada ✓');
+  }catch(e){ showToast('Error: '+e.message,'err'); }
 }
 
 /* ============================================================

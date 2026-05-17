@@ -4049,19 +4049,19 @@ async function showHCTab(tab){
       const proyId = proy.replace(/[^a-zA-Z0-9]/g,'_');
       const r = resumenMap[proy]||{};
       const auth = (plantilla||[]).find(p=>p.proyecto===proy)?.plantilla_autorizada||0;
-      const actual = r.actual||0;
-      const vacantes = Math.max(0, r.vacantes!==undefined ? r.vacantes : auth-actual);
-      const cartera = r.cartera||0;
-      const entrevista = r.entrevista||0;
-      const validacion = r.validacion||0;
-      const procCont = r.proceso_contratacion||0;
+      const actual      = r.actual||0;
+      const cartera     = r.cartera||0;
+      const entrevista  = r.entrevista||0;
+      const validacion  = r.validacion||0;
+      const procCont    = r.proceso_contratacion||0;
       const contratados = r.contratados||0;
-      const bajas = r.bajas||0;
-      const detenidas = r.detenidas||0;
-      const statusPrev = actual + contratados;
-      const statusCierre = statusPrev - bajas;
-      const plantillaCierre = auth - bajas;
-      const pct = auth>0 ? ((vacantes/auth)*100).toFixed(1)+'%' : '—';
+      const bajas       = r.bajas||0;
+      const detenidas   = r.detenidas||0;
+      const vacantes       = auth - actual;
+      const statusPrev     = actual + contratados;
+      const pct            = statusPrev>0 ? ((auth/statusPrev)*100).toFixed(2)+'%' : '—';
+      const statusCierre   = statusPrev - bajas;
+      const plantillaCierre = auth - statusCierre - detenidas;
       tAuth+=auth; tActual+=actual; tVac+=vacantes; tCartera+=cartera;
       tEntrev+=entrevista; tValid+=validacion; tProc+=procCont;
       tCont+=contratados; tBajas+=bajas; tPrev+=statusPrev;
@@ -4085,15 +4085,15 @@ async function showHCTab(tab){
         <td style="text-align:center"><input type="number" class="hc-inp" value="${bajas}"
           onchange="updateHCRow('${empId}','${proy}',${auth},this,'bajas');recalcHCRow('${proyId}')" style="width:50px;text-align:center"></td>
         <td id="hc-prev-${proyId}" style="text-align:center;font-weight:500">${statusPrev}</td>
+        <td id="hc-pct-${proyId}" style="text-align:center">${pct}</td>
         <td id="hc-cierre-${proyId}" style="text-align:center;font-weight:500">${statusCierre}</td>
         <td style="text-align:center"><input type="number" class="hc-inp" value="${detenidas}"
-          onchange="updateHCRow('${empId}','${proy}',${auth},this,'detenidas')" style="width:50px;text-align:center"></td>
+          onchange="updateHCRow('${empId}','${proy}',${auth},this,'detenidas');recalcHCRow('${proyId}')" style="width:50px;text-align:center"></td>
         <td id="hc-pcant-${proyId}" style="text-align:center;font-weight:500">${plantillaCierre}</td>
-        <td id="hc-pct-${proyId}" style="text-align:center">${pct}</td>
       </tr>`;
     }).join('');
 
-    const tPct = tAuth>0 ? ((tVac/tAuth)*100).toFixed(1)+'%' : '—';
+    const tPct = tPrev>0 ? ((tAuth/tPrev)*100).toFixed(2)+'%' : '—';
     const totalsRow = `<tr id="hc-totals-row" style="background:var(--surface2);font-weight:600;border-top:2px solid var(--border2)">
       <td class="td-p">TOTAL</td>
       <td style="text-align:center">${tAuth}</td>
@@ -4106,10 +4106,10 @@ async function showHCTab(tab){
       <td style="text-align:center">${tCont}</td>
       <td style="text-align:center">${tBajas}</td>
       <td style="text-align:center">${tPrev}</td>
+      <td style="text-align:center">${tPct}</td>
       <td style="text-align:center">${tCierre}</td>
       <td style="text-align:center">${tDet}</td>
       <td style="text-align:center">${tPCant}</td>
-      <td style="text-align:center">${tPct}</td>
     </tr>`;
 
     content.innerHTML=`
@@ -4126,11 +4126,11 @@ async function showHCTab(tab){
             <th>Proyecto</th><th>Autorizada</th><th>Actual</th><th>Vacantes</th>
             <th>Cartera</th><th>Entrevista</th><th>Validación</th><th>Proc. Contrat.</th>
             <th>Contratados</th><th>Bajas</th>
-            <th style="font-size:10px;white-space:nowrap">Status Prev. Bajas</th>
-            <th style="font-size:10px;white-space:nowrap">Status al Cierre</th>
+            <th style="font-size:10px;white-space:nowrap">Status Sem. Previo Bajas</th>
+            <th>%</th>
+            <th style="font-size:10px;white-space:nowrap">Status al Cierre Sem.</th>
             <th>Detenidas</th>
             <th style="font-size:10px;white-space:nowrap">Plantilla al Cierre</th>
-            <th>%</th>
           </tr></thead>
           <tbody>${rows}${totalsRow}</tbody>
         </table>
@@ -4231,26 +4231,27 @@ function recalcHCRow(proyId){
   const tr = document.getElementById('hc-tr-'+proyId);
   if(!tr) return;
   const auth = parseInt(tr.dataset.auth)||0;
-  const inputs = tr.querySelectorAll('input.hc-inp');
-  // order: actual(0), cartera(1), entrevista(2), validacion(3), proceso_contratacion(4), contratados(5), bajas(6), detenidas(7)
-  const actual = parseInt(inputs[0]?.value)||0;
-  const contratados = parseInt(inputs[5]?.value)||0;
-  const bajas = parseInt(inputs[6]?.value)||0;
-  const vacantes = Math.max(0, auth - actual);
-  const statusPrev = actual + contratados;
-  const statusCierre = statusPrev - bajas;
-  const plantillaCierre = auth - bajas;
-  const pct = auth>0 ? ((vacantes/auth)*100).toFixed(1)+'%' : '—';
+  // inp order: actual(0), cartera(1), entrevista(2), validacion(3), proceso_contratacion(4), contratados(5), bajas(6), detenidas(7)
+  const inp = tr.querySelectorAll('input.hc-inp');
+  const actual      = parseInt(inp[0]?.value)||0;
+  const contratados = parseInt(inp[5]?.value)||0;
+  const bajas       = parseInt(inp[6]?.value)||0;
+  const detenidas   = parseInt(inp[7]?.value)||0;
+  const vacantes       = auth - actual;
+  const statusPrev     = actual + contratados;
+  const pct            = statusPrev>0 ? ((auth/statusPrev)*100).toFixed(2)+'%' : '—';
+  const statusCierre   = statusPrev - bajas;
+  const plantillaCierre = auth - statusCierre - detenidas;
   const vacEl = document.getElementById('hc-vac-'+proyId);
-  if(vacEl){ vacEl.textContent = vacantes; vacEl.style.color = vacantes>0?'var(--err)':'var(--ok)'; }
+  if(vacEl){ vacEl.textContent=vacantes; vacEl.style.color=vacantes>0?'var(--err)':'var(--ok)'; }
   const prevEl = document.getElementById('hc-prev-'+proyId);
-  if(prevEl) prevEl.textContent = statusPrev;
-  const cierreEl = document.getElementById('hc-cierre-'+proyId);
-  if(cierreEl) cierreEl.textContent = statusCierre;
-  const pcantEl = document.getElementById('hc-pcant-'+proyId);
-  if(pcantEl) pcantEl.textContent = plantillaCierre;
+  if(prevEl) prevEl.textContent=statusPrev;
   const pctEl = document.getElementById('hc-pct-'+proyId);
-  if(pctEl) pctEl.textContent = pct;
+  if(pctEl) pctEl.textContent=pct;
+  const cierreEl = document.getElementById('hc-cierre-'+proyId);
+  if(cierreEl) cierreEl.textContent=statusCierre;
+  const pcantEl = document.getElementById('hc-pcant-'+proyId);
+  if(pcantEl) pcantEl.textContent=plantillaCierre;
   recalcHCTotals();
 }
 
@@ -4262,24 +4263,26 @@ function recalcHCTotals(){
   let tAuth=0,tActual=0,tVac=0,tCartera=0,tEntrev=0,tValid=0,tProc=0,tCont=0,tBajas=0,tPrev=0,tCierre=0,tDet=0,tPCant=0;
   tbody.querySelectorAll('tr[id^="hc-tr-"]').forEach(tr=>{
     const auth = parseInt(tr.dataset.auth)||0;
-    const inp = tr.querySelectorAll('input.hc-inp');
+    const inp  = tr.querySelectorAll('input.hc-inp');
     const actual = parseInt(inp[0]?.value)||0;
-    const cartera = parseInt(inp[1]?.value)||0;
+    const cartera= parseInt(inp[1]?.value)||0;
     const entrev = parseInt(inp[2]?.value)||0;
-    const valid = parseInt(inp[3]?.value)||0;
-    const proc = parseInt(inp[4]?.value)||0;
-    const cont = parseInt(inp[5]?.value)||0;
-    const bajas = parseInt(inp[6]?.value)||0;
-    const det = parseInt(inp[7]?.value)||0;
-    const vac = Math.max(0, auth-actual);
-    tAuth+=auth; tActual+=actual; tVac+=vac; tCartera+=cartera;
+    const valid  = parseInt(inp[3]?.value)||0;
+    const proc   = parseInt(inp[4]?.value)||0;
+    const cont   = parseInt(inp[5]?.value)||0;
+    const bajas  = parseInt(inp[6]?.value)||0;
+    const det    = parseInt(inp[7]?.value)||0;
+    const prev   = actual + cont;
+    const cierre = prev - bajas;
+    tAuth+=auth; tActual+=actual; tVac+=(auth-actual); tCartera+=cartera;
     tEntrev+=entrev; tValid+=valid; tProc+=proc; tCont+=cont; tBajas+=bajas;
-    tPrev+=(actual+cont); tCierre+=((actual+cont)-bajas); tDet+=det; tPCant+=(auth-bajas);
+    tPrev+=prev; tCierre+=cierre; tDet+=det; tPCant+=(auth-cierre-det);
   });
+  // cell order: 0=TOTAL,1=auth,2=actual,3=vac,4=cartera,5=entrev,6=valid,7=proc,8=cont,9=bajas,10=prev,11=%,12=cierre,13=det,14=pcant
+  const tPct = tPrev>0 ? ((tAuth/tPrev)*100).toFixed(2)+'%' : '—';
   const cells = totalsRow.querySelectorAll('td');
-  const vals = [null,tAuth,tActual,tVac,tCartera,tEntrev,tValid,tProc,tCont,tBajas,tPrev,tCierre,tDet,tPCant,
-    tAuth>0?((tVac/tAuth)*100).toFixed(1)+'%':'—'];
-  vals.forEach((v,i)=>{ if(v!==null && cells[i]) cells[i].textContent=v; });
+  [null,tAuth,tActual,tVac,tCartera,tEntrev,tValid,tProc,tCont,tBajas,tPrev,tPct,tCierre,tDet,tPCant]
+    .forEach((v,i)=>{ if(v!==null && cells[i]) cells[i].textContent=v; });
 }
 
 function openHCProyectoModal(empId){

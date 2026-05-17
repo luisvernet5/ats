@@ -2742,7 +2742,7 @@ function renderVacantesTable(){
   const est=(document.getElementById('flt-vac-est')||{}).value||'';
   // populate emp filter
   const empSel=document.getElementById('flt-vac-emp');
-  if(empSel){const cur=empSel.value;empSel.innerHTML='<option value="">Todas las empresas</option>';DB.empresas.forEach(e=>empSel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
+  if(empSel){const cur=empSel.value;empSel.innerHTML='<option value="">Todas las empresas</option>';(currentUserData?.rol==='rh_cliente'?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).forEach(e=>empSel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
   const _recIdV = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   let list = _recIdV ? DB.vacantes.filter(v=>v.reclutador_id===_recIdV) : DB.vacantes;
   if(q)list=list.filter(v=>v.nombre.toLowerCase().includes(q.toLowerCase()));
@@ -2990,7 +2990,7 @@ function renderCandidatosTable(){
   const etapaFlt=(document.getElementById('flt-cand-etapa')||{}).value||'';
   // populate selects
   const empSel=document.getElementById('flt-cand-emp');
-  if(empSel){const cur=empSel.value;empSel.innerHTML='<option value="">Todas las empresas</option>';DB.empresas.forEach(e=>empSel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
+  if(empSel){const cur=empSel.value;empSel.innerHTML='<option value="">Todas las empresas</option>';(currentUserData?.rol==='rh_cliente'?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).forEach(e=>empSel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
   const vacSel=document.getElementById('flt-cand-vac');
   if(vacSel){const cur=vacSel.value;vacSel.innerHTML='<option value="">Todas las vacantes</option>';DB.vacantes.forEach(v=>vacSel.innerHTML+=`<option value="${v.id}" ${cur===v.id?'selected':''}>${v.nombre}</option>`);}
   // collect all etapas

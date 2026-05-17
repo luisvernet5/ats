@@ -14,10 +14,14 @@
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
 .app{display:flex;height:100vh;overflow:hidden}
 .sidebar{width:224px;min-width:224px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:relative;transition:width .25s,min-width .25s}
-.sidebar.collapsed { width: 0; min-width: 0; overflow: hidden; padding: 0; }
-.sidebar.collapsed + .main { margin-left: 0; }
+.sidebar.collapsed { width: 52px; min-width: 52px; overflow: hidden; }
+.sidebar.collapsed .sb-logo { display: none; }
+.sidebar.collapsed .nav-section { display: none; }
+.sidebar.collapsed .nav-item { padding: 10px 0; justify-content: center; border-left: none; }
+.sidebar.collapsed .nav-item span, .sidebar.collapsed .nav-item-text { display: none; }
+.sidebar.collapsed .nav-item i { width: auto; font-size: 16px; margin: 0; }
+.sidebar.collapsed #sb-toggle { right: -12px; }
 #sb-toggle { transition: right .25s; }
-.sidebar.collapsed #sb-toggle { right: -36px; }
 .main{flex:1;overflow-y:auto;background:var(--bg)}
 .sb-logo{padding:20px 18px 16px;border-bottom:1px solid var(--border)}
 .sb-logo .brand{font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.08em;text-transform:uppercase}
@@ -224,19 +228,19 @@ input[type=date]{color:var(--text)}
   </button>
   <nav class="sb-nav">
     <div class="nav-section">Principal</div>
-    <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard"><i class="fa fa-chart-pie"></i> Dashboard</div>
-    <div class="nav-item" onclick="showPage('empresas')" id="nav-empresas"><i class="fa fa-building"></i> Empresas cliente</div>
-    <div class="nav-item" onclick="showPage('pipeline')" id="nav-pipeline"><i class="fa fa-stream"></i> Pipeline</div>
-    <div class="nav-item" onclick="showPage('vacantes')" id="nav-vacantes"><i class="fa fa-briefcase"></i> Vacantes</div>
-    <div class="nav-item" onclick="showPage('candidatos')" id="nav-candidatos"><i class="fa fa-users"></i> Candidatos</div>
+    <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard"><i class="fa fa-chart-pie"></i><span class="nav-item-text"> Dashboard</span></div>
+    <div class="nav-item" onclick="showPage('empresas')" id="nav-empresas"><i class="fa fa-building"></i><span class="nav-item-text"> Empresas cliente</span></div>
+    <div class="nav-item" onclick="showPage('pipeline')" id="nav-pipeline"><i class="fa fa-stream"></i><span class="nav-item-text"> Pipeline</span></div>
+    <div class="nav-item" onclick="showPage('vacantes')" id="nav-vacantes"><i class="fa fa-briefcase"></i><span class="nav-item-text"> Vacantes</span></div>
+    <div class="nav-item" onclick="showPage('candidatos')" id="nav-candidatos"><i class="fa fa-users"></i><span class="nav-item-text"> Candidatos</span></div>
     <div class="nav-section">Reportes</div>
-    <div class="nav-item" onclick="showPage('reclutadores')" id="nav-reclutadores"><i class="fa fa-user-tie"></i> Reclutadores</div>
-    <div class="nav-item" onclick="nav('tiempos')" id="nav-tiempos"><i class="fa fa-clock"></i> Análisis de tiempos</div>
-    <div class="nav-item" onclick="nav('ranking')" id="nav-ranking"><i class="fa fa-trophy"></i> Ranking reclutadores</div>
-    <div class="nav-item" onclick="showPage('desercion')" id="nav-desercion"><i class="fa fa-door-open"></i> Deserción</div>
-    <div class="nav-item" onclick="showPage('contratados')" id="nav-contratados"><i class="fa fa-user-check"></i> Contratados</div>
+    <div class="nav-item" onclick="showPage('reclutadores')" id="nav-reclutadores"><i class="fa fa-user-tie"></i><span class="nav-item-text"> Reclutadores</span></div>
+    <div class="nav-item" onclick="nav('tiempos')" id="nav-tiempos"><i class="fa fa-clock"></i><span class="nav-item-text"> Análisis de tiempos</span></div>
+    <div class="nav-item" onclick="nav('ranking')" id="nav-ranking"><i class="fa fa-trophy"></i><span class="nav-item-text"> Ranking reclutadores</span></div>
+    <div class="nav-item" onclick="showPage('desercion')" id="nav-desercion"><i class="fa fa-door-open"></i><span class="nav-item-text"> Deserción</span></div>
+    <div class="nav-item" onclick="showPage('contratados')" id="nav-contratados"><i class="fa fa-user-check"></i><span class="nav-item-text"> Contratados</span></div>
     <div class="nav-section">Config</div>
-    <div class="nav-item" onclick="showPage('config')" id="nav-config"><i class="fa fa-cog"></i> Configuración</div>
+    <div class="nav-item" onclick="showPage('config')" id="nav-config"><i class="fa fa-cog"></i><span class="nav-item-text"> Configuración</span></div>
   </nav>
 </aside>
 
@@ -1257,24 +1261,10 @@ function toggleSidebar(){
   const icon = document.getElementById('sb-toggle-icon');
   if(icon) icon.className = collapsed ? 'fa fa-chevron-right' : 'fa fa-chevron-left';
   localStorage.setItem('sb_collapsed', collapsed ? '1' : '0');
-  let floatBtn = document.getElementById('sb-float-btn');
-  if(collapsed){
-    if(!floatBtn){
-      floatBtn = document.createElement('button');
-      floatBtn.id = 'sb-float-btn';
-      floatBtn.innerHTML = '<i class="fa fa-bars"></i>';
-      floatBtn.onclick = toggleSidebar;
-      floatBtn.style.cssText = 'position:fixed;top:16px;left:16px;z-index:200;width:36px;height:36px;border-radius:8px;background:var(--accent);border:none;cursor:pointer;color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25)';
-      document.body.appendChild(floatBtn);
-    }
-    floatBtn.style.display = 'flex';
-    const topbar = document.querySelector('.topbar');
-    if(topbar) topbar.style.paddingLeft = '60px';
-  } else {
-    if(floatBtn) floatBtn.style.display = 'none';
-    const topbar = document.querySelector('.topbar');
-    if(topbar) topbar.style.paddingLeft = '';
-  }
+  const topbar = document.querySelector('.topbar');
+  if(topbar) topbar.style.paddingLeft = '';
+  const floatBtn = document.getElementById('sb-float-btn');
+  if(floatBtn) floatBtn.style.display = 'none';
 }
 
 function initSidebarState(){
@@ -1284,18 +1274,6 @@ function initSidebarState(){
       sb.classList.add('collapsed');
       const icon = document.getElementById('sb-toggle-icon');
       if(icon) icon.className = 'fa fa-chevron-right';
-      let floatBtn = document.getElementById('sb-float-btn');
-      if(!floatBtn){
-        floatBtn = document.createElement('button');
-        floatBtn.id = 'sb-float-btn';
-        floatBtn.innerHTML = '<i class="fa fa-bars"></i>';
-        floatBtn.onclick = toggleSidebar;
-        floatBtn.style.cssText = 'position:fixed;top:16px;left:16px;z-index:200;width:36px;height:36px;border-radius:8px;background:var(--accent);border:none;cursor:pointer;color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25)';
-        document.body.appendChild(floatBtn);
-      }
-      floatBtn.style.display = 'flex';
-      const topbar = document.querySelector('.topbar');
-      if(topbar) topbar.style.paddingLeft = '60px';
     }
   }
 }

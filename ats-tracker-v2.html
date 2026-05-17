@@ -4292,7 +4292,7 @@ function switchConfigTab(tab){
   }
 
   else if(tab==='modo'){
-    const isSandbox = localStorage.getItem('sandbox_mode')==='1';
+    const isSandbox = localStorage.getItem('sandbox_mode')==='true' || SANDBOX_MODE===true;
     content.innerHTML=`
       <div style="max-width:600px">
         <div class="card" style="padding:20px;margin-bottom:16px">

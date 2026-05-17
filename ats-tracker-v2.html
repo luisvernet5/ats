@@ -1770,7 +1770,7 @@ function openVacanteModal(id=null,preEmpId=null){
   const vForFolio=id?DB.vacantes.find(x=>x.id===id):null;
   document.getElementById('mod-vac-title').textContent=id?(vForFolio&&vForFolio.folio?`Editar Vacante — ${vForFolio.folio}`:'Editar Vacante'):'Nueva Vacante';
   document.getElementById('vac-id').value='';
-  ['vac-nombre','vac-folio','vac-salario','vac-desc','vac-colaborador','vac-garantia-inicio','vac-garantia-dias','vac-garantia-venc'].forEach(i=>document.getElementById(i).value='');
+  ['vac-nombre','vac-folio','vac-salario','vac-desc','vac-colaborador','vac-garantia-dias'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('vac-fecha').value=today();
   document.getElementById('vac-sla').value='';
   document.getElementById('vac-sla-custom').style.display='none';
@@ -1807,9 +1807,9 @@ function openVacanteModal(id=null,preEmpId=null){
         document.getElementById('vac-aplica-garantia').checked=true;
         document.getElementById('vac-garantia-section').style.display='block';
       }
-      document.getElementById('vac-garantia-inicio').value=v.garantia_inicio||'';
+      const elGI = document.getElementById('vac-garantia-inicio'); if(elGI) elGI.value=v.garantia_inicio||'';
       document.getElementById('vac-garantia-dias').value=v.garantia_dias||'';
-      document.getElementById('vac-garantia-venc').value=v.garantia_venc||'';
+      const elGV = document.getElementById('vac-garantia-venc'); if(elGV) elGV.value=v.garantia_venc||'';
       document.getElementById('vac-folio').value=v.folio||'';
       const slaVal=v.sla_dias||'';
       const slaOpts=['7','10','15','20','30','45','60','90'];
@@ -1839,7 +1839,7 @@ function autofillVacRec(){
 function toggleVacGarantia(){
   const on=document.getElementById('vac-aplica-garantia').checked;
   document.getElementById('vac-garantia-section').style.display=on?'block':'none';
-  if(!on){['vac-garantia-inicio','vac-garantia-dias','vac-garantia-venc'].forEach(i=>document.getElementById(i).value='');}
+  if(!on){['vac-garantia-dias'].forEach(i=>document.getElementById(i).value='');}
 }
 function toggleVacSustitucion(){
   const isSust=document.getElementById('vac-tipo').value==='Sustitución';

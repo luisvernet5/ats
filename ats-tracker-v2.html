@@ -525,11 +525,12 @@ input[type=date]{color:var(--text)}
         <label for="vac-aplica-garantia" style="cursor:pointer;font-size:13px;color:var(--text2);margin:0">¿Aplica garantía de reclutamiento?</label>
       </div>
       <div id="vac-garantia-section" style="display:none">
-        <div class="sep" style="margin-top:4px">Garantía de reclutamiento</div>
+        <div class="sep">Garantía de reclutamiento</div>
         <div class="fr g3c">
-          <div class="fg"><label>Inicio de garantía</label><input type="date" id="vac-garantia-inicio" oninput="calcVencGarantia()"></div>
-          <div class="fg"><label>Días de garantía</label><input type="number" id="vac-garantia-dias" min="0" placeholder="Ej. 90" oninput="calcVencGarantia()"></div>
-          <div class="fg"><label>Vencimiento (calculado)</label><input type="date" id="vac-garantia-venc" readonly style="opacity:.65;cursor:default"></div>
+          <div class="fg">
+            <label>Días de garantía</label>
+            <input type="number" id="vac-garantia-dias" placeholder="Ej. 90">
+          </div>
         </div>
       </div>
     </div>
@@ -1082,13 +1083,6 @@ function garantiaBadge(v){
   if(diff<0)return'<span class="badge br"><i class="fa fa-shield-alt"></i> Vencida</span>';
   if(diff<=7)return`<span class="badge ba"><i class="fa fa-shield-alt"></i> ${diff}d</span>`;
   return`<span class="badge bg"><i class="fa fa-shield-alt"></i> ${diff}d</span>`;
-}
-function calcVencGarantia(){
-  const inicio=document.getElementById('vac-garantia-inicio').value;
-  const dias=parseInt(document.getElementById('vac-garantia-dias').value);
-  const el=document.getElementById('vac-garantia-venc');
-  if(inicio&&dias>0){const d=new Date(inicio);d.setDate(d.getDate()+dias);el.value=d.toISOString().split('T')[0];}
-  else el.value='';
 }
 
 /* ============================================================
@@ -3204,132 +3198,201 @@ async function saveGarantiaData(obj){
   await loadGarantiaData();
 }
 
-function renderGarantias(){
+async function renderGarantias(){
   const page = document.getElementById('page-garantias');
   if(!page) return;
-  loadGarantiaData().then(()=>{
-    const rows = (DB.garantias||[]).map(g=>{
-      const emp = DB.empresas.find(e=>e.id===g.empresa_id)||{};
-      const vac = DB.vacantes.find(v=>v.id===g.vacante_id)||{};
-      const cand = DB.candidatos.find(c=>c.id===g.candidato_id)||{};
-      const diasRestantes = g.fecha_fin ? daysBetween(today(), g.fecha_fin) : null;
-      const statusCls = g.estado==='activa' ? 'badge-ok' : g.estado==='reemplazada' ? 'badge-warn' : 'badge-err';
-      return `<tr onclick="toggleGarantiaRow('${g.id}')" style="cursor:pointer">
-        <td>${fmt(g.fecha_inicio)||'—'}</td>
-        <td>${fmt(g.fecha_fin)||'—'}</td>
+  page.innerHTML='<div style="padding:24px 28px;color:var(--text3)">Cargando...</div>';
+
+  const vacsConGarantia = DB.vacantes.filter(v=>v.aplica_garantia);
+  if(!vacsConGarantia.length){
+    page.innerHTML='<div style="padding:24px 28px"><div style="color:var(--text3);font-size:13px">Sin vacantes con garantía registradas.</div></div>';
+    return;
+  }
+
+  const garantiasDB = {};
+  for(const v of vacsConGarantia){
+    const { data } = await sbClient.from('garantias').select('*').eq('vacante_id', v.id).maybeSingle();
+    garantiasDB[v.id] = data || {};
+  }
+
+  const hoyStr = today();
+  const rows = vacsConGarantia.map(v=>{
+    const emp = DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const rec = DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+    const g = garantiasDB[v.id];
+    const inicioG = g.garantia_inicio||'';
+    const diasG = v.garantia_dias||0;
+    let vencG = '';
+    if(inicioG && diasG){
+      const d = new Date(inicioG);
+      d.setDate(d.getDate()+parseInt(diasG));
+      vencG = d.toISOString().split('T')[0];
+    }
+    const vencida = vencG && vencG < hoyStr;
+    const vigente = vencG && !vencida;
+    const diasRestantes = vencG ? daysBetween(hoyStr, vencG) : null;
+    const estatusBadge = !vencG
+      ? `<span class="badge bx">Sin inicio</span>`
+      : vencida
+        ? `<span class="badge br"><i class="fa fa-times-circle"></i> Vencida</span>`
+        : `<span class="badge bg"><i class="fa fa-check-circle"></i> Vigente · ${diasRestantes}d</span>`;
+
+    const camposHabilitados = !!inicioG;
+    const disabled = camposHabilitados ? '' : 'disabled';
+
+    return`
+      <tr style="cursor:pointer" onclick="toggleGarantiaRow('${v.id}')">
+        <td class="td-p">${v.nombre||'—'}</td>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td>
         <td>${emp.nombre||'—'}</td>
-        <td>${vac.titulo||'—'}</td>
-        <td>${cand.nombre||'—'}</td>
-        <td><span class="badge ${statusCls}">${g.estado||'—'}</span></td>
-        <td>${diasRestantes!==null ? (diasRestantes>=0?diasRestantes+' días':Math.abs(diasRestantes)+' días vencida') : '—'}</td>
-        <td>${g.notas||''}</td>
+        <td>${rec.nombre||'—'}</td>
+        <td>${diasG ? diasG+'d' : '—'}</td>
+        <td>${inicioG ? fmt(inicioG) : '—'}</td>
+        <td>${vencG ? fmt(vencG) : '—'}</td>
+        <td>${estatusBadge}</td>
+        <td>${g.anticipo_pagado?'<span class="badge bg">Pagado</span>':'<span class="badge bx">Pendiente</span>'}</td>
+        <td>${g.finiquito_pagado?'<span class="badge bg">Pagado</span>':'<span class="badge bx">Pendiente</span>'}</td>
       </tr>
-      <tr id="gar-expand-${g.id}" style="display:none;background:var(--bg2)">
-        <td colspan="8" style="padding:12px 20px">
-          <div style="display:flex;gap:12px;flex-wrap:wrap">
-            <button class="btn btn-s" onclick="event.stopPropagation();abrirEdicionGarantia('${g.id}')">Editar</button>
-            <button class="btn btn-s btn-err" onclick="event.stopPropagation();eliminarGarantia('${g.id}')">Eliminar</button>
+      <tr id="grow-${v.id}" style="display:none">
+        <td colspan="10" style="padding:0;background:var(--surface2)">
+          <div style="padding:16px 20px">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">
+              <div class="fg">
+                <label>Fecha inicio garantía</label>
+                <input type="date" id="g-inicio-${v.id}" value="${inicioG}"
+                  onchange="recalcVenc('${v.id}',${diasG})">
+              </div>
+              <div class="fg">
+                <label>Vencimiento (calculado)</label>
+                <input type="text" id="g-venc-${v.id}" value="${vencG ? fmt(vencG) : '—'}" readonly
+                  style="background:var(--surface3);color:var(--text3)">
+              </div>
+              <div class="fg">
+                <label>Días de garantía</label>
+                <input type="text" value="${diasG}d" readonly
+                  style="background:var(--surface3);color:var(--text3)">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+              <div>
+                <div class="sep" style="margin-top:0">Anticipo</div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                  <input type="checkbox" id="g-ant-paid-${v.id}" ${g.anticipo_pagado?'checked':''} ${disabled}>
+                  <label style="margin:0">Pagado</label>
+                </div>
+                <div class="fr" style="margin-bottom:8px">
+                  <div class="fg">
+                    <label>Monto</label>
+                    <input type="text" id="g-ant-monto-${v.id}" value="${g.anticipo_monto||''}" placeholder="$0.00" ${disabled}>
+                  </div>
+                  <div class="fg">
+                    <label>Fecha de pago</label>
+                    <input type="date" id="g-ant-fecha-${v.id}" value="${g.anticipo_fecha||''}" ${disabled}>
+                  </div>
+                </div>
+                <div class="fg" style="margin-bottom:10px">
+                  <label>No. Factura</label>
+                  <input type="text" id="g-ant-factura-${v.id}" value="${g.anticipo_factura||''}" placeholder="FAC-001" ${disabled}>
+                </div>
+              </div>
+              <div>
+                <div class="sep" style="margin-top:0">Finiquito</div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                  <input type="checkbox" id="g-fin-paid-${v.id}" ${g.finiquito_pagado?'checked':''} ${disabled}>
+                  <label style="margin:0">Pagado</label>
+                </div>
+                <div class="fr" style="margin-bottom:8px">
+                  <div class="fg">
+                    <label>Monto</label>
+                    <input type="text" id="g-fin-monto-${v.id}" value="${g.finiquito_monto||''}" placeholder="$0.00" ${disabled}>
+                  </div>
+                  <div class="fg">
+                    <label>Fecha de pago</label>
+                    <input type="date" id="g-fin-fecha-${v.id}" value="${g.finiquito_fecha||''}" ${disabled}>
+                  </div>
+                </div>
+                <div class="fg" style="margin-bottom:10px">
+                  <label>No. Factura</label>
+                  <input type="text" id="g-fin-factura-${v.id}" value="${g.finiquito_factura||''}" placeholder="FAC-001" ${disabled}>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:12px">
+              <button class="btn btn-primary btn-sm" onclick="saveGarantiaRow('${v.id}')">
+                <i class="fa fa-save"></i> Guardar
+              </button>
+            </div>
           </div>
-          ${g.notas?`<p style="margin-top:10px;color:var(--text2)">${g.notas}</p>`:''}
         </td>
       </tr>`;
-    }).join('');
-    page.innerHTML=`<div style="padding:24px 28px">
-      <div class="fbar" style="margin-bottom:18px">
-        <h3 style="margin:0">Garantías de colocación</h3>
-        <button class="btn btn-p" onclick="abrirNuevaGarantia()"><i class="fa fa-plus"></i> Nueva garantía</button>
-      </div>
-      <div style="overflow-x:auto">
-        <table><thead><tr>
-          <th>Inicio</th><th>Fin</th><th>Empresa</th><th>Vacante</th><th>Candidato</th><th>Estado</th><th>Días restantes</th><th>Notas</th>
-        </tr></thead><tbody>
-          ${rows||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">Sin garantías registradas</td></tr>'}
-        </tbody></table>
-      </div>
-    </div>`;
+  }).join('');
+
+  page.innerHTML=`<div style="padding:24px 28px">
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th>
+          <th>Días</th><th>Inicio</th><th>Vence</th><th>Estatus</th>
+          <th>Anticipo</th><th>Finiquito</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function recalcVenc(vacId, diasG){
+  const inicioEl = document.getElementById('g-inicio-'+vacId);
+  const vencEl = document.getElementById('g-venc-'+vacId);
+  if(!inicioEl||!vencEl||!diasG) return;
+  const inicio = inicioEl.value;
+  if(!inicio){ vencEl.value='—'; return; }
+  const d = new Date(inicio);
+  d.setDate(d.getDate()+parseInt(diasG));
+  vencEl.value = fmt(d.toISOString().split('T')[0]);
+  // habilitar campos
+  ['g-ant-paid-','g-ant-monto-','g-ant-fecha-','g-ant-factura-',
+   'g-fin-paid-','g-fin-monto-','g-fin-fecha-','g-fin-factura-'].forEach(prefix=>{
+    const el = document.getElementById(prefix+vacId);
+    if(el) el.disabled = false;
   });
 }
 
-function toggleGarantiaRow(id){
-  const el = document.getElementById('gar-expand-'+id);
-  if(!el) return;
-  el.style.display = el.style.display==='none' ? 'table-row' : 'none';
-}
-
-function abrirNuevaGarantia(){
-  const empOpts = DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
-  const newId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
-  const html=`<div style="padding:20px;max-width:480px;margin:0 auto">
-    <h3>Nueva garantía</h3>
-    <label>Empresa</label>
-    <select id="gar-emp" style="width:100%;margin-bottom:10px" onchange="actualizarVacantesGarantia()"><option value="">— Selecciona —</option>${empOpts}</select>
-    <label>Vacante</label>
-    <select id="gar-vac" style="width:100%;margin-bottom:10px" onchange="actualizarCandidatosGarantia()"><option value="">— Selecciona empresa —</option></select>
-    <label>Candidato</label>
-    <select id="gar-cand" style="width:100%;margin-bottom:10px"><option value="">— Selecciona vacante —</option></select>
-    <label>Fecha inicio</label>
-    <input id="gar-inicio" type="date" style="width:100%;margin-bottom:10px">
-    <label>Fecha fin</label>
-    <input id="gar-fin" type="date" style="width:100%;margin-bottom:10px">
-    <label>Estado</label>
-    <select id="gar-estado" style="width:100%;margin-bottom:10px">
-      <option value="activa">Activa</option>
-      <option value="reemplazada">Reemplazada</option>
-      <option value="vencida">Vencida</option>
-    </select>
-    <label>Notas</label>
-    <textarea id="gar-notas" rows="3" style="width:100%;margin-bottom:14px"></textarea>
-    <button class="btn btn-p" onclick="guardarNuevaGarantia('${newId}')">Guardar</button>
-  </div>`;
-  document.getElementById('panel-content').innerHTML=html;
-  document.getElementById('detail-panel').classList.add('open');
-}
-
-function actualizarVacantesGarantia(){
-  const empId = document.getElementById('gar-emp').value;
-  const vacs = DB.vacantes.filter(v=>v.empresa_id===empId);
-  document.getElementById('gar-vac').innerHTML='<option value="">— Selecciona —</option>'+vacs.map(v=>`<option value="${v.id}">${v.titulo}</option>`).join('');
-  document.getElementById('gar-cand').innerHTML='<option value="">— Selecciona vacante —</option>';
-}
-
-function actualizarCandidatosGarantia(){
-  const vacId = document.getElementById('gar-vac')?.value;
-  const cands = vacId ? DB.candidatos.filter(c=>c.vacante_id===vacId) : [];
-  const el = document.getElementById('gar-cand');
-  if(el) el.innerHTML='<option value="">— Selecciona —</option>'+cands.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
-}
-
-async function guardarNuevaGarantia(id){
-  const obj={
-    id,
-    empresa_id: document.getElementById('gar-emp').value,
-    vacante_id: document.getElementById('gar-vac').value,
-    candidato_id: document.getElementById('gar-cand').value,
-    fecha_inicio: document.getElementById('gar-inicio').value||null,
-    fecha_fin: document.getElementById('gar-fin').value||null,
-    estado: document.getElementById('gar-estado').value,
-    notas: document.getElementById('gar-notas').value,
-    created_at: new Date().toISOString()
+async function saveGarantiaRow(vacId){
+  const inicioEl = document.getElementById('g-inicio-'+vacId);
+  const inicio = inicioEl?.value||'';
+  const v = DB.vacantes.find(x=>x.id===vacId)||{};
+  const diasG = v.garantia_dias||0;
+  let vencG = '';
+  if(inicio && diasG){
+    const d = new Date(inicio);
+    d.setDate(d.getDate()+parseInt(diasG));
+    vencG = d.toISOString().split('T')[0];
+  }
+  const g = {
+    id: vacId,
+    vacante_id: vacId,
+    garantia_inicio: inicio,
+    garantia_venc: vencG,
+    anticipo_pagado: document.getElementById('g-ant-paid-'+vacId)?.checked||false,
+    anticipo_monto: document.getElementById('g-ant-monto-'+vacId)?.value||'',
+    anticipo_fecha: document.getElementById('g-ant-fecha-'+vacId)?.value||'',
+    anticipo_factura: document.getElementById('g-ant-factura-'+vacId)?.value||'',
+    finiquito_pagado: document.getElementById('g-fin-paid-'+vacId)?.checked||false,
+    finiquito_monto: document.getElementById('g-fin-monto-'+vacId)?.value||'',
+    finiquito_fecha: document.getElementById('g-fin-fecha-'+vacId)?.value||'',
+    finiquito_factura: document.getElementById('g-fin-factura-'+vacId)?.value||'',
+    updated_at: new Date().toISOString()
   };
-  try{
-    await saveGarantiaData(obj);
-    closePanel();
-    renderGarantias();
-    showToast('Garantía guardada ✓');
-  }catch(e){ showToast('Error: '+e.message,'err'); }
+  const { error } = await sbClient.from('garantias').upsert(g);
+  if(error) showToast('Error: '+error.message,'err');
+  else { showToast('Garantía guardada ✓'); renderGarantias(); }
 }
 
-async function eliminarGarantia(id){
-  if(!confirm('¿Eliminar esta garantía?')) return;
-  try{
-    if(!SANDBOX_MODE){
-      const { error } = await sbClient.from('garantias').delete().eq('id',id);
-      if(error) throw error;
-    }
-    DB.garantias = (DB.garantias||[]).filter(g=>g.id!==id);
-    renderGarantias();
-    showToast('Garantía eliminada ✓');
-  }catch(e){ showToast('Error: '+e.message,'err'); }
+function toggleGarantiaRow(id){
+  const row = document.getElementById('grow-'+id);
+  if(!row) return;
+  row.style.display = row.style.display==='none' ? 'table-row' : 'none';
 }
 
 /* ============================================================

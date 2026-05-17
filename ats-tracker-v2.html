@@ -913,7 +913,7 @@ function adaptUIToRole() {
         item.className = 'nav-item';
         item.id = 'nav-vacantes-eliminadas';
         item.dataset.tooltip = 'Vacantes eliminadas';
-        item.innerHTML = '<i class="fa fa-trash-restore"></i> Vacantes eliminadas';
+        item.innerHTML = '<i class="fa fa-trash-restore"></i><span class="nav-item-text"> Vacantes eliminadas</span>';
         item.setAttribute('onclick', "showPage('vacantes-eliminadas')");
         configItem.parentNode.insertBefore(item, configItem);
       }
@@ -929,7 +929,7 @@ function adaptUIToRole() {
       garantiaItem.className = 'nav-item';
       garantiaItem.id = 'nav-garantias';
       garantiaItem.dataset.tooltip = 'Garantías';
-      garantiaItem.innerHTML = '<i class="fa fa-shield-alt"></i> Garantías';
+      garantiaItem.innerHTML = '<i class="fa fa-shield-alt"></i><span class="nav-item-text"> Garantías</span>';
       garantiaItem.setAttribute('onclick', "showPage('garantias')");
       const elimItem = document.getElementById('nav-vacantes-eliminadas');
       if(elimItem) elimItem.parentNode.insertBefore(garantiaItem, elimItem.nextSibling);
@@ -949,7 +949,7 @@ function adaptUIToRole() {
       item.className = 'nav-item';
       item.id = 'nav-activity-log';
       item.dataset.tooltip = 'Log de actividad';
-      item.innerHTML = '<i class="fa fa-history"></i> Log de actividad';
+      item.innerHTML = '<i class="fa fa-history"></i><span class="nav-item-text"> Log de actividad</span>';
       item.setAttribute('onclick', "showPage('activity-log')");
       configItem.parentNode.insertBefore(item, configItem);
     }
@@ -964,7 +964,7 @@ function adaptUIToRole() {
   if(nav && !document.getElementById('logout-btn')) {
     nav.innerHTML += `<div style="padding:12px 18px;border-top:1px solid var(--border)">
       <button id="logout-btn" class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick="doLogout()">
-        <i class="fa fa-sign-out-alt"></i> Cerrar sesión
+        <i class="fa fa-sign-out-alt"></i><span class="nav-item-text"> Cerrar sesión</span>
       </button>
     </div>`;
   }

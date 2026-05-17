@@ -1251,21 +1251,45 @@ function resolverNombre(campo, valor){
 }
 
 function toggleSidebar(){
-  const sb = document.querySelector('.sidebar') || document.querySelector('.sb');
+  const sb = document.querySelector('.sb') || document.querySelector('.sidebar');
   if(!sb) return;
   const collapsed = sb.classList.toggle('collapsed');
   const icon = document.getElementById('sb-toggle-icon');
   if(icon) icon.className = collapsed ? 'fa fa-chevron-right' : 'fa fa-chevron-left';
   localStorage.setItem('sb_collapsed', collapsed ? '1' : '0');
+  let floatBtn = document.getElementById('sb-float-btn');
+  if(collapsed){
+    if(!floatBtn){
+      floatBtn = document.createElement('button');
+      floatBtn.id = 'sb-float-btn';
+      floatBtn.innerHTML = '<i class="fa fa-bars"></i>';
+      floatBtn.onclick = toggleSidebar;
+      floatBtn.style.cssText = 'position:fixed;top:16px;left:16px;z-index:200;width:36px;height:36px;border-radius:8px;background:var(--accent);border:none;cursor:pointer;color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25)';
+      document.body.appendChild(floatBtn);
+    }
+    floatBtn.style.display = 'flex';
+  } else {
+    if(floatBtn) floatBtn.style.display = 'none';
+  }
 }
 
 function initSidebarState(){
   if(localStorage.getItem('sb_collapsed')==='1'){
-    const sb = document.querySelector('.sidebar') || document.querySelector('.sb');
+    const sb = document.querySelector('.sb') || document.querySelector('.sidebar');
     if(sb){
       sb.classList.add('collapsed');
       const icon = document.getElementById('sb-toggle-icon');
       if(icon) icon.className = 'fa fa-chevron-right';
+      let floatBtn = document.getElementById('sb-float-btn');
+      if(!floatBtn){
+        floatBtn = document.createElement('button');
+        floatBtn.id = 'sb-float-btn';
+        floatBtn.innerHTML = '<i class="fa fa-bars"></i>';
+        floatBtn.onclick = toggleSidebar;
+        floatBtn.style.cssText = 'position:fixed;top:16px;left:16px;z-index:200;width:36px;height:36px;border-radius:8px;background:var(--accent);border:none;cursor:pointer;color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25)';
+        document.body.appendChild(floatBtn);
+      }
+      floatBtn.style.display = 'flex';
     }
   }
 }

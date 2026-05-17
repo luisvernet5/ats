@@ -3198,6 +3198,95 @@ async function saveGarantiaData(obj){
   await loadGarantiaData();
 }
 
+function filtrarGarantias(){
+  const emp = document.getElementById('g-flt-emp')?.value||'';
+  const rec = document.getElementById('g-flt-rec')?.value||'';
+  document.querySelectorAll('.garantia-row').forEach(tr=>{
+    const empMatch = !emp || tr.dataset.emp===emp;
+    const recMatch = !rec || tr.dataset.rec===rec;
+    const expandRow = document.getElementById('grow-'+tr.id.replace('garantia-row-',''));
+    const show = empMatch && recMatch;
+    tr.style.display = show ? '' : 'none';
+    if(!show && expandRow) expandRow.style.display='none';
+  });
+}
+
+async function exportarGarantias(){
+  const empOpts = DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+  const recOpts = DB.reclutadores.map(r=>`<option value="${r.id}">${r.nombre}</option>`).join('');
+  const overlay = document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
+  overlay.innerHTML=`
+    <div style="background:var(--surface);border-radius:14px;padding:24px;width:480px;max-width:96vw">
+      <div style="font-size:15px;font-weight:600;margin-bottom:18px">Exportar garantías</div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>Empresa</label>
+        <select id="exp-g-emp"><option value="">Todas</option>${empOpts}</select>
+      </div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>Reclutador</label>
+        <select id="exp-g-rec"><option value="">Todos</option>${recOpts}</select>
+      </div>
+      <div class="fr" style="margin-bottom:18px">
+        <div class="fg">
+          <label>Fecha inicio (desde)</label>
+          <input type="date" id="exp-g-f1">
+        </div>
+        <div class="fg">
+          <label>Fecha inicio (hasta)</label>
+          <input type="date" id="exp-g-f2">
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="this.closest('div[style*=fixed]').remove()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="doExportGarantias()"><i class="fa fa-download"></i> Exportar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function doExportGarantias(){
+  const empId = document.getElementById('exp-g-emp')?.value||'';
+  const recId = document.getElementById('exp-g-rec')?.value||'';
+  const f1 = document.getElementById('exp-g-f1')?.value||'';
+  const f2 = document.getElementById('exp-g-f2')?.value||'';
+  document.querySelector('div[style*="fixed"][style*="z-index: 200"]')?.remove();
+
+  let vacs = DB.vacantes.filter(v=>v.aplica_garantia);
+  if(empId) vacs = vacs.filter(v=>v.empresa_id===empId);
+  if(recId) vacs = vacs.filter(v=>v.reclutador_id===recId);
+
+  const rows = [];
+  const header = ['Vacante','Folio','Empresa','Reclutador','Días garantía','Inicio garantía','Vencimiento','Estatus','Anticipo pagado','Monto anticipo','Fecha anticipo','Factura anticipo','Finiquito pagado','Monto finiquito','Fecha finiquito','Factura finiquito'];
+  rows.push(header);
+
+  for(const v of vacs){
+    const emp = DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const rec = DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+    const { data: g } = await sbClient.from('garantias').select('*').eq('vacante_id',v.id).maybeSingle();
+    const inicio = g?.garantia_inicio||'';
+    const venc = g?.garantia_venc||'';
+    if(f1 && inicio && inicio < f1) continue;
+    if(f2 && inicio && inicio > f2) continue;
+    const hoy = today();
+    const estatus = !venc ? 'Sin inicio' : venc < hoy ? 'Vencida' : 'Vigente';
+    rows.push([
+      v.nombre||'', v.folio||'', emp.nombre||'', rec.nombre||'',
+      v.garantia_dias||'', inicio, venc, estatus,
+      g?.anticipo_pagado?'Sí':'No', g?.anticipo_monto||'', g?.anticipo_fecha||'', g?.anticipo_factura||'',
+      g?.finiquito_pagado?'Sí':'No', g?.finiquito_monto||'', g?.finiquito_fecha||'', g?.finiquito_factura||''
+    ]);
+  }
+
+  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const BOM = '﻿';
+  const blob = new Blob([BOM+csv],{type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `garantias_${today()}.csv`;
+  a.click();
+}
+
 async function renderGarantias(){
   const page = document.getElementById('page-garantias');
   if(!page) return;
@@ -3241,7 +3330,13 @@ async function renderGarantias(){
     const disabled = camposHabilitados ? '' : 'disabled';
 
     return`
-      <tr style="cursor:pointer" onclick="toggleGarantiaRow('${v.id}')">
+      <tr style="cursor:pointer"
+          data-emp="${v.empresa_id}"
+          data-rec="${v.reclutador_id||''}"
+          data-inicio="${inicioG}"
+          data-venc="${vencG}"
+          class="garantia-row"
+          onclick="toggleGarantiaRow('${v.id}')">
         <td class="td-p">${v.nombre||'—'}</td>
         <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td>
         <td>${emp.nombre||'—'}</td>
@@ -3327,7 +3422,25 @@ async function renderGarantias(){
       </tr>`;
   }).join('');
 
+  const empOpts = [...new Set(vacsConGarantia.map(v=>v.empresa_id))]
+    .map(eid=>{ const e=DB.empresas.find(x=>x.id===eid)||{}; return `<option value="${eid}">${e.nombre||eid}</option>`; }).join('');
+  const recOpts = [...new Set(vacsConGarantia.map(v=>v.reclutador_id).filter(Boolean))]
+    .map(rid=>{ const r=DB.reclutadores.find(x=>x.id===rid)||{}; return `<option value="${rid}">${r.nombre||rid}</option>`; }).join('');
+
   page.innerHTML=`<div style="padding:24px 28px">
+    <div class="fbar" style="margin-bottom:18px">
+      <select id="g-flt-emp" onchange="filtrarGarantias()" style="min-width:180px">
+        <option value="">Todas las empresas</option>${empOpts}
+      </select>
+      <select id="g-flt-rec" onchange="filtrarGarantias()" style="min-width:180px">
+        <option value="">Todos los reclutadores</option>${recOpts}
+      </select>
+      <div class="sp"></div>
+      <button class="btn btn-green btn-sm" onclick="exportarGarantias()">
+        <i class="fa fa-file-excel"></i> Exportar Excel
+      </button>
+    </div>
+    <div id="garantias-table-wrap">
     <div class="table-wrap">
       <table>
         <thead><tr>
@@ -3337,6 +3450,7 @@ async function renderGarantias(){
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
+    </div>
     </div>
   </div>`;
 }

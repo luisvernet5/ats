@@ -4208,43 +4208,118 @@ async function importarRespaldo(input){
 }
 
 function renderConfig(){
-  updateSandboxUI();
-  // Populate empresa select in config
-  const cfgSel=document.getElementById('cfg-emp-sel');
-  const cur=cfgSel.value;
-  cfgSel.innerHTML='<option value="">Selecciona una empresa...</option>';
-  DB.empresas.forEach(e=>cfgSel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);
-  // Reclutadores table
-  const rows=DB.reclutadores.map(r=>`<tr><td class="td-p">${r.nombre}</td><td>${r.email||'—'}</td><td><button class="btn btn-danger btn-sm" onclick="deleteReclutador('${r.id}')"><i class="fa fa-trash"></i></button></td></tr>`).join('');
-  document.getElementById('config-rec-table').innerHTML=`<table><thead><tr><th>Nombre</th><th>Email</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:16px">Sin reclutadores</td></tr>'}</tbody></table>`;
-  renderStageBuilder();
-  if(currentUserData?.rol === 'admin') {
-    if(!document.getElementById('usuarios-table')) {
-      document.getElementById('page-config').insertAdjacentHTML('beforeend', `
-        <div style="margin-top:24px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-            <div class="sec-title" style="margin:0">Gestión de usuarios</div>
-            <button class="btn btn-primary btn-sm" onclick="openUsuarioModal()"><i class="fa fa-user-plus"></i> Nuevo usuario</button>
-          </div>
-          <div class="table-wrap" id="usuarios-table"></div>
-        </div>
-      `);
-    }
-    loadUsuarios();
+  const page = document.getElementById('page-config');
+  if(!page) return;
+  page.innerHTML=`
+    <div style="padding:24px 28px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:16px">
+        <button class="btn btn-ghost btn-sm config-tab-btn active" id="cfg-tab-reclutadores" onclick="switchConfigTab('reclutadores')">
+          <i class="fa fa-user-tie"></i> Reclutadores
+        </button>
+        <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-etapas" onclick="switchConfigTab('etapas')">
+          <i class="fa fa-list-ol"></i> Etapas por empresa
+        </button>
+        <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-modo" onclick="switchConfigTab('modo')">
+          <i class="fa fa-database"></i> Modo de datos
+        </button>
+        ${currentUser?.email==='lukaarrever@gmail.com'?`
+        <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-usuarios" onclick="switchConfigTab('usuarios')">
+          <i class="fa fa-users-cog"></i> Usuarios
+        </button>
+        <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-respaldo" onclick="switchConfigTab('respaldo')">
+          <i class="fa fa-shield-alt"></i> Respaldo
+        </button>`:''}
+      </div>
+      <div id="cfg-content"></div>
+    </div>`;
+  switchConfigTab('reclutadores');
+}
+
+function switchConfigTab(tab){
+  document.querySelectorAll('.config-tab-btn').forEach(b=>b.classList.remove('active'));
+  const activeBtn = document.getElementById('cfg-tab-'+tab);
+  if(activeBtn) activeBtn.classList.add('active');
+  const content = document.getElementById('cfg-content');
+  if(!content) return;
+
+  if(tab==='reclutadores'){
+    const rows = DB.reclutadores.map(r=>`
+      <tr>
+        <td class="td-p">${r.nombre||'—'}</td>
+        <td>${r.email||'—'}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="editReclutador('${r.id}')" title="Editar">
+            <i class="fa fa-pen"></i>
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="deleteReclutador('${r.id}')" title="Eliminar">
+            <i class="fa fa-trash"></i>
+          </button>
+        </td>
+      </tr>`).join('');
+    content.innerHTML=`
+      <div class="table-wrap" style="max-width:700px">
+        <table>
+          <thead><tr><th>Nombre</th><th>Email</th><th>Acción</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <button class="btn btn-primary btn-sm" style="margin-top:14px" onclick="openReclutadorModal()">
+        <i class="fa fa-user-plus"></i> Agregar reclutador
+      </button>`;
   }
-  if(currentUser?.email==='lukaarrever@gmail.com'){
-    if(!document.getElementById('backup-section')){
-      const backupDiv = document.createElement('div');
-      backupDiv.id = 'backup-section';
-      backupDiv.style.marginTop = '24px';
-      backupDiv.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <div class="sec-title" style="margin:0">Respaldo de datos</div>
+
+  else if(tab==='etapas'){
+    const empOpts = DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+    content.innerHTML=`
+      <div style="max-width:900px">
+        <p style="font-size:13px;color:var(--text2);margin-bottom:14px">
+          Cada empresa cliente puede tener su propio proceso de reclutamiento.
+        </p>
+        <div class="fg" style="max-width:400px;margin-bottom:20px">
+          <label>Selecciona una empresa</label>
+          <select id="stage-emp-sel" onchange="renderStageBuilder(this.value)">
+            <option value="">Selecciona una empresa...</option>${empOpts}
+          </select>
         </div>
+        <div id="stage-builder-wrap"></div>
+      </div>`;
+  }
+
+  else if(tab==='modo'){
+    const isSandbox = localStorage.getItem('sandbox_mode')==='1';
+    content.innerHTML=`
+      <div style="max-width:600px">
+        <div class="card" style="padding:20px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span style="width:10px;height:10px;border-radius:50%;background:${isSandbox?'var(--warn)':'var(--ok)'};display:inline-block"></span>
+            <span style="font-weight:600">${isSandbox?'Sandbox — datos locales':'Producción — datos en Supabase'}</span>
+          </div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:14px">
+            Sandbox: datos guardados localmente en este navegador.<br>
+            Producción: datos guardados en Supabase.
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="toggleSandbox()">Cambiar modo</button>
+        </div>
+        ${currentUser?.email==='lukaarrever@gmail.com'?`
+        <div class="card" style="padding:20px;border:1px solid var(--err)">
+          <div style="font-size:13px;font-weight:600;color:var(--err);margin-bottom:8px">⚠️ Zona de peligro</div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Estas acciones son irreversibles.</div>
+          <button class="btn btn-danger btn-sm" onclick="clearAllData()">Borrar todos los datos locales</button>
+        </div>`:''}
+      </div>`;
+  }
+
+  else if(tab==='usuarios'){
+    renderUsuariosConfig();
+  }
+
+  else if(tab==='respaldo'){
+    content.innerHTML=`
+      <div style="max-width:600px">
         <div class="card" style="padding:20px">
           <div style="font-size:13px;color:var(--text2);margin-bottom:16px">
-            Exporta todos los datos del sistema (vacantes, candidatos, empresas, reclutadores, garantías)
-            a un archivo JSON. Guárdalo en un lugar seguro para restaurar en caso de emergencia.
+            Exporta todos los datos del sistema a un archivo JSON.
+            Guárdalo en un lugar seguro para restaurar en caso de emergencia.
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button class="btn btn-primary btn-sm" onclick="exportarRespaldo()">
@@ -4255,10 +4330,55 @@ function renderConfig(){
             </button>
             <input type="file" id="import-backup-input" accept=".json" style="display:none" onchange="importarRespaldo(this)">
           </div>
-        </div>`;
-      document.getElementById('page-config').appendChild(backupDiv);
-    }
+        </div>
+      </div>`;
   }
+}
+
+function renderUsuariosConfig(){
+  const content = document.getElementById('cfg-content');
+  if(!content) return;
+  loadUsuarios();
+}
+
+function editReclutador(id){
+  const r = DB.reclutadores.find(x=>x.id===id);
+  if(!r) return;
+  const overlay = document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
+  overlay.innerHTML=`
+    <div style="background:var(--surface);border-radius:14px;padding:24px;width:420px;max-width:96vw">
+      <div style="font-size:15px;font-weight:600;margin-bottom:18px">Editar reclutador</div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>Nombre</label>
+        <input type="text" id="edit-rec-nombre" value="${r.nombre||''}">
+      </div>
+      <div class="fg" style="margin-bottom:18px">
+        <label>Email</label>
+        <input type="email" id="edit-rec-email" value="${r.email||''}">
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="this.closest('div[style*=fixed]').remove()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="saveEditReclutador('${id}')">
+          <i class="fa fa-save"></i> Guardar
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function saveEditReclutador(id){
+  const nombre = document.getElementById('edit-rec-nombre')?.value.trim();
+  const email = document.getElementById('edit-rec-email')?.value.trim();
+  if(!nombre||!email){ showToast('Completa todos los campos','err'); return; }
+  const r = DB.reclutadores.find(x=>x.id===id);
+  if(!r) return;
+  r.nombre = nombre;
+  r.email = email;
+  await saveRecord('reclutadores', r);
+  document.querySelector('div[style*="fixed"][style*="z-index: 200"]')?.remove();
+  showToast('Reclutador actualizado ✓');
+  switchConfigTab('reclutadores');
 }
 
 function onUsrRolChange() {

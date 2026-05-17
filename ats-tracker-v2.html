@@ -1018,8 +1018,32 @@ function filtrarLog(){
   });
 }
 
-async function logActivity(accion, entidad, entidadId, detalle){
+async function logActivity(accion, entidad, entidadId, detalle, anterior, nuevo){
   try {
+    let detalleCompleto = detalle||'';
+    if(anterior && nuevo){
+      const cambios = [];
+      const camposLegibles = {
+        nombre:'Nombre', estado:'Estado', reclutador_id:'Reclutador',
+        empresa_id:'Empresa', salario:'Salario', fecha_apertura:'Apertura',
+        sla_dias:'SLA', tipo_vacante:'Tipo', departamento:'Departamento',
+        proyecto:'Proyecto', descripcion:'Descripción',
+        etapa:'Etapa', contacto:'Contacto', fuente:'Fuente', notas:'Notas',
+        tel:'Teléfono', dir:'Dirección', sector:'Sector',
+        rol:'Rol', email:'Email',
+      };
+      for(const key of Object.keys(camposLegibles)){
+        const vAntes = anterior[key]??'';
+        const vDespues = nuevo[key]??'';
+        if(String(vAntes)!==String(vDespues) && (vAntes||vDespues)){
+          const label = camposLegibles[key]||key;
+          const antes = vAntes ? resolverNombre(key, vAntes) : '(vacío)';
+          const despues = vDespues ? resolverNombre(key, vDespues) : '(vacío)';
+          cambios.push(`${label}: "${antes}" → "${despues}"`);
+        }
+      }
+      if(cambios.length) detalleCompleto = cambios.join(' | ');
+    }
     await sbClient.from('activity_log').insert({
       id: Date.now()+'-'+Math.random().toString(36).substr(2,6),
       usuario_id: currentUser?.id||'',
@@ -1028,10 +1052,22 @@ async function logActivity(accion, entidad, entidadId, detalle){
       accion,
       entidad,
       entidad_id: entidadId||'',
-      detalle: detalle||'',
+      detalle: detalleCompleto,
       created_at: new Date().toISOString()
     });
   } catch(e){ console.warn('logActivity error:', e.message); }
+}
+
+function resolverNombre(campo, valor){
+  if(campo==='reclutador_id'){
+    const r = DB.reclutadores.find(x=>x.id===valor);
+    return r?.nombre||valor;
+  }
+  if(campo==='empresa_id'){
+    const e = DB.empresas.find(x=>x.id===valor);
+    return e?.nombre||valor;
+  }
+  return valor;
 }
 
 async function doLogout() {
@@ -1385,6 +1421,7 @@ async function saveEmpresa(){
   if(!nombre){showToast('Ingresa el nombre de la empresa','err');return}
   const id=document.getElementById('emp-id').value;
   const data={nombre,sector:document.getElementById('emp-sector').value,contacto:document.getElementById('emp-contacto').value,tel:document.getElementById('emp-tel').value,dir:document.getElementById('emp-dir').value,notas:document.getElementById('emp-notas').value,color:empColorSel,departamentos:[...empDepartamentos],proyectos:[...empProyectos]};
+  const _empAnterior = id ? {...(DB.empresas.find(x=>x.id===id)||{})} : null;
   if(id){const i=DB.empresas.findIndex(e=>e.id===id);DB.empresas[i]={...DB.empresas[i],...data};showToast('Empresa actualizada ✓')}
   else{DB.empresas.push({id:uid(),...data,etapas:DEFAULT_ETAPAS.map(e=>({...e,id:uid()}))});showToast('Empresa creada ✓')}
   const _eObj=id?DB.empresas.find(e=>e.id===id):DB.empresas[DB.empresas.length-1];
@@ -1396,7 +1433,7 @@ async function saveEmpresa(){
       showToast('Error subiendo logo: ' + e.message, 'err');
     }
     await saveRecord('empresas',_eObj);
-    await logActivity(_eObj.id ? 'Editar empresa' : 'Nueva empresa', 'empresas', _eObj.id, _eObj.nombre||'');
+    await logActivity(_empAnterior?'Editar empresa':'Nueva empresa','empresas',_eObj.id,_eObj.nombre||'',_empAnterior,_eObj);
   }
   closeModal('modal-empresa');
   renderPage(document.querySelector('.page.active').id.replace('page-',''));
@@ -1917,10 +1954,11 @@ async function saveVacante(){
     garantia_dias:aplica_garantia?parseInt(document.getElementById('vac-garantia-dias').value)||null:null,
     garantia_venc:aplica_garantia?document.getElementById('vac-garantia-venc').value||null:null
   };
+  const _vacAnterior = id ? {...(DB.vacantes.find(x=>x.id===id)||{})} : null;
   if(id){const i=DB.vacantes.findIndex(v=>v.id===id);DB.vacantes[i]={...DB.vacantes[i],...data,folio,estado:DB.vacantes[i].estado||'Abierta'};await saveRecord('vacantes',DB.vacantes[i]);showToast('Vacante actualizada ✓')}
   else{DB.vacantes.push({id:uid(),...data});await saveRecord('vacantes',DB.vacantes[DB.vacantes.length-1]);showToast('Vacante creada ✓')}
   const _lv = id ? DB.vacantes.find(x=>x.id===id) : DB.vacantes[DB.vacantes.length-1];
-  await logActivity(id ? 'Editar vacante' : 'Nueva vacante', 'vacantes', _lv?.id, _lv?.nombre||'');
+  await logActivity(_lv&&_vacAnterior?'Editar vacante':'Nueva vacante','vacantes',_lv?.id,_lv?.nombre||'',_vacAnterior,_lv);
   closeModal('modal-vacante');
   setTimeout(()=>renderPage(document.querySelector('.page.active').id.replace('page-','')),100);
 }
@@ -2023,6 +2061,7 @@ async function saveCandidato(){
   const etapas=getEmpresaEtapas(v.empresa_id);
   const etapa=id?(DB.candidatos.find(c=>c.id===id)||{}).etapa||(etapas[0]?.label||'Entrevista RH'):(etapas[0]?.label||'Entrevista RH');
   const data={nombre,vacante_id,reclutador_id,etapa,contacto:document.getElementById('cand-contacto').value,fuente:document.getElementById('cand-fuente').value,notas:document.getElementById('cand-notas').value,activo:true,parent_id:parent_id||null};
+  const _candAnterior = id ? {...(DB.candidatos.find(x=>x.id===id)||{})} : null;
   if(id){const i=DB.candidatos.findIndex(c=>c.id===id);DB.candidatos[i]={...DB.candidatos[i],...data};showToast('Candidato actualizado ✓')}
   else{
     const nc={id:uid(),creado:today(),...data};
@@ -2032,7 +2071,7 @@ async function saveCandidato(){
   }
   const _cObj=id?DB.candidatos.find(c=>c.id===id):DB.candidatos[DB.candidatos.length-1];
   if(_cObj)await saveRecord('candidatos',_cObj);
-  if(_cObj)await logActivity(id ? 'Editar candidato' : 'Nuevo candidato', 'candidatos', _cObj.id, _cObj.nombre||'');
+  if(_cObj)await logActivity(_cObj&&_candAnterior?'Editar candidato':'Nuevo candidato','candidatos',_cObj.id,_cObj.nombre||'',_candAnterior,_cObj);
   closeModal('modal-candidato');
   renderPage(document.querySelector('.page.active').id.replace('page-',''));
 }
@@ -2879,6 +2918,8 @@ function candInlineEtapaChange(cid){
 async function saveCandEtapa(cid){
   const c=DB.candidatos.find(x=>x.id===cid);if(!c)return;
   const etapa=document.getElementById('ci-etapa-'+cid).value;
+  const _candEtapaAnterior = {...c};
+  const etapaAntes = c.etapa||'';
   const isSalida=ETAPAS_SALIDA.includes(etapa);
   const motivoEl=document.getElementById('ci-motivo-'+cid);
   const fsalidaEl=document.getElementById('ci-fsalida-'+cid);
@@ -2891,7 +2932,7 @@ async function saveCandEtapa(cid){
     if(el)c['f_'+i]=el.value||null;
   });
   openCandRows.delete(cid);
-  await logActivity('Cambio de etapa', 'candidatos', cid, `${c?.nombre||cid} → ${etapa}`);
+  await logActivity('Cambio de etapa','candidatos',cid,`${_candEtapaAnterior.nombre||cid}: "${etapaAntes}" → "${etapa}"`,null,null);
   showToast('Guardado ✓');
   renderCandidatosTable();
 }

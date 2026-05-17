@@ -807,6 +807,8 @@ async function doLogin() {
     errEl.textContent = 'Email o contraseña incorrectos';
     errEl.style.display = 'block';
     btnText.textContent = 'Iniciar sesión';
+    const loginBtn = document.getElementById('login-btn');
+    if(loginBtn){ loginBtn.disabled = false; loginBtn.textContent = 'Entrar'; }
   }
 }
 
@@ -1243,6 +1245,8 @@ async function doLogout() {
   currentUserData = null;
   DB.empresas=[]; DB.vacantes=[]; DB.candidatos=[]; DB.reclutadores=[];
   document.getElementById('auth-screen').style.display = 'flex';
+  const loginBtn = document.getElementById('login-btn');
+  if(loginBtn){ loginBtn.disabled = false; loginBtn.textContent = 'Entrar'; }
 }
 
 async function loadDB(){

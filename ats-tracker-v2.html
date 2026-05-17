@@ -4120,17 +4120,23 @@ async function showHCTab(tab){
         </button>
       </div>
       ${proyectos.length?`
+      <style>
+        #hc-resumen-table th,
+        #hc-resumen-table td { font-size:11px; padding:4px 6px; white-space:normal; }
+        #hc-resumen-table th { white-space:normal; word-break:break-word; }
+        #hc-resumen-table input.hc-inp { width:44px; max-width:52px; font-size:11px; padding:3px 2px; }
+      </style>
       <div class="table-wrap" style="overflow-x:auto">
-        <table>
+        <table id="hc-resumen-table">
           <thead><tr>
             <th>Proyecto</th><th>Autorizada</th><th>Actual</th><th>Vacantes</th>
             <th>Cartera</th><th>Entrevista</th><th>Validación</th><th>Proc. Contrat.</th>
             <th>Contratados</th><th>Bajas</th>
-            <th style="font-size:10px;white-space:nowrap">Status Sem. Previo Bajas</th>
+            <th>Status Sem. Previo Bajas</th>
             <th>%</th>
-            <th style="font-size:10px;white-space:nowrap">Status al Cierre Sem.</th>
+            <th>Status al Cierre Sem.</th>
             <th>Detenidas</th>
-            <th style="font-size:10px;white-space:nowrap">Plantilla al Cierre</th>
+            <th>Plantilla al Cierre</th>
           </tr></thead>
           <tbody>${rows}${totalsRow}</tbody>
         </table>

@@ -4120,8 +4120,8 @@ function toggleSandbox(){
   SANDBOX_MODE=!SANDBOX_MODE;
   localStorage.setItem('sandbox_mode',SANDBOX_MODE);
   updateSandboxUI();
+  localStorage.setItem('config_last_tab', 'modo');
   location.reload();
-  switchConfigTab('modo');
 }
 
 function updateSandboxUI(){
@@ -4234,6 +4234,11 @@ function renderConfig(){
       <div id="cfg-content"></div>
     </div>`;
   switchConfigTab('reclutadores');
+  const lastTab = localStorage.getItem('config_last_tab');
+  if(lastTab){
+    localStorage.removeItem('config_last_tab');
+    switchConfigTab(lastTab);
+  }
 }
 
 function switchConfigTab(tab){

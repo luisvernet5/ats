@@ -4277,13 +4277,12 @@ function switchConfigTab(tab){
         </p>
         <div class="fg" style="max-width:400px;margin-bottom:20px">
           <label>Selecciona una empresa</label>
-          <select id="stage-emp-sel" onchange="renderStageBuilder()">
+          <select id="cfg-emp-sel" onchange="renderStageBuilder()">
             <option value="">Selecciona una empresa...</option>${empOpts}
           </select>
         </div>
-        <div id="stage-builder-wrap"></div>
+        <div id="stage-builder"></div>
       </div>`;
-    document.getElementById('stage-builder-wrap').innerHTML = '';
   }
 
   else if(tab==='modo'){

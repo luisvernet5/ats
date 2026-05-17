@@ -4068,7 +4068,7 @@ async function showHCTab(tab){
       tCierre+=statusCierre; tDet+=detenidas; tPCant+=plantillaCierre;
       return`<tr id="hc-tr-${proyId}" data-auth="${auth}">
         <td class="td-p" style="font-size:12px">${proy}</td>
-        <td style="text-align:center">${auth}</td>
+        <td id="hc-auth-cell-${proyId}" style="text-align:center">${auth} <i class="fa fa-pen hc-edit-icon" onclick="editHCAuth('${proyId}','${empId}','${proy}')" title="Editar plantilla autorizada"></i></td>
         <td style="text-align:center"><input type="number" class="hc-inp" value="${actual}"
           onchange="updateHCRow('${empId}','${proy}',${auth},this,'actual');recalcHCRow('${proyId}')" style="width:60px;text-align:center"></td>
         <td id="hc-vac-${proyId}" style="text-align:center;color:${vacantes>0?'var(--err)':'var(--ok)'}">${vacantes}</td>
@@ -4125,6 +4125,8 @@ async function showHCTab(tab){
         #hc-resumen-table td { font-size:11px; padding:4px 6px; white-space:normal; }
         #hc-resumen-table th { white-space:normal; word-break:break-word; }
         #hc-resumen-table input.hc-inp { width:44px; max-width:52px; font-size:11px; padding:3px 2px; }
+        .hc-edit-icon { font-size:9px; color:var(--text3); cursor:pointer; margin-left:3px; vertical-align:middle; }
+        .hc-edit-icon:hover { color:var(--accent); }
       </style>
       <div class="table-wrap" style="overflow-x:auto">
         <table id="hc-resumen-table">
@@ -4290,6 +4292,32 @@ function recalcHCTotals(){
   const cells = totalsRow.querySelectorAll('td');
   [null,tAuth,tActual,tVac,tCartera,tEntrev,tValid,tProc,tCont,tBajas,tPrev,tPct,tCierre,tDet,tPCant]
     .forEach((v,i)=>{ if(v!==null && cells[i]) cells[i].textContent=v; });
+}
+
+function editHCAuth(proyId, empId, proy){
+  const cell = document.getElementById('hc-auth-cell-'+proyId);
+  if(!cell) return;
+  const currentVal = parseInt(cell.textContent)||0;
+  cell.innerHTML = `<input type="number" value="${currentVal}" style="width:50px;text-align:center;font-size:11px"
+    onblur="saveHCAuth('${proyId}','${empId}','${proy}',this)"
+    onkeydown="if(event.key==='Enter')this.blur()">`;
+  const inp = cell.querySelector('input');
+  inp.focus();
+  inp.select();
+}
+
+async function saveHCAuth(proyId, empId, proy, el){
+  const newAuth = parseInt(el.value)||0;
+  const { error } = await sbClient.from('hc_plantilla')
+    .update({ plantilla_autorizada: newAuth, updated_at: new Date().toISOString() })
+    .eq('empresa_id', empId).eq('proyecto', proy);
+  if(error){ showToast('Error: '+error.message,'err'); return; }
+  const cell = document.getElementById('hc-auth-cell-'+proyId);
+  if(cell) cell.innerHTML = `${newAuth} <i class="fa fa-pen hc-edit-icon" onclick="editHCAuth('${proyId}','${empId}','${proy}')" title="Editar plantilla autorizada"></i>`;
+  const tr = document.getElementById('hc-tr-'+proyId);
+  if(tr) tr.dataset.auth = newAuth;
+  showToast('Plantilla actualizada ✓');
+  recalcHCRow(proyId);
 }
 
 function openHCProyectoModal(empId){

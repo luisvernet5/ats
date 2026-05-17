@@ -3031,7 +3031,8 @@ function renderCandidatosTable(){
             <div>
               <div class="fg" style="margin-bottom:10px">
                 <label>Etapa actual</label>
-                <select id="ci-etapa-${c.id}" onchange="candInlineEtapaChange('${c.id}')">${etapaOpts}</select>
+                <select id="ci-etapa-${c.id}" onchange="candInlineEtapaChange('${c.id}')"
+                  ${currentUserData?.rol==='rh_cliente'?'disabled title="Solo los reclutadores pueden cambiar etapas"':''}>${etapaOpts}</select>
               </div>
               <div id="ci-motivo-div-${c.id}" style="display:${isSalida?'block':'none'};margin-bottom:10px">
                 <div class="fg">
@@ -3043,7 +3044,7 @@ function renderCandidatosTable(){
                   <input type="date" id="ci-fsalida-${c.id}" value="${c.fecha_salida||''}">
                 </div>
               </div>
-              <button class="btn btn-primary btn-sm" onclick="saveCandEtapa('${c.id}')"><i class="fa fa-save"></i> Guardar</button>
+              ${currentUserData?.rol!=='rh_cliente'?`<button class="btn btn-primary btn-sm" onclick="saveCandEtapa('${c.id}')"><i class="fa fa-save"></i> Guardar</button>`:''}
             </div>
             <div>
               ${timelineRows||'<div style="font-size:12px;color:var(--text3)">Sin etapas configuradas</div>'}
@@ -3082,6 +3083,10 @@ function candInlineEtapaChange(cid){
   if(mDiv)mDiv.style.display=ETAPAS_SALIDA.includes(etapa)?'block':'none';
 }
 async function saveCandEtapa(cid){
+  if(currentUserData?.rol==='rh_cliente'){
+    showToast('No tienes permisos para cambiar etapas','err');
+    return;
+  }
   const c=DB.candidatos.find(x=>x.id===cid);if(!c)return;
   const etapa=document.getElementById('ci-etapa-'+cid).value;
   const _candEtapaAnterior = {...c};

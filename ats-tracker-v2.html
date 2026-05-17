@@ -2387,9 +2387,20 @@ function getChain(id){
    ============================================================ */
 function renderDashboard(){
   const recId = currentUserData?.rol === 'reclutador' ? currentUserData?.reclutador_id : null;
-  const vacantes = recId ? DB.vacantes.filter(v=>v.reclutador_id===recId) : DB.vacantes;
-  const candidatos = recId ? DB.candidatos.filter(c=>vacantes.find(v=>v.id===c.vacante_id)) : DB.candidatos;
-  const empresas = recId ? DB.empresas.filter(e=>vacantes.find(v=>v.empresa_id===e.id)) : DB.empresas;
+  const empId = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
+  const vacantes = recId
+    ? DB.vacantes.filter(v=>v.reclutador_id===recId)
+    : empId
+      ? DB.vacantes.filter(v=>v.empresa_id===empId)
+      : DB.vacantes;
+  const candidatos = recId || empId
+    ? DB.candidatos.filter(c=>vacantes.find(v=>v.id===c.vacante_id))
+    : DB.candidatos;
+  const empresas = recId
+    ? DB.empresas.filter(e=>vacantes.find(v=>v.empresa_id===e.id))
+    : empId
+      ? DB.empresas.filter(e=>e.id===empId)
+      : DB.empresas;
   const vacAct=vacantes.filter(v=>v.estado==='Abierta').length;
   const activos=candidatos.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length;
   const validados=candidatos.filter(c=>c.etapa==='Validado').length;

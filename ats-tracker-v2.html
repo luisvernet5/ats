@@ -937,7 +937,8 @@ async function renderActivityLog(){
       'Editar empresa':'var(--warn)',
       'Eliminar usuario':'var(--err)',
     }[d.accion]||'var(--text3)';
-    return`<tr>
+    const rowDate = d.created_at ? d.created_at.split('T')[0] : '';
+    return`<tr data-date="${rowDate}">
       <td style="font-size:11px;color:var(--text3);white-space:nowrap">${fecha}</td>
       <td class="td-p">
         <div style="font-size:12px;font-weight:500">${d.usuario_nombre||'—'}</div>
@@ -950,16 +951,21 @@ async function renderActivityLog(){
   }).join('');
 
   page.innerHTML=`<div style="padding:24px 28px">
-    <div class="fbar" style="margin-bottom:18px">
+    <div class="fbar" style="margin-bottom:18px;flex-wrap:wrap;gap:8px">
       <select id="log-flt-user" onchange="filtrarLog()" style="min-width:180px">
         <option value="">Todos los usuarios</option>${usuariosOpts}
       </select>
       <select id="log-flt-accion" onchange="filtrarLog()" style="min-width:180px">
         <option value="">Todas las acciones</option>${accionesOpts}
       </select>
+      <input type="date" id="log-flt-f1" onchange="filtrarLog()" title="Desde">
+      <input type="date" id="log-flt-f2" onchange="filtrarLog()" title="Hasta">
       <div class="sp"></div>
       <button class="btn btn-ghost btn-sm" onclick="renderActivityLog()">
         <i class="fa fa-sync"></i> Actualizar
+      </button>
+      <button class="btn btn-green btn-sm" onclick="exportarLog()">
+        <i class="fa fa-file-excel"></i> Exportar Excel
       </button>
     </div>
     <div class="table-wrap">
@@ -973,14 +979,42 @@ async function renderActivityLog(){
   </div>`;
 }
 
+function exportarLog(){
+  const header = ['Fecha y hora','Usuario','Email','Acción','Módulo','Detalle'];
+  const filas = [header];
+  document.querySelectorAll('#log-table tbody tr').forEach(tr=>{
+    if(tr.style.display==='none') return;
+    const tds = tr.querySelectorAll('td');
+    const fecha = tds[0]?.textContent.trim()||'';
+    const nombre = tds[1]?.querySelector('div:first-child')?.textContent.trim()||'';
+    const email = tds[1]?.querySelector('div:last-child')?.textContent.trim()||'';
+    const accionTd = tds[2]?.textContent.trim()||'';
+    const modulo = tds[3]?.textContent.trim()||'';
+    const detalle = tds[4]?.textContent.trim()||'';
+    filas.push([fecha, nombre, email, accionTd, modulo, detalle]);
+  });
+  const csv = filas.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const BOM = '﻿';
+  const blob = new Blob([BOM+csv],{type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `log_actividad_${today()}.csv`;
+  a.click();
+}
+
 function filtrarLog(){
   const user = document.getElementById('log-flt-user')?.value||'';
   const accion = document.getElementById('log-flt-accion')?.value||'';
+  const f1 = document.getElementById('log-flt-f1')?.value||'';
+  const f2 = document.getElementById('log-flt-f2')?.value||'';
   document.querySelectorAll('#log-table tbody tr').forEach(tr=>{
     const tds = tr.querySelectorAll('td');
     const userMatch = !user || tds[1]?.textContent.includes(user);
     const accionMatch = !accion || tds[2]?.textContent.includes(accion);
-    tr.style.display = userMatch && accionMatch ? '' : 'none';
+    const rowDate = tr.dataset.date||'';
+    const f1Match = !f1 || rowDate >= f1;
+    const f2Match = !f2 || rowDate <= f2;
+    tr.style.display = userMatch && accionMatch && f1Match && f2Match ? '' : 'none';
   });
 }
 

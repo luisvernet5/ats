@@ -876,6 +876,24 @@ function adaptUIToRole() {
       document.querySelector('.main').appendChild(pg);
     }
   }
+  if(currentUserData?.rol==='admin' && !document.getElementById('nav-activity-log')){
+    const navEl = document.querySelector('.sb-nav');
+    const configItem = document.getElementById('nav-config');
+    if(navEl && configItem){
+      const item = document.createElement('div');
+      item.className = 'nav-item';
+      item.id = 'nav-activity-log';
+      item.innerHTML = '<i class="fa fa-history"></i> Log de actividad';
+      item.onclick = () => showPage('activity-log');
+      configItem.parentNode.insertBefore(item, configItem.nextSibling);
+    }
+    if(!document.getElementById('page-activity-log')){
+      const pg = document.createElement('div');
+      pg.className = 'page';
+      pg.id = 'page-activity-log';
+      document.querySelector('.main').appendChild(pg);
+    }
+  }
   const nav = document.querySelector('.sb-nav');
   if(nav && !document.getElementById('logout-btn')) {
     nav.innerHTML += `<div style="padding:12px 18px;border-top:1px solid var(--border)">
@@ -884,6 +902,101 @@ function adaptUIToRole() {
       </button>
     </div>`;
   }
+}
+
+async function renderActivityLog(){
+  const page = document.getElementById('page-activity-log');
+  if(!page) return;
+  page.innerHTML='<div style="padding:24px 28px;color:var(--text3)">Cargando...</div>';
+
+  const { data, error } = await sbClient
+    .from('activity_log')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(500);
+
+  if(error){ page.innerHTML=`<div style="padding:24px 28px;color:var(--err)">${error.message}</div>`; return; }
+  if(!data?.length){ page.innerHTML='<div style="padding:24px 28px;color:var(--text3);font-size:13px">Sin actividad registrada.</div>'; return; }
+
+  const usuariosOpts = [...new Map(data.map(d=>[d.usuario_email, d.usuario_nombre])).entries()]
+    .map(([email, nombre])=>`<option value="${email}">${nombre||email}</option>`).join('');
+  const accionesOpts = [...new Set(data.map(d=>d.accion))]
+    .map(a=>`<option value="${a}">${a}</option>`).join('');
+
+  const rows = data.map(d=>{
+    const fecha = new Date(d.created_at).toLocaleString('es-MX');
+    const accionColor = {
+      'Nueva vacante':'var(--accent)',
+      'Editar vacante':'var(--warn)',
+      'Eliminar vacante':'var(--err)',
+      'Nuevo candidato':'var(--accent)',
+      'Editar candidato':'var(--warn)',
+      'Cambio de etapa':'#8b5cf6',
+      'Nueva empresa':'var(--accent)',
+      'Editar empresa':'var(--warn)',
+      'Eliminar usuario':'var(--err)',
+    }[d.accion]||'var(--text3)';
+    return`<tr>
+      <td style="font-size:11px;color:var(--text3);white-space:nowrap">${fecha}</td>
+      <td class="td-p">
+        <div style="font-size:12px;font-weight:500">${d.usuario_nombre||'—'}</div>
+        <div style="font-size:11px;color:var(--text3)">${d.usuario_email||''}</div>
+      </td>
+      <td><span style="font-size:11px;font-weight:600;color:${accionColor};background:${accionColor}18;padding:3px 8px;border-radius:20px">${d.accion||'—'}</span></td>
+      <td style="font-size:11px;color:var(--text3)">${d.entidad||'—'}</td>
+      <td style="font-size:12px">${d.detalle||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  page.innerHTML=`<div style="padding:24px 28px">
+    <div class="fbar" style="margin-bottom:18px">
+      <select id="log-flt-user" onchange="filtrarLog()" style="min-width:180px">
+        <option value="">Todos los usuarios</option>${usuariosOpts}
+      </select>
+      <select id="log-flt-accion" onchange="filtrarLog()" style="min-width:180px">
+        <option value="">Todas las acciones</option>${accionesOpts}
+      </select>
+      <div class="sp"></div>
+      <button class="btn btn-ghost btn-sm" onclick="renderActivityLog()">
+        <i class="fa fa-sync"></i> Actualizar
+      </button>
+    </div>
+    <div class="table-wrap">
+      <table id="log-table">
+        <thead><tr>
+          <th>Fecha y hora</th><th>Usuario</th><th>Acción</th><th>Módulo</th><th>Detalle</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function filtrarLog(){
+  const user = document.getElementById('log-flt-user')?.value||'';
+  const accion = document.getElementById('log-flt-accion')?.value||'';
+  document.querySelectorAll('#log-table tbody tr').forEach(tr=>{
+    const tds = tr.querySelectorAll('td');
+    const userMatch = !user || tds[1]?.textContent.includes(user);
+    const accionMatch = !accion || tds[2]?.textContent.includes(accion);
+    tr.style.display = userMatch && accionMatch ? '' : 'none';
+  });
+}
+
+async function logActivity(accion, entidad, entidadId, detalle){
+  try {
+    await sbClient.from('activity_log').insert({
+      id: Date.now()+'-'+Math.random().toString(36).substr(2,6),
+      usuario_id: currentUser?.id||'',
+      usuario_nombre: currentUserData?.nombre||'',
+      usuario_email: currentUser?.email||'',
+      accion,
+      entidad,
+      entidad_id: entidadId||'',
+      detalle: detalle||'',
+      created_at: new Date().toISOString()
+    });
+  } catch(e){ console.warn('logActivity error:', e.message); }
 }
 
 async function doLogout() {
@@ -1045,7 +1158,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);
@@ -1062,6 +1175,7 @@ function renderPage(p){
   if(p==='desercion')renderDesercion();
   if(p==='contratados')renderContratados();
   if(p==='garantias')renderGarantias();
+  if(p==='activity-log')renderActivityLog();
   if(p==='config')renderConfig();
   if(p==='vacantes-eliminadas')renderVacantesEliminadas();
 }
@@ -1246,6 +1360,7 @@ async function saveEmpresa(){
       showToast('Error subiendo logo: ' + e.message, 'err');
     }
     await saveRecord('empresas',_eObj);
+    await logActivity(_eObj.id ? 'Editar empresa' : 'Nueva empresa', 'empresas', _eObj.id, _eObj.nombre||'');
   }
   closeModal('modal-empresa');
   renderPage(document.querySelector('.page.active').id.replace('page-',''));
@@ -1768,6 +1883,8 @@ async function saveVacante(){
   };
   if(id){const i=DB.vacantes.findIndex(v=>v.id===id);DB.vacantes[i]={...DB.vacantes[i],...data,folio,estado:DB.vacantes[i].estado||'Abierta'};await saveRecord('vacantes',DB.vacantes[i]);showToast('Vacante actualizada ✓')}
   else{DB.vacantes.push({id:uid(),...data});await saveRecord('vacantes',DB.vacantes[DB.vacantes.length-1]);showToast('Vacante creada ✓')}
+  const _lv = id ? DB.vacantes.find(x=>x.id===id) : DB.vacantes[DB.vacantes.length-1];
+  await logActivity(id ? 'Editar vacante' : 'Nueva vacante', 'vacantes', _lv?.id, _lv?.nombre||'');
   closeModal('modal-vacante');
   setTimeout(()=>renderPage(document.querySelector('.page.active').id.replace('page-','')),100);
 }
@@ -1879,6 +1996,7 @@ async function saveCandidato(){
   }
   const _cObj=id?DB.candidatos.find(c=>c.id===id):DB.candidatos[DB.candidatos.length-1];
   if(_cObj)await saveRecord('candidatos',_cObj);
+  if(_cObj)await logActivity(id ? 'Editar candidato' : 'Nuevo candidato', 'candidatos', _cObj.id, _cObj.nombre||'');
   closeModal('modal-candidato');
   renderPage(document.querySelector('.page.active').id.replace('page-',''));
 }
@@ -2336,6 +2454,7 @@ async function eliminarVacante(id){
     const eliminadas = JSON.parse(localStorage.getItem('vacantes_eliminadas')||'[]');
     eliminadas.push({ id, fecha: new Date().toISOString(), vacante: v, empresa: emp, candidatos: cands });
     localStorage.setItem('vacantes_eliminadas', JSON.stringify(eliminadas));
+    await logActivity('Eliminar vacante', 'vacantes', id, v?.nombre||id);
     showToast('Vacante eliminada ✓');
     renderVacantesTable();
   } catch(e) {
@@ -2721,7 +2840,7 @@ function candInlineEtapaChange(cid){
   const mDiv=document.getElementById('ci-motivo-div-'+cid);
   if(mDiv)mDiv.style.display=ETAPAS_SALIDA.includes(etapa)?'block':'none';
 }
-function saveCandEtapa(cid){
+async function saveCandEtapa(cid){
   const c=DB.candidatos.find(x=>x.id===cid);if(!c)return;
   const etapa=document.getElementById('ci-etapa-'+cid).value;
   const isSalida=ETAPAS_SALIDA.includes(etapa);
@@ -2736,6 +2855,7 @@ function saveCandEtapa(cid){
     if(el)c['f_'+i]=el.value||null;
   });
   openCandRows.delete(cid);
+  await logActivity('Cambio de etapa', 'candidatos', cid, `${c?.nombre||cid} → ${etapa}`);
   showToast('Guardado ✓');
   renderCandidatosTable();
 }
@@ -3803,6 +3923,7 @@ async function eliminarUsuario(usrId) {
     });
     if(error) throw error;
     if(data?.error) throw new Error(data.error);
+    await logActivity('Eliminar usuario', 'usuarios', usrId, usrId);
     showToast('Usuario eliminado ✓');
     await loadUsuarios();
   } catch(e) {

@@ -3823,6 +3823,68 @@ function updateSandboxUI(){
   }
 }
 
+async function exportarRespaldo(){
+  showToast('Generando respaldo...');
+  try {
+    const [vacantes, candidatos, empresas, reclutadores, garantias, usuarios] = await Promise.all([
+      sbClient.from('vacantes').select('*'),
+      sbClient.from('candidatos').select('*'),
+      sbClient.from('empresas').select('*'),
+      sbClient.from('reclutadores').select('*'),
+      sbClient.from('garantias').select('*'),
+      sbClient.from('usuarios').select('*'),
+    ]);
+    const backup = {
+      version: '1.0',
+      fecha: new Date().toISOString(),
+      tablas: {
+        vacantes: vacantes.data||[],
+        candidatos: candidatos.data||[],
+        empresas: empresas.data||[],
+        reclutadores: reclutadores.data||[],
+        garantias: garantias.data||[],
+        usuarios: usuarios.data||[],
+      }
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `respaldo_ats_${today()}.json`;
+    a.click();
+    showToast('Respaldo descargado ✓');
+  } catch(e){
+    showToast('Error: '+e.message,'err');
+  }
+}
+
+async function importarRespaldo(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(!confirm('⚠️ Esto sobreescribirá los datos actuales con los del respaldo. ¿Continuar?')) return;
+  try {
+    const text = await file.text();
+    const backup = JSON.parse(text);
+    if(!backup.tablas) throw new Error('Archivo de respaldo inválido');
+    showToast('Importando datos...');
+    const tablas = ['empresas','reclutadores','vacantes','candidatos','garantias','usuarios'];
+    for(const tabla of tablas){
+      const registros = backup.tablas[tabla];
+      if(!registros?.length) continue;
+      const chunkSize = 50;
+      for(let i=0; i<registros.length; i+=chunkSize){
+        const chunk = registros.slice(i, i+chunkSize);
+        const { error } = await sbClient.from(tabla).upsert(chunk);
+        if(error) throw new Error(`Error en ${tabla}: ${error.message}`);
+      }
+    }
+    showToast('Respaldo importado ✓ Recargando...');
+    setTimeout(()=>location.reload(), 1500);
+  } catch(e){
+    showToast('Error: '+e.message,'err');
+  }
+  input.value='';
+}
+
 function renderConfig(){
   updateSandboxUI();
   // Populate empresa select in config
@@ -3847,6 +3909,33 @@ function renderConfig(){
       `);
     }
     loadUsuarios();
+  }
+  if(currentUser?.email==='lukaarrever@gmail.com'){
+    if(!document.getElementById('backup-section')){
+      const backupDiv = document.createElement('div');
+      backupDiv.id = 'backup-section';
+      backupDiv.style.marginTop = '24px';
+      backupDiv.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div class="sec-title" style="margin:0">Respaldo de datos</div>
+        </div>
+        <div class="card" style="padding:20px">
+          <div style="font-size:13px;color:var(--text2);margin-bottom:16px">
+            Exporta todos los datos del sistema (vacantes, candidatos, empresas, reclutadores, garantías)
+            a un archivo JSON. Guárdalo en un lugar seguro para restaurar en caso de emergencia.
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="exportarRespaldo()">
+              <i class="fa fa-download"></i> Descargar respaldo
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('import-backup-input').click()">
+              <i class="fa fa-upload"></i> Importar respaldo
+            </button>
+            <input type="file" id="import-backup-input" accept=".json" style="display:none" onchange="importarRespaldo(this)">
+          </div>
+        </div>`;
+      document.getElementById('page-config').appendChild(backupDiv);
+    }
   }
 }
 

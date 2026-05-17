@@ -223,6 +223,7 @@ input[type=date]{color:var(--text)}
     <div class="nav-item" onclick="nav('tiempos')" id="nav-tiempos"><i class="fa fa-clock"></i> Análisis de tiempos</div>
     <div class="nav-item" onclick="nav('ranking')" id="nav-ranking"><i class="fa fa-trophy"></i> Ranking reclutadores</div>
     <div class="nav-item" onclick="showPage('desercion')" id="nav-desercion"><i class="fa fa-door-open"></i> Deserción</div>
+    <div class="nav-item" onclick="showPage('contratados')" id="nav-contratados"><i class="fa fa-user-check"></i> Contratados</div>
     <div class="nav-section">Config</div>
     <div class="nav-item" onclick="showPage('config')" id="nav-config"><i class="fa fa-cog"></i> Configuración</div>
   </nav>
@@ -350,6 +351,9 @@ input[type=date]{color:var(--text)}
     <div class="sec-title">Ranking de reclutadores</div>
     <div id="ranking-rec-wrap"></div>
   </div>
+
+  <!-- CONTRATADOS -->
+  <div class="page" id="page-contratados"></div>
 
   <!-- DESERCION -->
   <div class="page" id="page-desercion">
@@ -1025,7 +1029,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);
@@ -1040,6 +1044,7 @@ function renderPage(p){
   if(p==='tiempos')renderTiempos();
   if(p==='ranking')renderRanking();
   if(p==='desercion')renderDesercion();
+  if(p==='contratados')renderContratados();
   if(p==='config')renderConfig();
   if(p==='vacantes-eliminadas')renderVacantesEliminadas();
 }
@@ -3159,6 +3164,94 @@ function filterRankingVacs(){
   </tr>`).join('');
   const el=document.getElementById('ranking-vac-table');
   if(el)el.innerHTML=`<table><thead><tr><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Días abierta</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes abiertas</td></tr>'}</tbody></table>`;
+}
+
+/* ============================================================
+   CONTRATADOS
+   ============================================================ */
+function renderContratados(){
+  const page = document.getElementById('page-contratados');
+  if(!page) return;
+  const recId = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
+  const vacsCerradas = DB.vacantes.filter(v=>v.estado==='Cubierta');
+  const vacsVis = recId ? vacsCerradas.filter(v=>v.reclutador_id===recId) : vacsCerradas;
+  const empFiltro = page._empFiltro||'';
+  const list = empFiltro ? vacsVis.filter(v=>v.empresa_id===empFiltro) : vacsVis;
+
+  const empOpts = [...new Set(vacsVis.map(v=>v.empresa_id))]
+    .map(eid=>{ const e=DB.empresas.find(x=>x.id===eid)||{}; return `<option value="${eid}" ${empFiltro===eid?'selected':''}>${e.nombre||eid}</option>`; }).join('');
+
+  const rows = list.map(v=>{
+    const emp = DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const rec = DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+    const cands = DB.candidatos.filter(c=>c.vacante_id===v.id);
+    const contratado = cands.find(c=>c.etapa==='Validado'||c.etapa==='Contratación') || cands[cands.length-1] || {};
+    const diasTotal = daysBetween(v.fecha_apertura, v.fecha_cierre||contratado.fecha_salida||today());
+    const diasCliente = contratado.id ? clienteDays(contratado) : null;
+    return`<tr>
+      <td class="td-p">${v.nombre||'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td>
+      <td><span style="display:flex;align-items:center;gap:5px">
+        ${emp.logo?`<img src="${emp.logo}" style="width:18px;height:18px;object-fit:contain;border-radius:3px">`:''}
+        ${emp.nombre||'—'}
+      </span></td>
+      <td>${rec.nombre||'—'}</td>
+      <td>${contratado.nombre||'—'}</td>
+      <td>${v.departamento||'—'}</td>
+      <td>${v.proyecto||'—'}</td>
+      <td>${v.salario||'—'}</td>
+      <td>${v.fecha_apertura||'—'}</td>
+      <td>${diasTotal!==null?`<span class="dpill ${dClass(diasTotal)}">${diasTotal}d</span>`:'—'}</td>
+      <td>${diasCliente!==null?`<span class="dpill dwarn">${diasCliente}d</span>`:'—'}</td>
+    </tr>`;
+  }).join('');
+
+  page.innerHTML=`<div style="padding:24px 28px">
+    <div class="fbar" style="margin-bottom:18px">
+      <select onchange="document.getElementById('page-contratados')._empFiltro=this.value;renderContratados()" style="min-width:200px">
+        <option value="">Todas las empresas</option>
+        ${empOpts}
+      </select>
+      <div class="sp"></div>
+      <button class="btn btn-green btn-sm" onclick="exportContratados()"><i class="fa fa-file-csv"></i> Exportar Excel</button>
+    </div>
+    ${list.length ? `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th>
+          <th>Contratado</th><th>Departamento</th><th>Proyecto</th><th>Salario</th>
+          <th>Apertura</th><th>Días proceso</th><th>Días cliente</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>` : '<div style="color:var(--text3);font-size:13px;padding:16px 0">Sin vacantes cubiertas registradas.</div>'}
+  </div>`;
+}
+
+function exportContratados(){
+  const recId = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
+  const page = document.getElementById('page-contratados');
+  const empFiltro = page?._empFiltro||'';
+  let vacsVis = DB.vacantes.filter(v=>v.estado==='Cubierta');
+  if(recId) vacsVis = vacsVis.filter(v=>v.reclutador_id===recId);
+  if(empFiltro) vacsVis = vacsVis.filter(v=>v.empresa_id===empFiltro);
+  const header = ['Vacante','Folio','Empresa','Reclutador','Contratado','Departamento','Proyecto','Salario','Apertura','Días proceso','Días cliente'];
+  const rows = vacsVis.map(v=>{
+    const emp = DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const rec = DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+    const cands = DB.candidatos.filter(c=>c.vacante_id===v.id);
+    const contratado = cands.find(c=>c.etapa==='Validado'||c.etapa==='Contratación')||cands[cands.length-1]||{};
+    const diasTotal = daysBetween(v.fecha_apertura, v.fecha_cierre||contratado.fecha_salida||today());
+    const diasCliente = contratado.id ? clienteDays(contratado) : null;
+    return [v.nombre,v.folio||'',emp.nombre||'',rec.nombre||'',contratado.nombre||'',v.departamento||'',v.proyecto||'',v.salario||'',v.fecha_apertura||'',diasTotal!==null?diasTotal+'d':'',diasCliente!==null?diasCliente+'d':''];
+  });
+  const csv = [header,...rows].map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'contratados.csv';
+  a.click();
 }
 
 /* ============================================================

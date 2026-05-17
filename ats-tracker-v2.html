@@ -885,7 +885,7 @@ function adaptUIToRole() {
       item.id = 'nav-activity-log';
       item.innerHTML = '<i class="fa fa-history"></i> Log de actividad';
       item.setAttribute('onclick', "showPage('activity-log')");
-      configItem.parentNode.insertBefore(item, configItem.nextSibling);
+      configItem.parentNode.insertBefore(item, configItem);
     }
     if(!document.getElementById('page-activity-log')){
       const pg = document.createElement('div');

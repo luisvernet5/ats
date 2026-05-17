@@ -1435,7 +1435,7 @@ function openReclutadorModal(){
   openModal('modal-reclutador');
 }
 function closeModal(id){document.getElementById(id).classList.remove('open')}
-document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
+
 
 function getEmpresaEtapas(empId){
   const e=DB.empresas.find(x=>x.id===empId);

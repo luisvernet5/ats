@@ -904,6 +904,161 @@ function adaptUIToRole() {
   }
 }
 
+async function verResumenReclutadores(){
+  const overlay = document.createElement('div');
+  overlay.id = 'resumen-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:300;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:32px 16px;backdrop-filter:blur(4px)';
+
+  const hoy = today();
+  const hace30 = new Date(); hace30.setDate(hace30.getDate()-30);
+  const hace30str = hace30.toISOString().split('T')[0];
+
+  overlay.innerHTML=`
+    <div style="background:var(--surface);border-radius:14px;padding:24px;width:900px;max-width:96vw">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <div style="font-size:16px;font-weight:600">Resumen de actividad — Reclutadores</div>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('resumen-overlay').remove()">✕ Cerrar</button>
+      </div>
+      <div class="fbar" style="margin-bottom:18px;gap:8px">
+        <div class="fg" style="margin:0">
+          <label style="font-size:11px">Desde</label>
+          <input type="date" id="res-f1" value="${hace30str}">
+        </div>
+        <div class="fg" style="margin:0">
+          <label style="font-size:11px">Hasta</label>
+          <input type="date" id="res-f2" value="${hoy}">
+        </div>
+        <button class="btn btn-primary btn-sm" style="align-self:flex-end" onclick="cargarResumen()">
+          <i class="fa fa-search"></i> Generar
+        </button>
+        <div class="sp"></div>
+        <button class="btn btn-green btn-sm" style="align-self:flex-end" onclick="exportarResumen()">
+          <i class="fa fa-file-excel"></i> Exportar
+        </button>
+      </div>
+      <div id="resumen-content" style="color:var(--text3);font-size:13px;padding:16px 0">
+        Selecciona un período y da clic en Generar.
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function cargarResumen(){
+  const f1 = document.getElementById('res-f1')?.value||'';
+  const f2 = document.getElementById('res-f2')?.value||'';
+  const content = document.getElementById('resumen-content');
+  if(!content) return;
+  content.innerHTML='<div style="color:var(--text3)">Cargando...</div>';
+
+  let query = sbClient.from('activity_log').select('*').order('created_at',{ascending:false});
+  if(f1) query = query.gte('created_at', f1+'T00:00:00');
+  if(f2) query = query.lte('created_at', f2+'T23:59:59');
+  const { data: logs } = await query;
+  if(!logs?.length){ content.innerHTML='<div style="color:var(--text3)">Sin actividad en ese período.</div>'; return; }
+
+  const porRec = {};
+  for(const log of logs){
+    const key = log.usuario_email||'desconocido';
+    if(!porRec[key]) porRec[key] = {
+      nombre: log.usuario_nombre||log.usuario_email||'—',
+      email: log.usuario_email||'',
+      nuevasVacantes:0, editarVacantes:0, eliminarVacantes:0,
+      nuevosCandidatos:0, editarCandidatos:0, cambiosEtapa:0,
+      nuevasEmpresas:0, editarEmpresas:0,
+      totalAcciones:0, logs:[]
+    };
+    const r = porRec[key];
+    r.totalAcciones++;
+    r.logs.push(log);
+    switch(log.accion){
+      case 'Nueva vacante': r.nuevasVacantes++; break;
+      case 'Editar vacante': r.editarVacantes++; break;
+      case 'Eliminar vacante': r.eliminarVacantes++; break;
+      case 'Nuevo candidato': r.nuevosCandidatos++; break;
+      case 'Editar candidato': r.editarCandidatos++; break;
+      case 'Cambio de etapa': r.cambiosEtapa++; break;
+      case 'Nueva empresa': r.nuevasEmpresas++; break;
+      case 'Editar empresa': r.editarEmpresas++; break;
+    }
+  }
+
+  const cards = Object.values(porRec).sort((a,b)=>b.totalAcciones-a.totalAcciones).map(r=>`
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div>
+          <div style="font-size:14px;font-weight:600">${r.nombre}</div>
+          <div style="font-size:11px;color:var(--text3)">${r.email}</div>
+        </div>
+        <span style="font-size:12px;font-weight:600;background:var(--accent)18;color:var(--accent);padding:4px 12px;border-radius:20px">
+          ${r.totalAcciones} acciones totales
+        </span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+        <div class="card" style="padding:10px 14px;text-align:center">
+          <div class="card-title">Vacantes nuevas</div>
+          <div style="font-size:20px;font-weight:700;color:var(--accent)">${r.nuevasVacantes}</div>
+        </div>
+        <div class="card" style="padding:10px 14px;text-align:center">
+          <div class="card-title">Candidatos nuevos</div>
+          <div style="font-size:20px;font-weight:700;color:#8b5cf6">${r.nuevosCandidatos}</div>
+        </div>
+        <div class="card" style="padding:10px 14px;text-align:center">
+          <div class="card-title">Cambios de etapa</div>
+          <div style="font-size:20px;font-weight:700;color:#f59e0b">${r.cambiosEtapa}</div>
+        </div>
+        <div class="card" style="padding:10px 14px;text-align:center">
+          <div class="card-title">Ediciones</div>
+          <div style="font-size:20px;font-weight:700;color:var(--text2)">${r.editarVacantes+r.editarCandidatos+r.editarEmpresas}</div>
+        </div>
+      </div>
+      <details style="font-size:12px">
+        <summary style="cursor:pointer;color:var(--text3);margin-bottom:8px">Ver desglose completo</summary>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
+          ${[
+            ['Vacantes editadas', r.editarVacantes],
+            ['Vacantes eliminadas', r.eliminarVacantes],
+            ['Candidatos editados', r.editarCandidatos],
+            ['Empresas nuevas', r.nuevasEmpresas],
+            ['Empresas editadas', r.editarEmpresas],
+          ].map(([label,val])=>`
+            <div style="background:var(--surface2);border-radius:8px;padding:8px 12px">
+              <div style="font-size:10px;color:var(--text3);text-transform:uppercase">${label}</div>
+              <div style="font-size:16px;font-weight:600">${val}</div>
+            </div>`).join('')}
+        </div>
+        <div style="margin-top:12px">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Últimas 5 acciones</div>
+          ${r.logs.slice(0,5).map(l=>`
+            <div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+              <span style="font-size:10px;color:var(--text3);white-space:nowrap;min-width:120px">${new Date(l.created_at).toLocaleString('es-MX')}</span>
+              <span style="font-size:11px;font-weight:500;color:var(--accent)">${l.accion}</span>
+              <span style="font-size:11px;color:var(--text2)">${l.detalle||''}</span>
+            </div>`).join('')}
+        </div>
+      </details>
+    </div>`).join('');
+
+  content.innerHTML = cards;
+  content._data = Object.values(porRec);
+}
+
+function exportarResumen(){
+  const content = document.getElementById('resumen-content');
+  const data = content?._data;
+  if(!data?.length){ showToast('Primero genera el resumen','err'); return; }
+  const f1 = document.getElementById('res-f1')?.value||'';
+  const f2 = document.getElementById('res-f2')?.value||'';
+  const header = ['Reclutador','Email','Vacantes nuevas','Candidatos nuevos','Cambios de etapa','Vacantes editadas','Vacantes eliminadas','Candidatos editados','Empresas nuevas','Empresas editadas','Total acciones'];
+  const rows = data.map(r=>[r.nombre,r.email,r.nuevasVacantes,r.nuevosCandidatos,r.cambiosEtapa,r.editarVacantes,r.eliminarVacantes,r.editarCandidatos,r.nuevasEmpresas,r.editarEmpresas,r.totalAcciones]);
+  const csv = [header,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const BOM = '﻿';
+  const blob = new Blob([BOM+csv],{type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `resumen_reclutadores_${f1}_${f2}.csv`;
+  a.click();
+}
+
 async function renderActivityLog(){
   console.log('renderActivityLog ejecutado');
   const page = document.getElementById('page-activity-log');
@@ -966,6 +1121,9 @@ async function renderActivityLog(){
       </button>
       <button class="btn btn-green btn-sm" onclick="exportarLog()">
         <i class="fa fa-file-excel"></i> Exportar Excel
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="verResumenReclutadores()">
+        <i class="fa fa-chart-bar"></i> Resumen reclutadores
       </button>
     </div>
     <div class="table-wrap">

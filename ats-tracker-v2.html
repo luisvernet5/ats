@@ -4036,7 +4036,7 @@ async function showHCTab(tab){
   const fFin = document.getElementById('hc-fecha-fin')?.value||'';
 
   if(tab==='resumen'){
-    const { data: plantilla } = await sbClient.from('hc_plantilla').select('*').eq('empresa_id', empId);
+    const { data: plantilla } = await sbClient.from('hc_plantilla').select('*').eq('empresa_id', empId).order('orden', {ascending:true});
     const { data: resumen } = await sbClient.from('hc_resumen').select('*').eq('empresa_id', empId).eq('semana', semana||0);
     const proyectos = (plantilla||[]).map(p=>p.proyecto);
 
@@ -4066,7 +4066,13 @@ async function showHCTab(tab){
       tEntrev+=entrevista; tValid+=validacion; tProc+=procCont;
       tCont+=contratados; tBajas+=bajas; tPrev+=statusPrev;
       tCierre+=statusCierre; tDet+=detenidas; tPCant+=plantillaCierre;
-      return`<tr id="hc-tr-${proyId}" data-auth="${auth}">
+      return`<tr id="hc-tr-${proyId}" data-auth="${auth}" data-proy="${proy.replace(/"/g,'&quot;')}" draggable="true"
+        ondragstart="hcDragStart(event,'${proyId}')"
+        ondragover="hcDragOver(event,'${proyId}')"
+        ondragleave="hcDragLeave(event,'${proyId}')"
+        ondrop="hcDrop(event,'${proyId}','${empId}')"
+        ondragend="hcDragEnd(event,'${proyId}')">
+        <td class="hc-drag-handle" title="Arrastrar para reordenar">⠿</td>
         <td class="td-p" style="font-size:12px">${proy}</td>
         <td id="hc-auth-cell-${proyId}" style="text-align:center">${auth} <i class="fa fa-pen hc-edit-icon" onclick="editHCAuth('${proyId}','${empId}','${proy}')" title="Editar plantilla autorizada"></i></td>
         <td style="text-align:center"><input type="number" class="hc-inp" value="${actual}"
@@ -4095,7 +4101,7 @@ async function showHCTab(tab){
 
     const tPct = tPrev>0 ? ((tAuth/tPrev)*100).toFixed(2)+'%' : '—';
     const totalsRow = `<tr id="hc-totals-row" style="background:var(--surface2);font-weight:600;border-top:2px solid var(--border2)">
-      <td class="td-p">TOTAL</td>
+      <td></td><td class="td-p">TOTAL</td>
       <td style="text-align:center">${tAuth}</td>
       <td style="text-align:center">${tActual}</td>
       <td style="text-align:center">${tVac}</td>
@@ -4127,11 +4133,15 @@ async function showHCTab(tab){
         #hc-resumen-table input.hc-inp { width:44px; max-width:52px; font-size:11px; padding:3px 2px; }
         .hc-edit-icon { font-size:9px; color:var(--text3); cursor:pointer; margin-left:3px; vertical-align:middle; }
         .hc-edit-icon:hover { color:var(--accent); }
+        .hc-drag-handle { color:var(--text3); cursor:grab; user-select:none; font-size:14px; }
+        .hc-drag-handle:active { cursor:grabbing; }
+        #hc-resumen-table tr.hc-dragging { opacity:0.4; }
+        #hc-resumen-table tr.hc-drag-over { border-top:2px solid var(--accent); }
       </style>
       <div class="table-wrap" style="overflow-x:auto">
         <table id="hc-resumen-table">
           <thead><tr>
-            <th>Proyecto</th><th>Autorizada</th><th>Actual</th><th>Vacantes</th>
+            <th></th><th>Proyecto</th><th>Autorizada</th><th>Actual</th><th>Vacantes</th>
             <th>Cartera</th><th>Entrevista</th><th>Validación</th><th>Proc. Contrat.</th>
             <th>Contratados</th><th>Bajas</th>
             <th>Status Sem. Previo Bajas</th>
@@ -4318,6 +4328,60 @@ async function saveHCAuth(proyId, empId, proy, el){
   if(tr) tr.dataset.auth = newAuth;
   showToast('Plantilla actualizada ✓');
   recalcHCRow(proyId);
+}
+
+let _hcDragSrc = null;
+
+function hcDragStart(e, proyId){
+  _hcDragSrc = document.getElementById('hc-tr-'+proyId);
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', proyId);
+  setTimeout(()=>{ if(_hcDragSrc) _hcDragSrc.classList.add('hc-dragging'); }, 0);
+}
+
+function hcDragOver(e, proyId){
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const tr = document.getElementById('hc-tr-'+proyId);
+  if(tr && tr !== _hcDragSrc) tr.classList.add('hc-drag-over');
+}
+
+function hcDragLeave(e, proyId){
+  const tr = document.getElementById('hc-tr-'+proyId);
+  if(tr) tr.classList.remove('hc-drag-over');
+}
+
+function hcDrop(e, proyId, empId){
+  e.preventDefault();
+  e.stopPropagation();
+  const target = document.getElementById('hc-tr-'+proyId);
+  if(!_hcDragSrc || _hcDragSrc === target) return;
+  target.classList.remove('hc-drag-over');
+  const tbody = target.closest('tbody');
+  const allRows = [...tbody.querySelectorAll('tr[id^="hc-tr-"]')];
+  const srcIdx = allRows.indexOf(_hcDragSrc);
+  const tgtIdx = allRows.indexOf(target);
+  if(srcIdx < tgtIdx) tbody.insertBefore(_hcDragSrc, target.nextSibling);
+  else tbody.insertBefore(_hcDragSrc, target);
+  saveHCOrder(empId, tbody);
+}
+
+function hcDragEnd(e, proyId){
+  const tr = document.getElementById('hc-tr-'+proyId);
+  if(tr) tr.classList.remove('hc-dragging');
+  document.querySelectorAll('#hc-resumen-table tr').forEach(r=>r.classList.remove('hc-drag-over'));
+  _hcDragSrc = null;
+}
+
+async function saveHCOrder(empId, tbody){
+  const rows = [...tbody.querySelectorAll('tr[id^="hc-tr-"]')];
+  await Promise.all(rows.map((tr, i) =>
+    sbClient.from('hc_plantilla')
+      .update({ orden: i+1 })
+      .eq('empresa_id', empId)
+      .eq('proyecto', tr.dataset.proy)
+  ));
+  showToast('Orden guardado ✓');
 }
 
 function openHCProyectoModal(empId){

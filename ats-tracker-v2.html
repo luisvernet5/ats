@@ -13,7 +13,11 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
 .app{display:flex;height:100vh;overflow:hidden}
-.sidebar{width:224px;min-width:224px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column}
+.sidebar{width:224px;min-width:224px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:relative;transition:width .25s,min-width .25s}
+.sidebar.collapsed { width: 0; min-width: 0; overflow: hidden; padding: 0; }
+.sidebar.collapsed + .main { margin-left: 0; }
+#sb-toggle { transition: right .25s; }
+.sidebar.collapsed #sb-toggle { right: -36px; }
 .main{flex:1;overflow-y:auto;background:var(--bg)}
 .sb-logo{padding:20px 18px 16px;border-bottom:1px solid var(--border)}
 .sb-logo .brand{font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.08em;text-transform:uppercase}
@@ -211,6 +215,13 @@ input[type=date]{color:var(--text)}
     <div class="brand">ATS Tracker</div>
     <div class="sub">Gestión de candidatos</div>
   </div>
+  <button id="sb-toggle" onclick="toggleSidebar()"
+    style="position:absolute;top:50%;right:-12px;transform:translateY(-50%);
+    width:24px;height:24px;border-radius:50%;background:var(--accent);
+    border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:11px;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.2)">
+    <i class="fa fa-chevron-left" id="sb-toggle-icon"></i>
+  </button>
   <nav class="sb-nav">
     <div class="nav-section">Principal</div>
     <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard"><i class="fa fa-chart-pie"></i> Dashboard</div>
@@ -821,6 +832,7 @@ async function initSession() {
   document.getElementById('auth-screen').style.display = 'none';
   await loadDB();
   adaptUIToRole();
+  initSidebarState();
   renderDashboard();
 }
 
@@ -1236,6 +1248,26 @@ function resolverNombre(campo, valor){
     return e?.nombre||valor;
   }
   return valor;
+}
+
+function toggleSidebar(){
+  const sb = document.querySelector('.sidebar') || document.querySelector('.sb');
+  if(!sb) return;
+  const collapsed = sb.classList.toggle('collapsed');
+  const icon = document.getElementById('sb-toggle-icon');
+  if(icon) icon.className = collapsed ? 'fa fa-chevron-right' : 'fa fa-chevron-left';
+  localStorage.setItem('sb_collapsed', collapsed ? '1' : '0');
+}
+
+function initSidebarState(){
+  if(localStorage.getItem('sb_collapsed')==='1'){
+    const sb = document.querySelector('.sidebar') || document.querySelector('.sb');
+    if(sb){
+      sb.classList.add('collapsed');
+      const icon = document.getElementById('sb-toggle-icon');
+      if(icon) icon.className = 'fa fa-chevron-right';
+    }
+  }
 }
 
 async function doLogout() {

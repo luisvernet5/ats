@@ -977,7 +977,7 @@ function adaptUIToRole() {
       });
     }
   } else if(rol === 'reclutador') {
-    ['nav-empresas','nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-config'].forEach(id => {
+    ['nav-empresas','nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-config','nav-headcount'].forEach(id => {
       const el = document.getElementById(id); if(el) el.style.display='none';
     });
   }
@@ -993,6 +993,7 @@ function adaptUIToRole() {
         item.innerHTML = '<i class="fa fa-trash-restore"></i><span class="nav-item-text"> Vacantes eliminadas</span>';
         item.setAttribute('onclick', "showPage('vacantes-eliminadas')");
         configItem.parentNode.insertBefore(item, configItem);
+        if(rol === 'reclutador') item.style.display = 'none';
       }
     }
     if(!document.getElementById('page-vacantes-eliminadas')) {

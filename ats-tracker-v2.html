@@ -844,6 +844,78 @@ async function doResetPassword() {
   }
 }
 
+async function handleInviteToken(){
+  const hash = window.location.hash;
+  if(!hash) return false;
+  const params = new URLSearchParams(hash.substring(1));
+  const type = params.get('type');
+  const accessToken = params.get('access_token');
+  if(type !== 'invite' || !accessToken) return false;
+
+  // Limpiar hash de la URL
+  history.replaceState(null, '', window.location.pathname);
+
+  // Mostrar pantalla de configurar contraseña
+  const loginBox = document.getElementById('login-box') || document.querySelector('.login-card') || document.querySelector('.auth-card');
+  if(loginBox){
+    loginBox.innerHTML=`
+      <div style="text-align:center;margin-bottom:24px">
+        <div style="font-size:22px;font-weight:700;color:var(--text)">ATS Tracker</div>
+        <div style="font-size:13px;color:var(--text3);margin-top:4px">Configura tu contraseña para continuar</div>
+      </div>
+      <div class="fg" style="margin-bottom:14px">
+        <label>Nueva contraseña</label>
+        <input type="password" id="new-pass" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
+      </div>
+      <div class="fg" style="margin-bottom:18px">
+        <label>Confirmar contraseña</label>
+        <input type="password" id="confirm-pass" placeholder="Repite la contraseña" autocomplete="new-password">
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="setInvitePassword('${accessToken}')">
+        Establecer contraseña
+      </button>`;
+  }
+  return true;
+}
+
+async function setInvitePassword(accessToken){
+  const pass = document.getElementById('new-pass')?.value;
+  const confirm = document.getElementById('confirm-pass')?.value;
+  if(!pass || pass.length < 8){ showLoginError('La contraseña debe tener al menos 8 caracteres'); return; }
+  if(pass !== confirm){ showLoginError('Las contraseñas no coinciden'); return; }
+
+  const btn = document.querySelector('.btn-primary');
+  if(btn){ btn.disabled=true; btn.textContent='Guardando...'; }
+
+  try {
+    // Establecer sesión con el token de invitación
+    const { error: sessionError } = await sbClient.auth.setSession({
+      access_token: accessToken,
+      refresh_token: accessToken
+    });
+
+    const { error } = await sbClient.auth.updateUser({ password: pass });
+    if(error) throw error;
+    showLoginError('✓ Contraseña establecida. Iniciando sesión...', true);
+    setTimeout(()=>location.reload(), 1500);
+  } catch(e){
+    showLoginError('Error: ' + e.message);
+    if(btn){ btn.disabled=false; btn.textContent='Establecer contraseña'; }
+  }
+}
+
+function showLoginError(msg, success=false){
+  let el = document.getElementById('login-error');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'login-error';
+    el.style.cssText='font-size:12px;margin-top:8px;text-align:center';
+    document.getElementById('new-pass')?.closest('.fg')?.before(el);
+  }
+  el.style.color = success ? 'var(--ok)' : 'var(--err)';
+  el.textContent = msg;
+}
+
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
@@ -5286,6 +5358,8 @@ function seedData(){
 
 // Verificar sesión activa al cargar
 sbClient.auth.getSession().then(async ({ data: { session } }) => {
+  const isInvite = await handleInviteToken();
+  if(isInvite) return;
   if(tokenType === 'recovery' && accessToken) {
     await sbClient.auth.setSession({ access_token: accessToken, refresh_token: hashParams.get('refresh_token') });
     showResetPasswordScreen();

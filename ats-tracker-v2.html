@@ -856,7 +856,7 @@ async function handleInviteToken(){
   history.replaceState(null, '', window.location.pathname);
 
   // Mostrar pantalla de configurar contraseña
-  const loginBox = document.getElementById('login-box') || document.querySelector('.login-card') || document.querySelector('.auth-card');
+  const loginBox = document.querySelector('#auth-screen > div');
   if(loginBox){
     loginBox.innerHTML=`
       <div style="text-align:center;margin-bottom:24px">

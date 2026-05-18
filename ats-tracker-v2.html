@@ -2891,7 +2891,7 @@ async function reactivarVacante(vacId){
 }
 
 async function eliminarVacante(id){
-  if(!confirm('¿Eliminar esta vacante? Se eliminarán también sus candidatos asociados.')) return;
+  if(!confirm('¿Eliminar esta vacante? Esta acción no se puede deshacer.')) return;
   try {
     const v = DB.vacantes.find(x=>x.id===id);
     if(!v) return;
@@ -2949,7 +2949,7 @@ function renderVacantesTable(){
         <button class="btn btn-ghost btn-sm" onclick="openVacanteModal('${v.id}')"><i class="fa fa-edit"></i></button>
         <button class="btn btn-primary btn-sm" onclick="openCandModal('${v.id}')"><i class="fa fa-user-plus"></i></button>
         ${v.estado==='Abierta'?`<button class="btn btn-ghost btn-sm" onclick="abrirCierreVacante('${v.id}')" title="Cerrar vacante"><i class="fa fa-times-circle"></i></button>`:`<span class="badge ${v.estado==='Cubierta'?'bg':'br'}">${v.estado}</span>`}
-        ${currentUser?.email==='lukaarrever@gmail.com'?`<button class="btn btn-danger btn-sm" onclick="eliminarVacante('${v.id}')" title="Eliminar vacante"><i class="fa fa-trash"></i></button>`:''}
+        ${currentUserData?.rol==='admin'?`<button class="btn btn-danger btn-sm" onclick="eliminarVacante('${v.id}')" title="Eliminar vacante"><i class="fa fa-trash"></i></button>`:''}
       </td>
     </tr>
     <tr id="detail-${v.id}" style="display:none">

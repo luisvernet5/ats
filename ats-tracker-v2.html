@@ -1443,7 +1443,8 @@ async function saveRecord(tabla,objeto){
     localStorage.setItem(key,JSON.stringify(arr));
     return;
   }
-  await sbClient.from(tabla).upsert({id:objeto.id,data:objeto});
+  const {error} = await sbClient.from(tabla).upsert({id:objeto.id,data:objeto});
+  if(error) throw new Error(error.message);
 }
 async function deleteRecord(tabla,id){
   if(SANDBOX_MODE){
@@ -2197,6 +2198,8 @@ function openVacanteModal(id=null,preEmpId=null){
     empSel.disabled = false;
   }
   populateRecSel('vac-reclutador','');
+  if(currentUserData?.rol==='reclutador' && currentUserData?.reclutador_id)
+    document.getElementById('vac-reclutador').value = currentUserData.reclutador_id;
   if(preEmpId)autofillVacRec();
   if(id){
     const v=DB.vacantes.find(x=>x.id===id);
@@ -2299,12 +2302,16 @@ async function saveVacante(){
     garantia_venc:aplica_garantia?document.getElementById('vac-garantia-venc').value||null:null
   };
   const _vacAnterior = id ? {...(DB.vacantes.find(x=>x.id===id)||{})} : null;
-  if(id){const i=DB.vacantes.findIndex(v=>v.id===id);DB.vacantes[i]={...DB.vacantes[i],...data,folio,estado:DB.vacantes[i].estado||'Abierta'};await saveRecord('vacantes',DB.vacantes[i]);showToast('Vacante actualizada ✓')}
-  else{DB.vacantes.push({id:uid(),...data});await saveRecord('vacantes',DB.vacantes[DB.vacantes.length-1]);showToast('Vacante creada ✓')}
-  const _lv = id ? DB.vacantes.find(x=>x.id===id) : DB.vacantes[DB.vacantes.length-1];
-  await logActivity(_lv&&_vacAnterior?'Editar vacante':'Nueva vacante','vacantes',_lv?.id,_lv?.nombre||'',_vacAnterior,_lv);
-  closeModal('modal-vacante');
-  setTimeout(()=>renderPage(document.querySelector('.page.active').id.replace('page-','')),100);
+  try {
+    if(id){const i=DB.vacantes.findIndex(v=>v.id===id);DB.vacantes[i]={...DB.vacantes[i],...data,folio,estado:DB.vacantes[i].estado||'Abierta'};await saveRecord('vacantes',DB.vacantes[i]);showToast('Vacante actualizada ✓')}
+    else{DB.vacantes.push({id:uid(),...data});await saveRecord('vacantes',DB.vacantes[DB.vacantes.length-1]);showToast('Vacante creada ✓')}
+    const _lv = id ? DB.vacantes.find(x=>x.id===id) : DB.vacantes[DB.vacantes.length-1];
+    await logActivity(_lv&&_vacAnterior?'Editar vacante':'Nueva vacante','vacantes',_lv?.id,_lv?.nombre||'',_vacAnterior,_lv);
+    closeModal('modal-vacante');
+    setTimeout(()=>renderPage(document.querySelector('.page.active').id.replace('page-','')),100);
+  } catch(e) {
+    showToast('Error al guardar vacante: '+e.message,'err');
+  }
 }
 
 /* ============================================================
@@ -2318,9 +2325,18 @@ function openCandModal(vacanteIdOrNull,reemplazaId=null){
   // populate empresa
   const empSel=document.getElementById('cand-empresa');
   empSel.innerHTML='<option value="">Seleccionar empresa...</option>';
-  DB.empresas.forEach(e=>empSel.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
+  (currentUserData?.rol==='rh_cliente'
+    ? DB.empresas.filter(e=>e.id===currentUserData?.empresa_id)
+    : DB.empresas
+  ).forEach(e=>empSel.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
+  if(currentUserData?.rol==='rh_cliente' && currentUserData?.empresa_id){
+    empSel.value = currentUserData.empresa_id;
+    onCandEmpresaChange();
+  }
   document.getElementById('cand-vacante').innerHTML='<option value="">Seleccionar vacante...</option>';
   populateRecSel('cand-reclutador','');
+  if(currentUserData?.rol==='reclutador' && currentUserData?.reclutador_id)
+    document.getElementById('cand-reclutador').value = currentUserData.reclutador_id;
   const alertEl=document.getElementById('cand-remp-alert');
   if(reemplazaId){
     const prev=DB.candidatos.find(c=>c.id===reemplazaId)||{};
@@ -2406,18 +2422,22 @@ async function saveCandidato(){
   const etapa=id?(DB.candidatos.find(c=>c.id===id)||{}).etapa||(etapas[0]?.label||'Entrevista RH'):(etapas[0]?.label||'Entrevista RH');
   const data={nombre,vacante_id,reclutador_id,etapa,contacto:document.getElementById('cand-contacto').value,fuente:document.getElementById('cand-fuente').value,notas:document.getElementById('cand-notas').value,activo:true,parent_id:parent_id||null};
   const _candAnterior = id ? {...(DB.candidatos.find(x=>x.id===id)||{})} : null;
-  if(id){const i=DB.candidatos.findIndex(c=>c.id===id);DB.candidatos[i]={...DB.candidatos[i],...data};showToast('Candidato actualizado ✓')}
-  else{
-    const nc={id:uid(),creado:today(),...data};
-    DB.candidatos.push(nc);
-    if(parent_id){const pi=DB.candidatos.findIndex(c=>c.id===parent_id);if(pi>=0){DB.candidatos[pi].reemplazado_por=nc.id;DB.candidatos[pi].activo=false;await saveRecord('candidatos',DB.candidatos[pi]);}}
-    showToast('Candidato agregado ✓');
+  try {
+    if(id){const i=DB.candidatos.findIndex(c=>c.id===id);DB.candidatos[i]={...DB.candidatos[i],...data};showToast('Candidato actualizado ✓')}
+    else{
+      const nc={id:uid(),creado:today(),...data};
+      DB.candidatos.push(nc);
+      if(parent_id){const pi=DB.candidatos.findIndex(c=>c.id===parent_id);if(pi>=0){DB.candidatos[pi].reemplazado_por=nc.id;DB.candidatos[pi].activo=false;await saveRecord('candidatos',DB.candidatos[pi]);}}
+      showToast('Candidato agregado ✓');
+    }
+    const _cObj=id?DB.candidatos.find(c=>c.id===id):DB.candidatos[DB.candidatos.length-1];
+    if(_cObj)await saveRecord('candidatos',_cObj);
+    if(_cObj)await logActivity(_cObj&&_candAnterior?'Editar candidato':'Nuevo candidato','candidatos',_cObj.id,_cObj.nombre||'',_candAnterior,_cObj);
+    closeModal('modal-candidato');
+    renderPage(document.querySelector('.page.active').id.replace('page-',''));
+  } catch(e) {
+    showToast('Error al guardar candidato: '+e.message,'err');
   }
-  const _cObj=id?DB.candidatos.find(c=>c.id===id):DB.candidatos[DB.candidatos.length-1];
-  if(_cObj)await saveRecord('candidatos',_cObj);
-  if(_cObj)await logActivity(_cObj&&_candAnterior?'Editar candidato':'Nuevo candidato','candidatos',_cObj.id,_cObj.nombre||'',_candAnterior,_cObj);
-  closeModal('modal-candidato');
-  renderPage(document.querySelector('.page.active').id.replace('page-',''));
 }
 
 /* ============================================================

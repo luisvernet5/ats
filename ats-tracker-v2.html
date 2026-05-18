@@ -2268,15 +2268,15 @@ function toggleVacSustitucion(){
 }
 
 async function saveVacante(){
-  const nombre=document.getElementById('vac-nombre').value.trim();
-  const empresa_id=document.getElementById('vac-empresa').value;
-  const reclutador_id=document.getElementById('vac-reclutador').value;
-  const fecha_apertura=document.getElementById('vac-fecha').value;
+  const nombre=(document.getElementById('vac-nombre')?.value||'').trim();
+  const empresa_id=document.getElementById('vac-empresa')?.value||'';
+  const reclutador_id=document.getElementById('vac-reclutador')?.value||'';
+  const fecha_apertura=document.getElementById('vac-fecha')?.value||'';
   if(!nombre||!empresa_id||!reclutador_id||!fecha_apertura){showToast('Completa campos obligatorios','err');return}
-  const id=document.getElementById('vac-id').value;
-  const aplica_garantia=document.getElementById('vac-aplica-garantia').checked;
-  const tipo_vacante=document.getElementById('vac-tipo').value;
-  const folioManual=document.getElementById('vac-folio').value.trim();
+  const id=document.getElementById('vac-id')?.value||'';
+  const aplica_garantia=document.getElementById('vac-aplica-garantia')?.checked||false;
+  const tipo_vacante=document.getElementById('vac-tipo')?.value||'';
+  const folioManual=(document.getElementById('vac-folio')?.value||'').trim();
   const emp=DB.empresas.find(e=>e.id===empresa_id)||{};
   const empPrefix=(emp.nombre||'EMP').substring(0,3).toUpperCase().replace(/\s/g,'');
   const vacEmpresa=DB.vacantes.filter(v=>v.empresa_id===empresa_id).length+1;
@@ -2284,22 +2284,22 @@ async function saveVacante(){
   const mesAnio=String(fecha.getMonth()+1).padStart(2,'0')+fecha.getFullYear().toString().substr(2);
   const folioAuto=`${empPrefix}-${String(vacEmpresa).padStart(3,'0')}-${mesAnio}`;
   const folio=folioManual||folioAuto;
-  const slaSelect=document.getElementById('vac-sla').value;
-  const sla_dias=slaSelect==='custom'?parseInt(document.getElementById('vac-sla-custom').value)||null:slaSelect?parseInt(slaSelect):null;
+  const slaSelect=document.getElementById('vac-sla')?.value||'';
+  const sla_dias=slaSelect==='custom'?parseInt(document.getElementById('vac-sla-custom')?.value||'0')||null:slaSelect?parseInt(slaSelect):null;
   const data={
     folio,nombre,empresa_id,reclutador_id,fecha_apertura,
-    salario:document.getElementById('vac-salario').value,
+    salario:document.getElementById('vac-salario')?.value||'',
     estado:'Abierta',
     sla_dias,
-    descripcion:document.getElementById('vac-desc').value,
-    departamento:document.getElementById('vac-depto').value||null,
-    proyecto:document.getElementById('vac-proyecto').value||null,
+    descripcion:document.getElementById('vac-desc')?.value||'',
+    departamento:document.getElementById('vac-depto')?.value||null,
+    proyecto:document.getElementById('vac-proyecto')?.value||null,
     tipo_vacante,
-    colaborador_sustituido:tipo_vacante==='Sustitución'?document.getElementById('vac-colaborador').value.trim()||null:null,
+    colaborador_sustituido:tipo_vacante==='Sustitución'?(document.getElementById('vac-colaborador')?.value||'').trim()||null:null,
     aplica_garantia,
-    garantia_inicio:aplica_garantia?document.getElementById('vac-garantia-inicio').value||null:null,
-    garantia_dias:aplica_garantia?parseInt(document.getElementById('vac-garantia-dias').value)||null:null,
-    garantia_venc:aplica_garantia?document.getElementById('vac-garantia-venc').value||null:null
+    garantia_inicio:aplica_garantia?document.getElementById('vac-garantia-inicio')?.value||null:null,
+    garantia_dias:aplica_garantia?parseInt(document.getElementById('vac-garantia-dias')?.value||'0')||null:null,
+    garantia_venc:aplica_garantia?document.getElementById('vac-garantia-venc')?.value||null:null
   };
   const _vacAnterior = id ? {...(DB.vacantes.find(x=>x.id===id)||{})} : null;
   try {
@@ -2411,16 +2411,16 @@ function onCandVacanteChange(){
 }
 
 async function saveCandidato(){
-  const nombre=document.getElementById('cand-nombre').value.trim();
-  const vacante_id=document.getElementById('cand-vacante').value;
-  const reclutador_id=document.getElementById('cand-reclutador').value;
+  const nombre=(document.getElementById('cand-nombre')?.value||'').trim();
+  const vacante_id=document.getElementById('cand-vacante')?.value||'';
+  const reclutador_id=document.getElementById('cand-reclutador')?.value||'';
   if(!nombre||!vacante_id||!reclutador_id){showToast('Completa nombre, vacante y reclutador','err');return}
-  const id=document.getElementById('cand-id').value;
-  const parent_id=document.getElementById('cand-parent-id').value;
+  const id=document.getElementById('cand-id')?.value||'';
+  const parent_id=document.getElementById('cand-parent-id')?.value||'';
   const v=DB.vacantes.find(x=>x.id===vacante_id)||{};
   const etapas=getEmpresaEtapas(v.empresa_id);
   const etapa=id?(DB.candidatos.find(c=>c.id===id)||{}).etapa||(etapas[0]?.label||'Entrevista RH'):(etapas[0]?.label||'Entrevista RH');
-  const data={nombre,vacante_id,reclutador_id,etapa,contacto:document.getElementById('cand-contacto').value,fuente:document.getElementById('cand-fuente').value,notas:document.getElementById('cand-notas').value,activo:true,parent_id:parent_id||null};
+  const data={nombre,vacante_id,reclutador_id,etapa,contacto:document.getElementById('cand-contacto')?.value||'',fuente:document.getElementById('cand-fuente')?.value||'',notas:document.getElementById('cand-notas')?.value||'',activo:true,parent_id:parent_id||null};
   const _candAnterior = id ? {...(DB.candidatos.find(x=>x.id===id)||{})} : null;
   try {
     if(id){const i=DB.candidatos.findIndex(c=>c.id===id);DB.candidatos[i]={...DB.candidatos[i],...data};showToast('Candidato actualizado ✓')}

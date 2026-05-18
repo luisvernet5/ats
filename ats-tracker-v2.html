@@ -881,25 +881,28 @@ async function handleInviteToken(){
 async function setInvitePassword(accessToken){
   const pass = document.getElementById('new-pass')?.value;
   const confirm = document.getElementById('confirm-pass')?.value;
-  if(!pass || pass.length < 8){ showLoginError('La contraseña debe tener al menos 8 caracteres'); return; }
-  if(pass !== confirm){ showLoginError('Las contraseñas no coinciden'); return; }
-
-  const btn = document.querySelector('.btn-primary');
+  const errEl = document.getElementById('invite-error');
+  const btn = document.getElementById('invite-btn');
+  if(!pass || pass.length < 8){
+    if(errEl) errEl.textContent='La contraseña debe tener al menos 8 caracteres';
+    return;
+  }
+  if(pass !== confirm){
+    if(errEl) errEl.textContent='Las contraseñas no coinciden';
+    return;
+  }
   if(btn){ btn.disabled=true; btn.textContent='Guardando...'; }
-
   try {
-    // Establecer sesión con el token de invitación
-    const { error: sessionError } = await sbClient.auth.setSession({
+    await sbClient.auth.setSession({
       access_token: accessToken,
       refresh_token: accessToken
     });
-
     const { error } = await sbClient.auth.updateUser({ password: pass });
     if(error) throw error;
-    showLoginError('✓ Contraseña establecida. Iniciando sesión...', true);
+    if(errEl){ errEl.style.color='#22c55e'; errEl.textContent='✓ Contraseña establecida. Iniciando sesión...'; }
     setTimeout(()=>location.reload(), 1500);
   } catch(e){
-    showLoginError('Error: ' + e.message);
+    if(errEl) errEl.textContent='Error: ' + e.message;
     if(btn){ btn.disabled=false; btn.textContent='Establecer contraseña'; }
   }
 }
@@ -5356,10 +5359,41 @@ function seedData(){
   ];
 }
 
+// Interceptar token de invitación ANTES de getSession
+const _hash = window.location.hash;
+const _hashParams = new URLSearchParams(_hash.substring(1));
+const _inviteType = _hashParams.get('type');
+const _inviteToken = _hashParams.get('access_token');
+
+if(_inviteType === 'invite' && _inviteToken){
+  history.replaceState(null, '', window.location.pathname);
+  const loginBox = document.querySelector('#auth-screen > div');
+  if(loginBox){
+    loginBox.innerHTML=`
+      <div style="text-align:center;margin-bottom:24px">
+        <div style="font-size:22px;font-weight:700;color:#111">ATS Tracker</div>
+        <div style="font-size:13px;color:#888;margin-top:4px">Configura tu contraseña para continuar</div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:500;display:block;margin-bottom:6px">Nueva contraseña</label>
+        <input type="password" id="new-pass" placeholder="Mínimo 8 caracteres"
+          style="width:100%;padding:10px 14px;border:1px solid #E5E7EB;border-radius:8px;font-size:14px;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="font-size:13px;font-weight:500;display:block;margin-bottom:6px">Confirmar contraseña</label>
+        <input type="password" id="confirm-pass" placeholder="Repite la contraseña"
+          style="width:100%;padding:10px 14px;border:1px solid #E5E7EB;border-radius:8px;font-size:14px;box-sizing:border-box">
+      </div>
+      <div id="invite-error" style="font-size:12px;color:#ef4444;margin-bottom:10px;text-align:center"></div>
+      <button id="invite-btn" onclick="setInvitePassword('${_inviteToken}')"
+        style="width:100%;padding:12px;background:#2AAADE;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">
+        Establecer contraseña
+      </button>`;
+  }
+} else {
+
 // Verificar sesión activa al cargar
 sbClient.auth.getSession().then(async ({ data: { session } }) => {
-  const isInvite = await handleInviteToken();
-  if(isInvite) return;
   if(tokenType === 'recovery' && accessToken) {
     await sbClient.auth.setSession({ access_token: accessToken, refresh_token: hashParams.get('refresh_token') });
     showResetPasswordScreen();
@@ -5372,6 +5406,8 @@ sbClient.auth.getSession().then(async ({ data: { session } }) => {
     document.getElementById('auth-screen').style.display = 'flex';
   }
 });
+
+} // cierre del else de invite
 </script>
 </body>
 </html>

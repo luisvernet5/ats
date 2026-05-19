@@ -1283,9 +1283,8 @@ function adaptUIToRole() {
       const item = document.createElement('div');
       item.className = 'nav-item';
       item.id = 'nav-descartados';
-      item.dataset.tooltip = 'Candidatos descartados';
-      item.style.cssText = 'padding-left:34px;font-size:12px';
-      item.innerHTML = '<i class="fa fa-user-times"></i><span class="nav-item-text"> ↳ Descartados</span>';
+      item.dataset.tooltip = 'Descartados';
+      item.innerHTML = '<i class="fa fa-user-slash"></i><span class="nav-item-text"> Descartados</span>';
       item.setAttribute('onclick', "showPage('candidatos-descartados')");
       candItem.parentNode.insertBefore(item, candItem.nextSibling);
     }

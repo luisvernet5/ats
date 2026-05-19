@@ -972,6 +972,22 @@ input[type=date]{color:var(--text)}
   </div>
 </div>
 
+<!-- ===== MODAL DESCARTE DIRECTO (admin) ===== -->
+<div class="modal-overlay" id="modal-descarte-direct">
+  <div class="modal" style="width:420px">
+    <div class="mh"><h3>Descartar candidato</h3><button class="xbtn" onclick="closeModal('modal-descarte-direct')"><i class="fa fa-times"></i></button></div>
+    <div class="mb">
+      <input type="hidden" id="dd-cand-id">
+      <div style="margin-bottom:14px;font-size:13px;color:var(--text)">¿Descartar a <strong id="dd-cand-nombre"></strong>?</div>
+      <div class="fg"><label>Motivo (opcional)</label><input type="text" id="dd-motivo" placeholder="Ej: No cumple perfil"></div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-descarte-direct')">Cancelar</button>
+      <button class="btn btn-danger" onclick="ejecutarDescarteCand()"><i class="fa fa-trash"></i> Descartar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== MODAL USUARIO ===== -->
 <div class="modal-overlay" id="modal-usuario">
   <div class="modal" style="width:500px">
@@ -1258,6 +1274,25 @@ function adaptUIToRole() {
       const pg = document.createElement('div');
       pg.className = 'page';
       pg.id = 'page-garantias';
+      document.querySelector('.main').appendChild(pg);
+    }
+  }
+  if(currentUserData?.rol==='admin' && !document.getElementById('nav-descartados')){
+    const candItem = document.getElementById('nav-candidatos');
+    if(candItem){
+      const item = document.createElement('div');
+      item.className = 'nav-item';
+      item.id = 'nav-descartados';
+      item.dataset.tooltip = 'Candidatos descartados';
+      item.style.cssText = 'padding-left:34px;font-size:12px';
+      item.innerHTML = '<i class="fa fa-user-times"></i><span class="nav-item-text"> ↳ Descartados</span>';
+      item.setAttribute('onclick', "showPage('candidatos-descartados')");
+      candItem.parentNode.insertBefore(item, candItem.nextSibling);
+    }
+    if(!document.getElementById('page-candidatos-descartados')){
+      const pg = document.createElement('div');
+      pg.className = 'page';
+      pg.id = 'page-candidatos-descartados';
       document.querySelector('.main').appendChild(pg);
     }
   }
@@ -1810,7 +1845,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);
@@ -1821,6 +1856,7 @@ function renderPage(p){
   if(p==='pipeline')renderPipeline();
   if(p==='vacantes')renderVacantesTable();
   if(p==='candidatos')renderCandidatosTable();
+  if(p==='candidatos-descartados')renderCandidatosDescartados();
   if(p==='reclutadores')renderReclutadores();
   if(p==='tiempos')renderTiempos();
   if(p==='ranking')renderRanking();
@@ -3692,6 +3728,133 @@ async function confirmarSalidaCand(){
 }
 
 /* ============================================================
+   DESCARTE DIRECTO (admin)
+   ============================================================ */
+function confirmarDescarteCand(candId){
+  const c=DB.candidatos.find(x=>x.id===candId);if(!c)return;
+  document.getElementById('dd-cand-id').value=candId;
+  document.getElementById('dd-cand-nombre').textContent=c.nombre;
+  document.getElementById('dd-motivo').value='';
+  openModal('modal-descarte-direct');
+}
+async function ejecutarDescarteCand(){
+  const candId=document.getElementById('dd-cand-id').value;
+  const motivo=document.getElementById('dd-motivo').value.trim();
+  const ci=DB.candidatos.findIndex(x=>x.id===candId);if(ci<0)return;
+  DB.candidatos[ci].descartado=true;
+  DB.candidatos[ci].fecha_descarte=today();
+  DB.candidatos[ci].motivo_descarte=motivo||null;
+  await saveRecord('candidatos',DB.candidatos[ci]);
+  closeModal('modal-descarte-direct');
+  renderCandidatosTable();
+  showToast('Candidato descartado');
+}
+
+/* ============================================================
+   CANDIDATOS DESCARTADOS (admin)
+   ============================================================ */
+let _descFiltros={q:'',empId:'',recId:'',proyecto:'',departamento:'',desde:'',hasta:''};
+
+function renderCandidatosDescartados(){
+  const pg=document.getElementById('page-candidatos-descartados');if(!pg)return;
+  const lista=DB.candidatos.filter(c=>c.descartado===true)
+    .sort((a,b)=>(b.fecha_descarte||'').localeCompare(a.fecha_descarte||''));
+  const empresasOpts=DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+  const recsOpts=DB.reclutadores.map(r=>`<option value="${r.id}">${r.nombre}</option>`).join('');
+  const proyectos=[...new Set(lista.map(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return v?.proyecto||'';}).filter(Boolean))];
+  const deptos=[...new Set(lista.map(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return v?.departamento||'';}).filter(Boolean))];
+  const proyOpts=proyectos.map(p=>`<option value="${p}">${p}</option>`).join('');
+  const depOpts=deptos.map(d=>`<option value="${d}">${d}</option>`).join('');
+  pg.innerHTML=`
+    <div class="fbar" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+      <input type="text" id="desc-q" placeholder="Buscar..." style="display:inline-block;width:auto;min-width:140px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" oninput="_filtrarDescartados()">
+      <select id="desc-emp" style="display:inline-block;width:auto;min-width:130px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" onchange="_filtrarDescartados()"><option value="">Empresa</option>${empresasOpts}</select>
+      <select id="desc-rec" style="display:inline-block;width:auto;min-width:120px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" onchange="_filtrarDescartados()"><option value="">Reclutador</option>${recsOpts}</select>
+      <select id="desc-proy" style="display:inline-block;width:auto;min-width:110px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" onchange="_filtrarDescartados()"><option value="">Proyecto</option>${proyOpts}</select>
+      <select id="desc-dep" style="display:inline-block;width:auto;min-width:120px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" onchange="_filtrarDescartados()"><option value="">Departamento</option>${depOpts}</select>
+      <input type="date" id="desc-desde" style="display:inline-block;width:auto;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" onchange="_filtrarDescartados()">
+      <input type="date" id="desc-hasta" style="display:inline-block;width:auto;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" onchange="_filtrarDescartados()">
+      <button onclick="_limpiarFiltrosDesc()" style="display:inline-block;height:30px;font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#666">× Limpiar</button>
+    </div>
+    <div id="desc-table-wrap" class="table-wrap"></div>`;
+  _renderTablaDescartados(lista);
+}
+
+function _filtrarDescartados(){
+  const q=(document.getElementById('desc-q')||{}).value||'';
+  const empId=(document.getElementById('desc-emp')||{}).value||'';
+  const recId=(document.getElementById('desc-rec')||{}).value||'';
+  const proy=(document.getElementById('desc-proy')||{}).value||'';
+  const dep=(document.getElementById('desc-dep')||{}).value||'';
+  const desde=(document.getElementById('desc-desde')||{}).value||'';
+  const hasta=(document.getElementById('desc-hasta')||{}).value||'';
+  let lista=DB.candidatos.filter(c=>c.descartado===true)
+    .sort((a,b)=>(b.fecha_descarte||'').localeCompare(a.fecha_descarte||''));
+  if(q)lista=lista.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
+  if(empId){const vids=DB.vacantes.filter(v=>v.empresa_id===empId).map(v=>v.id);lista=lista.filter(c=>vids.includes(c.vacante_id));}
+  if(recId)lista=lista.filter(c=>c.reclutador_id===recId);
+  if(proy)lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return v?.proyecto===proy;});
+  if(dep)lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return v?.departamento===dep;});
+  if(desde)lista=lista.filter(c=>(c.fecha_descarte||'')>=desde);
+  if(hasta)lista=lista.filter(c=>(c.fecha_descarte||'')<=hasta);
+  _renderTablaDescartados(lista);
+}
+
+function _limpiarFiltrosDesc(){
+  ['desc-q','desc-emp','desc-rec','desc-proy','desc-dep','desc-desde','desc-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  _filtrarDescartados();
+}
+
+function _renderTablaDescartados(lista){
+  const wrap=document.getElementById('desc-table-wrap');if(!wrap)return;
+  const rows=lista.map(c=>{
+    const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+    const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const rec=DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
+    return`<tr>
+      <td>${c.nombre}</td>
+      <td>${v.nombre||'—'}</td>
+      <td>${emp.nombre||'—'}</td>
+      <td>${rec.nombre||'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${v.proyecto||''}</td>
+      <td style="font-size:12px;color:var(--text2)">${v.departamento||''}</td>
+      <td>${badgeEtapa(c.etapa,v.empresa_id)}</td>
+      <td style="font-size:12px;color:var(--text3)">${fmt(c.fecha_descarte)||'—'}</td>
+      <td style="font-size:12px;color:var(--text3)">${c.motivo_descarte||'—'}</td>
+      <td>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-primary btn-sm" onclick="reactivarCandidato('${c.id}')" title="Reactivar candidato"><i class="fa fa-undo"></i> Reactivar</button>
+          <button class="btn btn-danger btn-sm" onclick="eliminarCandidatoPermanente('${c.id}')" title="Eliminar permanentemente"><i class="fa fa-trash"></i> Eliminar</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML=`<table>
+    <thead><tr><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Etapa</th><th>Fecha descarte</th><th>Motivo</th><th>Acción</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos descartados</td></tr>'}</tbody>
+  </table>`;
+}
+
+async function reactivarCandidato(candId){
+  const ci=DB.candidatos.findIndex(x=>x.id===candId);if(ci<0)return;
+  DB.candidatos[ci].descartado=false;
+  DB.candidatos[ci].fecha_descarte=null;
+  DB.candidatos[ci].motivo_descarte=null;
+  await saveRecord('candidatos',DB.candidatos[ci]);
+  _filtrarDescartados();
+  showToast('Candidato reactivado');
+}
+
+async function eliminarCandidatoPermanente(candId){
+  const c=DB.candidatos.find(x=>x.id===candId);if(!c)return;
+  if(!confirm(`¿Eliminar permanentemente a ${c.nombre}?\nEsta acción NO se puede deshacer.`))return;
+  await deleteRecord('candidatos',candId);
+  DB.candidatos=DB.candidatos.filter(x=>x.id!==candId);
+  _filtrarDescartados();
+  showToast('Candidato eliminado permanentemente');
+}
+
+/* ============================================================
    CANDIDATOS TABLE
    ============================================================ */
 function renderCandidatosTable(){
@@ -3714,6 +3877,7 @@ function renderCandidatosTable(){
   const _empIdC = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
   const _vacsC = _recIdC ? DB.vacantes.filter(v=>v.reclutador_id===_recIdC) : _empIdC ? DB.vacantes.filter(v=>v.empresa_id===_empIdC) : DB.vacantes;
   let list = (_recIdC||_empIdC) ? DB.candidatos.filter(c=>_vacsC.find(v=>v.id===c.vacante_id)) : DB.candidatos;
+  list = list.filter(c=>!c.descartado);
   if(q)list=list.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
   if(empId){const vids=_vacsC.filter(v=>v.empresa_id===empId).map(v=>v.id);list=list.filter(c=>vids.includes(c.vacante_id));}
   if(vacId)list=list.filter(c=>c.vacante_id===vacId);
@@ -3758,6 +3922,7 @@ function renderCandidatosTable(){
           <button class="btn btn-ghost btn-sm" onclick="openPanel('${c.id}')" title="Ver detalle"><i class="fa fa-eye"></i></button>
           <button class="btn btn-ghost btn-sm" onclick="editCandidato('${c.id}')" title="Editar"><i class="fa fa-edit"></i></button>
           <button class="btn btn-ghost btn-sm" onclick="toggleAccionesCand('${c.id}')" title="Más acciones"><i class="fa fa-ellipsis-v"></i></button>
+          ${currentUserData?.rol==='admin'?`<button onclick="confirmarDescarteCand('${c.id}')" title="Descartar candidato" style="background:var(--red);color:#fff;border:none;border-radius:6px;cursor:pointer;padding:5px 8px;font-size:12px"><i class="fa fa-trash"></i></button>`:''}
           <div id="menu-${c.id}" style="display:none;position:absolute;right:0;bottom:32px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;z-index:50;min-width:220px;box-shadow:0 4px 20px rgba(0,0,0,.15);padding:6px 0">
             <div style="padding:6px 14px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Acciones</div>
             <div class="menu-item" onclick="abrirDescarte('${c.id}')"><i class="fa fa-user-times" style="width:16px"></i> Descartar candidato</div>

@@ -592,7 +592,7 @@ input[type=date]{color:var(--text)}
       <input type="hidden" id="cand-id">
       <input type="hidden" id="cand-parent-id">
       <!-- Wizard: barra de progreso -->
-      <div style="display:flex;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+      <div id="cand-wizard-bar" style="display:flex;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
         <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer" onclick="candWizardSetStep(1)">
           <div id="cw-dot-1" style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">1</div>
           <span id="cw-lbl-1" style="font-size:11px;font-weight:700;color:var(--accent);white-space:nowrap">Datos candidato</span>
@@ -871,7 +871,7 @@ input[type=date]{color:var(--text)}
     </div>
     <div class="mf">
       <button class="btn btn-ghost" onclick="closeModal('modal-candidato')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveCandidato()">Guardar candidato</button>
+      <button id="cand-save-btn" class="btn btn-primary" onclick="saveCandidato()">Guardar candidato</button>
     </div>
   </div>
 </div>
@@ -2702,6 +2702,82 @@ function notificarReclutador(vacante) {
 /* ============================================================
    CANDIDATO MODAL
    ============================================================ */
+let _candModalMode='new'; // 'new' | 'edit' | 'entrevista' | 'referencias'
+function _updateCandModalMode(){
+  const isWizard=_candModalMode==='new';
+  const bar=document.getElementById('cand-wizard-bar');
+  if(bar)bar.style.display=isWizard?'':'none';
+  const titles={new:'Nuevo Candidato',edit:'Editar candidato',entrevista:'Entrevista',referencias:'Referencias'};
+  document.getElementById('mod-cand-title').textContent=titles[_candModalMode]||'';
+  const saveTexts={new:'Guardar candidato',edit:'Guardar datos',entrevista:'Guardar entrevista',referencias:'Guardar referencias'};
+  const btn=document.getElementById('cand-save-btn');
+  if(btn)btn.textContent=saveTexts[_candModalMode]||'Guardar';
+}
+function openEntrevistaModal(id){
+  const c=DB.candidatos.find(x=>x.id===id);if(!c)return;
+  document.getElementById('cand-id').value=id;
+  document.getElementById('cand-remp-alert').innerHTML='';
+  _loadEntrevistaData(c);
+  _candModalMode='entrevista';
+  candWizardSetStep(2);
+  _updateCandModalMode();
+  openModal('modal-candidato');
+}
+async function openReferenciasModal(id){
+  const c=DB.candidatos.find(x=>x.id===id);if(!c)return;
+  document.getElementById('cand-id').value=id;
+  document.getElementById('cand-remp-alert').innerHTML='';
+  _refLabNextId=0;_refLabCount=0;_refPerNextId=0;_refPerCount=0;
+  document.getElementById('ref-lab-list').innerHTML='';
+  document.getElementById('ref-per-list').innerHTML='';
+  document.getElementById('ref-lab-add-btn').style.display='';
+  document.getElementById('ref-per-add-btn').style.display='';
+  refTabSwitch('lab');
+  let refs=[];
+  if(!SANDBOX_MODE){
+    const{data:loaded}=await sbClient.from('referencias').select('*').eq('candidato_id',id);
+    if(loaded)refs=loaded;
+  }
+  const labs=refs.filter(r=>r.tipo==='laboral');
+  const pers=refs.filter(r=>r.tipo==='personal');
+  const _setField=(elId,val)=>{const el=document.getElementById(elId);if(el)el.value=val||'';};
+  const _setRadio=(name,val)=>{if(val){const el=document.querySelector(`input[name="${name}"][value="${val}"]`);if(el)el.checked=true;}};
+  if(labs.length){
+    labs.forEach(r=>{
+      addRefLaboral();
+      const n=_refLabNextId-1;
+      _setField(`ref-lab-${n}-contacto`,r.nombre_contacto);
+      _setField(`ref-lab-${n}-telefono`,r.telefono);
+      _setField(`ref-lab-${n}-empresa`,r.empresa);
+      _setField(`ref-lab-${n}-puesto-contacto`,r.puesto_contacto);
+      _setField(`ref-lab-${n}-tiempo-laborado`,r.tiempo_laborado);
+      _setField(`ref-lab-${n}-puestos`,r.puestos_ocupados);
+      _setField(`ref-lab-${n}-separacion`,r.causa_separacion);
+      _setField(`ref-lab-${n}-desempeno`,r.descripcion_desempeno);
+      _setField(`ref-lab-${n}-obs`,r.observaciones);
+      const compMap={logro_de_resultados:r.actuacion_logros,compromiso:r.actuacion_compromiso,trabajo_en_equipo:r.actuacion_trabajo_equipo,inteligencia_emocional:r.actuacion_inteligencia_emocional,profesionalismo:r.actuacion_profesionalismo,honradez:r.actuacion_honradez,confianza:r.actuacion_confianza,responsabilidad:r.actuacion_responsabilidad,disciplina:r.actuacion_disciplina,proyeccion:r.actuacion_proyeccion,actitud_hacia_el_jefe:r.actuacion_actitud_jefe,actitud_hacia_companeros:r.actuacion_actitud_companeros,actitud_hacia_subordinados:r.actuacion_actitud_subordinados};
+      Object.entries(compMap).forEach(([k,v])=>_setRadio(`ref-lab-${n}-${k}`,v));
+    });
+  } else {
+    addRefLaboral();
+  }
+  pers.forEach(r=>{
+    addRefPersonal();
+    const n=_refPerNextId-1;
+    _setField(`ref-per-${n}-contacto`,r.nombre_contacto);
+    _setField(`ref-per-${n}-telefono`,r.telefono);
+    _setField(`ref-per-${n}-ocupacion`,r.empresa);
+    _setField(`ref-per-${n}-anos`,r.anos_conocerlo);
+    _setField(`ref-per-${n}-descripcion`,r.descripcion_desempeno);
+    _setField(`ref-per-${n}-obs`,r.observaciones);
+    _setRadio(`ref-per-${n}-recomienda`,r.recomienda);
+    _setRadio(`ref-per-${n}-confianza`,r.confianza_negocio);
+  });
+  _candModalMode='referencias';
+  candWizardSetStep(3);
+  _updateCandModalMode();
+  openModal('modal-candidato');
+}
 function openCandModal(vacanteIdOrNull,reemplazaId=null){
   document.getElementById('mod-cand-title').textContent=reemplazaId?'Nuevo candidato (reemplazo)':'Nuevo Candidato';
   document.getElementById('cand-id').value='';
@@ -2756,7 +2832,9 @@ function openCandModal(vacanteIdOrNull,reemplazaId=null){
   const _eiFecha = document.getElementById('ei-fecha-entrevista');
   if(_eiFecha) _eiFecha.value = _hoy;
   initReferencias();
+  _candModalMode='new';
   candWizardSetStep(1);
+  _updateCandModalMode();
   openModal('modal-candidato');
 }
 
@@ -2783,7 +2861,9 @@ function editCandidato(id) {
     }, 20);
   }, 10);
   document.getElementById('cand-remp-alert').innerHTML = '';
+  _candModalMode='edit';
   candWizardSetStep(1);
+  _updateCandModalMode();
   openModal('modal-candidato');
 }
 
@@ -2918,36 +2998,48 @@ function removeRefPersonal(n){
 function _collectRefLaborales(candidato_id){
   return Array.from(document.querySelectorAll('#ref-lab-list .ref-card')).map(card=>{
     const n=card.id.replace('ref-lab-card-','');
-    const comp={};
-    _REF_COMP.forEach(c=>{const k=_normKey(c);comp[k]=card.querySelector(`input[name="ref-lab-${n}-${k}"]:checked`)?.value||'';});
-    return {id:uid(),candidato_id,data:{tipo:'laboral',
-      candidato:document.getElementById(`ref-lab-${n}-candidato`)?.value||'',
-      empresa:document.getElementById(`ref-lab-${n}-empresa`)?.value||'',
-      contacto:document.getElementById(`ref-lab-${n}-contacto`)?.value||'',
+    const g=k=>card.querySelector(`input[name="ref-lab-${n}-${k}"]:checked`)?.value||'';
+    return {
+      candidato_id,tipo:'laboral',
+      nombre_contacto:document.getElementById(`ref-lab-${n}-contacto`)?.value||'',
       telefono:document.getElementById(`ref-lab-${n}-telefono`)?.value||'',
+      empresa:document.getElementById(`ref-lab-${n}-empresa`)?.value||'',
       puesto_contacto:document.getElementById(`ref-lab-${n}-puesto-contacto`)?.value||'',
       tiempo_laborado:document.getElementById(`ref-lab-${n}-tiempo-laborado`)?.value||'',
-      puestos:document.getElementById(`ref-lab-${n}-puestos`)?.value||'',
-      separacion:document.getElementById(`ref-lab-${n}-separacion`)?.value||'',
-      desempeno:document.getElementById(`ref-lab-${n}-desempeno`)?.value||'',
-      competencias:comp,
+      puestos_ocupados:document.getElementById(`ref-lab-${n}-puestos`)?.value||'',
+      causa_separacion:document.getElementById(`ref-lab-${n}-separacion`)?.value||'',
+      descripcion_desempeno:document.getElementById(`ref-lab-${n}-desempeno`)?.value||'',
+      actuacion_logros:g('logro_de_resultados'),
+      actuacion_compromiso:g('compromiso'),
+      actuacion_trabajo_equipo:g('trabajo_en_equipo'),
+      actuacion_inteligencia_emocional:g('inteligencia_emocional'),
+      actuacion_profesionalismo:g('profesionalismo'),
+      actuacion_honradez:g('honradez'),
+      actuacion_confianza:g('confianza'),
+      actuacion_responsabilidad:g('responsabilidad'),
+      actuacion_disciplina:g('disciplina'),
+      actuacion_proyeccion:g('proyeccion'),
+      actuacion_actitud_jefe:g('actitud_hacia_el_jefe'),
+      actuacion_actitud_companeros:g('actitud_hacia_companeros'),
+      actuacion_actitud_subordinados:g('actitud_hacia_subordinados'),
       observaciones:document.getElementById(`ref-lab-${n}-obs`)?.value||'',
-    }};
+    };
   });
 }
 function _collectRefPersonales(candidato_id){
   return Array.from(document.querySelectorAll('#ref-per-list .ref-card')).map(card=>{
     const n=card.id.replace('ref-per-card-','');
-    return {id:uid(),candidato_id,data:{tipo:'personal',
-      contacto:document.getElementById(`ref-per-${n}-contacto`)?.value||'',
+    return {
+      candidato_id,tipo:'personal',
+      nombre_contacto:document.getElementById(`ref-per-${n}-contacto`)?.value||'',
       telefono:document.getElementById(`ref-per-${n}-telefono`)?.value||'',
-      ocupacion:document.getElementById(`ref-per-${n}-ocupacion`)?.value||'',
-      anos:document.getElementById(`ref-per-${n}-anos`)?.value||'',
-      descripcion:document.getElementById(`ref-per-${n}-descripcion`)?.value||'',
+      empresa:document.getElementById(`ref-per-${n}-ocupacion`)?.value||'',
+      descripcion_desempeno:document.getElementById(`ref-per-${n}-descripcion`)?.value||'',
+      anos_conocerlo:document.getElementById(`ref-per-${n}-anos`)?.value||'',
       recomienda:card.querySelector(`input[name="ref-per-${n}-recomienda"]:checked`)?.value||'',
-      confianza:card.querySelector(`input[name="ref-per-${n}-confianza"]:checked`)?.value||'',
+      confianza_negocio:card.querySelector(`input[name="ref-per-${n}-confianza"]:checked`)?.value||'',
       observaciones:document.getElementById(`ref-per-${n}-obs`)?.value||'',
-    }};
+    };
   });
 }
 async function saveReferencias(candidato_id){
@@ -2957,7 +3049,7 @@ async function saveReferencias(candidato_id){
   const{error:de}=await sbClient.from('referencias').delete().eq('candidato_id',candidato_id);
   if(de)throw new Error(de.message);
   for(const r of todas){
-    const{error}=await sbClient.from('referencias').insert({id:r.id,candidato_id,data:r.data});
+    const{error}=await sbClient.from('referencias').insert(r);
     if(error)throw new Error(error.message);
   }
 }
@@ -2976,7 +3068,57 @@ function onCandVacanteChange(){
   if(v.reclutador_id)document.getElementById('cand-reclutador').value=v.reclutador_id;
 }
 
+function _collectEntrevistaData(){
+  const v=id=>document.getElementById(id)?.value||'';
+  const chk=id=>document.getElementById(id)?.checked||false;
+  const rad=name=>document.querySelector(`input[name="${name}"]:checked`)?.value||'';
+  return{
+    fecha_nacimiento:v('ei-fecha-nac'),estado_civil:v('ei-estado-civil'),direccion:v('ei-direccion'),
+    nivel_estudios:v('ei-nivel-estudios'),institucion_educativa:v('ei-institucion'),certificados:v('ei-certificados'),
+    emp_rec_puesto:v('ei-emp-rec-puesto'),emp_rec_empresa:v('ei-emp-rec-empresa'),emp_rec_inicio:v('ei-emp-rec-inicio'),emp_rec_termino:v('ei-emp-rec-termino'),emp_rec_resp:v('ei-emp-rec-resp'),emp_rec_logros:v('ei-emp-rec-logros'),
+    emp_ant_puesto:v('ei-emp-ant-puesto'),emp_ant_empresa:v('ei-emp-ant-empresa'),emp_ant_inicio:v('ei-emp-ant-inicio'),emp_ant_termino:v('ei-emp-ant-termino'),emp_ant_resp:v('ei-emp-ant-resp'),emp_ant_logros:v('ei-emp-ant-logros'),
+    idioma_espanol:chk('ei-idioma-espanol'),idioma_ingles:chk('ei-idioma-ingles'),idioma_frances:chk('ei-idioma-frances'),idioma_aleman:chk('ei-idioma-aleman'),idioma_otros:chk('ei-idioma-otros'),
+    herramientas:v('ei-herramientas'),
+    hab_liderazgo:chk('ei-hab-liderazgo'),hab_equipo:chk('ei-hab-equipo'),hab_conflictos:chk('ei-hab-conflictos'),hab_organizacion:chk('ei-hab-organizacion'),hab_empatia:chk('ei-hab-empatia'),
+    area_interes:v('ei-area-interes'),puesto_aspirado:v('ei-puesto-aspirado'),expectativa_salarial:v('ei-expectativa-salarial'),metas:v('ei-metas'),
+    disponibilidad_viajar:rad('ei-viajar'),disponibilidad_residencia:rad('ei-residencia'),
+    nucleo_familiar:v('ei-nucleo-familiar'),dependientes_info:v('ei-dependientes-info'),
+    infonavit:rad('ei-infonavit'),infonavit_retencion:v('ei-infonavit-retencion'),fonacot:rad('ei-fonacot'),fonacot_retencion:v('ei-fonacot-retencion'),
+    impresion_general:v('ei-impresion-general'),areas_oportunidad:v('ei-areas-oportunidad'),recomendacion:v('ei-recomendacion'),firma_entrevistador:v('ei-firma-entrevistador'),fecha_entrevista:v('ei-fecha-entrevista'),
+  };
+}
+function _loadEntrevistaData(c){
+  const s=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val||'';};
+  const sc=(id,val)=>{const el=document.getElementById(id);if(el)el.checked=!!val;};
+  const sr=(name,val)=>{const el=document.querySelector(`input[name="${name}"][value="${val}"]`);if(el){el.checked=true;el.dispatchEvent(new Event('change'));}};
+  s('ei-fecha-nac',c.fecha_nacimiento);s('ei-estado-civil',c.estado_civil);s('ei-direccion',c.direccion);
+  s('ei-nivel-estudios',c.nivel_estudios);s('ei-institucion',c.institucion_educativa);s('ei-certificados',c.certificados);
+  s('ei-emp-rec-puesto',c.emp_rec_puesto);s('ei-emp-rec-empresa',c.emp_rec_empresa);s('ei-emp-rec-inicio',c.emp_rec_inicio);s('ei-emp-rec-termino',c.emp_rec_termino);s('ei-emp-rec-resp',c.emp_rec_resp);s('ei-emp-rec-logros',c.emp_rec_logros);
+  s('ei-emp-ant-puesto',c.emp_ant_puesto);s('ei-emp-ant-empresa',c.emp_ant_empresa);s('ei-emp-ant-inicio',c.emp_ant_inicio);s('ei-emp-ant-termino',c.emp_ant_termino);s('ei-emp-ant-resp',c.emp_ant_resp);s('ei-emp-ant-logros',c.emp_ant_logros);
+  sc('ei-idioma-espanol',c.idioma_espanol);sc('ei-idioma-ingles',c.idioma_ingles);sc('ei-idioma-frances',c.idioma_frances);sc('ei-idioma-aleman',c.idioma_aleman);sc('ei-idioma-otros',c.idioma_otros);
+  s('ei-herramientas',c.herramientas);
+  sc('ei-hab-liderazgo',c.hab_liderazgo);sc('ei-hab-equipo',c.hab_equipo);sc('ei-hab-conflictos',c.hab_conflictos);sc('ei-hab-organizacion',c.hab_organizacion);sc('ei-hab-empatia',c.hab_empatia);
+  s('ei-area-interes',c.area_interes);s('ei-puesto-aspirado',c.puesto_aspirado);s('ei-expectativa-salarial',c.expectativa_salarial);s('ei-metas',c.metas);
+  if(c.disponibilidad_viajar)sr('ei-viajar',c.disponibilidad_viajar);
+  if(c.disponibilidad_residencia)sr('ei-residencia',c.disponibilidad_residencia);
+  s('ei-nucleo-familiar',c.nucleo_familiar);s('ei-dependientes-info',c.dependientes_info);
+  s('ei-impresion-general',c.impresion_general);s('ei-areas-oportunidad',c.areas_oportunidad);s('ei-recomendacion',c.recomendacion);s('ei-firma-entrevistador',c.firma_entrevistador);s('ei-fecha-entrevista',c.fecha_entrevista);
+  calcEdad();
+}
 async function saveCandidato(){
+  const _id=document.getElementById('cand-id')?.value||'';
+  if(_candModalMode==='entrevista'){
+    const ci=DB.candidatos.findIndex(c=>c.id===_id);if(ci<0)return;
+    Object.assign(DB.candidatos[ci],_collectEntrevistaData());
+    try{await saveRecord('candidatos',DB.candidatos[ci]);closeModal('modal-candidato');showToast('Entrevista guardada ✓');}
+    catch(e){showToast('Error: '+e.message,'err');}
+    return;
+  }
+  if(_candModalMode==='referencias'){
+    try{await saveReferencias(_id);closeModal('modal-candidato');showToast('Referencias guardadas ✓');}
+    catch(e){showToast('Error: '+e.message,'err');}
+    return;
+  }
   const nombre=(document.getElementById('cand-nombre')?.value||'').trim();
   if(!nombre){showToast('El nombre del candidato es requerido','err');return}
   const vacante_id=document.getElementById('cand-vacante')?.value||null;
@@ -3112,6 +3254,8 @@ function openPanel(candId){
     <div class="divider"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="editCandidato('${c.id}')"><i class="fa fa-edit"></i> Editar</button>
+      <button class="btn btn-ghost btn-sm" onclick="openEntrevistaModal('${c.id}')"><i class="fa fa-clipboard-list"></i> Entrevista</button>
+      <button class="btn btn-ghost btn-sm" onclick="openReferenciasModal('${c.id}')"><i class="fa fa-users"></i> Referencias</button>
       ${!c.activo||ETAPAS_SALIDA.includes(c.etapa)?`<button class="btn btn-primary btn-sm" onclick="closePanel();openCandModal('${c.vacante_id}','${c.id}')"><i class="fa fa-user-plus"></i> Nuevo candidato</button>`:''}
     </div>
   `;
@@ -3942,7 +4086,9 @@ function renderCandidatosTable(){
       <td style="position:relative;overflow:visible">
         <div style="display:flex;gap:6px;align-items:center">
           <button class="btn btn-ghost btn-sm" onclick="openPanel('${c.id}')" title="Ver detalle"><i class="fa fa-eye"></i></button>
-          <button class="btn btn-ghost btn-sm" onclick="editCandidato('${c.id}')" title="Editar"><i class="fa fa-edit"></i></button>
+          <button class="btn btn-ghost btn-sm" onclick="editCandidato('${c.id}')" title="Editar datos"><i class="fa fa-edit"></i></button>
+          <button class="btn btn-ghost btn-sm" onclick="openEntrevistaModal('${c.id}')" title="Entrevista"><i class="fa fa-clipboard-list"></i></button>
+          <button class="btn btn-ghost btn-sm" onclick="openReferenciasModal('${c.id}')" title="Referencias"><i class="fa fa-users"></i></button>
           <button class="btn btn-ghost btn-sm" onclick="toggleAccionesCand('${c.id}')" title="Más acciones"><i class="fa fa-ellipsis-v"></i></button>
           ${currentUserData?.rol==='admin'?`<button onclick="confirmarDescarteCand('${c.id}')" title="Descartar candidato" style="background:var(--red);color:#fff;border:none;border-radius:6px;cursor:pointer;padding:5px 8px;font-size:12px"><i class="fa fa-trash"></i></button>`:''}
           <div id="menu-${c.id}" style="display:none;position:absolute;right:0;bottom:32px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;z-index:50;min-width:220px;box-shadow:0 4px 20px rgba(0,0,0,.15);padding:6px 0">

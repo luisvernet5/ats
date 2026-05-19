@@ -401,15 +401,7 @@ input[type=date]{color:var(--text)}
   <div class="page" id="page-headcount"></div>
 
   <!-- DESERCION -->
-  <div class="page" id="page-desercion">
-    <div class="g4" id="des-kpis"></div><br>
-    <div class="g2">
-      <div><div class="sec-title">Por motivo</div><div class="card"><div class="chart-box" style="height:260px"><canvas id="chMotivos" role="img" aria-label="Motivos deserción"></canvas></div></div></div>
-      <div><div class="sec-title">Por etapa de abandono</div><div class="card"><div class="chart-box" style="height:260px"><canvas id="chDesEtapa" role="img" aria-label="Deserción por etapa"></canvas></div></div></div>
-    </div><br>
-    <div class="sec-title">Historial</div>
-    <div class="table-wrap" id="des-table"></div>
-  </div>
+  <div class="page" id="page-desercion"></div>
 
   <!-- CONFIG -->
   <div class="page" id="page-config">
@@ -5200,25 +5192,6 @@ function renderDesercion(){
   const pct=DB.candidatos.length?Math.round(des.length/DB.candidatos.length*100):0;
   const motC={};MOTIVOS.forEach(m=>{const n=des.filter(c=>c.motivo_desercion===m).length;if(n)motC[m]=n;});
   const topM=Object.entries(motC).sort((a,b)=>b[1]-a[1]);
-  const etC={};
-  des.forEach(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};const et=getEmpresaEtapas(v.empresa_id);const last=[...et].reverse().find(e=>c['f_'+(et.indexOf(e))])||null;const key=last?last.label:'Sin etapa previa';etC[key]=(etC[key]||0)+1;});
-  document.getElementById('des-kpis').innerHTML=`
-    <div class="card"><div class="card-title">Total deserciones</div><div class="card-value" style="color:var(--red)">${des.length}</div></div>
-    <div class="card"><div class="card-title">Tasa de deserción</div><div class="card-value">${pct}%</div></div>
-    <div class="card"><div class="card-title">Motivo más frecuente</div><div class="card-value" style="font-size:14px">${topM[0]?topM[0][0]:'—'}</div><div class="card-sub">${topM[0]?topM[0][1]+' casos':''}</div></div>
-    <div class="card"><div class="card-title">Con motivo registrado</div><div class="card-value">${des.filter(c=>c.motivo_desercion).length}</div><div class="card-sub">de ${des.length}</div></div>
-  `;
-  destroyChart('chMotivos');
-  charts['chMotivos']=new Chart(document.getElementById('chMotivos'),{
-    type:'bar',data:{labels:topM.map(([k])=>k.length>22?k.substr(0,22)+'…':k),datasets:[{data:topM.map(([,v])=>v),backgroundColor:'rgba(239,68,68,.45)',borderColor:'#EF4444',borderWidth:1}]},
-    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#5A5A6A',stepSize:1},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#9090A0',font:{size:10}},grid:{display:false}}}}
-  });
-  const etK=Object.keys(etC);
-  destroyChart('chDesEtapa');
-  charts['chDesEtapa']=new Chart(document.getElementById('chDesEtapa'),{
-    type:'doughnut',data:{labels:etK,datasets:[{data:etK.map(k=>etC[k]),backgroundColor:['rgba(42,170,222,.6)','rgba(168,85,247,.6)','rgba(245,158,11,.6)','rgba(34,197,94,.6)','rgba(100,100,100,.6)'],borderWidth:0}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#9090A0',font:{size:11},boxWidth:10,padding:10}}}}
-  });
   const rows=des.map(c=>{
     const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
@@ -5226,7 +5199,57 @@ function renderDesercion(){
     const d=processTotal(c);
     return`<tr><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td>${emp.nombre||'—'}</td><td>${r.nombre||'—'}</td><td>${badgeEtapa(c.etapa,v.empresa_id)}</td><td style="color:var(--red)">${c.motivo_desercion||'—'}</td><td>${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:'—'}</td><td>${fmt(c.fecha_salida)}</td></tr>`;
   }).join('');
-  document.getElementById('des-table').innerHTML=`<table><thead><tr><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Tipo</th><th>Motivo</th><th>Días</th><th>Fecha</th></tr></thead><tbody>${rows||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">Sin deserciones</td></tr>'}</tbody></table>`;
+  document.getElementById('page-desercion').innerHTML=`
+    <div style="display:flex;gap:6px;margin-bottom:20px">
+      <button id="dtab-resumen" onclick="desercionTab('resumen')" style="padding:8px 22px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;background:#2AAADE;color:#fff;transition:all .15s">Resumen</button>
+      <button id="dtab-graficas" onclick="desercionTab('graficas')" style="padding:8px 22px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;background:var(--surface3);color:var(--text2);transition:all .15s">Gráficas</button>
+      <button id="dtab-historial" onclick="desercionTab('historial')" style="padding:8px 22px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;background:var(--surface3);color:var(--text2);transition:all .15s">Historial</button>
+    </div>
+    <div id="des-panel-resumen">
+      <div class="g4">
+        <div class="card"><div class="card-title">Total deserciones</div><div class="card-value" style="color:var(--red)">${des.length}</div></div>
+        <div class="card"><div class="card-title">Tasa de deserción</div><div class="card-value">${pct}%</div></div>
+        <div class="card"><div class="card-title">Motivo más frecuente</div><div class="card-value" style="font-size:14px">${topM[0]?topM[0][0]:'—'}</div><div class="card-sub">${topM[0]?topM[0][1]+' casos':''}</div></div>
+        <div class="card"><div class="card-title">Con motivo registrado</div><div class="card-value">${des.filter(c=>c.motivo_desercion).length}</div><div class="card-sub">de ${des.length}</div></div>
+      </div>
+    </div>
+    <div id="des-panel-graficas" style="display:none">
+      <div class="g2">
+        <div><div class="sec-title">Por motivo</div><div class="card"><div class="chart-box" style="height:260px"><canvas id="chMotivos" role="img" aria-label="Motivos deserción"></canvas></div></div></div>
+        <div><div class="sec-title">Por etapa de abandono</div><div class="card"><div class="chart-box" style="height:260px"><canvas id="chDesEtapa" role="img" aria-label="Deserción por etapa"></canvas></div></div></div>
+      </div>
+    </div>
+    <div id="des-panel-historial" style="display:none">
+      <div class="table-wrap"><table><thead><tr><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Tipo</th><th>Motivo</th><th>Días</th><th>Fecha</th></tr></thead><tbody>${rows||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">Sin deserciones</td></tr>'}</tbody></table></div>
+    </div>`;
+}
+function desercionTab(tab){
+  ['resumen','graficas','historial'].forEach(t=>{
+    const panel=document.getElementById('des-panel-'+t);
+    const btn=document.getElementById('dtab-'+t);
+    const on=t===tab;
+    if(panel)panel.style.display=on?'':'none';
+    if(btn){btn.style.background=on?'#2AAADE':'var(--surface3)';btn.style.color=on?'#fff':'var(--text2)';btn.style.fontWeight=on?'600':'500';}
+  });
+  if(tab==='graficas')_renderDesercionCharts();
+}
+function _renderDesercionCharts(){
+  const des=DB.candidatos.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
+  const motC={};MOTIVOS.forEach(m=>{const n=des.filter(c=>c.motivo_desercion===m).length;if(n)motC[m]=n;});
+  const topM=Object.entries(motC).sort((a,b)=>b[1]-a[1]);
+  destroyChart('chMotivos');
+  charts['chMotivos']=new Chart(document.getElementById('chMotivos'),{
+    type:'bar',data:{labels:topM.map(([k])=>k.length>22?k.substr(0,22)+'…':k),datasets:[{data:topM.map(([,v])=>v),backgroundColor:'rgba(239,68,68,.45)',borderColor:'#EF4444',borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#5A5A6A',stepSize:1},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#9090A0',font:{size:10}},grid:{display:false}}}}
+  });
+  const etC={};
+  des.forEach(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};const et=getEmpresaEtapas(v.empresa_id);const last=[...et].reverse().find(e=>c['f_'+(et.indexOf(e))])||null;const key=last?last.label:'Sin etapa previa';etC[key]=(etC[key]||0)+1;});
+  const etK=Object.keys(etC);
+  destroyChart('chDesEtapa');
+  charts['chDesEtapa']=new Chart(document.getElementById('chDesEtapa'),{
+    type:'doughnut',data:{labels:etK,datasets:[{data:etK.map(k=>etC[k]),backgroundColor:['rgba(42,170,222,.6)','rgba(168,85,247,.6)','rgba(245,158,11,.6)','rgba(34,197,94,.6)','rgba(100,100,100,.6)'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#9090A0',font:{size:11},boxWidth:10,padding:10}}}}
+  });
 }
 
 /* ============================================================

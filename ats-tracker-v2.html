@@ -857,10 +857,17 @@ input[type=date]{color:var(--text)}
       </div>
       <!-- Paso 3: Referencias -->
       <div id="cand-step-3" style="display:none">
-        <div class="sep">Referencias</div>
-        <div style="padding:32px 0;text-align:center;color:var(--text3);font-size:13px">
-          <i class="fa fa-user-friends" style="font-size:32px;margin-bottom:12px;display:block;opacity:.35"></i>
-          Campos de referencias próximamente
+        <div style="display:flex;border-bottom:2px solid var(--border);margin-bottom:20px">
+          <button id="ref-tab-lab" onclick="refTabSwitch('lab')" style="padding:9px 20px;border:none;background:none;font-size:13px;font-weight:700;color:var(--accent);border-bottom:3px solid var(--accent);margin-bottom:-2px;cursor:pointer">Referencias Laborales</button>
+          <button id="ref-tab-per" onclick="refTabSwitch('per')" style="padding:9px 20px;border:none;background:none;font-size:13px;font-weight:400;color:var(--text3);border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer">Referencias Personales</button>
+        </div>
+        <div id="ref-panel-lab">
+          <div id="ref-lab-list"></div>
+          <button class="btn btn-ghost btn-sm" id="ref-lab-add-btn" onclick="addRefLaboral()" style="margin-top:4px">+ Agregar referencia laboral</button>
+        </div>
+        <div id="ref-panel-per" style="display:none">
+          <div id="ref-per-list"></div>
+          <button class="btn btn-ghost btn-sm" id="ref-per-add-btn" onclick="addRefPersonal()" style="margin-top:4px">+ Agregar referencia personal</button>
         </div>
       </div>
     </div>
@@ -2618,6 +2625,7 @@ function openCandModal(vacanteIdOrNull,reemplazaId=null){
   const _hoy = new Date().toISOString().split('T')[0];
   const _eiFecha = document.getElementById('ei-fecha-entrevista');
   if(_eiFecha) _eiFecha.value = _hoy;
+  initReferencias();
   candWizardSetStep(1);
   openModal('modal-candidato');
 }
@@ -2693,6 +2701,140 @@ function eiToggle(id, show) {
   if(el) el.style.display = show ? '' : 'none';
 }
 
+// === REFERENCIAS (Paso 3) ===
+const _REF_COMP=['Logro de resultados','Compromiso','Trabajo en equipo','Inteligencia emocional','Profesionalismo','Honradez','Confianza','Responsabilidad','Disciplina','Proyección','Actitud hacia el jefe','Actitud hacia compañeros','Actitud hacia subordinados'];
+const _REF_NIV=['Inferior','Bajo','Promedio','Alto','Superior'];
+function _normKey(s){return s.toLowerCase().replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').replace(/ñ/g,'n').replace(/\s+/g,'_');}
+let _refLabNextId=0,_refLabCount=0,_refPerNextId=0,_refPerCount=0;
+function initReferencias(){
+  _refLabNextId=0;_refLabCount=0;_refPerNextId=0;_refPerCount=0;
+  document.getElementById('ref-lab-list').innerHTML='';
+  document.getElementById('ref-per-list').innerHTML='';
+  addRefLaboral();
+  refTabSwitch('lab');
+}
+function refTabSwitch(tab){
+  document.getElementById('ref-panel-lab').style.display=tab==='lab'?'':'none';
+  document.getElementById('ref-panel-per').style.display=tab==='per'?'':'none';
+  ['lab','per'].forEach(t=>{
+    const btn=document.getElementById('ref-tab-'+t);
+    const on=t===tab;
+    btn.style.color=on?'var(--accent)':'var(--text3)';
+    btn.style.fontWeight=on?'700':'400';
+    btn.style.borderBottom=on?'3px solid var(--accent)':'3px solid transparent';
+  });
+}
+function _refGraficaHTML(pfx){
+  const ths=_REF_NIV.map(n=>`<th style="text-align:center;padding:4px 6px;font-size:11px;white-space:nowrap">${n}</th>`).join('');
+  const rows=_REF_COMP.map(c=>{
+    const k=_normKey(c);
+    const tds=_REF_NIV.map(n=>`<td style="text-align:center;padding:3px 4px"><input type="radio" name="${pfx}-${k}" value="${n}"></td>`).join('');
+    return `<tr><td style="font-size:12px;padding:4px 8px;white-space:nowrap;border-top:1px solid var(--border)">${c}</td>${tds}</tr>`;
+  }).join('');
+  return `<div style="overflow-x:auto;margin:10px 0"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--surface3)"><th style="text-align:left;padding:5px 8px;font-size:11px">Competencia</th>${ths}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function _refLabCardHTML(n,num){
+  const cnom=(document.getElementById('cand-nombre')?.value||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+  return `<div class="ref-card" id="ref-lab-card-${n}" style="border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;background:var(--surface2)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <span style="font-size:13px;font-weight:700;color:var(--accent)">Referencia laboral ${num}</span>
+    ${num>1?`<button class="btn btn-ghost btn-sm" onclick="removeRefLaboral(${n})" style="color:var(--danger);padding:2px 10px;font-size:12px">&#10005; Quitar</button>`:''}
+  </div>
+  <div class="fr"><div class="fg"><label>Nombre del candidato</label><input type="text" id="ref-lab-${n}-candidato" value="${cnom}" class="form-control" style="font-size:13px"></div><div class="fg"><label>Empresa</label><input type="text" id="ref-lab-${n}-empresa" class="form-control" style="font-size:13px"></div></div>
+  <div class="fr"><div class="fg"><label>Nombre del contacto</label><input type="text" id="ref-lab-${n}-contacto" class="form-control" style="font-size:13px"></div><div class="fg"><label>Teléfono del contacto</label><input type="text" id="ref-lab-${n}-telefono" class="form-control" style="font-size:13px"></div></div>
+  <div class="fr"><div class="fg"><label>Puesto del contacto</label><input type="text" id="ref-lab-${n}-puesto-contacto" class="form-control" style="font-size:13px"></div><div class="fg"><label>Tiempo laborado</label><input type="text" id="ref-lab-${n}-tiempo-laborado" class="form-control" style="font-size:13px"></div></div>
+  <div class="fr"><div class="fg"><label>Puestos ocupados</label><input type="text" id="ref-lab-${n}-puestos" class="form-control" style="font-size:13px"></div><div class="fg"><label>Causa de separación</label><input type="text" id="ref-lab-${n}-separacion" class="form-control" style="font-size:13px"></div></div>
+  <div class="fr"><div class="fg full"><label>¿Cómo describe su desempeño?</label><textarea id="ref-lab-${n}-desempeno" rows="2" class="form-control" style="font-size:13px;resize:vertical"></textarea></div></div>
+  <div style="font-size:12px;font-weight:600;color:var(--text2);margin:14px 0 2px;text-transform:uppercase;letter-spacing:.05em">Gráfica de actuación</div>
+  ${_refGraficaHTML('ref-lab-'+n)}
+  <div class="fr" style="margin-top:10px"><div class="fg full"><label>Observaciones</label><textarea id="ref-lab-${n}-obs" rows="2" class="form-control" style="font-size:13px;resize:vertical"></textarea></div></div>
+</div>`;
+}
+function _refPerCardHTML(n,num){
+  return `<div class="ref-card" id="ref-per-card-${n}" style="border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;background:var(--surface2)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <span style="font-size:13px;font-weight:700;color:var(--accent)">Referencia personal ${num}</span>
+    ${num>1?`<button class="btn btn-ghost btn-sm" onclick="removeRefPersonal(${n})" style="color:var(--danger);padding:2px 10px;font-size:12px">&#10005; Quitar</button>`:''}
+  </div>
+  <div class="fr"><div class="fg"><label>Nombre del contacto</label><input type="text" id="ref-per-${n}-contacto" class="form-control" style="font-size:13px"></div><div class="fg"><label>Teléfono</label><input type="text" id="ref-per-${n}-telefono" class="form-control" style="font-size:13px"></div></div>
+  <div class="fr"><div class="fg"><label>Ocupación</label><input type="text" id="ref-per-${n}-ocupacion" class="form-control" style="font-size:13px"></div><div class="fg"><label>Años de conocerlo</label><input type="number" id="ref-per-${n}-anos" min="0" max="99" class="form-control" style="font-size:13px"></div></div>
+  <div class="fr"><div class="fg full"><label>¿Cómo describe al candidato?</label><textarea id="ref-per-${n}-descripcion" rows="2" class="form-control" style="font-size:13px;resize:vertical"></textarea></div></div>
+  <div class="fr">
+    <div class="fg"><label>¿Lo recomienda para trabajar?</label><div style="display:flex;gap:14px;margin-top:6px;flex-wrap:wrap"><label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ref-per-${n}-recomienda" value="Sí"> Sí</label><label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ref-per-${n}-recomienda" value="No"> No</label><label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ref-per-${n}-recomienda" value="Con reservas"> Con reservas</label></div></div>
+    <div class="fg"><label>¿Le tendría confianza para cuidar un negocio?</label><div style="display:flex;gap:14px;margin-top:6px"><label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ref-per-${n}-confianza" value="Sí"> Sí</label><label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ref-per-${n}-confianza" value="No"> No</label></div></div>
+  </div>
+  <div class="fr"><div class="fg full"><label>Observaciones</label><textarea id="ref-per-${n}-obs" rows="2" class="form-control" style="font-size:13px;resize:vertical"></textarea></div></div>
+</div>`;
+}
+function addRefLaboral(){
+  if(_refLabCount>=3){showToast('Máximo 3 referencias laborales','err');return;}
+  const n=_refLabNextId++;_refLabCount++;
+  document.getElementById('ref-lab-list').insertAdjacentHTML('beforeend',_refLabCardHTML(n,_refLabCount));
+  document.getElementById('ref-lab-add-btn').style.display=_refLabCount>=3?'none':'';
+}
+function removeRefLaboral(n){
+  document.getElementById('ref-lab-card-'+n)?.remove();
+  _refLabCount=Math.max(0,_refLabCount-1);
+  document.getElementById('ref-lab-add-btn').style.display='';
+}
+function addRefPersonal(){
+  if(_refPerCount>=3){showToast('Máximo 3 referencias personales','err');return;}
+  const n=_refPerNextId++;_refPerCount++;
+  document.getElementById('ref-per-list').insertAdjacentHTML('beforeend',_refPerCardHTML(n,_refPerCount));
+  document.getElementById('ref-per-add-btn').style.display=_refPerCount>=3?'none':'';
+}
+function removeRefPersonal(n){
+  document.getElementById('ref-per-card-'+n)?.remove();
+  _refPerCount=Math.max(0,_refPerCount-1);
+  document.getElementById('ref-per-add-btn').style.display='';
+}
+function _collectRefLaborales(candidato_id){
+  return Array.from(document.querySelectorAll('#ref-lab-list .ref-card')).map(card=>{
+    const n=card.id.replace('ref-lab-card-','');
+    const comp={};
+    _REF_COMP.forEach(c=>{const k=_normKey(c);comp[k]=card.querySelector(`input[name="ref-lab-${n}-${k}"]:checked`)?.value||'';});
+    return {id:uid(),candidato_id,data:{tipo:'laboral',
+      candidato:document.getElementById(`ref-lab-${n}-candidato`)?.value||'',
+      empresa:document.getElementById(`ref-lab-${n}-empresa`)?.value||'',
+      contacto:document.getElementById(`ref-lab-${n}-contacto`)?.value||'',
+      telefono:document.getElementById(`ref-lab-${n}-telefono`)?.value||'',
+      puesto_contacto:document.getElementById(`ref-lab-${n}-puesto-contacto`)?.value||'',
+      tiempo_laborado:document.getElementById(`ref-lab-${n}-tiempo-laborado`)?.value||'',
+      puestos:document.getElementById(`ref-lab-${n}-puestos`)?.value||'',
+      separacion:document.getElementById(`ref-lab-${n}-separacion`)?.value||'',
+      desempeno:document.getElementById(`ref-lab-${n}-desempeno`)?.value||'',
+      competencias:comp,
+      observaciones:document.getElementById(`ref-lab-${n}-obs`)?.value||'',
+    }};
+  });
+}
+function _collectRefPersonales(candidato_id){
+  return Array.from(document.querySelectorAll('#ref-per-list .ref-card')).map(card=>{
+    const n=card.id.replace('ref-per-card-','');
+    return {id:uid(),candidato_id,data:{tipo:'personal',
+      contacto:document.getElementById(`ref-per-${n}-contacto`)?.value||'',
+      telefono:document.getElementById(`ref-per-${n}-telefono`)?.value||'',
+      ocupacion:document.getElementById(`ref-per-${n}-ocupacion`)?.value||'',
+      anos:document.getElementById(`ref-per-${n}-anos`)?.value||'',
+      descripcion:document.getElementById(`ref-per-${n}-descripcion`)?.value||'',
+      recomienda:card.querySelector(`input[name="ref-per-${n}-recomienda"]:checked`)?.value||'',
+      confianza:card.querySelector(`input[name="ref-per-${n}-confianza"]:checked`)?.value||'',
+      observaciones:document.getElementById(`ref-per-${n}-obs`)?.value||'',
+    }};
+  });
+}
+async function saveReferencias(candidato_id){
+  const todas=[..._collectRefLaborales(candidato_id),..._collectRefPersonales(candidato_id)];
+  if(!todas.length)return;
+  if(SANDBOX_MODE)return;
+  const{error:de}=await sbClient.from('referencias').delete().eq('candidato_id',candidato_id);
+  if(de)throw new Error(de.message);
+  for(const r of todas){
+    const{error}=await sbClient.from('referencias').insert({id:r.id,candidato_id,data:r.data});
+    if(error)throw new Error(error.message);
+  }
+}
+
 function onCandEmpresaChange(){
   const empId=document.getElementById('cand-empresa').value;
   const vacSel=document.getElementById('cand-vacante');
@@ -2729,6 +2871,7 @@ async function saveCandidato(){
     }
     const _cObj=id?DB.candidatos.find(c=>c.id===id):DB.candidatos[DB.candidatos.length-1];
     if(_cObj)await saveRecord('candidatos',_cObj);
+    if(_cObj)await saveReferencias(_cObj.id);
     if(_cObj)await logActivity(_cObj&&_candAnterior?'Editar candidato':'Nuevo candidato','candidatos',_cObj.id,_cObj.nombre||'',_candAnterior,_cObj);
     closeModal('modal-candidato');
     renderPage(document.querySelector('.page.active').id.replace('page-',''));

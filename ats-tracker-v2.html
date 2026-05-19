@@ -2118,35 +2118,35 @@ function openEmpresaDetail(empId){
         </div>
       </div>
       <div class="ed-kpis">
-        <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-abiertas-${empId}" style="color:${e.color||'var(--accent)'}">${vacAct}</div><div class="ed-kpi-l">Abiertas</div></div>
-        <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-total-${empId}">${vacs.length}</div><div class="ed-kpi-l">Total vac.</div></div>
-        <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-validados-${empId}" style="color:var(--green)">${validados}</div><div class="ed-kpi-l">Colocados</div></div>
-        <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-avgdays-${empId}" style="color:var(--amber)">${avgDays||'—'}</div><div class="ed-kpi-l">Días prom.</div></div>
-        <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-deser-${empId}" style="color:var(--red)">${desertores}</div><div class="ed-kpi-l">Deserciones</div></div>
+        <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-abiertas" style="color:${e.color||'var(--accent)'}">${vacAct}</div><div class="ed-kpi-l">Abiertas</div></div>
+        <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-total">${vacs.length}</div><div class="ed-kpi-l">Total vac.</div></div>
+        <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-validados" style="color:var(--green)">${validados}</div><div class="ed-kpi-l">Colocados</div></div>
+        <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-avgdays" style="color:var(--amber)">${avgDays||'—'}</div><div class="ed-kpi-l">Días prom.</div></div>
+        <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-deser" style="color:var(--red)">${desertores}</div><div class="ed-kpi-l">Deserciones</div></div>
       </div>
     </div>
     <div style="margin-bottom:20px">
       <div class="sec-title">Proceso de reclutamiento configurado</div>
       <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${processHtml}</div>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
       <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px">
-        <div class="sec-title" style="margin:0;white-space:nowrap">Vacantes</div>
-        <select id="ed-flt-proy-${empId}" onchange="filterEmpresaDetailVacs('${empId}')" style="height:30px;padding:0 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;min-width:110px">
+        <span style="font-weight:600;font-size:14px;margin-right:4px;white-space:nowrap">Vacantes</span>
+        <select id="filtroProyecto" onchange="filtrarVacantesEmpresa()" style="height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;min-width:110px">
           <option value="">Proyecto</option>
           ${[...new Set(vacs.map(v=>v.proyecto).filter(Boolean))].map(p=>`<option value="${p}">${p}</option>`).join('')}
         </select>
-        <select id="ed-flt-depto-${empId}" onchange="filterEmpresaDetailVacs('${empId}')" style="height:30px;padding:0 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;min-width:120px">
+        <select id="filtroDepartamento" onchange="filtrarVacantesEmpresa()" style="height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;min-width:120px">
           <option value="">Departamento</option>
           ${[...new Set(vacs.map(v=>v.departamento).filter(Boolean))].map(d=>`<option value="${d}">${d}</option>`).join('')}
         </select>
-        <select id="ed-flt-rec-${empId}" onchange="filterEmpresaDetailVacs('${empId}')" style="height:30px;padding:0 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;min-width:120px">
+        <select id="filtroReclutador" onchange="filtrarVacantesEmpresa()" style="height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;min-width:110px">
           <option value="">Reclutador</option>
           ${[...new Set(vacs.map(v=>v.reclutador_id).filter(Boolean))].map(rid=>{const r=DB.reclutadores.find(x=>x.id===rid)||{};return`<option value="${rid}">${r.nombre||rid}</option>`;}).join('')}
         </select>
-        <input type="date" id="ed-flt-desde-${empId}" onchange="filterEmpresaDetailVacs('${empId}')" title="Apertura desde" style="height:30px;padding:0 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px">
-        <input type="date" id="ed-flt-hasta-${empId}" onchange="filterEmpresaDetailVacs('${empId}')" title="Apertura hasta" style="height:30px;padding:0 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px">
-        <button class="btn btn-ghost btn-sm" onclick="clearEmpresaDetailFiltros('${empId}')"><i class="fa fa-times"></i> Limpiar</button>
+        <input type="date" id="filtroFechaDesde" onchange="filtrarVacantesEmpresa()" style="height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
+        <input type="date" id="filtroFechaHasta" onchange="filtrarVacantesEmpresa()" style="height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
+        <button onclick="limpiarFiltrosEmpresa()" style="height:30px;font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#666">× Limpiar</button>
       </div>
       <div style="display:flex;gap:8px;flex-shrink:0">
         <button class="btn btn-green btn-sm" onclick="exportarCSVEmpresa('${empId}')"><i class="fa fa-download"></i> Exportar esta empresa</button>
@@ -2155,7 +2155,7 @@ function openEmpresaDetail(empId){
     </div>
     <div class="table-wrap">
       <table><thead><tr><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Apertura</th><th>Estado</th><th>Días</th><th>Cands.</th><th>En proceso</th><th>Acción</th></tr></thead>
-      <tbody id="ed-tbody-${empId}">${vacsRows||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes registradas</td></tr>'}</tbody>
+      <tbody id="ed-tbody">${vacsRows||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes registradas</td></tr>'}</tbody>
       </table>
     </div>
     <div style="margin-top:24px">
@@ -2243,12 +2243,13 @@ function _buildEDVacsRows(vacs, empId, etapas){
   }).join('');
 }
 
-function filterEmpresaDetailVacs(empId){
-  const proy  = document.getElementById(`ed-flt-proy-${empId}`)?.value||'';
-  const depto = document.getElementById(`ed-flt-depto-${empId}`)?.value||'';
-  const recId = document.getElementById(`ed-flt-rec-${empId}`)?.value||'';
-  const desde = document.getElementById(`ed-flt-desde-${empId}`)?.value||'';
-  const hasta = document.getElementById(`ed-flt-hasta-${empId}`)?.value||'';
+function filtrarVacantesEmpresa(){
+  const empId = _edCurrentEmpId; if(!empId) return;
+  const proy  = document.getElementById('filtroProyecto')?.value||'';
+  const depto = document.getElementById('filtroDepartamento')?.value||'';
+  const recId = document.getElementById('filtroReclutador')?.value||'';
+  const desde = document.getElementById('filtroFechaDesde')?.value||'';
+  const hasta = document.getElementById('filtroFechaHasta')?.value||'';
   let filtered = _edVacsAll;
   if(proy)  filtered = filtered.filter(v=>v.proyecto===proy);
   if(depto) filtered = filtered.filter(v=>v.departamento===depto);
@@ -2257,7 +2258,7 @@ function filterEmpresaDetailVacs(empId){
   if(hasta) filtered = filtered.filter(v=>v.fecha_apertura<=hasta);
   const etapas = getEmpresaEtapas(empId);
   const rows = _buildEDVacsRows(filtered, empId, etapas);
-  const tbody = document.getElementById(`ed-tbody-${empId}`);
+  const tbody = document.getElementById('ed-tbody');
   if(tbody) tbody.innerHTML = rows||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes con esos filtros</td></tr>';
   const filtCands = DB.candidatos.filter(c=>filtered.find(v=>v.id===c.vacante_id));
   const vacAct   = filtered.filter(v=>v.estado==='Abierta').length;
@@ -2266,18 +2267,18 @@ function filterEmpresaDetailVacs(empId){
   const dArr     = filtCands.filter(c=>c.etapa==='Validado'&&processTotal(c)).map(c=>processTotal(c));
   const avgDays  = dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):null;
   const kv = id => document.getElementById(id);
-  if(kv(`ed-kpi-abiertas-${empId}`))  kv(`ed-kpi-abiertas-${empId}`).textContent  = vacAct;
-  if(kv(`ed-kpi-total-${empId}`))     kv(`ed-kpi-total-${empId}`).textContent      = filtered.length;
-  if(kv(`ed-kpi-validados-${empId}`)) kv(`ed-kpi-validados-${empId}`).textContent  = validados;
-  if(kv(`ed-kpi-avgdays-${empId}`))   kv(`ed-kpi-avgdays-${empId}`).textContent    = avgDays||'—';
-  if(kv(`ed-kpi-deser-${empId}`))     kv(`ed-kpi-deser-${empId}`).textContent      = deser;
+  if(kv('ed-kpi-abiertas'))  kv('ed-kpi-abiertas').textContent  = vacAct;
+  if(kv('ed-kpi-total'))     kv('ed-kpi-total').textContent      = filtered.length;
+  if(kv('ed-kpi-validados')) kv('ed-kpi-validados').textContent  = validados;
+  if(kv('ed-kpi-avgdays'))   kv('ed-kpi-avgdays').textContent    = avgDays||'—';
+  if(kv('ed-kpi-deser'))     kv('ed-kpi-deser').textContent      = deser;
 }
 
-function clearEmpresaDetailFiltros(empId){
-  ['ed-flt-proy-','ed-flt-depto-','ed-flt-rec-','ed-flt-desde-','ed-flt-hasta-'].forEach(pfx=>{
-    const el=document.getElementById(pfx+empId); if(el) el.value='';
+function limpiarFiltrosEmpresa(){
+  ['filtroProyecto','filtroDepartamento','filtroReclutador','filtroFechaDesde','filtroFechaHasta'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
   });
-  filterEmpresaDetailVacs(empId);
+  filtrarVacantesEmpresa();
 }
 
 function toggleVacRow(vid){

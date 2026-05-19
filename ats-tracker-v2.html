@@ -643,12 +643,216 @@ input[type=date]{color:var(--text)}
         </div>
         <div class="fr full"><div class="fg"><label>Notas generales</label><textarea id="cand-notas" placeholder="Perfil, habilidades, comentarios..."></textarea></div></div>
       </div>
-      <!-- Paso 2: Entrevista -->
+      <!-- Paso 2: Guía de Entrevista -->
       <div id="cand-step-2" style="display:none">
-        <div class="sep">Entrevista</div>
-        <div style="padding:32px 0;text-align:center;color:var(--text3);font-size:13px">
-          <i class="fa fa-calendar-alt" style="font-size:32px;margin-bottom:12px;display:block;opacity:.35"></i>
-          Campos de entrevista próximamente
+        <!-- I. Datos personales -->
+        <div class="sep">I — Datos personales</div>
+        <div class="fr">
+          <div class="fg"><label>Fecha de nacimiento</label>
+            <input type="date" id="ei-fecha-nac" onchange="calcEdad()">
+          </div>
+          <div class="fg"><label>Edad</label>
+            <input type="number" id="ei-edad" placeholder="Se calcula automáticamente" readonly style="background:var(--surface2);color:var(--text2)">
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Estado civil</label>
+            <select id="ei-estado-civil">
+              <option value="">Seleccionar...</option>
+              <option>Soltero/a</option><option>Casado/a</option>
+              <option>Divorciado/a</option><option>Unión libre</option><option>Viudo/a</option>
+            </select>
+          </div>
+          <div class="fg"><label>Dirección</label>
+            <input type="text" id="ei-direccion" placeholder="Ciudad, estado">
+          </div>
+        </div>
+        <!-- II. Formación académica -->
+        <div class="sep">II — Formación académica</div>
+        <div class="fr">
+          <div class="fg"><label>Nivel de estudios</label>
+            <select id="ei-nivel-estudios">
+              <option value="">Seleccionar...</option>
+              <option>Secundaria</option><option>Bachillerato</option><option>Técnico</option>
+              <option>Licenciatura</option><option>Maestría</option><option>Doctorado</option>
+            </select>
+          </div>
+          <div class="fg"><label>Institución educativa</label>
+            <input type="text" id="ei-institucion" placeholder="Nombre de la institución">
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Certificados o diplomas</label>
+            <input type="text" id="ei-certificados" placeholder="Ej. PMP, TOEFL, etc.">
+          </div>
+          <div></div>
+        </div>
+        <!-- III. Experiencia laboral -->
+        <div class="sep">III — Experiencia laboral</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Empleo más reciente</div>
+        <div class="fr">
+          <div class="fg"><label>Puesto</label><input type="text" id="ei-emp-rec-puesto" placeholder="Cargo desempeñado"></div>
+          <div class="fg"><label>Empresa</label><input type="text" id="ei-emp-rec-empresa" placeholder="Nombre de la empresa"></div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Fecha inicio</label><input type="date" id="ei-emp-rec-inicio"></div>
+          <div class="fg"><label>Fecha término</label><input type="date" id="ei-emp-rec-termino"></div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Responsabilidades</label><textarea id="ei-emp-rec-resp" placeholder="Principales responsabilidades" style="height:68px"></textarea></div>
+          <div class="fg"><label>Logros destacados</label><textarea id="ei-emp-rec-logros" placeholder="Logros o resultados" style="height:68px"></textarea></div>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin:14px 0 8px">Empleo anterior</div>
+        <div class="fr">
+          <div class="fg"><label>Puesto</label><input type="text" id="ei-emp-ant-puesto" placeholder="Cargo desempeñado"></div>
+          <div class="fg"><label>Empresa</label><input type="text" id="ei-emp-ant-empresa" placeholder="Nombre de la empresa"></div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Fecha inicio</label><input type="date" id="ei-emp-ant-inicio"></div>
+          <div class="fg"><label>Fecha término</label><input type="date" id="ei-emp-ant-termino"></div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Responsabilidades</label><textarea id="ei-emp-ant-resp" placeholder="Principales responsabilidades" style="height:68px"></textarea></div>
+          <div class="fg"><label>Logros destacados</label><textarea id="ei-emp-ant-logros" placeholder="Logros o resultados" style="height:68px"></textarea></div>
+        </div>
+        <!-- IV. Competencias -->
+        <div class="sep">IV — Competencias</div>
+        <div class="fr">
+          <div class="fg">
+            <label>Idiomas</label>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="ei-idioma-espanol"> Español</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="ei-idioma-ingles"> Inglés</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="ei-idioma-frances"> Francés</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="ei-idioma-aleman"> Alemán</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="ei-idioma-otros"> Otros</label>
+            </div>
+          </div>
+          <div class="fg"><label>Herramientas / software</label>
+            <textarea id="ei-herramientas" placeholder="Excel, SAP, AutoCAD, etc." style="height:68px"></textarea>
+          </div>
+        </div>
+        <div class="fg" style="margin-top:8px">
+          <label>Habilidades blandas</label>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="ei-hab-liderazgo"> Liderazgo</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="ei-hab-equipo"> Trabajo en equipo</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="ei-hab-conflictos"> Resolución de conflictos</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="ei-hab-organizacion"> Organización</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="ei-hab-empatia"> Empatía</label>
+          </div>
+        </div>
+        <!-- V. Intereses y expectativas -->
+        <div class="sep" style="margin-top:14px">V — Intereses y expectativas</div>
+        <div class="fr">
+          <div class="fg"><label>Área de interés</label>
+            <select id="ei-area-interes">
+              <option value="">Seleccionar...</option>
+              <option>Administración</option><option>Ventas</option><option>Producción</option>
+              <option>RH</option><option>Otro</option>
+            </select>
+          </div>
+          <div class="fg"><label>Puesto al que aspira</label>
+            <input type="text" id="ei-puesto-aspirado" placeholder="Ej. Gerente de operaciones">
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Expectativa salarial (mensual bruto)</label>
+            <input type="number" id="ei-expectativa-salarial" placeholder="$">
+          </div>
+          <div class="fg"><label>Metas a corto y mediano plazo</label>
+            <textarea id="ei-metas" placeholder="Describe tus metas" style="height:68px"></textarea>
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fg">
+            <label>Disponibilidad para viajar</label>
+            <div style="display:flex;gap:16px;margin-top:8px">
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ei-viajar" value="Sí"> Sí</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ei-viajar" value="No"> No</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ei-viajar" value="Ocasional"> Ocasional</label>
+            </div>
+          </div>
+          <div class="fg">
+            <label>Disponibilidad para cambio de residencia</label>
+            <div style="display:flex;gap:16px;margin-top:8px">
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ei-residencia" value="Sí"> Sí</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ei-residencia" value="No"> No</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ei-residencia" value="Ocasional"> Ocasional</label>
+            </div>
+          </div>
+        </div>
+        <!-- VI. Ámbito familiar -->
+        <div class="sep">VI — Ámbito familiar</div>
+        <div class="fr">
+          <div class="fg">
+            <label>¿Tiene dependientes?</label>
+            <div style="display:flex;gap:16px;margin-top:8px">
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ei-dependientes" value="Sí" onchange="eiToggle('ei-dep-info-div',true)"> Sí</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ei-dependientes" value="No" onchange="eiToggle('ei-dep-info-div',false)"> No</label>
+            </div>
+          </div>
+          <div class="fg"><label>Núcleo familiar</label>
+            <input type="text" id="ei-nucleo-familiar" placeholder="Ej. Papá, mamá, 2 hermanos">
+          </div>
+        </div>
+        <div id="ei-dep-info-div" style="display:none" class="fr full">
+          <div class="fg"><label>¿Cuántos y qué relación?</label>
+            <input type="text" id="ei-dependientes-info" placeholder="Ej. 2 hijos (5 y 8 años)">
+          </div>
+        </div>
+        <!-- VII. Créditos -->
+        <div class="sep">VII — Créditos</div>
+        <div class="fr">
+          <div class="fg">
+            <label>¿Tiene crédito INFONAVIT?</label>
+            <div style="display:flex;gap:16px;margin-top:8px">
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ei-infonavit" value="Sí" onchange="eiToggle('ei-inf-ret-div',true)"> Sí</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ei-infonavit" value="No" onchange="eiToggle('ei-inf-ret-div',false)"> No</label>
+            </div>
+          </div>
+          <div class="fg">
+            <label>¿Tiene crédito FONACOT?</label>
+            <div style="display:flex;gap:16px;margin-top:8px">
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ei-fonacot" value="Sí" onchange="eiToggle('ei-fon-ret-div',true)"> Sí</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ei-fonacot" value="No" onchange="eiToggle('ei-fon-ret-div',false)"> No</label>
+            </div>
+          </div>
+        </div>
+        <div class="fr">
+          <div id="ei-inf-ret-div" style="display:none" class="fg"><label>Retención INFONAVIT (mensual)</label>
+            <input type="number" id="ei-infonavit-retencion" placeholder="Monto en $">
+          </div>
+          <div id="ei-fon-ret-div" style="display:none" class="fg"><label>Retención FONACOT (mensual)</label>
+            <input type="number" id="ei-fonacot-retencion" placeholder="Monto en $">
+          </div>
+        </div>
+        <!-- VIII. Observaciones del entrevistador -->
+        <div class="sep">VIII — Observaciones del entrevistador</div>
+        <div class="fr">
+          <div class="fg"><label>Impresión general</label>
+            <textarea id="ei-impresion-general" placeholder="Actitud, presentación, comunicación..." style="height:72px"></textarea>
+          </div>
+          <div class="fg"><label>Áreas de oportunidad</label>
+            <textarea id="ei-areas-oportunidad" placeholder="Aspectos a desarrollar..." style="height:72px"></textarea>
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Recomendación</label>
+            <select id="ei-recomendacion">
+              <option value="">Seleccionar...</option>
+              <option>Procede</option><option>No procede</option><option>En espera</option>
+            </select>
+          </div>
+          <div class="fg"><label>Firma del entrevistador</label>
+            <input type="text" id="ei-firma-entrevistador" placeholder="Nombre completo">
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Fecha de entrevista</label>
+            <input type="date" id="ei-fecha-entrevista">
+          </div>
+          <div></div>
         </div>
       </div>
       <!-- Paso 3: Referencias -->
@@ -2411,6 +2615,9 @@ function openCandModal(vacanteIdOrNull,reemplazaId=null){
     }
   }
   document.getElementById('cand-fuente').value='LinkedIn';
+  const _hoy = new Date().toISOString().split('T')[0];
+  const _eiFecha = document.getElementById('ei-fecha-entrevista');
+  if(_eiFecha) _eiFecha.value = _hoy;
   candWizardSetStep(1);
   openModal('modal-candidato');
 }
@@ -2470,6 +2677,20 @@ function candWizardNext() {
 }
 function candWizardPrev() {
   if(_cwStep > 1) candWizardSetStep(_cwStep - 1);
+}
+function calcEdad() {
+  const fn = document.getElementById('ei-fecha-nac')?.value;
+  if(!fn) return;
+  const hoy = new Date();
+  const nac = new Date(fn);
+  let edad = hoy.getFullYear() - nac.getFullYear();
+  const m = hoy.getMonth() - nac.getMonth();
+  if(m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
+  document.getElementById('ei-edad').value = edad >= 0 ? edad : '';
+}
+function eiToggle(id, show) {
+  const el = document.getElementById(id);
+  if(el) el.style.display = show ? '' : 'none';
 }
 
 function onCandEmpresaChange(){

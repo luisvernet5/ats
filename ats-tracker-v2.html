@@ -350,6 +350,12 @@ input[type=date]{color:var(--text)}
       <select id="flt-vac-est" onchange="renderVacantesTable()">
         <option value="">Todos los estados</option><option>Abierta</option><option>Cubierta</option><option>Cancelada</option>
       </select>
+      <select id="flt-vac-rec" onchange="renderVacantesTable()"><option value="">Reclutador</option></select>
+      <select id="flt-vac-proy" onchange="renderVacantesTable()"><option value="">Proyecto</option></select>
+      <select id="flt-vac-dep" onchange="renderVacantesTable()"><option value="">Departamento</option></select>
+      <input type="date" id="flt-vac-desde" onchange="renderVacantesTable()" title="Apertura desde" style="min-width:130px">
+      <input type="date" id="flt-vac-hasta" onchange="renderVacantesTable()" title="Apertura hasta" style="min-width:130px">
+      <button class="btn btn-ghost btn-sm" onclick="limpiarFiltrosVacantes()">× Limpiar</button>
       <span class="sp"></span>
       <button class="btn btn-green btn-sm" onclick="exportarCSV()"><i class="fa fa-file-csv"></i> Exportar</button>
       <button class="btn btn-primary" onclick="openVacanteModal()"><i class="fa fa-plus"></i> Nueva</button>
@@ -3479,19 +3485,43 @@ async function eliminarVacante(id){
 /* ============================================================
    VACANTES TABLE
    ============================================================ */
+function limpiarFiltrosVacantes(){
+  ['flt-vac-q','flt-vac-emp','flt-vac-est','flt-vac-rec','flt-vac-proy','flt-vac-dep','flt-vac-desde','flt-vac-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  renderVacantesTable();
+}
 function renderVacantesTable(){
   const q=(document.getElementById('flt-vac-q')||{}).value||'';
   const empId=(document.getElementById('flt-vac-emp')||{}).value||'';
   const est=(document.getElementById('flt-vac-est')||{}).value||'';
+  const recFlt=(document.getElementById('flt-vac-rec')||{}).value||'';
+  const proyFlt=(document.getElementById('flt-vac-proy')||{}).value||'';
+  const depFlt=(document.getElementById('flt-vac-dep')||{}).value||'';
+  const desdeFlt=(document.getElementById('flt-vac-desde')||{}).value||'';
+  const hastaFlt=(document.getElementById('flt-vac-hasta')||{}).value||'';
   // populate emp filter
   const empSel=document.getElementById('flt-vac-emp');
   if(empSel){const cur=empSel.value;empSel.innerHTML='<option value="">Todas las empresas</option>';(currentUserData?.rol==='rh_cliente'?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).forEach(e=>empSel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
   const _recIdV = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   const _empIdV = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
-  let list = _recIdV ? DB.vacantes.filter(v=>v.reclutador_id===_recIdV) : _empIdV ? DB.vacantes.filter(v=>v.empresa_id===_empIdV) : DB.vacantes;
+  const base = _recIdV ? DB.vacantes.filter(v=>v.reclutador_id===_recIdV) : _empIdV ? DB.vacantes.filter(v=>v.empresa_id===_empIdV) : DB.vacantes;
+  // populate reclutador select (scoped to visible vacantes)
+  const recSel=document.getElementById('flt-vac-rec');
+  if(recSel){const cur=recSel.value;const rIds=[...new Set(base.map(v=>v.reclutador_id).filter(Boolean))];recSel.innerHTML='<option value="">Reclutador</option>'+rIds.map(id=>{const r=DB.reclutadores.find(x=>x.id===id)||{};return`<option value="${id}" ${cur===id?'selected':''}>${r.nombre||id}</option>`;}).join('');}
+  // populate proyecto select
+  const proySel=document.getElementById('flt-vac-proy');
+  if(proySel){const cur=proySel.value;const proyectos=[...new Set(base.map(v=>v.proyecto).filter(Boolean))].sort();proySel.innerHTML='<option value="">Proyecto</option>'+proyectos.map(p=>`<option value="${p}" ${cur===p?'selected':''}>${p}</option>`).join('');}
+  // populate departamento select
+  const depSel=document.getElementById('flt-vac-dep');
+  if(depSel){const cur=depSel.value;const deptos=[...new Set(base.map(v=>v.departamento).filter(Boolean))].sort();depSel.innerHTML='<option value="">Departamento</option>'+deptos.map(d=>`<option value="${d}" ${cur===d?'selected':''}>${d}</option>`).join('');}
+  let list=base;
   if(q)list=list.filter(v=>v.nombre.toLowerCase().includes(q.toLowerCase()));
   if(empId)list=list.filter(v=>v.empresa_id===empId);
   if(est)list=list.filter(v=>v.estado===est);
+  if(recFlt)list=list.filter(v=>v.reclutador_id===recFlt);
+  if(proyFlt)list=list.filter(v=>v.proyecto===proyFlt);
+  if(depFlt)list=list.filter(v=>v.departamento===depFlt);
+  if(desdeFlt)list=list.filter(v=>(v.fecha_apertura||'')>=desdeFlt);
+  if(hastaFlt)list=list.filter(v=>(v.fecha_apertura||'')<=hastaFlt);
   const rows=list.map(v=>{
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};

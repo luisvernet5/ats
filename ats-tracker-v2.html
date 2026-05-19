@@ -382,16 +382,7 @@ input[type=date]{color:var(--text)}
   </div>
 
   <!-- TIEMPOS -->
-  <div class="page" id="page-tiempos">
-    <div class="g4" id="tiempos-kpis"></div><br>
-    <div class="g2">
-      <div><div class="sec-title">Días promedio por transición</div><div class="card"><div class="chart-box" style="height:260px"><canvas id="chTiempos" role="img" aria-label="Días por etapa"></canvas></div></div></div>
-      <div><div class="sec-title">Tiempo interno vs cliente por reclutador</div><div class="card"><div class="chart-box" style="height:260px"><canvas id="chCliInt" role="img" aria-label="Tiempo cliente vs interno"></canvas></div></div></div>
-    </div><br>
-    <div class="sec-title">Vacantes abiertas</div>
-    <div id="tiempos-filtros"></div>
-    <div class="table-wrap" id="tiempos-vacs-table"></div>
-  </div>
+  <div class="page" id="page-tiempos"></div>
 
   <!-- RANKING -->
   <div class="page" id="page-ranking">
@@ -3903,17 +3894,53 @@ function renderTiempos(){
   const validados=DB.candidatos.filter(c=>c.etapa==='Validado');
   const avgTotal=validados.filter(c=>processTotal(c)).map(c=>processTotal(c));
   const avgTD=avgTotal.length?Math.round(avgTotal.reduce((a,b)=>a+b,0)/avgTotal.length):null;
-  const cliDArr=DB.candidatos.filter(c=>{
-    const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
-    return clienteDays(c)!==null;
-  }).map(c=>clienteDays(c));
+  const cliDArr=DB.candidatos.filter(c=>clienteDays(c)!==null).map(c=>clienteDays(c));
   const avgCli=cliDArr.length?Math.round(cliDArr.reduce((a,b)=>a+b,0)/cliDArr.length):null;
-  document.getElementById('tiempos-kpis').innerHTML=`
-    <div class="card"><div class="card-title">Prom. días proceso total</div><div class="card-value">${avgTD||'—'}</div><div class="card-sub">apertura → validación</div></div>
-    <div class="card"><div class="card-title">Prom. días cliente</div><div class="card-value" style="color:var(--amber)">${avgCli||'—'}</div><div class="card-sub">valoración → validación</div></div>
-    <div class="card"><div class="card-title">Candidatos validados</div><div class="card-value" style="color:var(--green)">${validados.length}</div></div>
-    <div class="card"><div class="card-title">Empresas activas</div><div class="card-value">${DB.empresas.filter(e=>DB.vacantes.find(v=>v.empresa_id===e.id&&v.estado==='Abierta')).length}</div></div>
-  `;
+  const empActivas=DB.empresas.filter(e=>DB.vacantes.find(v=>v.empresa_id===e.id&&v.estado==='Abierta')).length;
+  const empOptsF=DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+  const recOptsF=DB.reclutadores.map(r=>`<option value="${r.id}">${r.nombre}</option>`).join('');
+  document.getElementById('page-tiempos').innerHTML=`
+    <div style="display:flex;gap:6px;margin-bottom:20px">
+      <button id="ttab-resumen" onclick="tiemposTab('resumen')" style="padding:8px 22px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;background:#2AAADE;color:#fff;transition:all .15s">Resumen</button>
+      <button id="ttab-graficas" onclick="tiemposTab('graficas')" style="padding:8px 22px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;background:var(--surface3);color:var(--text2);transition:all .15s">Gráficas</button>
+      <button id="ttab-vacantes" onclick="tiemposTab('vacantes')" style="padding:8px 22px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;background:var(--surface3);color:var(--text2);transition:all .15s">Vacantes abiertas</button>
+    </div>
+    <div id="tiempos-panel-resumen">
+      <div class="g4">
+        <div class="card"><div class="card-title">Prom. días proceso total</div><div class="card-value">${avgTD||'—'}</div><div class="card-sub">apertura → validación</div></div>
+        <div class="card"><div class="card-title">Prom. días cliente</div><div class="card-value" style="color:var(--amber)">${avgCli||'—'}</div><div class="card-sub">valoración → validación</div></div>
+        <div class="card"><div class="card-title">Candidatos validados</div><div class="card-value" style="color:var(--green)">${validados.length}</div></div>
+        <div class="card"><div class="card-title">Empresas activas</div><div class="card-value">${empActivas}</div></div>
+      </div>
+    </div>
+    <div id="tiempos-panel-graficas" style="display:none">
+      <div class="g2">
+        <div><div class="sec-title">Días promedio por transición</div><div class="card"><div class="chart-box" style="height:260px"><canvas id="chTiempos" role="img" aria-label="Días por etapa"></canvas></div></div></div>
+        <div><div class="sec-title">Tiempo interno vs cliente por empresa</div><div class="card"><div class="chart-box" style="height:260px"><canvas id="chCliInt" role="img" aria-label="Tiempo cliente vs interno"></canvas></div></div></div>
+      </div>
+    </div>
+    <div id="tiempos-panel-vacantes" style="display:none">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+        <select id="tf-empresa" onchange="filterTiemposVacs()" style="min-width:160px"><option value="">Todas las empresas</option>${empOptsF}</select>
+        <select id="tf-reclutador" onchange="filterTiemposVacs()" style="min-width:160px"><option value="">Todos los reclutadores</option>${recOptsF}</select>
+        <input id="tf-posicion" placeholder="Buscar posición..." oninput="filterTiemposVacs()" style="min-width:160px">
+      </div>
+      <div class="table-wrap" id="tiempos-vacs-table"></div>
+    </div>`;
+  filterTiemposVacs();
+}
+
+function tiemposTab(tab){
+  ['resumen','graficas','vacantes'].forEach(t=>{
+    const panel=document.getElementById('tiempos-panel-'+t);
+    const btn=document.getElementById('ttab-'+t);
+    const on=t===tab;
+    if(panel)panel.style.display=on?'':'none';
+    if(btn){btn.style.background=on?'#2AAADE':'var(--surface3)';btn.style.color=on?'#fff':'var(--text2)';btn.style.fontWeight=on?'600':'500';}
+  });
+  if(tab==='graficas')_renderTiemposCharts();
+}
+function _renderTiemposCharts(){
   const recL=DB.reclutadores.map(r=>r.nombre.split(' ')[0]);
   const recInt=DB.reclutadores.map(r=>{
     const rc=DB.candidatos.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return c.reclutador_id===r.id&&v&&c.f_0&&c.f_1;});
@@ -3930,7 +3957,6 @@ function renderTiempos(){
     type:'bar',data:{labels:recL.length?recL:['Sin datos'],datasets:[{label:'Días internos',data:recInt,backgroundColor:'rgba(42,170,222,.5)',borderColor:'#2AAADE',borderWidth:1},{label:'Días cliente',data:recCli,backgroundColor:'rgba(245,158,11,.5)',borderColor:'#F59E0B',borderWidth:1}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#9090A0',font:{size:11},boxWidth:10}}},scales:{y:{ticks:{color:'#5A5A6A'},grid:{color:'rgba(255,255,255,.04)'}},x:{ticks:{color:'#9090A0'},grid:{display:false}}}}
   });
-  // Tiempos por empresa
   const empL=DB.empresas.map(e=>e.nombre);
   const empD=DB.empresas.map(e=>{
     const vids=DB.vacantes.filter(v=>v.empresa_id===e.id).map(v=>v.id);
@@ -3943,17 +3969,7 @@ function renderTiempos(){
     type:'bar',data:{labels:empL.length?empL:['Sin datos'],datasets:[{label:'Días prom. proceso',data:empD,backgroundColor:DB.empresas.map(e=>(e.color||'#2AAADE')+'88'),borderColor:DB.empresas.map(e=>e.color||'#2AAADE'),borderWidth:1}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{color:'#5A5A6A'},grid:{color:'rgba(255,255,255,.04)'}},x:{ticks:{color:'#9090A0'},grid:{display:false}}}}
   });
-  // Filtros + tabla vacantes abiertas
-  const empOptsF=DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
-  const recOptsF=DB.reclutadores.map(r=>`<option value="${r.id}">${r.nombre}</option>`).join('');
-  document.getElementById('tiempos-filtros').innerHTML=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
-    <select id="tf-empresa" onchange="filterTiemposVacs()" style="min-width:160px"><option value="">Todas las empresas</option>${empOptsF}</select>
-    <select id="tf-reclutador" onchange="filterTiemposVacs()" style="min-width:160px"><option value="">Todos los reclutadores</option>${recOptsF}</select>
-    <input id="tf-posicion" placeholder="Buscar posición..." oninput="filterTiemposVacs()" style="min-width:160px">
-  </div>`;
-  filterTiemposVacs();
 }
-
 function filterTiemposVacs(){
   const empId=document.getElementById('tf-empresa')?.value||'';
   const recId=document.getElementById('tf-reclutador')?.value||'';

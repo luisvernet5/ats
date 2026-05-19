@@ -2154,8 +2154,8 @@ function openEmpresaDetail(empId){
       </div>
     </div>
     <div class="table-wrap">
-      <table><thead><tr><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Apertura</th><th>Estado</th><th>Días</th><th>Cands.</th><th>En proceso</th><th>Acción</th></tr></thead>
-      <tbody id="ed-tbody">${vacsRows||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes registradas</td></tr>'}</tbody>
+      <table><thead><tr><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
+      <tbody id="ed-tbody">${vacsRows||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes registradas</td></tr>'}</tbody>
       </table>
     </div>
     <div style="margin-top:24px">
@@ -2206,25 +2206,19 @@ function _buildEDVacsRows(vacs, empId, etapas){
       </td>
       <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td>
       <td>${rec.nombre||'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${v.proyecto||''}</td>
+      <td style="font-size:12px;color:var(--text2)">${v.departamento||''}</td>
       <td>${fmt(v.fecha_apertura)}</td>
       <td>${badgeVacEst(v.estado)}</td>
       <td><span class="dpill ${dClass(dias)}">${dias}d</span></td>
       <td>${activos.length} / ${vcands.length}</td>
-      <td>
-        ${activos.slice(0,2).map(c=>{
-          const idx=getCandEtapaIdx(c);
-          const et=etapas[idx]||{};
-          return`<span class="badge" style="background:${(et.color||'#888')}22;color:${et.color||'#888'};margin:1px">${c.nombre}</span>`;
-        }).join('')}
-        ${activos.length>2?`<span class="bx badge">+${activos.length-2}</span>`:''}
-      </td>
       <td>
         <button class="btn btn-ghost btn-sm" onclick="openVacanteModal('${v.id}')"><i class="fa fa-edit"></i></button>
         <button class="btn btn-primary btn-sm" onclick="openCandModal('${v.id}')"><i class="fa fa-user-plus"></i></button>
       </td>
     </tr>
     <tr class="vac-expand-row" id="tr-expand-${v.id}">
-      <td colspan="9" style="padding:0;background:var(--surface2)">
+      <td colspan="10" style="padding:0;background:var(--surface2)">
         <div style="padding:8px 14px 12px">
           <table style="width:100%;border-collapse:collapse;font-size:12px">
             <thead><tr style="background:var(--surface3)">
@@ -3476,6 +3470,8 @@ function renderVacantesTable(){
       <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td>
       <td><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${emp.color||'#888'};flex-shrink:0"></span>${emp.nombre||'—'}</span></td>
       <td>${rec.nombre||'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${v.proyecto||''}</td>
+      <td style="font-size:12px;color:var(--text2)">${v.departamento||''}</td>
       <td>${fmt(v.fecha_apertura)}</td>
       <td>${badgeVacEst(v.estado)}</td>
       <td>${getSLAStatus(v)}</td>
@@ -3489,7 +3485,7 @@ function renderVacantesTable(){
       </td>
     </tr>
     <tr id="detail-${v.id}" style="display:none">
-      <td colspan="10" style="padding:0;background:var(--surface2)">
+      <td colspan="12" style="padding:0;background:var(--surface2)">
         <div style="padding:16px 20px">
           <div id="resumen-${v.id}" style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap"></div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -3502,8 +3498,8 @@ function renderVacantesTable(){
     </tr>`;
   }).join('');
   document.getElementById('vacantes-table').innerHTML=`<table>
-    <thead><tr><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Estado</th><th>SLA</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>
+    <thead><tr><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>SLA</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>
   </table>`;
 }
 

@@ -5661,13 +5661,17 @@ async function eliminarUsuario(usrId) {
 async function enviarInvitacion(email) {
   if(!confirm(`¿Enviar invitación para crear contraseña a ${email}?`)) return;
   try {
-    const { error } = await sbClient.auth.admin.inviteUserByEmail(email, {
-      redirectTo: 'https://ats-five-black.vercel.app/ats-tracker-v2.html'
+    const { data, error } = await sbClient.functions.invoke('invite-user', {
+      body: {
+        email,
+        redirectTo: 'https://ats-five-black.vercel.app/ats-tracker-v2.html'
+      }
     });
     if(error) throw error;
+    if(data?.error) throw new Error(data.error);
     showToast('Invitación enviada a ' + email + ' ✓');
   } catch(e) {
-    showToast('Error: ' + e.message, 'err');
+    showToast('Error al enviar invitación: ' + e.message, 'err');
   }
 }
 

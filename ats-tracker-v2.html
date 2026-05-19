@@ -604,17 +604,17 @@ input[type=date]{color:var(--text)}
       <input type="hidden" id="cand-parent-id">
       <!-- Wizard: barra de progreso -->
       <div style="display:flex;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer" onclick="candWizardSetStep(1)">
           <div id="cw-dot-1" style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">1</div>
           <span id="cw-lbl-1" style="font-size:11px;font-weight:700;color:var(--accent);white-space:nowrap">Datos candidato</span>
         </div>
         <div style="flex:1;height:2px;background:var(--border);margin-top:14px;margin-bottom:0;min-width:24px"></div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer" onclick="candWizardSetStep(2)">
           <div id="cw-dot-2" style="width:28px;height:28px;border-radius:50%;background:var(--surface3);color:var(--text3);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">2</div>
           <span id="cw-lbl-2" style="font-size:11px;color:var(--text3);white-space:nowrap">Entrevista</span>
         </div>
         <div style="flex:1;height:2px;background:var(--border);margin-top:14px;margin-bottom:0;min-width:24px"></div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer" onclick="candWizardSetStep(3)">
           <div id="cw-dot-3" style="width:28px;height:28px;border-radius:50%;background:var(--surface3);color:var(--text3);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">3</div>
           <span id="cw-lbl-3" style="font-size:11px;color:var(--text3);white-space:nowrap">Referencias</span>
         </div>
@@ -628,15 +628,15 @@ input[type=date]{color:var(--text)}
           <div class="fg"><label>Teléfono / Email</label><input id="cand-contacto" placeholder="tel o email"></div>
         </div>
         <div class="fr">
-          <div class="fg"><label>Empresa cliente *</label>
+          <div class="fg"><label>Empresa cliente</label>
             <select id="cand-empresa" onchange="onCandEmpresaChange()"><option value="">Seleccionar empresa...</option></select>
           </div>
-          <div class="fg"><label>Vacante *</label>
+          <div class="fg"><label>Vacante</label>
             <select id="cand-vacante" onchange="onCandVacanteChange()"><option value="">Seleccionar vacante...</option></select>
           </div>
         </div>
         <div class="fr">
-          <div class="fg"><label>Reclutador *</label><select id="cand-reclutador"><option value="">Seleccionar...</option></select></div>
+          <div class="fg"><label>Reclutador</label><select id="cand-reclutador"><option value="">Seleccionar...</option></select></div>
           <div class="fg"><label>Fuente de reclutamiento</label>
             <select id="cand-fuente"><option>LinkedIn</option><option>OCC</option><option>Indeed</option><option>Computrabajo</option><option>Referido</option><option>Bolsa interna</option><option>Otro</option></select>
           </div>
@@ -873,11 +873,7 @@ input[type=date]{color:var(--text)}
     </div>
     <div class="mf">
       <button class="btn btn-ghost" onclick="closeModal('modal-candidato')">Cancelar</button>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost" id="cand-btn-prev" onclick="candWizardPrev()" style="display:none">← Anterior</button>
-        <button class="btn btn-primary" id="cand-btn-next" onclick="candWizardNext()">Siguiente →</button>
-        <button class="btn btn-primary" id="cand-btn-save" onclick="saveCandidato()" style="display:none">Guardar candidato</button>
-      </div>
+      <button class="btn btn-primary" onclick="saveCandidato()">Guardar candidato</button>
     </div>
   </div>
 </div>
@@ -2664,7 +2660,7 @@ function candWizardSetStep(n) {
     document.getElementById('cand-step-'+i).style.display = i===n ? '' : 'none';
     const dot = document.getElementById('cw-dot-'+i);
     const lbl = document.getElementById('cw-lbl-'+i);
-    if(i <= n) {
+    if(i === n) {
       dot.style.background = 'var(--accent)'; dot.style.color = '#fff';
       lbl.style.color = 'var(--accent)'; lbl.style.fontWeight = '700';
     } else {
@@ -2672,9 +2668,6 @@ function candWizardSetStep(n) {
       lbl.style.color = 'var(--text3)'; lbl.style.fontWeight = '400';
     }
   });
-  document.getElementById('cand-btn-prev').style.display = n > 1 ? '' : 'none';
-  document.getElementById('cand-btn-next').style.display = n < 3 ? '' : 'none';
-  document.getElementById('cand-btn-save').style.display = n === 3 ? '' : 'none';
 }
 function candWizardNext() {
   if(_cwStep === 1) {
@@ -2851,12 +2844,12 @@ function onCandVacanteChange(){
 
 async function saveCandidato(){
   const nombre=(document.getElementById('cand-nombre')?.value||'').trim();
-  const vacante_id=document.getElementById('cand-vacante')?.value||'';
-  const reclutador_id=document.getElementById('cand-reclutador')?.value||'';
-  if(!nombre||!vacante_id||!reclutador_id){showToast('Completa nombre, vacante y reclutador','err');return}
+  if(!nombre){showToast('El nombre del candidato es requerido','err');return}
+  const vacante_id=document.getElementById('cand-vacante')?.value||null;
+  const reclutador_id=document.getElementById('cand-reclutador')?.value||null;
   const id=document.getElementById('cand-id')?.value||'';
   const parent_id=document.getElementById('cand-parent-id')?.value||'';
-  const v=DB.vacantes.find(x=>x.id===vacante_id)||{};
+  const v=vacante_id?DB.vacantes.find(x=>x.id===vacante_id)||{}:{};
   const etapas=getEmpresaEtapas(v.empresa_id);
   const etapa=id?(DB.candidatos.find(c=>c.id===id)||{}).etapa||(etapas[0]?.label||'Entrevista RH'):(etapas[0]?.label||'Entrevista RH');
   const data={nombre,vacante_id,reclutador_id,etapa,contacto:document.getElementById('cand-contacto')?.value||'',fuente:document.getElementById('cand-fuente')?.value||'',notas:document.getElementById('cand-notas')?.value||'',activo:true,parent_id:parent_id||null};

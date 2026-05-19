@@ -602,31 +602,71 @@ input[type=date]{color:var(--text)}
     <div class="mb">
       <input type="hidden" id="cand-id">
       <input type="hidden" id="cand-parent-id">
-      <div id="cand-remp-alert"></div>
-      <div class="sep">Datos del candidato</div>
-      <div class="fr">
-        <div class="fg"><label>Nombre completo *</label><input id="cand-nombre" placeholder="Nombre del candidato"></div>
-        <div class="fg"><label>Teléfono / Email</label><input id="cand-contacto" placeholder="tel o email"></div>
-      </div>
-      <div class="fr">
-        <div class="fg"><label>Empresa cliente *</label>
-          <select id="cand-empresa" onchange="onCandEmpresaChange()"><option value="">Seleccionar empresa...</option></select>
+      <!-- Wizard: barra de progreso -->
+      <div style="display:flex;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div id="cw-dot-1" style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">1</div>
+          <span id="cw-lbl-1" style="font-size:11px;font-weight:700;color:var(--accent);white-space:nowrap">Datos candidato</span>
         </div>
-        <div class="fg"><label>Vacante *</label>
-          <select id="cand-vacante" onchange="onCandVacanteChange()"><option value="">Seleccionar vacante...</option></select>
+        <div style="flex:1;height:2px;background:var(--border);margin-top:14px;margin-bottom:0;min-width:24px"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div id="cw-dot-2" style="width:28px;height:28px;border-radius:50%;background:var(--surface3);color:var(--text3);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">2</div>
+          <span id="cw-lbl-2" style="font-size:11px;color:var(--text3);white-space:nowrap">Entrevista</span>
         </div>
-      </div>
-      <div class="fr">
-        <div class="fg"><label>Reclutador *</label><select id="cand-reclutador"><option value="">Seleccionar...</option></select></div>
-        <div class="fg"><label>Fuente de reclutamiento</label>
-          <select id="cand-fuente"><option>LinkedIn</option><option>OCC</option><option>Indeed</option><option>Computrabajo</option><option>Referido</option><option>Bolsa interna</option><option>Otro</option></select>
+        <div style="flex:1;height:2px;background:var(--border);margin-top:14px;margin-bottom:0;min-width:24px"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div id="cw-dot-3" style="width:28px;height:28px;border-radius:50%;background:var(--surface3);color:var(--text3);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">3</div>
+          <span id="cw-lbl-3" style="font-size:11px;color:var(--text3);white-space:nowrap">Referencias</span>
         </div>
       </div>
-      <div class="fr full"><div class="fg"><label>Notas generales</label><textarea id="cand-notas" placeholder="Perfil, habilidades, comentarios..."></textarea></div></div>
+      <!-- Paso 1: Datos candidato -->
+      <div id="cand-step-1">
+        <div id="cand-remp-alert"></div>
+        <div class="sep">Datos del candidato</div>
+        <div class="fr">
+          <div class="fg"><label>Nombre completo *</label><input id="cand-nombre" placeholder="Nombre del candidato"></div>
+          <div class="fg"><label>Teléfono / Email</label><input id="cand-contacto" placeholder="tel o email"></div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Empresa cliente *</label>
+            <select id="cand-empresa" onchange="onCandEmpresaChange()"><option value="">Seleccionar empresa...</option></select>
+          </div>
+          <div class="fg"><label>Vacante *</label>
+            <select id="cand-vacante" onchange="onCandVacanteChange()"><option value="">Seleccionar vacante...</option></select>
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Reclutador *</label><select id="cand-reclutador"><option value="">Seleccionar...</option></select></div>
+          <div class="fg"><label>Fuente de reclutamiento</label>
+            <select id="cand-fuente"><option>LinkedIn</option><option>OCC</option><option>Indeed</option><option>Computrabajo</option><option>Referido</option><option>Bolsa interna</option><option>Otro</option></select>
+          </div>
+        </div>
+        <div class="fr full"><div class="fg"><label>Notas generales</label><textarea id="cand-notas" placeholder="Perfil, habilidades, comentarios..."></textarea></div></div>
+      </div>
+      <!-- Paso 2: Entrevista -->
+      <div id="cand-step-2" style="display:none">
+        <div class="sep">Entrevista</div>
+        <div style="padding:32px 0;text-align:center;color:var(--text3);font-size:13px">
+          <i class="fa fa-calendar-alt" style="font-size:32px;margin-bottom:12px;display:block;opacity:.35"></i>
+          Campos de entrevista próximamente
+        </div>
+      </div>
+      <!-- Paso 3: Referencias -->
+      <div id="cand-step-3" style="display:none">
+        <div class="sep">Referencias</div>
+        <div style="padding:32px 0;text-align:center;color:var(--text3);font-size:13px">
+          <i class="fa fa-user-friends" style="font-size:32px;margin-bottom:12px;display:block;opacity:.35"></i>
+          Campos de referencias próximamente
+        </div>
+      </div>
     </div>
     <div class="mf">
       <button class="btn btn-ghost" onclick="closeModal('modal-candidato')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveCandidato()">Guardar candidato</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" id="cand-btn-prev" onclick="candWizardPrev()" style="display:none">← Anterior</button>
+        <button class="btn btn-primary" id="cand-btn-next" onclick="candWizardNext()">Siguiente →</button>
+        <button class="btn btn-primary" id="cand-btn-save" onclick="saveCandidato()" style="display:none">Guardar candidato</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2371,6 +2411,7 @@ function openCandModal(vacanteIdOrNull,reemplazaId=null){
     }
   }
   document.getElementById('cand-fuente').value='LinkedIn';
+  candWizardSetStep(1);
   openModal('modal-candidato');
 }
 
@@ -2397,7 +2438,38 @@ function editCandidato(id) {
     }, 20);
   }, 10);
   document.getElementById('cand-remp-alert').innerHTML = '';
+  candWizardSetStep(1);
   openModal('modal-candidato');
+}
+
+let _cwStep = 1;
+function candWizardSetStep(n) {
+  _cwStep = n;
+  [1,2,3].forEach(i => {
+    document.getElementById('cand-step-'+i).style.display = i===n ? '' : 'none';
+    const dot = document.getElementById('cw-dot-'+i);
+    const lbl = document.getElementById('cw-lbl-'+i);
+    if(i <= n) {
+      dot.style.background = 'var(--accent)'; dot.style.color = '#fff';
+      lbl.style.color = 'var(--accent)'; lbl.style.fontWeight = '700';
+    } else {
+      dot.style.background = 'var(--surface3)'; dot.style.color = 'var(--text3)';
+      lbl.style.color = 'var(--text3)'; lbl.style.fontWeight = '400';
+    }
+  });
+  document.getElementById('cand-btn-prev').style.display = n > 1 ? '' : 'none';
+  document.getElementById('cand-btn-next').style.display = n < 3 ? '' : 'none';
+  document.getElementById('cand-btn-save').style.display = n === 3 ? '' : 'none';
+}
+function candWizardNext() {
+  if(_cwStep === 1) {
+    const nombre = document.getElementById('cand-nombre')?.value?.trim();
+    if(!nombre) { showToast('Ingresa el nombre del candidato','err'); return; }
+  }
+  if(_cwStep < 3) candWizardSetStep(_cwStep + 1);
+}
+function candWizardPrev() {
+  if(_cwStep > 1) candWizardSetStep(_cwStep - 1);
 }
 
 function onCandEmpresaChange(){

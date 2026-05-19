@@ -2547,8 +2547,20 @@ async function saveVacante(){
   };
   const _vacAnterior = id ? {...(DB.vacantes.find(x=>x.id===id)||{})} : null;
   try {
-    if(id){const i=DB.vacantes.findIndex(v=>v.id===id);DB.vacantes[i]={...DB.vacantes[i],...data,folio,estado:DB.vacantes[i].estado||'Abierta'};await saveRecord('vacantes',DB.vacantes[i]);showToast('Vacante actualizada ✓')}
-    else{DB.vacantes.push({id:uid(),...data});await saveRecord('vacantes',DB.vacantes[DB.vacantes.length-1]);showToast('Vacante creada ✓')}
+    if(id){
+      const i=DB.vacantes.findIndex(v=>v.id===id);
+      const _prevRec=_vacAnterior?.reclutador_id||null;
+      DB.vacantes[i]={...DB.vacantes[i],...data,folio,estado:DB.vacantes[i].estado||'Abierta'};
+      await saveRecord('vacantes',DB.vacantes[i]);
+      showToast('Vacante actualizada ✓');
+      if(reclutador_id && reclutador_id!==_prevRec) notificarReclutador(DB.vacantes[i]);
+    } else {
+      const _nv={id:uid(),...data};
+      DB.vacantes.push(_nv);
+      await saveRecord('vacantes',DB.vacantes[DB.vacantes.length-1]);
+      showToast('Vacante creada ✓');
+      if(reclutador_id) notificarReclutador(_nv);
+    }
     const _lv = id ? DB.vacantes.find(x=>x.id===id) : DB.vacantes[DB.vacantes.length-1];
     await logActivity(_lv&&_vacAnterior?'Editar vacante':'Nueva vacante','vacantes',_lv?.id,_lv?.nombre||'',_vacAnterior,_lv);
     closeModal('modal-vacante');
@@ -2556,6 +2568,24 @@ async function saveVacante(){
   } catch(e) {
     showToast('Error al guardar vacante: '+e.message,'err');
   }
+}
+
+function notificarReclutador(vacante) {
+  if(!vacante?.reclutador_id) return;
+  const rec = DB.reclutadores.find(r => r.id === vacante.reclutador_id);
+  if(!rec?.email) return;
+  const emp = DB.empresas.find(e => e.id === vacante.empresa_id) || {};
+  sbClient.functions.invoke('notify-reclutador', {
+    body: {
+      reclutador_email: rec.email,
+      reclutador_nombre: rec.nombre,
+      vacante_nombre: vacante.nombre,
+      empresa_nombre: emp.nombre || 'N/A',
+      fecha_apertura: vacante.fecha_apertura,
+      salario: vacante.salario,
+      descripcion: vacante.descripcion
+    }
+  }).catch(e => console.warn('notify-reclutador:', e));
 }
 
 /* ============================================================

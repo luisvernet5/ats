@@ -368,8 +368,7 @@ input[type=date]{color:var(--text)}
     <div class="fbar">
       <input type="text" id="flt-cand-q" placeholder="Buscar candidato..." oninput="renderCandidatosTable()">
       <select id="flt-cand-emp" onchange="renderCandidatosTable()"><option value="">Todas las empresas</option></select>
-      <select id="flt-cand-vac" onchange="renderCandidatosTable()"><option value="">Todas las vacantes</option></select>
-      <select id="flt-cand-etapa" onchange="renderCandidatosTable()"><option value="">Todas las etapas</option></select>
+      <select id="flt-cand-rec" onchange="renderCandidatosTable()"><option value="">Todos los reclutadores</option></select>
       <span class="sp"></span>
     </div>
     <div class="table-wrap" id="candidatos-table"></div>
@@ -3889,18 +3888,13 @@ async function eliminarCandidatoPermanente(candId){
 function renderCandidatosTable(){
   const q=(document.getElementById('flt-cand-q')||{}).value||'';
   const empId=(document.getElementById('flt-cand-emp')||{}).value||'';
-  const vacId=(document.getElementById('flt-cand-vac')||{}).value||'';
-  const etapaFlt=(document.getElementById('flt-cand-etapa')||{}).value||'';
-  // populate selects
+  const recFlt=(document.getElementById('flt-cand-rec')||{}).value||'';
+  // populate empresa select
   const empSel=document.getElementById('flt-cand-emp');
   if(empSel){const cur=empSel.value;empSel.innerHTML='<option value="">Todas las empresas</option>';(currentUserData?.rol==='rh_cliente'?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).forEach(e=>empSel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
-  const vacSel=document.getElementById('flt-cand-vac');
-  const _empIdCVac = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
-  if(vacSel){const cur=vacSel.value;vacSel.innerHTML='<option value="">Todas las vacantes</option>';(_empIdCVac?DB.vacantes.filter(v=>v.empresa_id===_empIdCVac):DB.vacantes).forEach(v=>vacSel.innerHTML+=`<option value="${v.id}" ${cur===v.id?'selected':''}>${v.nombre}</option>`);}
-  // collect all etapas
-  const allEtapas=[...new Set(DB.candidatos.map(c=>c.etapa))];
-  const etapaSel=document.getElementById('flt-cand-etapa');
-  if(etapaSel){const cur=etapaSel.value;etapaSel.innerHTML='<option value="">Todas las etapas</option>';allEtapas.forEach(e=>etapaSel.innerHTML+=`<option value="${e}" ${cur===e?'selected':''}>${e}</option>`);}
+  // populate reclutador select (scoped for rh_cliente)
+  const recSel=document.getElementById('flt-cand-rec');
+  if(recSel){const cur=recSel.value;const _empIdCRec=currentUserData?.rol==='rh_cliente'?currentUserData?.empresa_id:null;const vacsBase=_empIdCRec?DB.vacantes.filter(v=>v.empresa_id===_empIdCRec):DB.vacantes;const rIds=[...new Set(vacsBase.map(v=>v.reclutador_id).filter(Boolean))];recSel.innerHTML='<option value="">Todos los reclutadores</option>'+rIds.map(id=>{const r=DB.reclutadores.find(x=>x.id===id)||{};return`<option value="${id}" ${cur===id?'selected':''}>${r.nombre||id}</option>`;}).join('');}
 
   const _recIdC = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   const _empIdC = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
@@ -3909,8 +3903,7 @@ function renderCandidatosTable(){
   list = list.filter(c=>!c.descartado);
   if(q)list=list.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
   if(empId){const vids=_vacsC.filter(v=>v.empresa_id===empId).map(v=>v.id);list=list.filter(c=>vids.includes(c.vacante_id));}
-  if(vacId)list=list.filter(c=>c.vacante_id===vacId);
-  if(etapaFlt)list=list.filter(c=>c.etapa===etapaFlt);
+  if(recFlt)list=list.filter(c=>c.reclutador_id===recFlt);
 
   const rows=list.map(c=>{
     const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};

@@ -2129,29 +2129,29 @@ function openEmpresaDetail(empId){
       <div class="sec-title">Proceso de reclutamiento configurado</div>
       <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${processHtml}</div>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div class="sec-title" style="margin:0">Vacantes</div>
-      <div style="display:flex;gap:8px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px">
+        <div class="sec-title" style="margin:0;white-space:nowrap">Vacantes</div>
+        <select id="ed-flt-proy-${empId}" onchange="filterEmpresaDetailVacs('${empId}')" style="height:30px;padding:0 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;min-width:110px">
+          <option value="">Proyecto</option>
+          ${[...new Set(vacs.map(v=>v.proyecto).filter(Boolean))].map(p=>`<option value="${p}">${p}</option>`).join('')}
+        </select>
+        <select id="ed-flt-depto-${empId}" onchange="filterEmpresaDetailVacs('${empId}')" style="height:30px;padding:0 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;min-width:120px">
+          <option value="">Departamento</option>
+          ${[...new Set(vacs.map(v=>v.departamento).filter(Boolean))].map(d=>`<option value="${d}">${d}</option>`).join('')}
+        </select>
+        <select id="ed-flt-rec-${empId}" onchange="filterEmpresaDetailVacs('${empId}')" style="height:30px;padding:0 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;min-width:120px">
+          <option value="">Reclutador</option>
+          ${[...new Set(vacs.map(v=>v.reclutador_id).filter(Boolean))].map(rid=>{const r=DB.reclutadores.find(x=>x.id===rid)||{};return`<option value="${rid}">${r.nombre||rid}</option>`;}).join('')}
+        </select>
+        <input type="date" id="ed-flt-desde-${empId}" onchange="filterEmpresaDetailVacs('${empId}')" title="Apertura desde" style="height:30px;padding:0 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px">
+        <input type="date" id="ed-flt-hasta-${empId}" onchange="filterEmpresaDetailVacs('${empId}')" title="Apertura hasta" style="height:30px;padding:0 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px">
+        <button class="btn btn-ghost btn-sm" onclick="clearEmpresaDetailFiltros('${empId}')"><i class="fa fa-times"></i> Limpiar</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
         <button class="btn btn-green btn-sm" onclick="exportarCSVEmpresa('${empId}')"><i class="fa fa-download"></i> Exportar esta empresa</button>
         <button class="btn btn-primary btn-sm" onclick="openVacanteModal(null,'${empId}')"><i class="fa fa-plus"></i> Nueva vacante</button>
       </div>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
-      <select id="ed-flt-proy-${empId}" onchange="filterEmpresaDetailVacs('${empId}')" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;min-width:120px">
-        <option value="">Proyecto</option>
-        ${[...new Set(vacs.map(v=>v.proyecto).filter(Boolean))].map(p=>`<option value="${p}">${p}</option>`).join('')}
-      </select>
-      <select id="ed-flt-depto-${empId}" onchange="filterEmpresaDetailVacs('${empId}')" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;min-width:130px">
-        <option value="">Departamento</option>
-        ${[...new Set(vacs.map(v=>v.departamento).filter(Boolean))].map(d=>`<option value="${d}">${d}</option>`).join('')}
-      </select>
-      <select id="ed-flt-rec-${empId}" onchange="filterEmpresaDetailVacs('${empId}')" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;min-width:130px">
-        <option value="">Reclutador</option>
-        ${[...new Set(vacs.map(v=>v.reclutador_id).filter(Boolean))].map(rid=>{const r=DB.reclutadores.find(x=>x.id===rid)||{};return`<option value="${rid}">${r.nombre||rid}</option>`;}).join('')}
-      </select>
-      <input type="date" id="ed-flt-desde-${empId}" onchange="filterEmpresaDetailVacs('${empId}')" title="Fecha apertura desde" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px">
-      <input type="date" id="ed-flt-hasta-${empId}" onchange="filterEmpresaDetailVacs('${empId}')" title="Fecha apertura hasta" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px">
-      <button class="btn btn-ghost btn-sm" onclick="clearEmpresaDetailFiltros('${empId}')"><i class="fa fa-times"></i> Limpiar</button>
     </div>
     <div class="table-wrap">
       <table><thead><tr><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Apertura</th><th>Estado</th><th>Días</th><th>Cands.</th><th>En proceso</th><th>Acción</th></tr></thead>

@@ -5588,9 +5588,12 @@ function openUsuarioModal(usrId=null) {
         <i class="fa fa-info-circle"></i>
         <div>
           <div>La contraseña se gestiona directamente en Supabase.</div>
-          <div style="margin-top:6px">
+          <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="enviarInvitacion('${data.email}')">
+              <i class="fa fa-envelope"></i> Enviar invitación para crear contraseña
+            </button>
             <button class="btn btn-ghost btn-sm" onclick="enviarResetPassword('${data.email}')">
-              <i class="fa fa-key"></i> Enviar reset de contraseña por email
+              <i class="fa fa-key"></i> Resetear contraseña existente
             </button>
           </div>
         </div>`;
@@ -5650,6 +5653,19 @@ async function eliminarUsuario(usrId) {
     await logActivity('Eliminar usuario', 'usuarios', usrId, usrId);
     showToast('Usuario eliminado ✓');
     await loadUsuarios();
+  } catch(e) {
+    showToast('Error: ' + e.message, 'err');
+  }
+}
+
+async function enviarInvitacion(email) {
+  if(!confirm(`¿Enviar invitación para crear contraseña a ${email}?`)) return;
+  try {
+    const { error } = await sbClient.auth.admin.inviteUserByEmail(email, {
+      redirectTo: 'https://ats-five-black.vercel.app/ats-tracker-v2.html'
+    });
+    if(error) throw error;
+    showToast('Invitación enviada a ' + email + ' ✓');
   } catch(e) {
     showToast('Error: ' + e.message, 'err');
   }

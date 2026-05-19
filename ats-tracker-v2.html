@@ -1655,12 +1655,19 @@ async function loadDB(){
       DB.candidatos=JSON.parse(localStorage.getItem('sandbox_candidatos')||'[]');
       DB.reclutadores=JSON.parse(localStorage.getItem('sandbox_reclutadores')||'[]');
     }else{
+      const _isRhC = currentUserData?.rol?.toLowerCase()==='rh_cliente';
+      const _rhEmpId = currentUserData?.empresa_id||null;
+      console.log('[loadDB] ROL ACTUAL:', currentUserData?.rol, '| es rh_cliente:', _isRhC, '| EMPRESA ID:', _rhEmpId);
+      console.log('[loadDB] currentUserData completo:', JSON.stringify(currentUserData));
       const [emp,vac,cand,rec]=await Promise.all([
         sbClient.from('empresas').select('*'),
-        sbClient.from('vacantes').select('*'),
+        (_isRhC && _rhEmpId
+          ? sbClient.from('vacantes').select('*').filter('data->>empresa_id','eq',_rhEmpId)
+          : sbClient.from('vacantes').select('*')),
         sbClient.from('candidatos').select('*'),
         sbClient.from('reclutadores').select('*'),
       ]);
+      console.log('[loadDB] vacantes cargadas:', vac.data?.length, '| error:', vac.error?.message||null);
       DB.empresas=emp.data?.map(r=>r.data)||[];
       DB.vacantes=vac.data?.map(r=>r.data)||[];
       DB.candidatos=cand.data?.map(r=>r.data)||[];
@@ -1793,6 +1800,8 @@ function getCandEtapaIdx(c){
 function nav(p){showPage(p)}
 function showPage(p){
   console.log('showPage llamado con:', p);
+  console.log('USUARIO ACTUAL (auth):', JSON.stringify({id:currentUser?.id,email:currentUser?.email}));
+  console.log('USUARIO ACTUAL (app):', JSON.stringify(currentUserData));
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   const pg=document.getElementById('page-'+p);
@@ -2553,12 +2562,14 @@ async function saveVacante(){
       DB.vacantes[i]={...DB.vacantes[i],...data,folio,estado:DB.vacantes[i].estado||'Abierta'};
       await saveRecord('vacantes',DB.vacantes[i]);
       showToast('Vacante actualizada ✓');
+      console.log('VACANTE GUARDADA, reclutador_id:', reclutador_id, '| _prevRec:', _prevRec, '| cambió:', reclutador_id!==_prevRec);
       if(reclutador_id && reclutador_id!==_prevRec) notificarReclutador(DB.vacantes[i]);
     } else {
       const _nv={id:uid(),...data};
       DB.vacantes.push(_nv);
       await saveRecord('vacantes',DB.vacantes[DB.vacantes.length-1]);
       showToast('Vacante creada ✓');
+      console.log('VACANTE GUARDADA, reclutador_id:', reclutador_id);
       if(reclutador_id) notificarReclutador(_nv);
     }
     const _lv = id ? DB.vacantes.find(x=>x.id===id) : DB.vacantes[DB.vacantes.length-1];
@@ -2571,9 +2582,11 @@ async function saveVacante(){
 }
 
 function notificarReclutador(vacante) {
-  if(!vacante?.reclutador_id) return;
+  console.log('NOTIFICAR RECLUTADOR LLAMADA:', vacante);
+  if(!vacante?.reclutador_id) { console.warn('NOTIFICAR: sin reclutador_id'); return; }
   const rec = DB.reclutadores.find(r => r.id === vacante.reclutador_id);
-  if(!rec?.email) return;
+  console.log('NOTIFICAR: reclutador en DB:', rec, '| DB.reclutadores total:', DB.reclutadores.length);
+  if(!rec?.email) { console.warn('NOTIFICAR: rec sin email', rec); return; }
   const emp = DB.empresas.find(e => e.id === vacante.empresa_id) || {};
   sbClient.functions.invoke('notify-reclutador', {
     body: {
@@ -3106,13 +3119,15 @@ function renderPipeline(){
   ['flt-pip-emp','flt-pip-rec','flt-pip-vac'].forEach(id=>{
     const sel=document.getElementById(id);if(!sel)return;
     const cur=sel.value;
-    if(id==='flt-pip-emp'){sel.innerHTML='<option value="">Todas las empresas</option>';DB.empresas.forEach(e=>sel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
+    const _empIdPip = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
+    if(id==='flt-pip-emp'){sel.innerHTML='<option value="">Todas las empresas</option>';(_empIdPip?DB.empresas.filter(e=>e.id===_empIdPip):DB.empresas).forEach(e=>sel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
     if(id==='flt-pip-rec'){sel.innerHTML='<option value="">Todos los reclutadores</option>';DB.reclutadores.forEach(r=>sel.innerHTML+=`<option value="${r.id}" ${cur===r.id?'selected':''}>${r.nombre}</option>`);}
-    if(id==='flt-pip-vac'){sel.innerHTML='<option value="">Todas las vacantes</option>';DB.vacantes.forEach(v=>sel.innerHTML+=`<option value="${v.id}" ${cur===v.id?'selected':''}>${v.nombre}</option>`);}
+    if(id==='flt-pip-vac'){sel.innerHTML='<option value="">Todas las vacantes</option>';(_empIdPip?DB.vacantes.filter(v=>v.empresa_id===_empIdPip):DB.vacantes).forEach(v=>sel.innerHTML+=`<option value="${v.id}" ${cur===v.id?'selected':''}>${v.nombre}</option>`);}
   });
   const _recIdP = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
-  const _vacsP = _recIdP ? DB.vacantes.filter(v=>v.reclutador_id===_recIdP) : DB.vacantes;
-  let cands = _recIdP ? DB.candidatos.filter(c=>_vacsP.find(v=>v.id===c.vacante_id)) : DB.candidatos;
+  const _empIdP = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
+  const _vacsP = _recIdP ? DB.vacantes.filter(v=>v.reclutador_id===_recIdP) : _empIdP ? DB.vacantes.filter(v=>v.empresa_id===_empIdP) : DB.vacantes;
+  let cands = (_recIdP||_empIdP) ? DB.candidatos.filter(c=>_vacsP.find(v=>v.id===c.vacante_id)) : DB.candidatos;
   if(fEmp){const vids=_vacsP.filter(v=>v.empresa_id===fEmp).map(v=>v.id);cands=cands.filter(c=>vids.includes(c.vacante_id));}
   if(fRec)cands=cands.filter(c=>c.reclutador_id===fRec);
   if(fVac)cands=cands.filter(c=>c.vacante_id===fVac);
@@ -3379,7 +3394,8 @@ function renderVacantesTable(){
   const empSel=document.getElementById('flt-vac-emp');
   if(empSel){const cur=empSel.value;empSel.innerHTML='<option value="">Todas las empresas</option>';(currentUserData?.rol==='rh_cliente'?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).forEach(e=>empSel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
   const _recIdV = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
-  let list = _recIdV ? DB.vacantes.filter(v=>v.reclutador_id===_recIdV) : DB.vacantes;
+  const _empIdV = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
+  let list = _recIdV ? DB.vacantes.filter(v=>v.reclutador_id===_recIdV) : _empIdV ? DB.vacantes.filter(v=>v.empresa_id===_empIdV) : DB.vacantes;
   if(q)list=list.filter(v=>v.nombre.toLowerCase().includes(q.toLowerCase()));
   if(empId)list=list.filter(v=>v.empresa_id===empId);
   if(est)list=list.filter(v=>v.estado===est);
@@ -3627,15 +3643,17 @@ function renderCandidatosTable(){
   const empSel=document.getElementById('flt-cand-emp');
   if(empSel){const cur=empSel.value;empSel.innerHTML='<option value="">Todas las empresas</option>';(currentUserData?.rol==='rh_cliente'?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).forEach(e=>empSel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
   const vacSel=document.getElementById('flt-cand-vac');
-  if(vacSel){const cur=vacSel.value;vacSel.innerHTML='<option value="">Todas las vacantes</option>';DB.vacantes.forEach(v=>vacSel.innerHTML+=`<option value="${v.id}" ${cur===v.id?'selected':''}>${v.nombre}</option>`);}
+  const _empIdCVac = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
+  if(vacSel){const cur=vacSel.value;vacSel.innerHTML='<option value="">Todas las vacantes</option>';(_empIdCVac?DB.vacantes.filter(v=>v.empresa_id===_empIdCVac):DB.vacantes).forEach(v=>vacSel.innerHTML+=`<option value="${v.id}" ${cur===v.id?'selected':''}>${v.nombre}</option>`);}
   // collect all etapas
   const allEtapas=[...new Set(DB.candidatos.map(c=>c.etapa))];
   const etapaSel=document.getElementById('flt-cand-etapa');
   if(etapaSel){const cur=etapaSel.value;etapaSel.innerHTML='<option value="">Todas las etapas</option>';allEtapas.forEach(e=>etapaSel.innerHTML+=`<option value="${e}" ${cur===e?'selected':''}>${e}</option>`);}
 
   const _recIdC = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
-  const _vacsC = _recIdC ? DB.vacantes.filter(v=>v.reclutador_id===_recIdC) : DB.vacantes;
-  let list = _recIdC ? DB.candidatos.filter(c=>_vacsC.find(v=>v.id===c.vacante_id)) : DB.candidatos;
+  const _empIdC = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
+  const _vacsC = _recIdC ? DB.vacantes.filter(v=>v.reclutador_id===_recIdC) : _empIdC ? DB.vacantes.filter(v=>v.empresa_id===_empIdC) : DB.vacantes;
+  let list = (_recIdC||_empIdC) ? DB.candidatos.filter(c=>_vacsC.find(v=>v.id===c.vacante_id)) : DB.candidatos;
   if(q)list=list.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
   if(empId){const vids=_vacsC.filter(v=>v.empresa_id===empId).map(v=>v.id);list=list.filter(c=>vids.includes(c.vacante_id));}
   if(vacId)list=list.filter(c=>c.vacante_id===vacId);
@@ -3768,6 +3786,7 @@ async function saveCandEtapa(cid){
     if(el)c['f_'+i]=el.value||null;
   });
   openCandRows.delete(cid);
+  await saveRecord('candidatos', c);
   await logActivity('Cambio de etapa','candidatos',cid,`${_candEtapaAnterior.nombre||cid}: "${etapaAntes}" → "${etapa}"`,null,null);
   showToast('Guardado ✓');
   renderCandidatosTable();
@@ -5143,8 +5162,9 @@ function renderContratados(){
   const page = document.getElementById('page-contratados');
   if(!page) return;
   const recId = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
+  const empIdC = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
   const vacsCerradas = DB.vacantes.filter(v=>v.estado==='Cubierta');
-  const vacsVis = recId ? vacsCerradas.filter(v=>v.reclutador_id===recId) : vacsCerradas;
+  const vacsVis = recId ? vacsCerradas.filter(v=>v.reclutador_id===recId) : empIdC ? vacsCerradas.filter(v=>v.empresa_id===empIdC) : vacsCerradas;
   const empFiltro = page._empFiltro||'';
   const list = empFiltro ? vacsVis.filter(v=>v.empresa_id===empFiltro) : vacsVis;
 

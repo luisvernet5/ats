@@ -592,7 +592,7 @@ input[type=date]{color:var(--text)}
       <input type="hidden" id="cand-id">
       <input type="hidden" id="cand-parent-id">
       <!-- Wizard: barra de progreso -->
-      <div id="cand-wizard-bar" style="display:flex;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+      <div id="cand-wizard-bar" style="display:none;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
         <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer" onclick="candWizardSetStep(1)">
           <div id="cw-dot-1" style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">1</div>
           <span id="cw-lbl-1" style="font-size:11px;font-weight:700;color:var(--accent);white-space:nowrap">Datos candidato</span>
@@ -2706,7 +2706,7 @@ let _candModalMode='new'; // 'new' | 'edit' | 'entrevista' | 'referencias'
 function _updateCandModalMode(){
   const isWizard=_candModalMode==='new';
   const bar=document.getElementById('cand-wizard-bar');
-  if(bar)bar.style.display=isWizard?'':'none';
+  if(bar)bar.style.display=isWizard?'flex':'none';
   const titles={new:'Nuevo Candidato',edit:'Editar candidato',entrevista:'Entrevista',referencias:'Referencias'};
   document.getElementById('mod-cand-title').textContent=titles[_candModalMode]||'';
   const saveTexts={new:'Guardar candidato',edit:'Guardar datos',entrevista:'Guardar entrevista',referencias:'Guardar referencias'};

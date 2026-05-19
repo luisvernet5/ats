@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{--bg:#F4F4F8;--surface:#FFFFFF;--surface2:#EBEBF2;--surface3:#E0E0EA;--border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);--accent:#2AAADE;--accent2:#1B7FAF;--glow:rgba(42,170,222,0.10);--text:#16162A;--text2:#4A4A6A;--text3:#8A8AA8;--green:#16A34A;--amber:#D97706;--red:#DC2626;--purple:#9333EA;--orange:#EA580C;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;--r:10px;--rl:14px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -628,6 +629,9 @@ input[type=date]{color:var(--text)}
       </div>
       <!-- Paso 2: Guía de Entrevista -->
       <div id="cand-step-2" style="display:none">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+          <button onclick="exportEntrevistaPDF()" style="padding:6px 14px;border:1.5px solid #2AAADE;color:#2AAADE;background:#fff;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;transition:all .15s" onmouseover="this.style.background='rgba(42,170,222,.08)'" onmouseout="this.style.background='#fff'">&#128196; Exportar PDF</button>
+        </div>
         <!-- I. Datos personales -->
         <div class="sep">I — Datos personales</div>
         <div class="fr">
@@ -840,9 +844,15 @@ input[type=date]{color:var(--text)}
       </div>
       <!-- Paso 3: Referencias -->
       <div id="cand-step-3" style="display:none">
-        <div style="display:flex;border-bottom:2px solid var(--border);margin-bottom:20px">
-          <button id="ref-tab-lab" onclick="refTabSwitch('lab')" style="padding:9px 20px;border:none;background:none;font-size:13px;font-weight:700;color:var(--accent);border-bottom:3px solid var(--accent);margin-bottom:-2px;cursor:pointer">Referencias Laborales</button>
-          <button id="ref-tab-per" onclick="refTabSwitch('per')" style="padding:9px 20px;border:none;background:none;font-size:13px;font-weight:400;color:var(--text3);border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer">Referencias Personales</button>
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--border);margin-bottom:20px">
+          <div>
+            <button id="ref-tab-lab" onclick="refTabSwitch('lab')" style="padding:9px 20px;border:none;background:none;font-size:13px;font-weight:700;color:var(--accent);border-bottom:3px solid var(--accent);margin-bottom:-2px;cursor:pointer">Referencias Laborales</button>
+            <button id="ref-tab-per" onclick="refTabSwitch('per')" style="padding:9px 20px;border:none;background:none;font-size:13px;font-weight:400;color:var(--text3);border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer">Referencias Personales</button>
+          </div>
+          <div style="display:flex;gap:6px;margin-bottom:2px">
+            <button onclick="exportRefLaboralesPDF()" style="padding:5px 12px;border:1.5px solid #2AAADE;color:#2AAADE;background:#fff;border-radius:6px;cursor:pointer;font-size:11px;font-weight:500;transition:all .15s" onmouseover="this.style.background='rgba(42,170,222,.08)'" onmouseout="this.style.background='#fff'">&#128196; Laborales</button>
+            <button onclick="exportRefPersonalesPDF()" style="padding:5px 12px;border:1.5px solid #2AAADE;color:#2AAADE;background:#fff;border-radius:6px;cursor:pointer;font-size:11px;font-weight:500;transition:all .15s" onmouseover="this.style.background='rgba(42,170,222,.08)'" onmouseout="this.style.background='#fff'">&#128196; Personales</button>
+          </div>
         </div>
         <div id="ref-panel-lab">
           <div id="ref-lab-list"></div>
@@ -5901,6 +5911,240 @@ sbClient.auth.getSession().then(async ({ data: { session } }) => {
 });
 
 } // cierre del else de invite
+
+/* ============================================================
+   PDF EXPORT — ENTREVISTA & REFERENCIAS
+   ============================================================ */
+async function urlToBase64(url) {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  } catch(e) { return null; }
+}
+
+function _pdfHeader(doc, titulo, candNombre, emp, extra) {
+  const W=216, M=20;
+  let y = M;
+  return Promise.resolve().then(async () => {
+    if(emp?.logo) {
+      const b64 = await urlToBase64(emp.logo);
+      if(b64) { try { doc.addImage(b64,'PNG',M,y,28,28); } catch(e){} }
+    }
+    doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(42,170,222);
+    doc.text(titulo, W/2, y+10, {align:'center'});
+    doc.setFontSize(10); doc.setTextColor(70); doc.setFont('helvetica','normal');
+    doc.text(candNombre, W/2, y+18, {align:'center'});
+    if(extra) { doc.setFontSize(8); doc.setTextColor(120); doc.text(extra, W-M, y+18, {align:'right'}); }
+    y += 30;
+    doc.setDrawColor(42,170,222); doc.setLineWidth(0.5); doc.line(M,y,W-M,y);
+    return y + 7;
+  });
+}
+
+async function exportEntrevistaPDF() {
+  if(!window.jspdf) { showToast('jsPDF no disponible','err'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'p',unit:'mm',format:'letter'});
+  const W=216, M=20, CW=176;
+  const val = id => (document.getElementById(id)?.value||'').trim();
+  const radio = n => document.querySelector(`input[name="${n}"]:checked`)?.value||'';
+  const chks = (ids,labels) => ids.map((id,i)=>document.getElementById(id)?.checked?labels[i]:null).filter(Boolean).join(', ')||'—';
+  const candNombre = val('cand-nombre')||'Candidato';
+  const empId = document.getElementById('cand-empresa')?.value;
+  const vacId = document.getElementById('cand-vacante')?.value;
+  const emp = DB.empresas.find(e=>e.id===empId)||{};
+  const vac = DB.vacantes.find(v=>v.id===vacId)||{};
+  const fechaEnt = val('ei-fecha-entrevista')||today();
+  const extra = `Fecha: ${fechaEnt}${val('ei-firma-entrevistador')?'  |  '+val('ei-firma-entrevistador'):''}`;
+  const subT = vac.nombre?(vac.nombre+(emp.nombre?' — '+emp.nombre:'')):(emp.nombre||'');
+
+  let y = await _pdfHeader(doc, 'GUÍA DE ENTREVISTA LABORAL', candNombre+(subT?'\n'+subT:''), emp, extra);
+
+  const chkPg = (n=10) => { if(y+n>258){doc.addPage();y=M;} };
+  const sec = t => {
+    chkPg(14); doc.setFillColor(232,248,252); doc.rect(M,y,CW,7,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(42,170,222);
+    doc.text(t,M+2,y+5); doc.setTextColor(0); y+=10;
+  };
+  const r2 = (l1,v1,l2,v2) => {
+    chkPg(10); const hw=CW/2-3;
+    doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(100);
+    doc.text(l1+':',M,y);
+    doc.setFont('helvetica','normal'); doc.setTextColor(30);
+    const w1=doc.splitTextToSize(v1||'_______________',hw); doc.text(w1,M,y+4);
+    if(l2!==undefined){
+      doc.setFont('helvetica','bold'); doc.setTextColor(100); doc.text(l2+':',M+CW/2+2,y);
+      doc.setFont('helvetica','normal'); doc.setTextColor(30);
+      const w2=doc.splitTextToSize(v2||'_______________',hw); doc.text(w2,M+CW/2+2,y+4);
+      y+=Math.max(w1.length,w2.length)*4+6;
+    } else { y+=w1.length*4+6; }
+  };
+  const r1 = (l,v) => {
+    chkPg(10); doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(100);
+    doc.text(l+':',M,y); doc.setFont('helvetica','normal'); doc.setTextColor(30);
+    const w=doc.splitTextToSize(v||'_______________',CW); doc.text(w,M,y+4); y+=w.length*4+6;
+  };
+
+  sec('I — Datos Personales');
+  r2('Fecha de nacimiento',val('ei-fecha-nac'),'Edad',val('ei-edad'));
+  r2('Estado civil',val('ei-estado-civil'),'Domicilio',val('ei-direccion'));
+
+  sec('II — Formación Académica');
+  r2('Nivel de estudios',val('ei-nivel-estudios'),'Institución',val('ei-institucion'));
+  r1('Certificados / Cursos',val('ei-certificados'));
+
+  sec('III — Experiencia Laboral');
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(60);doc.text('Empleo más reciente',M,y);y+=5;doc.setTextColor(0);
+  r2('Puesto',val('ei-emp-rec-puesto'),'Empresa',val('ei-emp-rec-empresa'));
+  r2('Inicio',val('ei-emp-rec-inicio'),'Término',val('ei-emp-rec-termino'));
+  r1('Responsabilidades',val('ei-emp-rec-resp'));
+  r1('Logros principales',val('ei-emp-rec-logros'));
+  chkPg(8);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(60);doc.text('Empleo anterior',M,y);y+=5;doc.setTextColor(0);
+  r2('Puesto',val('ei-emp-ant-puesto'),'Empresa',val('ei-emp-ant-empresa'));
+  r2('Inicio',val('ei-emp-ant-inicio'),'Término',val('ei-emp-ant-termino'));
+  r1('Responsabilidades',val('ei-emp-ant-resp'));
+  r1('Logros principales',val('ei-emp-ant-logros'));
+
+  sec('IV — Competencias y Habilidades');
+  const idiomas=chks(['ei-idioma-espanol','ei-idioma-ingles','ei-idioma-frances','ei-idioma-aleman','ei-idioma-otros'],['Español','Inglés','Francés','Alemán','Otros']);
+  const habs=chks(['ei-hab-liderazgo','ei-hab-equipo','ei-hab-conflictos','ei-hab-organizacion','ei-hab-empatia'],['Liderazgo','Trabajo en equipo','Manejo de conflictos','Organización','Empatía']);
+  r2('Idiomas',idiomas,'Herramientas tecnológicas',val('ei-herramientas'));
+  r1('Habilidades',habs);
+
+  sec('V — Intereses y Expectativas');
+  r2('Área de interés',val('ei-area-interes'),'Puesto aspirado',val('ei-puesto-aspirado'));
+  r2('Expectativa salarial',val('ei-expectativa-salarial'),'Disponibilidad viajar',radio('ei-viajar'));
+  r2('Cambio de residencia',radio('ei-residencia'),'','');
+  r1('Metas a corto/mediano plazo',val('ei-metas'));
+
+  sec('VI — Ámbito Familiar');
+  r2('Dependientes económicos',radio('ei-dependientes'),'','');
+  if(radio('ei-dependientes')==='Sí'){r2('Información dependientes',val('ei-dependientes-info'),'Núcleo familiar',val('ei-nucleo-familiar'));}
+
+  sec('VII — Créditos');
+  r2('Crédito INFONAVIT',radio('ei-infonavit'),'Retención mensual',radio('ei-infonavit')==='Sí'?val('ei-infonavit-retencion'):'N/A');
+  r2('Crédito FONACOT',radio('ei-fonacot'),'Retención mensual',radio('ei-fonacot')==='Sí'?val('ei-fonacot-retencion'):'N/A');
+
+  sec('VIII — Observaciones del Entrevistador');
+  r1('Impresión general',val('ei-impresion-general'));
+  r1('Áreas de oportunidad',val('ei-areas-oportunidad'));
+  r2('Recomendación',val('ei-recomendacion'),'Firma entrevistador',val('ei-firma-entrevistador'));
+
+  const fname=candNombre.replace(/[^a-zA-Z0-9]/g,'_');
+  doc.save(`Entrevista_${fname}_${fechaEnt}.pdf`);
+  showToast('PDF generado ✓');
+}
+
+async function exportRefLaboralesPDF() {
+  if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
+  const W=216,M=20,CW=176;
+  const candNombre=(document.getElementById('cand-nombre')?.value||'Candidato').trim();
+  const empId=document.getElementById('cand-empresa')?.value;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  let y=await _pdfHeader(doc,'REFERENCIAS LABORALES',candNombre,emp,`Fecha: ${today()}`);
+
+  const cards=document.querySelectorAll('#ref-lab-list .ref-card');
+  const chkPg=(n=10)=>{if(y+n>258){doc.addPage();y=M;}};
+  const r2=(l1,v1,l2,v2)=>{
+    chkPg(10);const hw=CW/2-3;
+    doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.setTextColor(100);doc.text(l1+':',M,y);
+    doc.setFont('helvetica','normal');doc.setTextColor(30);
+    const w1=doc.splitTextToSize(v1||'—',hw);doc.text(w1,M,y+4);
+    if(l2){doc.setFont('helvetica','bold');doc.setTextColor(100);doc.text(l2+':',M+CW/2+2,y);
+      doc.setFont('helvetica','normal');doc.setTextColor(30);
+      const w2=doc.splitTextToSize(v2||'—',hw);doc.text(w2,M+CW/2+2,y+4);
+      y+=Math.max(w1.length,w2.length)*4+6;}else{y+=w1.length*4+6;}
+  };
+  if(!cards.length){doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(150);doc.text('Sin referencias laborales',W/2,y,{align:'center'});}
+  cards.forEach((card,idx)=>{
+    const n=card.id.replace('ref-lab-card-','');
+    const g=id=>document.getElementById(id)?.value||'';
+    chkPg(50);
+    doc.setFillColor(232,248,252);doc.setDrawColor(42,170,222);doc.rect(M,y,CW,7,'FD');
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(42,170,222);
+    doc.text(`Referencia ${idx+1}`,M+2,y+5);doc.setTextColor(0);y+=10;
+    r2('Candidato',g(`ref-lab-${n}-candidato`),'Empresa',g(`ref-lab-${n}-empresa`));
+    r2('Nombre contacto',g(`ref-lab-${n}-contacto`),'Teléfono',g(`ref-lab-${n}-telefono`));
+    r2('Puesto del contacto',g(`ref-lab-${n}-puesto-contacto`),'Tiempo laborado',g(`ref-lab-${n}-tiempo-laborado`));
+    r2('Puestos ocupados',g(`ref-lab-${n}-puestos`),'Causa de separación',g(`ref-lab-${n}-separacion`));
+    const desemp=g(`ref-lab-${n}-desempeno`);
+    if(desemp){chkPg(10);doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(100);doc.text('¿Cómo describe su desempeño?:',M,y);doc.setFont('helvetica','normal');doc.setTextColor(30);const w=doc.splitTextToSize(desemp,CW);y+=4;doc.text(w,M,y);y+=w.length*4+4;}
+    // Competency table
+    chkPg(14+_REF_COMP.length*5.5);
+    doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(100);doc.text('Gráfica de actuación:',M,y);y+=4;
+    const cW=52,nW=(CW-cW)/_REF_NIV.length;
+    doc.setFillColor(232,248,252);doc.rect(M,y,CW,6,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(42,170,222);
+    doc.text('Competencia',M+1,y+4);
+    _REF_NIV.forEach((niv,i)=>doc.text(niv,M+cW+i*nW+nW/2,y+4,{align:'center'}));
+    y+=6;
+    _REF_COMP.forEach((comp,ci)=>{
+      chkPg(6);
+      const key=_normKey(comp);
+      const sel=card.querySelector(`input[name="ref-lab-${n}-${key}"]:checked`)?.value||'';
+      if(ci%2===0){doc.setFillColor(250,250,252);doc.rect(M,y,CW,5.5,'F');}
+      doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(30);doc.text(comp,M+1,y+3.5);
+      _REF_NIV.forEach((niv,i)=>{if(niv===sel){doc.setFont('helvetica','bold');doc.setTextColor(42,170,222);doc.text('✓',M+cW+i*nW+nW/2,y+3.5,{align:'center'});doc.setFont('helvetica','normal');doc.setTextColor(30);}});
+      y+=5.5;
+    });
+    const obs=g(`ref-lab-${n}-obs`);
+    if(obs){chkPg(12);y+=3;doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(100);doc.text('Observaciones:',M,y);doc.setFont('helvetica','normal');doc.setTextColor(30);const w=doc.splitTextToSize(obs,CW);y+=4;doc.text(w,M,y);y+=w.length*4;}
+    y+=10;
+  });
+  doc.save(`RefLaborales_${candNombre.replace(/[^a-zA-Z0-9]/g,'_')}_${today()}.pdf`);
+  showToast('PDF referencias laborales generado ✓');
+}
+
+async function exportRefPersonalesPDF() {
+  if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
+  const W=216,M=20,CW=176;
+  const candNombre=(document.getElementById('cand-nombre')?.value||'Candidato').trim();
+  const empId=document.getElementById('cand-empresa')?.value;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  let y=await _pdfHeader(doc,'REFERENCIAS PERSONALES',candNombre,emp,`Fecha: ${today()}`);
+
+  const cards=document.querySelectorAll('#ref-per-list .ref-card');
+  const chkPg=(n=10)=>{if(y+n>258){doc.addPage();y=M;}};
+  const r2=(l1,v1,l2,v2)=>{
+    chkPg(10);const hw=CW/2-3;
+    doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.setTextColor(100);doc.text(l1+':',M,y);
+    doc.setFont('helvetica','normal');doc.setTextColor(30);
+    const w1=doc.splitTextToSize(v1||'—',hw);doc.text(w1,M,y+4);
+    if(l2){doc.setFont('helvetica','bold');doc.setTextColor(100);doc.text(l2+':',M+CW/2+2,y);
+      doc.setFont('helvetica','normal');doc.setTextColor(30);
+      const w2=doc.splitTextToSize(v2||'—',hw);doc.text(w2,M+CW/2+2,y+4);
+      y+=Math.max(w1.length,w2.length)*4+6;}else{y+=w1.length*4+6;}
+  };
+  const r1=(l,v)=>{chkPg(10);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.setTextColor(100);doc.text(l+':',M,y);doc.setFont('helvetica','normal');doc.setTextColor(30);const w=doc.splitTextToSize(v||'—',CW);doc.text(w,M,y+4);y+=w.length*4+6;};
+  if(!cards.length){doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(150);doc.text('Sin referencias personales',W/2,y,{align:'center'});}
+  cards.forEach((card,idx)=>{
+    const n=card.id.replace('ref-per-card-','');
+    const g=id=>document.getElementById(id)?.value||'';
+    const rad=name=>card.querySelector(`input[name="${name}"]:checked`)?.value||'—';
+    chkPg(50);
+    doc.setFillColor(232,248,252);doc.setDrawColor(42,170,222);doc.rect(M,y,CW,7,'FD');
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(42,170,222);
+    doc.text(`Referencia ${idx+1}`,M+2,y+5);doc.setTextColor(0);y+=10;
+    r2('Nombre del contacto',g(`ref-per-${n}-contacto`),'Teléfono',g(`ref-per-${n}-telefono`));
+    r2('Ocupación',g(`ref-per-${n}-ocupacion`),'Años de conocerlo',g(`ref-per-${n}-anos`));
+    r1('¿Cómo describe al candidato?',g(`ref-per-${n}-descripcion`));
+    r2('¿Lo recomienda para trabajar?',rad(`ref-per-${n}-recomienda`),'¿Confianza para cuidar negocio?',rad(`ref-per-${n}-confianza`));
+    const obs=g(`ref-per-${n}-obs`);
+    if(obs){r1('Observaciones',obs);}
+    y+=8;
+  });
+  doc.save(`RefPersonales_${candNombre.replace(/[^a-zA-Z0-9]/g,'_')}_${today()}.pdf`);
+  showToast('PDF referencias personales generado ✓');
+}
 </script>
 </body>
 </html>

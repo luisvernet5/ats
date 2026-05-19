@@ -539,7 +539,7 @@ input[type=date]{color:var(--text)}
         <div class="fg"><label>Proyecto</label><select id="vac-proyecto"><option value="">Sin asignar</option></select></div>
       </div>
       <div class="fr">
-        <div class="fg"><label>Reclutador asignado *</label><select id="vac-reclutador"><option value="">Seleccionar...</option></select></div>
+        <div class="fg"><label>Reclutador asignado</label><select id="vac-reclutador"><option value="">Sin asignar</option></select></div>
         <div class="fg"><label>Fecha de apertura *</label><input type="date" id="vac-fecha"></div>
       </div>
       <div class="fr">
@@ -2197,9 +2197,13 @@ function openVacanteModal(id=null,preEmpId=null){
   } else {
     empSel.disabled = false;
   }
-  populateRecSel('vac-reclutador','');
-  if(currentUserData?.rol==='reclutador' && currentUserData?.reclutador_id)
-    document.getElementById('vac-reclutador').value = currentUserData.reclutador_id;
+  const _recSel=document.getElementById('vac-reclutador');
+  if(currentUserData?.rol==='reclutador' && currentUserData?.reclutador_id){
+    const _myRec=DB.reclutadores.find(x=>x.id===currentUserData.reclutador_id);
+    _recSel.innerHTML=`<option value="">Sin asignar</option>${_myRec?`<option value="${_myRec.id}" selected>${_myRec.nombre}</option>`:''}`;
+  } else {
+    populateRecSel('vac-reclutador','');
+  }
   if(preEmpId)autofillVacRec();
   if(id){
     const v=DB.vacantes.find(x=>x.id===id);
@@ -2270,9 +2274,9 @@ function toggleVacSustitucion(){
 async function saveVacante(){
   const nombre=(document.getElementById('vac-nombre')?.value||'').trim();
   const empresa_id=document.getElementById('vac-empresa')?.value||'';
-  const reclutador_id=document.getElementById('vac-reclutador')?.value||'';
+  const reclutador_id=document.getElementById('vac-reclutador')?.value||null;
   const fecha_apertura=document.getElementById('vac-fecha')?.value||'';
-  if(!nombre||!empresa_id||!reclutador_id||!fecha_apertura){showToast('Completa campos obligatorios','err');return}
+  if(!nombre||!empresa_id||!fecha_apertura){showToast('Completa campos obligatorios','err');return}
   const id=document.getElementById('vac-id')?.value||'';
   const aplica_garantia=document.getElementById('vac-aplica-garantia')?.checked||false;
   const tipo_vacante=document.getElementById('vac-tipo')?.value||'';

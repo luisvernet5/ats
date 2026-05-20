@@ -5083,7 +5083,7 @@ async function showHCTab(tab){
       const vacantes        = auth - actual;
       const statusPrev      = vacantes - contratados;
       const pct             = auth>0 ? ((statusPrev/auth)*100).toFixed(2)+'%' : '—';
-      const statusCierre    = statusPrev - bajas;
+      const statusCierre    = statusPrev + bajas;
       const plantillaCierre = auth - statusCierre - detenidas;
       tAuth+=auth; tActual+=actual; tVac+=vacantes; tCartera+=cartera;
       tEntrev+=entrevista; tValid+=validacion; tProc+=procCont;
@@ -5477,6 +5477,7 @@ async function saveHCProyecto(empId){
   const id = empId+'-'+proyecto.replace(/\s+/g,'').substring(0,20)+'-'+Date.now();
   const { error } = await sbClient.from('hc_plantilla').upsert({
     id, empresa_id:empId, proyecto, plantilla_autorizada:auth,
+    orden: (document.querySelectorAll('#hc-resumen-table tbody tr[id^="hc-tr-"]').length) + 1,
     updated_at:new Date().toISOString()
   });
   if(error) showToast('Error: '+error.message,'err');

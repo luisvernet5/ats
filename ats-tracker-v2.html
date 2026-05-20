@@ -1707,14 +1707,14 @@ async function loadDB(){
           : sbClient.from('vacantes').select('*')),
         sbClient.from('candidatos').select('*'),
         sbClient.from('reclutadores').select('*'),
-        sbClient.from('referencias').select('candidato_id'),
+        sbClient.from('referencias').select('candidato_id,nombre_contacto'),
       ]);
       console.log('[loadDB] vacantes cargadas:', vac.data?.length, '| error:', vac.error?.message||null);
       DB.empresas=emp.data?.map(r=>r.data)||[];
       DB.vacantes=vac.data?.map(r=>r.data)||[];
       DB.candidatos=cand.data?.map(r=>r.data)||[];
       DB.reclutadores=rec.data?.map(r=>r.data)||[];
-      _candConRefs=new Set((refs.data||[]).map(r=>r.candidato_id));
+      _candConRefs=new Set((refs.data||[]).filter(r=>r.nombre_contacto?.trim()).map(r=>r.candidato_id));
     }
   }catch(e){
     console.error('Error:',e);

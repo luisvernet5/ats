@@ -2711,9 +2711,8 @@ function notificarReclutador(vacante) {
 let _candModalMode='new'; // 'new' | 'edit' | 'entrevista' | 'referencias'
 let _candConRefs=new Set();
 function _updateCandModalMode(){
-  const isWizard=_candModalMode==='new';
   const bar=document.getElementById('cand-wizard-bar');
-  if(bar)bar.style.display=isWizard?'flex':'none';
+  if(bar)bar.style.display='none';
   const titles={new:'Nuevo Candidato',edit:'Editar candidato',entrevista:'Entrevista',referencias:'Referencias'};
   document.getElementById('mod-cand-title').textContent=titles[_candModalMode]||'';
   const saveTexts={new:'Guardar candidato',edit:'Guardar datos',entrevista:'Guardar entrevista',referencias:'Guardar referencias'};

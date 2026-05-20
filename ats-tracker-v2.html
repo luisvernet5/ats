@@ -2764,18 +2764,22 @@ async function openReferenciasModal(id){
   } else {
     addRefLaboral();
   }
-  pers.forEach(r=>{
+  if(pers.length){
+    pers.forEach(r=>{
+      addRefPersonal();
+      const n=_refPerNextId-1;
+      _setField(`ref-per-${n}-contacto`,r.nombre_contacto);
+      _setField(`ref-per-${n}-telefono`,r.telefono);
+      _setField(`ref-per-${n}-ocupacion`,r.empresa);
+      _setField(`ref-per-${n}-anos`,r.anos_conocerlo);
+      _setField(`ref-per-${n}-descripcion`,r.descripcion_desempeno);
+      _setField(`ref-per-${n}-obs`,r.observaciones);
+      _setRadio(`ref-per-${n}-recomienda`,r.recomienda);
+      _setRadio(`ref-per-${n}-confianza`,r.confianza_negocio);
+    });
+  } else {
     addRefPersonal();
-    const n=_refPerNextId-1;
-    _setField(`ref-per-${n}-contacto`,r.nombre_contacto);
-    _setField(`ref-per-${n}-telefono`,r.telefono);
-    _setField(`ref-per-${n}-ocupacion`,r.empresa);
-    _setField(`ref-per-${n}-anos`,r.anos_conocerlo);
-    _setField(`ref-per-${n}-descripcion`,r.descripcion_desempeno);
-    _setField(`ref-per-${n}-obs`,r.observaciones);
-    _setRadio(`ref-per-${n}-recomienda`,r.recomienda);
-    _setRadio(`ref-per-${n}-confianza`,r.confianza_negocio);
-  });
+  }
   _candModalMode='referencias';
   candWizardSetStep(3);
   _updateCandModalMode();

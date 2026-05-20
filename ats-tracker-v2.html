@@ -5016,6 +5016,8 @@ function toggleGarantiaRow(id){
 /* ============================================================
    HEADCOUNT
    ============================================================ */
+let currentHCEmpId='', currentHCSemana=0, currentHCAnio=0;
+
 async function renderHeadCount(){
   const page = document.getElementById('page-headcount');
   if(!page) return;
@@ -5055,23 +5057,29 @@ async function showHCTab(tab){
   }
 
   else if(tab==='grafica'){
-    console.log('grafica empId:', empId, 'semana:', semana||'(vacío — consultará todas las semanas)');
-    const { data: plantilla } = await sbClient.from('hc_plantilla').select('*').eq('empresa_id', empId);
-    let resumenQ = sbClient.from('hc_resumen').select('*').eq('empresa_id', empId);
-    if(semana) resumenQ = resumenQ.eq('semana', semana);
+    const gEmpId  = currentHCEmpId  || empId;
+    const gSemana = currentHCSemana || parseInt(semana)||0;
+    const gAnio   = currentHCAnio   || new Date().getFullYear();
+    console.log('grafica → empId:', gEmpId, '| semana:', gSemana, '| anio:', gAnio);
+
+    const gEmp = DB.empresas.find(x=>x.id===gEmpId)||{};
+    const { data: plantilla } = await sbClient.from('hc_plantilla').select('*').eq('empresa_id', gEmpId).order('orden',{ascending:true});
+    let resumenQ = sbClient.from('hc_resumen').select('*').eq('empresa_id', gEmpId);
+    if(gSemana) resumenQ = resumenQ.eq('semana', gSemana);
+    if(gAnio)   resumenQ = resumenQ.eq('anio',   gAnio);
     const { data: resumen } = await resumenQ;
     const resumenMap = {};
     (resumen||[]).forEach(r=>{ if(!resumenMap[r.proyecto]) resumenMap[r.proyecto]=r; });
 
-    const labels = (plantilla||[]).map(p=>`"${p.proyecto.substring(0,15)}"`).join(',');
-    const dataAuth = (plantilla||[]).map(p=>p.plantilla_autorizada||0).join(',');
-    const dataActual = (plantilla||[]).map(p=>(resumenMap[p.proyecto]?.actual||0)).join(',');
+    const labels    = (plantilla||[]).map(p=>`"${p.proyecto.substring(0,18)}"`).join(',');
+    const dataAuth  = (plantilla||[]).map(p=>p.plantilla_autorizada||0).join(',');
+    const dataActual= (plantilla||[]).map(p=>(resumenMap[p.proyecto]?.actual||0)).join(',');
     const dataBajas = (plantilla||[]).map(p=>(resumenMap[p.proyecto]?.bajas||0)).join(',');
-    const semLabel = semana ? `Semana ${semana}` : 'Todas las semanas';
+    const semLabel  = gSemana ? `Semana ${gSemana} — ${gAnio}` : `${gAnio}`;
 
     content.innerHTML=`
-      <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${empId}')" style="margin-bottom:12px"><i class="fa fa-arrow-left"></i> Semanas</button>
-      <div style="font-size:14px;font-weight:600;margin-bottom:16px">${emp.nombre||''} — ${semLabel}</div>
+      <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${gEmpId}')" style="margin-bottom:12px"><i class="fa fa-arrow-left"></i> Semanas</button>
+      <div style="font-size:14px;font-weight:600;margin-bottom:16px">${gEmp.nombre||''} — ${semLabel}</div>
       <canvas id="hc-chart" style="max-height:400px"></canvas>
       <script>
         (function(){
@@ -5082,12 +5090,12 @@ async function showHCTab(tab){
             data:{
               labels:[${labels}],
               datasets:[
-                {label:'Autorizada',data:[${dataAuth}],backgroundColor:'rgba(42,170,222,0.7)'},
-                {label:'Activos',data:[${dataActual}],backgroundColor:'rgba(34,197,94,0.7)'},
-                {label:'Bajas',data:[${dataBajas}],backgroundColor:'rgba(239,68,68,0.7)'}
+                {label:'Autorizada', data:[${dataAuth}],  backgroundColor:'rgba(42,170,222,0.7)'},
+                {label:'Activos',    data:[${dataActual}], backgroundColor:'rgba(251,146,60,0.7)'},
+                {label:'Bajas',      data:[${dataBajas}],  backgroundColor:'rgba(239,68,68,0.7)'}
               ]
             },
-            options:{responsive:true,plugins:{legend:{position:'top'}},scales:{x:{ticks:{maxRotation:45}}}}
+            options:{responsive:true,plugins:{legend:{position:'top'}},scales:{x:{ticks:{maxRotation:45,font:{size:10}}}}}
           });
         })();
       <\/script>`;
@@ -5228,6 +5236,7 @@ async function abrirTablaHC(empId, semana, anio){
   const content=document.getElementById('hc-content');
   if(!content) return;
   const emp=DB.empresas.find(x=>x.id===empId)||{};
+  currentHCEmpId=empId; currentHCSemana=semana; currentHCAnio=anio;
   const{data:plantilla}=await sbClient.from('hc_plantilla').select('*').eq('empresa_id',empId).order('orden',{ascending:true});
   const{data:resumen}=await sbClient.from('hc_resumen').select('*')
     .eq('empresa_id',empId).eq('semana',semana).eq('anio',anio);

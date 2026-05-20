@@ -5060,14 +5060,18 @@ async function showHCTab(tab){
     const gEmpId  = currentHCEmpId  || empId;
     const gSemana = currentHCSemana || parseInt(semana)||0;
     const gAnio   = currentHCAnio   || new Date().getFullYear();
-    console.log('grafica → empId:', gEmpId, '| semana:', gSemana, '| anio:', gAnio);
+    // Log con los nombres que usa el código real:
+    console.log('GRAFICA - empId:', gEmpId, '| semana:', gSemana, '| anio:', gAnio);
+    // Log con los nombres que usaste en el request (siempre undefined — los reales son los de arriba):
+    console.log('GRAFICA - window.hcCurrentEmpId:', window.hcCurrentEmpId, '| window.hcCurrentSemana:', window.hcCurrentSemana, '| window.hcCurrentAnio:', window.hcCurrentAnio);
 
     const gEmp = DB.empresas.find(x=>x.id===gEmpId)||{};
     const { data: plantilla } = await sbClient.from('hc_plantilla').select('*').eq('empresa_id', gEmpId).order('orden',{ascending:true});
     let resumenQ = sbClient.from('hc_resumen').select('*').eq('empresa_id', gEmpId);
     if(gSemana) resumenQ = resumenQ.eq('semana', gSemana);
     if(gAnio)   resumenQ = resumenQ.eq('anio',   gAnio);
-    const { data: resumen } = await resumenQ;
+    const { data: resumen, error: resErr } = await resumenQ;
+    console.log('GRAFICA - plantilla rows:', plantilla?.length, '| resumen rows:', resumen?.length, '| error:', resErr?.message||null);
     const resumenMap = {};
     (resumen||[]).forEach(r=>{ if(!resumenMap[r.proyecto]) resumenMap[r.proyecto]=r; });
 

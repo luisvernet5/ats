@@ -5281,7 +5281,7 @@ function recalcHCRow(proyId){
   const vacantes        = auth - actual;
   const statusPrev      = vacantes - contratados;
   const pct             = auth>0 ? ((statusPrev/auth)*100).toFixed(2)+'%' : '—';
-  const statusCierre    = statusPrev - bajas;
+  const statusCierre    = statusPrev + bajas;
   const plantillaCierre = auth - statusCierre - detenidas;
   const vacEl = document.getElementById('hc-vac-'+proyId);
   if(vacEl){ vacEl.textContent=vacantes; vacEl.style.color=vacantes>0?'var(--err)':'var(--ok)'; }

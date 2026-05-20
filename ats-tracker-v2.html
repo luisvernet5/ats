@@ -5131,39 +5131,37 @@ async function showHCTab(tab){
   }
 
   else if(tab==='historico'){
-    const { data: hist } = await sbClient.from('hc_historico').select('*')
-      .eq('empresa_id', empId).order('semana_num', {ascending:true});
+    const gEmpId2 = window.hcCurrentEmpId || empId;
+    const gAnio2  = window.hcCurrentAnio  || new Date().getFullYear();
+    const semAct  = getISOWeek(new Date());
+    const defDesde = Math.max(1, semAct - 14);
+    const gEmp2 = DB.empresas.find(x=>x.id===gEmpId2)||{};
+    const mkOpts = sel => Array.from({length:52},(_,i)=>i+1)
+      .map(n=>`<option value="${n}"${n===sel?' selected':''}>${n}</option>`).join('');
 
-    const rows = (hist||[]).map(h=>`
-      <tr>
-        <td class="td-p">${h.semana_label||'—'}</td>
-        <td style="text-align:center">${h.vacantes||0}</td>
-        <td style="text-align:center">${h.contrataciones||0}</td>
-        <td style="text-align:center">${h.plantilla_total||0}</td>
-        <td style="text-align:center">${h.plantilla_total?((h.vacantes/h.plantilla_total)*100).toFixed(1)+'%':'—'}</td>
-        <td>
-          <button class="btn btn-danger btn-sm" onclick="deleteHCHistorico('${h.id}','${empId}')">
-            <i class="fa fa-trash"></i>
-          </button>
-        </td>
-      </tr>`).join('');
+    window._hcHistEmpId = gEmpId2;
+    window._hcHistAnio  = gAnio2;
 
     content.innerHTML=`
-      <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${empId}')" style="margin-bottom:12px"><i class="fa fa-arrow-left"></i> Semanas</button>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <div style="font-size:14px;font-weight:600">${emp.nombre||''} — Histórico</div>
-        <button class="btn btn-primary btn-sm" onclick="openHCHistoricoModal('${empId}')">
-          <i class="fa fa-plus"></i> Agregar semana
-        </button>
+      <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${gEmpId2}')" style="margin-bottom:12px"><i class="fa fa-arrow-left"></i> Semanas</button>
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+        <div style="font-size:14px;font-weight:600">${gEmp2.nombre||''} — Histórico ${gAnio2}</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px">
+          <label>Desde sem. <select id="hc-hist-desde" style="margin-left:4px">${mkOpts(defDesde)}</select></label>
+          <label>Hasta sem. <select id="hc-hist-hasta" style="margin-left:4px">${mkOpts(semAct)}</select></label>
+          <button class="btn btn-ghost btn-sm" onclick="renderHCHistorico()"><i class="fa fa-sync"></i> Actualizar</button>
+        </div>
       </div>
-      ${hist?.length?`
-      <div class="table-wrap" style="max-width:700px">
-        <table>
-          <thead><tr><th>Semana</th><th>Vacantes</th><th>Contrataciones</th><th>Plantilla total</th><th>% Rotación</th><th></th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`:
-      '<div style="color:var(--text3);font-size:13px">Sin historial registrado.</div>'}`;
+      <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+        <div style="width:380px;min-width:280px">
+          <div id="hc-hist-tabla"><div style="color:var(--text3);font-size:13px">Cargando...</div></div>
+          <button class="btn btn-primary btn-sm" onclick="guardarHCHistorico()" style="margin-top:10px"><i class="fa fa-save"></i> Guardar</button>
+        </div>
+        <div style="flex:1;min-width:320px;height:360px;position:relative">
+          <canvas id="hc-hist-chart"></canvas>
+        </div>
+      </div>`;
+    setTimeout(renderHCHistorico, 80);
   }
 }
 
@@ -5489,6 +5487,115 @@ function hcPaste(e, inp){
     currentTr=currentTr.nextElementSibling;
   });
   showToast('Pegado desde Excel ✓');
+}
+
+async function renderHCHistorico(){
+  const gEmpId = window._hcHistEmpId || window.hcCurrentEmpId;
+  const gAnio  = window._hcHistAnio  || window.hcCurrentAnio || new Date().getFullYear();
+  const desde  = parseInt(document.getElementById('hc-hist-desde')?.value)||1;
+  const hasta  = parseInt(document.getElementById('hc-hist-hasta')?.value)||52;
+
+  const {data:hist}     = await sbClient.from('hc_historico').select('*')
+    .eq('empresa_id', gEmpId)
+    .gte('semana_num', desde).lte('semana_num', hasta)
+    .order('semana_num', {ascending:true});
+  const {data:plantilla} = await sbClient.from('hc_plantilla').select('plantilla_autorizada')
+    .eq('empresa_id', gEmpId);
+
+  const totalAuth = (plantilla||[]).reduce((s,p)=>s+(p.plantilla_autorizada||0), 0);
+  const maxVal = +(totalAuth * 0.075).toFixed(1);
+  const minVal = +(totalAuth * 0.035).toFixed(1);
+
+  const histMap = {};
+  (hist||[]).forEach(h=>histMap[h.semana_num]=h);
+
+  const semanas = Array.from({length: hasta-desde+1}, (_,i)=>desde+i);
+
+  const rows = semanas.map(s=>{
+    const h = histMap[s]||{};
+    return`<tr>
+      <td style="font-size:12px;white-space:nowrap;padding:3px 6px">Sem. ${s}</td>
+      <td style="padding:3px 4px"><input type="number" class="hc-inp" id="hh-vac-${s}" value="${h.vacantes||''}" placeholder="0" style="width:55px;text-align:center;font-size:11px"></td>
+      <td style="padding:3px 4px"><input type="number" class="hc-inp" id="hh-cont-${s}" value="${h.contrataciones||''}" placeholder="0" style="width:55px;text-align:center;font-size:11px"></td>
+      <td style="text-align:center;font-size:12px;color:var(--ok);padding:3px 6px">${maxVal}</td>
+      <td style="text-align:center;font-size:12px;color:var(--accent);padding:3px 6px">${minVal}</td>
+    </tr>`;
+  }).join('');
+
+  const tabla = document.getElementById('hc-hist-tabla');
+  if(tabla) tabla.innerHTML=`
+    <div class="table-wrap" style="max-height:320px;overflow-y:auto">
+      <table style="width:100%">
+        <thead><tr>
+          <th style="white-space:nowrap;font-size:11px">Semana</th>
+          <th style="white-space:nowrap;font-size:11px">Vacantes</th>
+          <th style="white-space:nowrap;font-size:11px">Contrataciones</th>
+          <th style="white-space:nowrap;font-size:11px;color:var(--ok)">Máx 7.5%</th>
+          <th style="white-space:nowrap;font-size:11px;color:var(--accent)">Mín 3.5%</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+
+  const vacArr  = semanas.map(s=>histMap[s]?.vacantes  ?? null);
+  const contArr = semanas.map(s=>histMap[s]?.contrataciones ?? null);
+  const maxArr  = semanas.map(()=>maxVal);
+  const minArr  = semanas.map(()=>minVal);
+  const labArr  = semanas.map(s=>`Sem ${s}`);
+
+  setTimeout(()=>{
+    const ctx = document.getElementById('hc-hist-chart');
+    if(!ctx) return;
+    if(window._hcHistChart) window._hcHistChart.destroy();
+    window._hcHistChart = new Chart(ctx, {
+      type:'line',
+      data:{
+        labels: labArr,
+        datasets:[
+          {label:'Vacantes',        data:vacArr,  borderColor:'rgba(239,68,68,1)',   backgroundColor:'rgba(239,68,68,0.08)',  borderWidth:2, tension:0.3, pointRadius:4, fill:false},
+          {label:'Contrataciones',  data:contArr, borderColor:'rgba(234,179,8,1)',   backgroundColor:'rgba(234,179,8,0.08)', borderWidth:2, tension:0.3, pointRadius:4, fill:false},
+          {label:'Límite Máx 7.5%',data:maxArr,  borderColor:'rgba(34,197,94,1)',   backgroundColor:'transparent',           borderWidth:2, borderDash:[5,5], pointRadius:0, fill:false},
+          {label:'Límite Mín 3.5%',data:minArr,  borderColor:'rgba(42,170,222,1)',  backgroundColor:'transparent',           borderWidth:2, borderDash:[5,5], pointRadius:0, fill:false}
+        ]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:20}}},
+        scales:{
+          x:{ticks:{font:{size:10},maxRotation:45}},
+          y:{beginAtZero:true,ticks:{font:{size:10}}}
+        }
+      }
+    });
+  }, 60);
+}
+
+async function guardarHCHistorico(){
+  const gEmpId = window._hcHistEmpId || window.hcCurrentEmpId;
+  const gAnio  = window._hcHistAnio  || window.hcCurrentAnio || new Date().getFullYear();
+  const desde  = parseInt(document.getElementById('hc-hist-desde')?.value)||1;
+  const hasta  = parseInt(document.getElementById('hc-hist-hasta')?.value)||52;
+
+  const filas = [];
+  for(let s=desde; s<=hasta; s++){
+    const vacEl  = document.getElementById(`hh-vac-${s}`);
+    const contEl = document.getElementById(`hh-cont-${s}`);
+    if(!vacEl) continue;
+    const vac  = parseInt(vacEl.value)||0;
+    const cont = parseInt(contEl?.value)||0;
+    if(!vac && !cont) continue;
+    filas.push({
+      id: `${gEmpId}-hist-${s}-${gAnio}`,
+      empresa_id:gEmpId, semana_num:s, semana_label:`Semana ${s}`,
+      vacantes:vac, contrataciones:cont,
+      updated_at:new Date().toISOString()
+    });
+  }
+  if(!filas.length){showToast('Sin datos para guardar');return;}
+  const {error} = await sbClient.from('hc_historico').upsert(filas);
+  if(error){showToast('Error: '+error.message,'err');return;}
+  showToast('Histórico guardado ✓');
+  renderHCHistorico();
 }
 
 async function updateHCRow(empId, proyecto, auth, el, campo){

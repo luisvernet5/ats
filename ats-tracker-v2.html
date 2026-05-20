@@ -5280,18 +5280,18 @@ async function abrirTablaHC(empId, semana, anio){
     </div>
     <style>
       #hc-week-table th,#hc-week-table td{font-size:11px;padding:4px 6px}
-      #hc-week-table th{white-space:normal;word-break:break-word}
+      #hc-week-table th{white-space:nowrap;font-size:11px}
       .hc-edit-icon{font-size:9px;color:var(--text3);cursor:pointer;margin-left:3px;vertical-align:middle}
       .hc-edit-icon:hover{color:var(--accent)}
     </style>
     <div class="table-wrap" style="overflow-x:auto">
       <table id="hc-week-table">
         <thead><tr>
-          <th>Proyecto</th><th>Autorizada</th><th>Actual</th><th>Vacantes</th>
-          <th>Cartera</th><th>Entrevista</th><th>Validación</th><th>Proc. Contrat.</th>
-          <th>Contratados</th><th>Bajas</th>
-          <th>Status Sem. Previo Bajas</th><th>%</th>
-          <th>Status al Cierre Sem.</th><th>Detenidas</th><th>Plantilla al Cierre</th>
+          <th>Proyecto</th><th>Auth.</th><th>Actual</th><th>Vac.</th>
+          <th>Cart.</th><th>Entrev.</th><th>Valid.</th><th>P.Cont.</th>
+          <th>Cont.</th><th>Bajas</th>
+          <th>St.Prev</th><th>%</th>
+          <th>St.Cierre</th><th>Det.</th><th>Pl.Cierre</th>
           <th></th>
         </tr></thead>
         <tbody>${rows||'<tr><td colspan="16" style="text-align:center;color:var(--text3);padding:16px">Sin proyectos. Configura desde Plantilla.</td></tr>'}</tbody>

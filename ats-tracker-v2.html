@@ -3068,9 +3068,12 @@ async function saveReferencias(candidato_id){
 
 function onCandEmpresaChange(){
   const empId=document.getElementById('cand-empresa').value;
+  console.log('Cargando vacantes para empresa:', empId, '| tipo:', typeof empId);
+  console.log('DB.vacantes total:', DB.vacantes?.length, '| muestra empresa_id[0]:', DB.vacantes?.[0]?.empresa_id, '| tipo:', typeof DB.vacantes?.[0]?.empresa_id);
   const vacSel=document.getElementById('cand-vacante');
   vacSel.innerHTML='<option value="">Seleccionar vacante...</option>';
   const vacs=DB.vacantes.filter(v=>v.empresa_id===empId);
+  console.log('Vacantes filtradas:', vacs.length);
   vacs.forEach(v=>{const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};const label=`[${v.folio||'S/F'}] ${v.nombre} | ${rec.nombre||'Sin reclutador'} | ${fmt(v.fecha_apertura)}`;vacSel.innerHTML+=`<option value="${v.id}">${label}</option>`;});
 }
 

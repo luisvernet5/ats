@@ -1227,7 +1227,7 @@ function adaptUIToRole() {
     </div>`;
   }
   if(rol === 'rh_cliente') {
-    ['nav-empresas','nav-pipeline','nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-config'].forEach(id => {
+    ['nav-empresas','nav-pipeline','nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-config','nav-headcount'].forEach(id => {
       const el = document.getElementById(id); if(el) el.style.display='none';
     });
     // Mostrar solo botones de nueva vacante y agregar candidato

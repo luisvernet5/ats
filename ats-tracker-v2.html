@@ -1700,19 +1700,21 @@ async function loadDB(){
       const _rhEmpId = currentUserData?.empresa_id||null;
       console.log('[loadDB] ROL ACTUAL:', currentUserData?.rol, '| es rh_cliente:', _isRhC, '| EMPRESA ID:', _rhEmpId);
       console.log('[loadDB] currentUserData completo:', JSON.stringify(currentUserData));
-      const [emp,vac,cand,rec]=await Promise.all([
+      const [emp,vac,cand,rec,refs]=await Promise.all([
         sbClient.from('empresas').select('*'),
         (_isRhC && _rhEmpId
           ? sbClient.from('vacantes').select('*').filter('data->>empresa_id','eq',_rhEmpId)
           : sbClient.from('vacantes').select('*')),
         sbClient.from('candidatos').select('*'),
         sbClient.from('reclutadores').select('*'),
+        sbClient.from('referencias').select('candidato_id'),
       ]);
       console.log('[loadDB] vacantes cargadas:', vac.data?.length, '| error:', vac.error?.message||null);
       DB.empresas=emp.data?.map(r=>r.data)||[];
       DB.vacantes=vac.data?.map(r=>r.data)||[];
       DB.candidatos=cand.data?.map(r=>r.data)||[];
       DB.reclutadores=rec.data?.map(r=>r.data)||[];
+      _candConRefs=new Set((refs.data||[]).map(r=>r.candidato_id));
     }
   }catch(e){
     console.error('Error:',e);
@@ -2703,6 +2705,7 @@ function notificarReclutador(vacante) {
    CANDIDATO MODAL
    ============================================================ */
 let _candModalMode='new'; // 'new' | 'edit' | 'entrevista' | 'referencias'
+let _candConRefs=new Set();
 function _updateCandModalMode(){
   const isWizard=_candModalMode==='new';
   const bar=document.getElementById('cand-wizard-bar');
@@ -3110,12 +3113,25 @@ async function saveCandidato(){
   if(_candModalMode==='entrevista'){
     const ci=DB.candidatos.findIndex(c=>c.id===_id);if(ci<0)return;
     Object.assign(DB.candidatos[ci],_collectEntrevistaData());
-    try{await saveRecord('candidatos',DB.candidatos[ci]);closeModal('modal-candidato');showToast('Entrevista guardada ✓');}
+    try{
+      await saveRecord('candidatos',DB.candidatos[ci]);
+      closeModal('modal-candidato');
+      showToast('Entrevista guardada ✓');
+      const _eiI=document.getElementById('ei-icon-'+_id);
+      if(_eiI)_eiI.style.color='#22c55e';
+    }
     catch(e){showToast('Error: '+e.message,'err');}
     return;
   }
   if(_candModalMode==='referencias'){
-    try{await saveReferencias(_id);closeModal('modal-candidato');showToast('Referencias guardadas ✓');}
+    try{
+      await saveReferencias(_id);
+      _candConRefs.add(_id);
+      const _refI=document.getElementById('ref-icon-'+_id);
+      if(_refI)_refI.style.color='#22c55e';
+      closeModal('modal-candidato');
+      showToast('Referencias guardadas ✓');
+    }
     catch(e){showToast('Error: '+e.message,'err');}
     return;
   }
@@ -4056,6 +4072,10 @@ function renderCandidatosTable(){
     const d=processTotal(c);const cd=clienteDays(c);
     const empEtapas=getEmpresaEtapas(v.empresa_id);
     const isSalida=ETAPAS_SALIDA.includes(c.etapa);
+    const _tieneEi=!!(c.fecha_entrevista||c.impresion_general||c.nivel_estudios||c.estado_civil);
+    const _tieneRef=_candConRefs.has(c.id);
+    const _eiColor=_tieneEi?'#22c55e':'#9ca3af';
+    const _refColor=_tieneRef?'#22c55e':'#9ca3af';
     const etapaOpts=[...empEtapas.map(e=>e.label),...ETAPAS_SALIDA]
       .map(lbl=>`<option value="${lbl}" ${c.etapa===lbl?'selected':''}>${lbl}</option>`).join('');
     const motivoOpts=MOTIVOS.map(m=>`<option value="${m}" ${c.motivo_desercion===m?'selected':''}>${m}</option>`).join('');
@@ -4087,8 +4107,8 @@ function renderCandidatosTable(){
         <div style="display:flex;gap:6px;align-items:center">
           <button class="btn btn-ghost btn-sm" onclick="openPanel('${c.id}')" title="Ver detalle"><i class="fa fa-eye"></i></button>
           <button class="btn btn-ghost btn-sm" onclick="editCandidato('${c.id}')" title="Editar datos"><i class="fa fa-edit"></i></button>
-          <button class="btn btn-ghost btn-sm" onclick="openEntrevistaModal('${c.id}')" title="Entrevista"><i class="fa fa-clipboard-list"></i></button>
-          <button class="btn btn-ghost btn-sm" onclick="openReferenciasModal('${c.id}')" title="Referencias"><i class="fa fa-users"></i></button>
+          <button class="btn btn-ghost btn-sm" onclick="openEntrevistaModal('${c.id}')" title="Entrevista"><i id="ei-icon-${c.id}" class="fa fa-clipboard-list" style="color:${_eiColor}"></i></button>
+          <button class="btn btn-ghost btn-sm" onclick="openReferenciasModal('${c.id}')" title="Referencias"><i id="ref-icon-${c.id}" class="fa fa-users" style="color:${_refColor}"></i></button>
           <button class="btn btn-ghost btn-sm" onclick="toggleAccionesCand('${c.id}')" title="Más acciones"><i class="fa fa-ellipsis-v"></i></button>
           ${currentUserData?.rol==='admin'?`<button onclick="confirmarDescarteCand('${c.id}')" title="Descartar candidato" style="background:var(--red);color:#fff;border:none;border-radius:6px;cursor:pointer;padding:5px 8px;font-size:12px"><i class="fa fa-trash"></i></button>`:''}
           <div id="menu-${c.id}" style="display:none;position:absolute;right:0;bottom:32px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;z-index:50;min-width:220px;box-shadow:0 4px 20px rgba(0,0,0,.15);padding:6px 0">

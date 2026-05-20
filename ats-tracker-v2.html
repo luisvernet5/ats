@@ -3046,7 +3046,8 @@ function _collectRefPersonales(candidato_id){
   });
 }
 async function saveReferencias(candidato_id){
-  const todas=[..._collectRefLaborales(candidato_id),..._collectRefPersonales(candidato_id)];
+  const todas=[..._collectRefLaborales(candidato_id),..._collectRefPersonales(candidato_id)]
+    .filter(r=>r.nombre_contacto.trim());
   if(!todas.length)return false;
   if(SANDBOX_MODE)return false;
   const{error:de}=await sbClient.from('referencias').delete().eq('candidato_id',candidato_id);

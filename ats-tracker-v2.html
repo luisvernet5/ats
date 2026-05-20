@@ -5102,7 +5102,30 @@ async function showHCTab(tab){
             {label:'Bajas',      data: bajasArr,   backgroundColor:'rgba(239,68,68,0.7)'}
           ]
         },
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{x:{ticks:{maxRotation:45,font:{size:10}}}}}
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins:{legend:{position:'top'}},
+          scales:{x:{ticks:{maxRotation:45,font:{size:10}}}},
+          animation:{
+            onComplete:function(){
+              const c=this.ctx;
+              c.save();
+              c.font='bold 11px Arial';
+              c.fillStyle='#444';
+              c.textAlign='center';
+              c.textBaseline='bottom';
+              this.data.datasets.forEach((dataset,i)=>{
+                const meta=this.getDatasetMeta(i);
+                meta.data.forEach((bar,j)=>{
+                  const val=dataset.data[j];
+                  if(val>0) c.fillText(val, bar.x, bar.y-2);
+                });
+              });
+              c.restore();
+            }
+          }
+        }
       });
     }, 100);
   }

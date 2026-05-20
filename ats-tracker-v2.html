@@ -5557,18 +5557,40 @@ async function renderHCHistorico(){
       data:{
         labels: labArr,
         datasets:[
-          {label:'Vacantes',        data:vacArr,  borderColor:'rgba(239,68,68,1)',   backgroundColor:'rgba(239,68,68,0.08)',  borderWidth:2, tension:0.3, pointRadius:4, fill:false},
-          {label:'Contrataciones',  data:contArr, borderColor:'rgba(234,179,8,1)',   backgroundColor:'rgba(234,179,8,0.08)', borderWidth:2, tension:0.3, pointRadius:4, fill:false},
-          {label:'Límite Máx 7.5%',data:maxArr,  borderColor:'rgba(34,197,94,1)',   backgroundColor:'transparent',           borderWidth:2, borderDash:[5,5], pointRadius:0, fill:false},
-          {label:'Límite Mín 3.5%',data:minArr,  borderColor:'rgba(42,170,222,1)',  backgroundColor:'transparent',           borderWidth:2, borderDash:[5,5], pointRadius:0, fill:false}
+          {label:'Vacantes',                          data:vacArr,  borderColor:'#e53e3e', backgroundColor:'transparent', borderWidth:2, tension:0, pointRadius:0, fill:false},
+          {label:'Contrataciones',                    data:contArr, borderColor:'#d4ac0d', backgroundColor:'transparent', borderWidth:2, tension:0, pointRadius:0, fill:false},
+          {label:'Vacantes permitidas (Máximo 7.5%)', data:maxArr,  borderColor:'#276221', backgroundColor:'transparent', borderWidth:2, tension:0, pointRadius:0, fill:false},
+          {label:'Vacantes permitidas (Mínimo 3.5%)', data:minArr,  borderColor:'#2b6cb0', backgroundColor:'transparent', borderWidth:2, tension:0, pointRadius:0, fill:false}
         ]
       },
       options:{
-        responsive:true, maintainAspectRatio:false,
-        plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:20}}},
+        responsive:true,
+        maintainAspectRatio:false,
+        plugins:{
+          title:{
+            display:true,
+            text:'Histórico Vacantes RYS',
+            font:{size:14, weight:'bold'}
+          },
+          legend:{
+            position:'bottom',
+            labels:{boxWidth:12, font:{size:11}}
+          }
+        },
         scales:{
-          x:{ticks:{font:{size:10},maxRotation:45}},
-          y:{beginAtZero:true,ticks:{font:{size:10}}}
+          y:{
+            beginAtZero:true,
+            ticks:{stepSize:5},
+            grid:{color:'#e5e7eb'}
+          },
+          x:{
+            ticks:{maxRotation:45, font:{size:10}},
+            grid:{display:false}
+          }
+        },
+        elements:{
+          point:{radius:0},
+          line:{borderWidth:2, tension:0}
         }
       }
     });

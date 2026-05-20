@@ -3712,11 +3712,11 @@ function renderVacantesTable(){
       <td>${getSLAStatus(v)}</td>
       <td><span class="dpill ${dClass(dias)}">${dias}d</span></td>
       <td>${act}/${cands.length}</td>
-      <td>
-        <button class="btn btn-ghost btn-sm" onclick="openVacanteModal('${v.id}')"><i class="fa fa-edit"></i></button>
-        <button class="btn btn-primary btn-sm" onclick="openCandModal('${v.id}')"><i class="fa fa-user-plus"></i></button>
-        ${v.estado==='Abierta'?`<button class="btn btn-ghost btn-sm" onclick="abrirCierreVacante('${v.id}')" title="Cerrar vacante"><i class="fa fa-times-circle"></i></button>`:`<span class="badge ${v.estado==='Cubierta'?'bg':'br'}">${v.estado}</span>`}
-        ${currentUserData?.rol==='admin'?`<button class="btn btn-danger btn-sm" onclick="eliminarVacante('${v.id}')" title="Eliminar vacante"><i class="fa fa-trash"></i></button>`:''}
+      <td style="white-space:nowrap;min-width:120px">
+        <button class="btn btn-ghost btn-sm" style="padding:4px" onclick="openVacanteModal('${v.id}')"><i class="fa fa-edit" style="font-size:13px"></i></button>
+        <button class="btn btn-primary btn-sm" style="padding:4px" onclick="openCandModal('${v.id}')"><i class="fa fa-user-plus" style="font-size:13px"></i></button>
+        ${v.estado==='Abierta'?`<button class="btn btn-ghost btn-sm" style="padding:4px" onclick="abrirCierreVacante('${v.id}')" title="Cerrar vacante"><i class="fa fa-times-circle" style="font-size:13px"></i></button>`:`<span class="badge ${v.estado==='Cubierta'?'bg':'br'}">${v.estado}</span>`}
+        ${currentUserData?.rol==='admin'?`<button class="btn btn-danger btn-sm" style="padding:4px" onclick="eliminarVacante('${v.id}')" title="Eliminar vacante"><i class="fa fa-trash" style="font-size:13px"></i></button>`:''}
       </td>
     </tr>
     <tr id="detail-${v.id}" style="display:none">
@@ -3733,7 +3733,7 @@ function renderVacantesTable(){
     </tr>`;
   }).join('');
   document.getElementById('vacantes-table').innerHTML=`<table>
-    <thead><tr><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>SLA</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
+    <thead><tr><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>SLA</th><th>Días</th><th>Cands.</th><th style="min-width:120px">Acción</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>
   </table>
   <div style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right;">Mostrando <strong>${list.length}</strong> registros</div>`;

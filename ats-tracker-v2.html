@@ -618,7 +618,7 @@ input[type=date]{color:var(--text)}
         </div>
         <div class="fr">
           <div class="fg"><label>Empresa cliente</label>
-            <select id="cand-empresa" onchange="onCandEmpresaChange()"><option value="">Seleccionar empresa...</option></select>
+            <select id="cand-empresa" onchange="filtrarVacantesNuevoCandidato(this.value)"><option value="">Seleccionar empresa...</option></select>
           </div>
           <div class="fg"><label>Vacante</label>
             <select id="cand-vacante" onchange="onCandVacanteChange()"><option value="">Seleccionar vacante...</option></select>
@@ -3068,13 +3068,32 @@ async function saveReferencias(candidato_id){
 
 function onCandEmpresaChange(){
   const empId=document.getElementById('cand-empresa').value;
-  console.log('Cargando vacantes para empresa:', empId, '| tipo:', typeof empId);
-  console.log('DB.vacantes total:', DB.vacantes?.length, '| muestra empresa_id[0]:', DB.vacantes?.[0]?.empresa_id, '| tipo:', typeof DB.vacantes?.[0]?.empresa_id);
   const vacSel=document.getElementById('cand-vacante');
   vacSel.innerHTML='<option value="">Seleccionar vacante...</option>';
   const vacs=DB.vacantes.filter(v=>v.empresa_id===empId);
-  console.log('Vacantes filtradas:', vacs.length);
   vacs.forEach(v=>{const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};const label=`[${v.folio||'S/F'}] ${v.nombre} | ${rec.nombre||'Sin reclutador'} | ${fmt(v.fecha_apertura)}`;vacSel.innerHTML+=`<option value="${v.id}">${label}</option>`;});
+}
+async function filtrarVacantesNuevoCandidato(empresaId){
+  const sel=document.getElementById('cand-vacante');
+  if(!sel)return;
+  sel.innerHTML='<option value="">Seleccionar vacante...</option>';
+  if(!empresaId)return;
+  if(SANDBOX_MODE){
+    DB.vacantes.filter(v=>v.empresa_id===empresaId&&v.estado==='Abierta')
+      .forEach(v=>{const o=document.createElement('option');o.value=v.id;o.textContent=`[${v.folio||'S/F'}] ${v.nombre}`;sel.appendChild(o);});
+    return;
+  }
+  const{data,error}=await sbClient.from('vacantes').select('id,data')
+    .filter('data->>empresa_id','eq',empresaId)
+    .filter('data->>estado','eq','Abierta');
+  if(error){console.error('filtrarVacantes:',error);return;}
+  (data||[]).forEach(r=>{
+    const v=r.data||{};
+    const o=document.createElement('option');
+    o.value=v.id||r.id;
+    o.textContent=`[${v.folio||'S/F'}] ${v.nombre}`;
+    sel.appendChild(o);
+  });
 }
 
 function onCandVacanteChange(){

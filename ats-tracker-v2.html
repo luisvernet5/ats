@@ -5055,18 +5055,23 @@ async function showHCTab(tab){
   }
 
   else if(tab==='grafica'){
+    console.log('grafica empId:', empId, 'semana:', semana||'(vacío — consultará todas las semanas)');
     const { data: plantilla } = await sbClient.from('hc_plantilla').select('*').eq('empresa_id', empId);
-    const { data: resumen } = await sbClient.from('hc_resumen').select('*').eq('empresa_id', empId).eq('semana', semana||0);
+    let resumenQ = sbClient.from('hc_resumen').select('*').eq('empresa_id', empId);
+    if(semana) resumenQ = resumenQ.eq('semana', semana);
+    const { data: resumen } = await resumenQ;
     const resumenMap = {};
-    (resumen||[]).forEach(r=>resumenMap[r.proyecto]=r);
+    (resumen||[]).forEach(r=>{ if(!resumenMap[r.proyecto]) resumenMap[r.proyecto]=r; });
 
     const labels = (plantilla||[]).map(p=>`"${p.proyecto.substring(0,15)}"`).join(',');
     const dataAuth = (plantilla||[]).map(p=>p.plantilla_autorizada||0).join(',');
     const dataActual = (plantilla||[]).map(p=>(resumenMap[p.proyecto]?.actual||0)).join(',');
     const dataBajas = (plantilla||[]).map(p=>(resumenMap[p.proyecto]?.bajas||0)).join(',');
+    const semLabel = semana ? `Semana ${semana}` : 'Todas las semanas';
 
     content.innerHTML=`
-      <div style="font-size:14px;font-weight:600;margin-bottom:16px">${emp.nombre||''} — Semana ${semana}</div>
+      <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${empId}')" style="margin-bottom:12px"><i class="fa fa-arrow-left"></i> Semanas</button>
+      <div style="font-size:14px;font-weight:600;margin-bottom:16px">${emp.nombre||''} — ${semLabel}</div>
       <canvas id="hc-chart" style="max-height:400px"></canvas>
       <script>
         (function(){
@@ -5107,6 +5112,7 @@ async function showHCTab(tab){
       </tr>`).join('');
 
     content.innerHTML=`
+      <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${empId}')" style="margin-bottom:12px"><i class="fa fa-arrow-left"></i> Semanas</button>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <div style="font-size:14px;font-weight:600">${emp.nombre||''} — Histórico</div>
         <button class="btn btn-primary btn-sm" onclick="openHCHistoricoModal('${empId}')">

@@ -1797,6 +1797,7 @@ function daysBetween(d1,d2){
 }
 function dClass(d){if(d===null||d===undefined)return'dok';if(d<=14)return'dok';if(d<=30)return'dwarn';return'dover'}
 function showToast(msg,t='ok'){const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${t==='ok'?'tok':'terr'} show`;setTimeout(()=>el.className='toast',2800)}
+function recargarVistaActiva(){const p=document.querySelector('.page.active');if(p)renderPage(p.id.replace('page-',''));}
 function openModal(id){document.getElementById(id).classList.add('open')}
 function openReclutadorModal(){
   document.getElementById('rec-nombre').value='';
@@ -3126,6 +3127,7 @@ async function saveCandidato(){
       await saveRecord('candidatos',DB.candidatos[ci]);
       closeModal('modal-candidato');
       showToast('Entrevista guardada ✓');
+      recargarVistaActiva();
       const _eiI=document.getElementById('ei-icon-'+_id);
       if(_eiI)_eiI.style.color='#22c55e';
     }
@@ -3142,6 +3144,7 @@ async function saveCandidato(){
       }
       closeModal('modal-candidato');
       showToast('Referencias guardadas ✓');
+      recargarVistaActiva();
     }
     catch(e){showToast('Error: '+e.message,'err');}
     return;

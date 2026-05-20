@@ -5075,11 +5075,11 @@ async function showHCTab(tab){
     const resumenMap = {};
     (resumen||[]).forEach(r=>{ if(!resumenMap[r.proyecto]) resumenMap[r.proyecto]=r; });
 
-    const labels    = (plantilla||[]).map(p=>`"${p.proyecto.substring(0,18)}"`).join(',');
-    const dataAuth  = (plantilla||[]).map(p=>p.plantilla_autorizada||0).join(',');
-    const dataActual= (plantilla||[]).map(p=>(resumenMap[p.proyecto]?.actual||0)).join(',');
-    const dataBajas = (plantilla||[]).map(p=>(resumenMap[p.proyecto]?.bajas||0)).join(',');
-    const semLabel  = gSemana ? `Semana ${gSemana} — ${gAnio}` : `${gAnio}`;
+    const labelsArr   = (plantilla||[]).map(p=>p.proyecto.substring(0,18));
+    const authArr     = (plantilla||[]).map(p=>p.plantilla_autorizada||0);
+    const actualArr   = (plantilla||[]).map(p=>resumenMap[p.proyecto]?.actual||0);
+    const bajasArr    = (plantilla||[]).map(p=>resumenMap[p.proyecto]?.bajas||0);
+    const semLabel    = gSemana ? `Semana ${gSemana} — ${gAnio}` : `${gAnio}`;
 
     content.innerHTML=`
       <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${gEmpId}')" style="margin-bottom:12px"><i class="fa fa-arrow-left"></i> Semanas</button>
@@ -5095,11 +5095,11 @@ async function showHCTab(tab){
       window._hcChart = new Chart(ctx, {
         type:'bar',
         data:{
-          labels: [${labels}],
+          labels: labelsArr,
           datasets:[
-            {label:'Autorizada', data:[${dataAuth}],   backgroundColor:'rgba(42,170,222,0.7)'},
-            {label:'Activos',    data:[${dataActual}],  backgroundColor:'rgba(251,146,60,0.7)'},
-            {label:'Bajas',      data:[${dataBajas}],   backgroundColor:'rgba(239,68,68,0.7)'}
+            {label:'Autorizada', data: authArr,   backgroundColor:'rgba(42,170,222,0.7)'},
+            {label:'Activos',    data: actualArr,  backgroundColor:'rgba(251,146,60,0.7)'},
+            {label:'Bajas',      data: bajasArr,   backgroundColor:'rgba(239,68,68,0.7)'}
           ]
         },
         options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{x:{ticks:{maxRotation:45,font:{size:10}}}}}

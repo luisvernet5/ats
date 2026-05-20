@@ -2200,6 +2200,7 @@ function openEmpresaDetail(empId){
       <tbody id="ed-tbody">${vacsRows||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes registradas</td></tr>'}</tbody>
       </table>
     </div>
+    <div id="ed-count" style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right;">Mostrando <strong>${vacs.length}</strong> registros</div>
     <div style="margin-top:24px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
         <div class="sec-title" style="margin:0">Analytics de la empresa</div>
@@ -2296,6 +2297,8 @@ function filtrarVacantesEmpresa(){
   const rows = _buildEDVacsRows(filtered, empId, etapas);
   const tbody = document.getElementById('ed-tbody');
   if(tbody) tbody.innerHTML = rows||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes con esos filtros</td></tr>';
+  const edCount = document.getElementById('ed-count');
+  if(edCount) edCount.innerHTML = `Mostrando <strong>${filtered.length}</strong> registros`;
   const filtCands = DB.candidatos.filter(c=>filtered.find(v=>v.id===c.vacante_id));
   const vacAct   = filtered.filter(v=>v.estado==='Abierta').length;
   const validados= filtCands.filter(c=>c.etapa==='Validado').length;
@@ -3732,7 +3735,8 @@ function renderVacantesTable(){
   document.getElementById('vacantes-table').innerHTML=`<table>
     <thead><tr><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>SLA</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>
-  </table>`;
+  </table>
+  <div style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right;">Mostrando <strong>${list.length}</strong> registros</div>`;
 }
 
 function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {
@@ -4028,7 +4032,8 @@ function _renderTablaDescartados(lista){
   wrap.innerHTML=`<table>
     <thead><tr><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Etapa</th><th>Fecha descarte</th><th>Motivo</th><th>Acción</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos descartados</td></tr>'}</tbody>
-  </table>`;
+  </table>
+  <div style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right;">Mostrando <strong>${lista.length}</strong> registros</div>`;
 }
 
 async function reactivarCandidato(candId){
@@ -4161,7 +4166,8 @@ function renderCandidatosTable(){
   document.getElementById('candidatos-table').innerHTML=`<table>
     <thead><tr><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Etapa</th><th>Días proceso</th><th>Días cliente</th><th>Acción</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos</td></tr>'}</tbody>
-  </table>`;
+  </table>
+  <div style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right;">Mostrando <strong>${list.length}</strong> registros</div>`;
   document.getElementById('candidatos-table').style.overflow='visible';
   const tbl=document.getElementById('candidatos-table').querySelector('table');
   if(tbl)tbl.style.overflow='visible';

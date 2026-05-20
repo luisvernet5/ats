@@ -5019,24 +5019,16 @@ function toggleGarantiaRow(id){
 async function renderHeadCount(){
   const page = document.getElementById('page-headcount');
   if(!page) return;
-  page.innerHTML='<div style="padding:24px 28px;color:var(--text3)">Cargando...</div>';
-
   const empOpts = DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
-
   page.innerHTML=`<div style="padding:24px 28px">
-    <div class="fbar" style="margin-bottom:20px;gap:8px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
       <select id="hc-emp-sel" onchange="loadHC()" style="min-width:220px">
         <option value="">Selecciona una empresa...</option>${empOpts}
       </select>
-      <input type="number" id="hc-semana" placeholder="No. semana" min="1" max="52" style="width:120px">
-      <input type="date" id="hc-fecha-ini" style="width:150px" onchange="loadHC()">
-      <input type="date" id="hc-fecha-fin" style="width:150px" onchange="loadHC()">
-      <div class="sp"></div>
-      <button class="btn btn-ghost btn-sm" onclick="showHCTab('resumen')"><i class="fa fa-table"></i> Resumen</button>
-      <button class="btn btn-ghost btn-sm" onclick="showHCTab('grafica')"><i class="fa fa-chart-bar"></i> Gráfica</button>
-      <button class="btn btn-ghost btn-sm" onclick="showHCTab('historico')"><i class="fa fa-history"></i> Histórico</button>
-      <button class="btn btn-green btn-sm" onclick="exportarHC()"><i class="fa fa-file-excel"></i> Exportar</button>
     </div>
+    <input type="hidden" id="hc-semana">
+    <input type="hidden" id="hc-fecha-ini">
+    <input type="hidden" id="hc-fecha-fin">
     <div id="hc-content"></div>
   </div>`;
 }
@@ -5044,7 +5036,7 @@ async function renderHeadCount(){
 async function loadHC(){
   const empId = document.getElementById('hc-emp-sel')?.value;
   if(!empId) return;
-  showHCTab('resumen');
+  await showHCWeekList(empId);
 }
 
 async function showHCTab(tab){
@@ -5059,124 +5051,7 @@ async function showHCTab(tab){
   const fFin = document.getElementById('hc-fecha-fin')?.value||'';
 
   if(tab==='resumen'){
-    const { data: plantilla } = await sbClient.from('hc_plantilla').select('*').eq('empresa_id', empId).order('orden', {ascending:true});
-    const { data: resumen } = await sbClient.from('hc_resumen').select('*').eq('empresa_id', empId).eq('semana', semana||0);
-    const proyectos = (plantilla||[]).map(p=>p.proyecto);
-
-    const resumenMap = {};
-    (resumen||[]).forEach(r=>resumenMap[r.proyecto]=r);
-
-    let tAuth=0,tActual=0,tVac=0,tCartera=0,tEntrev=0,tValid=0,tProc=0,tCont=0,tBajas=0,tPrev=0,tCierre=0,tDet=0,tPCant=0;
-
-    const rows = proyectos.map(proy=>{
-      const proyId = proy.replace(/[^a-zA-Z0-9]/g,'_');
-      const r = resumenMap[proy]||{};
-      const auth = (plantilla||[]).find(p=>p.proyecto===proy)?.plantilla_autorizada||0;
-      const actual      = r.actual||0;
-      const cartera     = r.cartera||0;
-      const entrevista  = r.entrevista||0;
-      const validacion  = r.validacion||0;
-      const procCont    = r.proceso_contratacion||0;
-      const contratados = r.contratados||0;
-      const bajas       = r.bajas||0;
-      const detenidas   = r.detenidas||0;
-      const vacantes        = auth - actual;
-      const statusPrev      = vacantes - contratados;
-      const pct             = auth>0 ? ((statusPrev/auth)*100).toFixed(2)+'%' : '—';
-      const statusCierre    = statusPrev + bajas;
-      const plantillaCierre = auth - statusCierre - detenidas;
-      tAuth+=auth; tActual+=actual; tVac+=vacantes; tCartera+=cartera;
-      tEntrev+=entrevista; tValid+=validacion; tProc+=procCont;
-      tCont+=contratados; tBajas+=bajas; tPrev+=statusPrev;
-      tCierre+=statusCierre; tDet+=detenidas; tPCant+=plantillaCierre;
-      return`<tr id="hc-tr-${proyId}" data-auth="${auth}" data-proy="${proy.replace(/"/g,'&quot;')}" draggable="true"
-        ondragstart="hcDragStart(event,'${proyId}')"
-        ondragover="hcDragOver(event,'${proyId}')"
-        ondragleave="hcDragLeave(event,'${proyId}')"
-        ondrop="hcDrop(event,'${proyId}','${empId}')"
-        ondragend="hcDragEnd(event,'${proyId}')">
-        <td class="hc-drag-handle" title="Arrastrar para reordenar">⠿</td>
-        <td class="td-p" style="font-size:12px">${proy}</td>
-        <td id="hc-auth-cell-${proyId}" style="text-align:center">${auth} <i class="fa fa-pen hc-edit-icon" onclick="editHCAuth('${proyId}','${empId}','${proy}')" title="Editar plantilla autorizada"></i></td>
-        <td style="text-align:center"><input type="number" class="hc-inp" value="${actual}"
-          onchange="updateHCRow('${empId}','${proy}',${auth},this,'actual');recalcHCRow('${proyId}')" style="width:60px;text-align:center"></td>
-        <td id="hc-vac-${proyId}" style="text-align:center;color:${vacantes>0?'var(--err)':'var(--ok)'}">${vacantes}</td>
-        <td style="text-align:center"><input type="number" class="hc-inp" value="${cartera}"
-          onchange="updateHCRow('${empId}','${proy}',${auth},this,'cartera')" style="width:50px;text-align:center"></td>
-        <td style="text-align:center"><input type="number" class="hc-inp" value="${entrevista}"
-          onchange="updateHCRow('${empId}','${proy}',${auth},this,'entrevista')" style="width:50px;text-align:center"></td>
-        <td style="text-align:center"><input type="number" class="hc-inp" value="${validacion}"
-          onchange="updateHCRow('${empId}','${proy}',${auth},this,'validacion')" style="width:50px;text-align:center"></td>
-        <td style="text-align:center"><input type="number" class="hc-inp" value="${procCont}"
-          onchange="updateHCRow('${empId}','${proy}',${auth},this,'proceso_contratacion')" style="width:50px;text-align:center"></td>
-        <td style="text-align:center"><input type="number" class="hc-inp" value="${contratados}"
-          onchange="updateHCRow('${empId}','${proy}',${auth},this,'contratados');recalcHCRow('${proyId}')" style="width:50px;text-align:center"></td>
-        <td style="text-align:center"><input type="number" class="hc-inp" value="${bajas}"
-          onchange="updateHCRow('${empId}','${proy}',${auth},this,'bajas');recalcHCRow('${proyId}')" style="width:50px;text-align:center"></td>
-        <td id="hc-prev-${proyId}" style="text-align:center;font-weight:500">${statusPrev}</td>
-        <td id="hc-pct-${proyId}" style="text-align:center">${pct}</td>
-        <td id="hc-cierre-${proyId}" style="text-align:center;font-weight:500">${statusCierre}</td>
-        <td style="text-align:center"><input type="number" class="hc-inp" value="${detenidas}"
-          onchange="updateHCRow('${empId}','${proy}',${auth},this,'detenidas');recalcHCRow('${proyId}')" style="width:50px;text-align:center"></td>
-        <td id="hc-pcant-${proyId}" style="text-align:center;font-weight:500">${plantillaCierre}</td>
-      </tr>`;
-    }).join('');
-
-    const tPct = tPrev>0 ? ((tAuth/tPrev)*100).toFixed(2)+'%' : '—';
-    const totalsRow = `<tr id="hc-totals-row" style="background:var(--surface2);font-weight:600;border-top:2px solid var(--border2)">
-      <td></td><td class="td-p">TOTAL</td>
-      <td style="text-align:center">${tAuth}</td>
-      <td style="text-align:center">${tActual}</td>
-      <td style="text-align:center">${tVac}</td>
-      <td style="text-align:center">${tCartera}</td>
-      <td style="text-align:center">${tEntrev}</td>
-      <td style="text-align:center">${tValid}</td>
-      <td style="text-align:center">${tProc}</td>
-      <td style="text-align:center">${tCont}</td>
-      <td style="text-align:center">${tBajas}</td>
-      <td style="text-align:center">${tPrev}</td>
-      <td style="text-align:center">${tPct}</td>
-      <td style="text-align:center">${tCierre}</td>
-      <td style="text-align:center">${tDet}</td>
-      <td style="text-align:center">${tPCant}</td>
-    </tr>`;
-
-    content.innerHTML=`
-      <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:14px;font-weight:600">${emp.nombre||''} — Semana ${semana} ${fIni&&fFin?'('+fIni+' al '+fFin+')':''}</div>
-        <button class="btn btn-primary btn-sm" onclick="openHCProyectoModal('${empId}')">
-          <i class="fa fa-plus"></i> Agregar proyecto
-        </button>
-      </div>
-      ${proyectos.length?`
-      <style>
-        #hc-resumen-table th,
-        #hc-resumen-table td { font-size:11px; padding:4px 6px; white-space:normal; }
-        #hc-resumen-table th { white-space:normal; word-break:break-word; }
-        #hc-resumen-table input.hc-inp { width:44px; max-width:52px; font-size:11px; padding:3px 2px; }
-        .hc-edit-icon { font-size:9px; color:var(--text3); cursor:pointer; margin-left:3px; vertical-align:middle; }
-        .hc-edit-icon:hover { color:var(--accent); }
-        .hc-drag-handle { color:var(--text3); cursor:grab; user-select:none; font-size:14px; }
-        .hc-drag-handle:active { cursor:grabbing; }
-        #hc-resumen-table tr.hc-dragging { opacity:0.4; }
-        #hc-resumen-table tr.hc-drag-over { border-top:2px solid var(--accent); }
-      </style>
-      <div class="table-wrap" style="overflow-x:auto">
-        <table id="hc-resumen-table">
-          <thead><tr>
-            <th></th><th>Proyecto</th><th>Autorizada</th><th>Actual</th><th>Vacantes</th>
-            <th>Cartera</th><th>Entrevista</th><th>Validación</th><th>Proc. Contrat.</th>
-            <th>Contratados</th><th>Bajas</th>
-            <th>Status Sem. Previo Bajas</th>
-            <th>%</th>
-            <th>Status al Cierre Sem.</th>
-            <th>Detenidas</th>
-            <th>Plantilla al Cierre</th>
-          </tr></thead>
-          <tbody>${rows}${totalsRow}</tbody>
-        </table>
-      </div>`:
-      '<div style="color:var(--text3);font-size:13px">Sin proyectos configurados. Agrega uno para comenzar.</div>'}`;
+    await showHCWeekList(empId);
   }
 
   else if(tab==='grafica'){
@@ -5249,6 +5124,328 @@ async function showHCTab(tab){
   }
 }
 
+function getISOWeek(date){
+  const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
+  const dayNum=d.getUTCDay()||7;
+  d.setUTCDate(d.getUTCDate()+4-dayNum);
+  const yearStart=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil((((d-yearStart)/86400000)+1)/7);
+}
+
+function getWeekDates(w, y){
+  const jan4=new Date(Date.UTC(y,0,4));
+  const dow=jan4.getUTCDay()||7;
+  const weekStart=new Date(jan4);
+  weekStart.setUTCDate(jan4.getUTCDate()-dow+1+(w-1)*7);
+  const weekEnd=new Date(weekStart);
+  weekEnd.setUTCDate(weekStart.getUTCDate()+4);
+  const fmt=d=>d.toLocaleDateString('es-MX',{day:'2-digit',month:'short',timeZone:'UTC'});
+  return{lunes:weekStart,viernes:weekEnd,label:`${fmt(weekStart)} – ${fmt(weekEnd)}`};
+}
+
+async function showHCWeekList(empId){
+  const content=document.getElementById('hc-content');
+  if(!content) return;
+  const emp=DB.empresas.find(x=>x.id===empId)||{};
+  const anio=new Date().getFullYear();
+  const semanaActual=getISOWeek(new Date());
+  const{data:semanasExistentes}=await sbClient.from('hc_resumen')
+    .select('semana,anio').eq('empresa_id',empId).eq('anio',anio);
+  const semanasSet=new Set((semanasExistentes||[]).map(r=>r.semana));
+  const rows=[];
+  for(let s=1;s<=52;s++){
+    const{label}=getWeekDates(s,anio);
+    const creada=semanasSet.has(s);
+    const esCurrent=s===semanaActual;
+    rows.push(`<tr id="hc-week-row-${s}" style="${esCurrent?'background:rgba(42,170,222,.1)':''}">
+      <td style="text-align:center;font-weight:${esCurrent?700:400};color:${esCurrent?'var(--accent)':'inherit'}">${s}</td>
+      <td>${label}</td>
+      <td style="text-align:center">
+        ${creada
+          ?`<span style="color:var(--ok);font-size:12px"><i class="fa fa-check-circle"></i> Creada</span>`
+          :`<span style="color:var(--text3);font-size:12px">Sin crear</span>`}
+      </td>
+      <td style="text-align:center">
+        ${creada
+          ?`<button class="btn btn-ghost btn-sm" onclick="abrirTablaHC('${empId}',${s},${anio})"><i class="fa fa-table"></i> Abrir</button>`
+          :`<button class="btn btn-primary btn-sm" onclick="crearSemanaHC('${empId}',${s},${anio})"><i class="fa fa-plus"></i> Crear</button>`}
+      </td>
+    </tr>`);
+  }
+  content.innerHTML=`
+    <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div style="font-size:14px;font-weight:600">${emp.nombre||''} — Semanas ${anio}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="showHCTab('grafica')"><i class="fa fa-chart-bar"></i> Gráfica</button>
+        <button class="btn btn-ghost btn-sm" onclick="showHCTab('historico')"><i class="fa fa-history"></i> Histórico</button>
+        <button class="btn btn-ghost btn-sm" onclick="openHCProyectoModal('${empId}')"><i class="fa fa-cog"></i> Plantilla</button>
+      </div>
+    </div>
+    <div class="table-wrap" style="overflow-y:auto;max-height:560px" id="hc-week-list-wrap">
+      <table>
+        <thead><tr>
+          <th style="text-align:center">Semana</th>
+          <th>Fechas</th>
+          <th style="text-align:center">Estado</th>
+          <th style="text-align:center">Acción</th>
+        </tr></thead>
+        <tbody>${rows.join('')}</tbody>
+      </table>
+    </div>`;
+  requestAnimationFrame(()=>{
+    const cur=document.getElementById('hc-week-row-'+semanaActual);
+    if(cur) cur.scrollIntoView({block:'center'});
+  });
+}
+
+async function crearSemanaHC(empId, semana, anio){
+  const{data:plantilla}=await sbClient.from('hc_plantilla').select('*').eq('empresa_id',empId).order('orden',{ascending:true});
+  if(!plantilla?.length){
+    showToast('No hay proyectos en la plantilla. Configura proyectos primero.','err');
+    return;
+  }
+  const rows=plantilla.map(p=>({
+    id:empId+'-'+p.proyecto.replace(/\s+/g,'')+'-'+semana+'-'+anio,
+    empresa_id:empId,proyecto:p.proyecto,semana,anio,
+    actual:0,cartera:0,entrevista:0,validacion:0,
+    proceso_contratacion:0,contratados:0,bajas:0,detenidas:0,
+    vacantes:p.plantilla_autorizada||0,
+    updated_at:new Date().toISOString()
+  }));
+  const{error}=await sbClient.from('hc_resumen').upsert(rows);
+  if(error){showToast('Error: '+error.message,'err');return;}
+  showToast(`Semana ${semana} creada ✓`);
+  await abrirTablaHC(empId,semana,anio);
+}
+
+async function abrirTablaHC(empId, semana, anio){
+  const content=document.getElementById('hc-content');
+  if(!content) return;
+  const emp=DB.empresas.find(x=>x.id===empId)||{};
+  const{data:plantilla}=await sbClient.from('hc_plantilla').select('*').eq('empresa_id',empId).order('orden',{ascending:true});
+  const{data:resumen}=await sbClient.from('hc_resumen').select('*')
+    .eq('empresa_id',empId).eq('semana',semana).eq('anio',anio);
+  const resumenMap={};
+  (resumen||[]).forEach(r=>resumenMap[r.proyecto]=r);
+  const{label,lunes,viernes}=getWeekDates(semana,anio);
+  const semanaEl=document.getElementById('hc-semana');
+  if(semanaEl) semanaEl.value=semana;
+  const fIniEl=document.getElementById('hc-fecha-ini');
+  if(fIniEl) fIniEl.value=lunes.toLocaleDateString('es-MX',{day:'2-digit',month:'short',timeZone:'UTC'});
+  const fFinEl=document.getElementById('hc-fecha-fin');
+  if(fFinEl) fFinEl.value=viernes.toLocaleDateString('es-MX',{day:'2-digit',month:'short',timeZone:'UTC'});
+  const inp=(v,ev='')=>`<input type="number" class="hc-inp" value="${v}" style="width:50px;text-align:center;font-size:11px;padding:3px 2px" onkeydown="hcKeyNav(event,this)" onpaste="hcPaste(event,this)"${ev?' oninput="'+ev+'"':''}>`;
+  const mkRow=(proy,proyId,auth,r={})=>{
+    const actual=r.actual||0,cartera=r.cartera||0,entrevista=r.entrevista||0;
+    const validacion=r.validacion||0,procCont=r.proceso_contratacion||0;
+    const contratados=r.contratados||0,bajas=r.bajas||0,detenidas=r.detenidas||0;
+    const vacantes=auth-actual,statusPrev=vacantes-contratados;
+    const pct=auth>0?((statusPrev/auth)*100).toFixed(2)+'%':'—';
+    const statusCierre=statusPrev+bajas,plantillaCierre=auth-statusCierre-detenidas;
+    return`<tr id="hc-tr-${proyId}" data-auth="${auth}" data-proy="${proy.replace(/"/g,'&quot;')}">
+      <td class="td-p" style="font-size:12px"><span class="hc-proy-nombre">${proy}</span>
+        <i class="fa fa-pen hc-edit-icon" onclick="hcEditarNombreProy('${proyId}','${empId}',${semana},${anio})" title="Editar nombre"></i>
+      </td>
+      <td style="text-align:center">${auth}</td>
+      <td style="text-align:center">${inp(actual,"recalcHCRow('"+proyId+"')")}</td>
+      <td id="hc-vac-${proyId}" style="text-align:center;color:${vacantes>0?'var(--err)':'var(--ok)'}">${vacantes}</td>
+      <td style="text-align:center">${inp(cartera)}</td>
+      <td style="text-align:center">${inp(entrevista)}</td>
+      <td style="text-align:center">${inp(validacion)}</td>
+      <td style="text-align:center">${inp(procCont)}</td>
+      <td style="text-align:center">${inp(contratados,"recalcHCRow('"+proyId+"')")}</td>
+      <td style="text-align:center">${inp(bajas,"recalcHCRow('"+proyId+"')")}</td>
+      <td id="hc-prev-${proyId}" style="text-align:center;font-weight:500">${statusPrev}</td>
+      <td id="hc-pct-${proyId}" style="text-align:center">${pct}</td>
+      <td id="hc-cierre-${proyId}" style="text-align:center;font-weight:500">${statusCierre}</td>
+      <td style="text-align:center">${inp(detenidas,"recalcHCRow('"+proyId+"')")}</td>
+      <td id="hc-pcant-${proyId}" style="text-align:center;font-weight:500">${plantillaCierre}</td>
+      <td style="text-align:center">
+        <button class="btn btn-danger btn-sm" onclick="hcEliminarFila('${proyId}','${empId}',${semana},${anio})" title="Eliminar"><i class="fa fa-trash" style="font-size:11px"></i></button>
+      </td>
+    </tr>`;
+  };
+  const rows=(plantilla||[]).map(p=>mkRow(p.proyecto,p.proyecto.replace(/[^a-zA-Z0-9]/g,'_'),p.plantilla_autorizada||0,resumenMap[p.proyecto]||{})).join('');
+  content.innerHTML=`
+    <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${empId}')"><i class="fa fa-arrow-left"></i> Semanas</button>
+      <div style="font-size:14px;font-weight:600">${emp.nombre||''} — Semana ${semana} (${label})</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="hcAgregarFila('${empId}',${semana},${anio})"><i class="fa fa-plus"></i> Agregar fila</button>
+        <button class="btn btn-ghost btn-sm" onclick="openHCProyectoModal('${empId}')"><i class="fa fa-cog"></i> Plantilla</button>
+        <button class="btn btn-ghost btn-sm" onclick="showHCTab('grafica')"><i class="fa fa-chart-bar"></i> Gráfica</button>
+        <button class="btn btn-ghost btn-sm" onclick="showHCTab('historico')"><i class="fa fa-history"></i> Histórico</button>
+        <button class="btn btn-primary btn-sm" onclick="guardarSemanaHC('${empId}',${semana},${anio})"><i class="fa fa-save"></i> Guardar semana</button>
+      </div>
+    </div>
+    <style>
+      #hc-week-table th,#hc-week-table td{font-size:11px;padding:4px 6px}
+      #hc-week-table th{white-space:normal;word-break:break-word}
+      .hc-edit-icon{font-size:9px;color:var(--text3);cursor:pointer;margin-left:3px;vertical-align:middle}
+      .hc-edit-icon:hover{color:var(--accent)}
+    </style>
+    <div class="table-wrap" style="overflow-x:auto">
+      <table id="hc-week-table">
+        <thead><tr>
+          <th>Proyecto</th><th>Autorizada</th><th>Actual</th><th>Vacantes</th>
+          <th>Cartera</th><th>Entrevista</th><th>Validación</th><th>Proc. Contrat.</th>
+          <th>Contratados</th><th>Bajas</th>
+          <th>Status Sem. Previo Bajas</th><th>%</th>
+          <th>Status al Cierre Sem.</th><th>Detenidas</th><th>Plantilla al Cierre</th>
+          <th></th>
+        </tr></thead>
+        <tbody>${rows||'<tr><td colspan="16" style="text-align:center;color:var(--text3);padding:16px">Sin proyectos. Configura desde Plantilla.</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+
+async function guardarSemanaHC(empId, semana, anio){
+  const tbody=document.querySelector('#hc-week-table tbody');
+  if(!tbody){showToast('Sin tabla abierta','err');return;}
+  const filas=[];
+  tbody.querySelectorAll('tr[id^="hc-tr-"]').forEach(tr=>{
+    const proy=tr.dataset.proy;
+    if(!proy) return;
+    const inp=tr.querySelectorAll('input.hc-inp');
+    const actual=parseInt(inp[0]?.value)||0,cartera=parseInt(inp[1]?.value)||0;
+    const entrevista=parseInt(inp[2]?.value)||0,validacion=parseInt(inp[3]?.value)||0;
+    const procCont=parseInt(inp[4]?.value)||0,contratados=parseInt(inp[5]?.value)||0;
+    const bajas=parseInt(inp[6]?.value)||0,detenidas=parseInt(inp[7]?.value)||0;
+    const auth=parseInt(tr.dataset.auth)||0;
+    filas.push({
+      id:empId+'-'+proy.replace(/\s+/g,'')+'-'+semana+'-'+anio,
+      empresa_id:empId,proyecto:proy,semana,anio,
+      actual,cartera,entrevista,validacion,
+      proceso_contratacion:procCont,contratados,bajas,detenidas,
+      vacantes:Math.max(0,auth-actual),
+      updated_at:new Date().toISOString()
+    });
+  });
+  if(!filas.length){showToast('Sin datos para guardar');return;}
+  const{error}=await sbClient.from('hc_resumen').upsert(filas);
+  if(error){showToast('Error: '+error.message,'err');return;}
+  showToast(`Semana ${semana} guardada ✓`);
+}
+
+async function hcEliminarFila(proyId, empId, semana, anio){
+  const tr=document.getElementById('hc-tr-'+proyId);
+  const proy=tr?.dataset.proy;
+  if(!proy||!confirm(`¿Eliminar "${proy}" de la semana ${semana}?`)) return;
+  const{error}=await sbClient.from('hc_resumen').delete()
+    .eq('empresa_id',empId).eq('proyecto',proy).eq('semana',semana).eq('anio',anio);
+  if(error){showToast('Error: '+error.message,'err');return;}
+  tr.remove();
+  showToast('Fila eliminada ✓');
+}
+
+function hcAgregarFila(empId, semana, anio){
+  const tbody=document.querySelector('#hc-week-table tbody');
+  if(!tbody) return;
+  const proy=prompt('Nombre del proyecto:')?.trim();
+  if(!proy) return;
+  const proyId=proy.replace(/[^a-zA-Z0-9]/g,'_')+'_'+Date.now();
+  const inp=(v,ev='')=>`<input type="number" class="hc-inp" value="${v}" style="width:50px;text-align:center;font-size:11px;padding:3px 2px" onkeydown="hcKeyNav(event,this)" onpaste="hcPaste(event,this)"${ev?' oninput="'+ev+'"':''}>`;
+  const tr=document.createElement('tr');
+  tr.id='hc-tr-'+proyId;
+  tr.dataset.auth='0';
+  tr.dataset.proy=proy;
+  tr.innerHTML=`
+    <td class="td-p" style="font-size:12px"><span class="hc-proy-nombre">${proy}</span></td>
+    <td style="text-align:center">0</td>
+    <td style="text-align:center">${inp(0,"recalcHCRow('"+proyId+"')")}</td>
+    <td id="hc-vac-${proyId}" style="text-align:center;color:var(--ok)">0</td>
+    <td style="text-align:center">${inp(0)}</td>
+    <td style="text-align:center">${inp(0)}</td>
+    <td style="text-align:center">${inp(0)}</td>
+    <td style="text-align:center">${inp(0)}</td>
+    <td style="text-align:center">${inp(0,"recalcHCRow('"+proyId+"')")}</td>
+    <td style="text-align:center">${inp(0,"recalcHCRow('"+proyId+"')")}</td>
+    <td id="hc-prev-${proyId}" style="text-align:center;font-weight:500">0</td>
+    <td id="hc-pct-${proyId}" style="text-align:center">—</td>
+    <td id="hc-cierre-${proyId}" style="text-align:center;font-weight:500">0</td>
+    <td style="text-align:center">${inp(0,"recalcHCRow('"+proyId+"')")}</td>
+    <td id="hc-pcant-${proyId}" style="text-align:center;font-weight:500">0</td>
+    <td style="text-align:center">
+      <button class="btn btn-danger btn-sm" onclick="hcEliminarFila('${proyId}','${empId}',${semana},${anio})" title="Eliminar"><i class="fa fa-trash" style="font-size:11px"></i></button>
+    </td>`;
+  tbody.appendChild(tr);
+}
+
+async function hcEditarNombreProy(proyId, empId, semana, anio){
+  const tr=document.getElementById('hc-tr-'+proyId);
+  if(!tr) return;
+  const oldName=tr.dataset.proy;
+  const newName=prompt('Nuevo nombre del proyecto:',oldName)?.trim();
+  if(!newName||newName===oldName) return;
+  const{error}=await sbClient.from('hc_plantilla')
+    .update({proyecto:newName,updated_at:new Date().toISOString()})
+    .eq('empresa_id',empId).eq('proyecto',oldName);
+  if(error){showToast('Error: '+error.message,'err');return;}
+  tr.dataset.proy=newName;
+  const span=tr.querySelector('.hc-proy-nombre');
+  if(span) span.textContent=newName;
+  showToast('Nombre actualizado ✓');
+}
+
+function hcKeyNav(e, inp){
+  if(!['Tab','Enter','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) return;
+  const tbody=inp.closest('tbody');
+  if(!tbody) return;
+  const allInps=[...tbody.querySelectorAll('input.hc-inp')];
+  const idx=allInps.indexOf(inp);
+  if(idx<0) return;
+  const tr=inp.closest('tr');
+  const rowInps=[...tr.querySelectorAll('input.hc-inp')];
+  const colIdx=rowInps.indexOf(inp);
+  let next=null;
+  if(e.key==='Tab'){
+    e.preventDefault();
+    next=e.shiftKey?allInps[idx-1]:allInps[idx+1];
+  } else if(e.key==='Enter'){
+    e.preventDefault();
+    const nextTr=tr.nextElementSibling;
+    if(nextTr) next=nextTr.querySelectorAll('input.hc-inp')[colIdx];
+  } else if(e.key==='ArrowUp'){
+    e.preventDefault();
+    const prevTr=tr.previousElementSibling;
+    if(prevTr) next=prevTr.querySelectorAll('input.hc-inp')[colIdx];
+  } else if(e.key==='ArrowDown'){
+    e.preventDefault();
+    const nextTr=tr.nextElementSibling;
+    if(nextTr) next=nextTr.querySelectorAll('input.hc-inp')[colIdx];
+  } else if(e.key==='ArrowLeft'&&inp.selectionStart===0){
+    e.preventDefault();
+    next=allInps[idx-1];
+  } else if(e.key==='ArrowRight'&&inp.selectionEnd===inp.value.length){
+    e.preventDefault();
+    next=allInps[idx+1];
+  }
+  if(next){next.focus();next.select();}
+}
+
+function hcPaste(e, inp){
+  const text=(e.clipboardData||window.clipboardData).getData('text');
+  if(!text.includes('\t')&&!text.includes('\n')) return;
+  e.preventDefault();
+  const tbody=inp.closest('tbody');
+  if(!tbody) return;
+  const tr=inp.closest('tr');
+  const rowInps=[...tr.querySelectorAll('input.hc-inp')];
+  const colStart=rowInps.indexOf(inp);
+  let currentTr=tr;
+  text.trim().split('\n').forEach(rowText=>{
+    if(!currentTr) return;
+    const cells=rowText.split('\t');
+    const trInps=[...currentTr.querySelectorAll('input.hc-inp')];
+    cells.forEach((val,ci)=>{
+      const target=trInps[colStart+ci];
+      if(target){target.value=val.trim();target.dispatchEvent(new Event('input',{bubbles:true}));}
+    });
+    currentTr=currentTr.nextElementSibling;
+  });
+  showToast('Pegado desde Excel ✓');
+}
+
 async function updateHCRow(empId, proyecto, auth, el, campo){
   const semana = parseInt(document.getElementById('hc-semana')?.value||0);
   if(!semana){ showToast('Ingresa el número de semana primero','err'); return; }
@@ -5315,7 +5512,7 @@ function recalcHCTotals(){
     const det    = parseInt(inp[7]?.value)||0;
     const vac    = auth - actual;
     const prev   = vac - cont;
-    const cierre = prev - bajas;
+    const cierre = prev + bajas;
     tAuth+=auth; tActual+=actual; tVac+=vac; tCartera+=cartera;
     tEntrev+=entrev; tValid+=valid; tProc+=proc; tCont+=cont; tBajas+=bajas;
     tPrev+=prev; tCierre+=cierre; tDet+=det; tPCant+=(auth-cierre-det);
@@ -5477,7 +5674,7 @@ async function saveHCProyecto(empId){
   const id = empId+'-'+proyecto.replace(/\s+/g,'').substring(0,20)+'-'+Date.now();
   const { error } = await sbClient.from('hc_plantilla').upsert({
     id, empresa_id:empId, proyecto, plantilla_autorizada:auth,
-    orden: (document.querySelectorAll('#hc-resumen-table tbody tr[id^="hc-tr-"]').length) + 1,
+    orden: (document.querySelectorAll('tbody tr[id^="hc-tr-"]').length) + 1,
     updated_at:new Date().toISOString()
   });
   if(error) showToast('Error: '+error.message,'err');

@@ -3047,14 +3047,15 @@ function _collectRefPersonales(candidato_id){
 }
 async function saveReferencias(candidato_id){
   const todas=[..._collectRefLaborales(candidato_id),..._collectRefPersonales(candidato_id)];
-  if(!todas.length)return;
-  if(SANDBOX_MODE)return;
+  if(!todas.length)return false;
+  if(SANDBOX_MODE)return false;
   const{error:de}=await sbClient.from('referencias').delete().eq('candidato_id',candidato_id);
   if(de)throw new Error(de.message);
   for(const r of todas){
     const{error}=await sbClient.from('referencias').insert(r);
     if(error)throw new Error(error.message);
   }
+  return true;
 }
 
 function onCandEmpresaChange(){
@@ -3125,10 +3126,12 @@ async function saveCandidato(){
   }
   if(_candModalMode==='referencias'){
     try{
-      await saveReferencias(_id);
-      _candConRefs.add(_id);
-      const _refI=document.getElementById('ref-icon-'+_id);
-      if(_refI)_refI.style.color='#22c55e';
+      const _saved=await saveReferencias(_id);
+      if(_saved){
+        _candConRefs.add(_id);
+        const _refI=document.getElementById('ref-icon-'+_id);
+        if(_refI)_refI.style.color='#22c55e';
+      }
       closeModal('modal-candidato');
       showToast('Referencias guardadas ✓');
     }

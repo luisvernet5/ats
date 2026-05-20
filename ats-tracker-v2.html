@@ -5241,6 +5241,7 @@ async function abrirTablaHC(empId, semana, anio){
   if(!content) return;
   const emp=DB.empresas.find(x=>x.id===empId)||{};
   currentHCEmpId=empId; currentHCSemana=semana; currentHCAnio=anio;
+  window.hcCurrentEmpId=empId; window.hcCurrentSemana=semana; window.hcCurrentAnio=anio;
   const{data:plantilla}=await sbClient.from('hc_plantilla').select('*').eq('empresa_id',empId).order('orden',{ascending:true});
   const{data:resumen}=await sbClient.from('hc_resumen').select('*')
     .eq('empresa_id',empId).eq('semana',semana).eq('anio',anio);

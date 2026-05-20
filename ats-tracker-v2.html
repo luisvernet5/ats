@@ -3777,6 +3777,7 @@ function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {
             ${v.proyecto&&v.proyecto!=='Sin asignar'?`<span><i class="fa fa-project-diagram"></i> ${v.proyecto}</span>`:''}
             ${v.salario?`<span><i class="fa fa-money-bill"></i> ${v.salario}</span>`:''}
             ${v.tipo_vacante?`<span><i class="fa fa-tag"></i> ${v.tipo_vacante}</span>`:''}
+            ${v.tipo_vacante==='Sustitución'&&v.colaborador_sustituido?`<span><i class="fa fa-user"></i> Sustituye a: <strong>${v.colaborador_sustituido}</strong></span>`:''}
           </div>
         </div>
         <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">

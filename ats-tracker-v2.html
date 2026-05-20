@@ -5057,33 +5057,56 @@ async function showHCTab(tab){
   }
 
   else if(tab==='grafica'){
-    const gEmpId  = currentHCEmpId  || empId;
-    const gSemana = currentHCSemana || parseInt(semana)||0;
-    const gAnio   = currentHCAnio   || new Date().getFullYear();
-    // Log con los nombres que usa el código real:
-    console.log('GRAFICA - empId:', gEmpId, '| semana:', gSemana, '| anio:', gAnio);
-    // Log con los nombres que usaste en el request (siempre undefined — los reales son los de arriba):
-    console.log('GRAFICA - window.hcCurrentEmpId:', window.hcCurrentEmpId, '| window.hcCurrentSemana:', window.hcCurrentSemana, '| window.hcCurrentAnio:', window.hcCurrentAnio);
+    const gEmpId = currentHCEmpId || empId;
+    const gAnio  = currentHCAnio  || new Date().getFullYear();
+
+    // Si el select ya existe (re-render por onchange), leer su valor antes de destruir el DOM
+    const selExistente = document.getElementById('hc-grafica-semana');
+    if(selExistente?.value) {
+      currentHCSemana = parseInt(selExistente.value)||currentHCSemana;
+      window.hcCurrentSemana = currentHCSemana;
+    }
+    let gSemana = currentHCSemana || parseInt(semana)||0;
+
+    // Cargar semanas disponibles para el selector
+    const { data: semList } = await sbClient.from('hc_resumen')
+      .select('semana').eq('empresa_id', gEmpId).eq('anio', gAnio)
+      .order('semana', {ascending:true});
+    const semanasDisp = [...new Set((semList||[]).map(r=>r.semana))];
+
+    // Default a la semana más reciente si no hay selección
+    if(!gSemana && semanasDisp.length) {
+      gSemana = semanasDisp[semanasDisp.length-1];
+      currentHCSemana = gSemana; window.hcCurrentSemana = gSemana;
+    }
 
     const gEmp = DB.empresas.find(x=>x.id===gEmpId)||{};
     const { data: plantilla } = await sbClient.from('hc_plantilla').select('*').eq('empresa_id', gEmpId).order('orden',{ascending:true});
     let resumenQ = sbClient.from('hc_resumen').select('*').eq('empresa_id', gEmpId);
     if(gSemana) resumenQ = resumenQ.eq('semana', gSemana);
     if(gAnio)   resumenQ = resumenQ.eq('anio',   gAnio);
-    const { data: resumen, error: resErr } = await resumenQ;
-    console.log('GRAFICA - plantilla rows:', plantilla?.length, '| resumen rows:', resumen?.length, '| error:', resErr?.message||null);
+    const { data: resumen } = await resumenQ;
     const resumenMap = {};
     (resumen||[]).forEach(r=>{ if(!resumenMap[r.proyecto]) resumenMap[r.proyecto]=r; });
 
-    const labelsArr   = (plantilla||[]).map(p=>p.proyecto.substring(0,18));
-    const authArr     = (plantilla||[]).map(p=>p.plantilla_autorizada||0);
-    const actualArr   = (plantilla||[]).map(p=>resumenMap[p.proyecto]?.actual||0);
-    const bajasArr    = (plantilla||[]).map(p=>resumenMap[p.proyecto]?.bajas||0);
-    const semLabel    = gSemana ? `Semana ${gSemana} — ${gAnio}` : `${gAnio}`;
+    const labelsArr = (plantilla||[]).map(p=>p.proyecto.substring(0,18));
+    const authArr   = (plantilla||[]).map(p=>p.plantilla_autorizada||0);
+    const actualArr = (plantilla||[]).map(p=>resumenMap[p.proyecto]?.actual||0);
+    const bajasArr  = (plantilla||[]).map(p=>resumenMap[p.proyecto]?.bajas||0);
+    const semLabel  = gSemana ? `Semana ${gSemana} — ${gAnio}` : `${gAnio}`;
+    const semOpts   = semanasDisp.map(s=>`<option value="${s}"${s===gSemana?' selected':''}>${s}</option>`).join('');
 
     content.innerHTML=`
       <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${gEmpId}')" style="margin-bottom:12px"><i class="fa fa-arrow-left"></i> Semanas</button>
-      <div style="font-size:14px;font-weight:600;margin-bottom:16px">${gEmp.nombre||''} — ${semLabel}</div>
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+        <div style="font-size:14px;font-weight:600">${gEmp.nombre||''} — ${semLabel}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:13px;color:#555">Semana:</label>
+          <select id="hc-grafica-semana" onchange="showHCTab('grafica')" style="height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
+            ${semOpts}
+          </select>
+        </div>
+      </div>
       <div style="height:400px;position:relative">
         <canvas id="hc-chart"></canvas>
       </div>`;

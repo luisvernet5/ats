@@ -5153,7 +5153,7 @@ async function showHCTab(tab){
         </div>
       </div>
       <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
-        <div style="width:380px;min-width:280px">
+        <div style="min-width:320px;flex:0 0 auto">
           <div id="hc-hist-tabla"><div style="color:var(--text3);font-size:13px">Cargando...</div></div>
           <button class="btn btn-primary btn-sm" onclick="guardarHCHistorico()" style="margin-top:10px"><i class="fa fa-save"></i> Guardar</button>
         </div>
@@ -5524,8 +5524,8 @@ async function renderHCHistorico(){
 
   const tabla = document.getElementById('hc-hist-tabla');
   if(tabla) tabla.innerHTML=`
-    <div class="table-wrap" style="max-height:320px;overflow-y:auto">
-      <table style="width:100%">
+    <div class="table-wrap" style="max-height:320px;overflow-x:auto;overflow-y:auto">
+      <table>
         <thead><tr>
           <th style="white-space:nowrap;font-size:11px">Semana</th>
           <th style="white-space:nowrap;font-size:11px">Vacantes</th>

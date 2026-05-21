@@ -7299,7 +7299,8 @@ async function saveUsuario() {
       if(error) { showToast('Error: UUID inválido o ya registrado', 'err'); return; }
       showToast('Usuario registrado ✓');
     } else {
-      await sbClient.from('usuarios').update({ nombre, rol, reclutador_id, empresa_id }).eq('id', usrId);
+      const { error: updErr } = await sbClient.from('usuarios').update({ nombre, rol, reclutador_id, empresa_id }).eq('id', usrId);
+      if(updErr) { showToast('Error al guardar: '+updErr.message, 'err'); return; }
       showToast('Usuario actualizado ✓');
     }
     closeModal('modal-usuario');

@@ -1081,6 +1081,8 @@ let _edCurrentEmpId = null;
 let empresaVistaActual = 'folio';
 let _rkVacPage = 1;
 let _rkVacData = [];
+let _rdVacsAll = [];
+let _rdRecId = null;
 
 const hashParams = new URLSearchParams(window.location.hash.substring(1));
 const accessToken = hashParams.get('access_token');
@@ -4561,17 +4563,69 @@ function openReclutadorDetail(recId) {
       <div class="card"><div class="card-title">Días prom. cobertura</div><div class="card-value" style="color:var(--amber)">${avgDias||'—'}</div></div>
     </div>`;
 
-  const rows = vacs.length ? vacs.map(v=>{
-    const emp = DB.empresas.find(x=>x.id===v.empresa_id)||{};
-    const vcands = DB.candidatos.filter(c=>c.vacante_id===v.id);
-    const activos = vcands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa));
-    const dias = daysBetween(v.fecha_apertura);
-    const diasCierre = v.estado==='Cubierta' ? dias : null;
-    return `<tr style="cursor:pointer" onclick="openVacanteDetailView('${v.id}','${v.empresa_id}','reclutador','${recId}')">
-      <td class="td-p">
-        ${v.nombre}
-        ${v.folio?`<div style="font-size:10px;font-family:var(--mono);color:var(--text3)">${v.folio}</div>`:''}
-      </td>
+  _rdVacsAll = vacs;
+  _rdRecId = recId;
+
+  const empOpts = [...new Set(vacs.map(v=>v.empresa_id).filter(Boolean))]
+    .map(eid=>{const e=DB.empresas.find(x=>x.id===eid)||{};return`<option value="${eid}">${e.nombre||eid}</option>`;}).join('');
+  const proyOpts = [...new Set(vacs.map(v=>v.proyecto).filter(Boolean))].sort()
+    .map(p=>`<option value="${p}">${p}</option>`).join('');
+  const depOpts = [...new Set(vacs.map(v=>v.departamento).filter(Boolean))].sort()
+    .map(d=>`<option value="${d}">${d}</option>`).join('');
+
+  const filtrosHtml = `
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+      <select id="rd-flt-emp" onchange="filtrarVacsReclutador()" style="height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;min-width:160px">
+        <option value="">Todas las empresas</option>${empOpts}
+      </select>
+      <select id="rd-flt-proy" onchange="filtrarVacsReclutador()" style="height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;min-width:130px">
+        <option value="">Proyecto</option>${proyOpts}
+      </select>
+      <select id="rd-flt-dep" onchange="filtrarVacsReclutador()" style="height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;min-width:130px">
+        <option value="">Departamento</option>${depOpts}
+      </select>
+      <button onclick="document.getElementById('rd-flt-emp').value='';document.getElementById('rd-flt-proy').value='';document.getElementById('rd-flt-dep').value='';filtrarVacsReclutador()" style="height:30px;font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#666">× Limpiar</button>
+    </div>`;
+
+  const tablaHtml = `
+    <div class="sec-title">Vacantes asignadas <span style="font-size:12px;color:var(--text3);font-weight:400">(clic en vacante para ver candidatos)</span></div>
+    ${filtrosHtml}
+    <div class="table-wrap">
+      <table><thead><tr>
+        <th style="width:36px;text-align:center">#</th>
+        <th>Vacante</th><th>Empresa</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th>
+        <th>Días abierta</th><th>Total cands.</th><th>En proceso</th><th>Días al cierre</th><th>SLA</th>
+      </tr></thead>
+      <tbody id="rd-vacs-tbody"></tbody></table>
+    </div>
+    <div id="rd-vacs-count" style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right"></div>`;
+
+  document.getElementById('reclutador-detail-content').innerHTML = headerHtml + kpisHtml + tablaHtml;
+  filtrarVacsReclutador();
+  document.getElementById('page-title').textContent = r.nombre;
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-reclutador-detail').classList.add('active');
+}
+
+function filtrarVacsReclutador(){
+  const empF=document.getElementById('rd-flt-emp')?.value||'';
+  const proyF=document.getElementById('rd-flt-proy')?.value||'';
+  const depF=document.getElementById('rd-flt-dep')?.value||'';
+  let list=_rdVacsAll;
+  if(empF)list=list.filter(v=>v.empresa_id===empF);
+  if(proyF)list=list.filter(v=>v.proyecto===proyF);
+  if(depF)list=list.filter(v=>v.departamento===depF);
+  const recId=_rdRecId;
+  const rows=list.map((v,i)=>{
+    const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const vcands=DB.candidatos.filter(c=>c.vacante_id===v.id);
+    const activos=vcands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa));
+    const dias=daysBetween(v.fecha_apertura);
+    const diasCierre=v.estado==='Cubierta'?dias:null;
+    return`<tr style="cursor:pointer" onclick="openVacanteDetailView('${v.id}','${v.empresa_id}','reclutador','${recId}')">
+      <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
+      <td class="td-p">${v.nombre}${v.folio?`<div style="font-size:10px;font-family:var(--mono);color:var(--text3)">${v.folio}</div>`:''}</td>
       <td><span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${emp.color||'#888'}"></span>${emp.nombre||'—'}</span></td>
       <td style="font-size:12px;color:var(--text2)">${v.proyecto||'—'}</td>
       <td style="font-size:12px;color:var(--text2)">${v.departamento||'—'}</td>
@@ -4583,23 +4637,11 @@ function openReclutadorDetail(recId) {
       <td>${diasCierre!==null?`<span class="dpill ${dClass(diasCierre)}">${diasCierre}d</span>`:'—'}</td>
       <td>${getSLAStatus(v)}</td>
     </tr>`;
-  }).join('') : `<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes asignadas</td></tr>`;
-
-  const tablaHtml = `
-    <div class="sec-title">Vacantes asignadas <span style="font-size:12px;color:var(--text3);font-weight:400">(clic en vacante para ver candidatos)</span></div>
-    <div class="table-wrap">
-      <table><thead><tr>
-        <th>Vacante</th><th>Empresa</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th>
-        <th>Días abierta</th><th>Total cands.</th><th>En proceso</th><th>Días al cierre</th><th>SLA</th>
-      </tr></thead>
-      <tbody>${rows}</tbody></table>
-    </div>`;
-
-  document.getElementById('reclutador-detail-content').innerHTML = headerHtml + kpisHtml + tablaHtml;
-  document.getElementById('page-title').textContent = r.nombre;
-  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
-  document.getElementById('page-reclutador-detail').classList.add('active');
+  }).join('');
+  const tbody=document.getElementById('rd-vacs-tbody');
+  if(tbody)tbody.innerHTML=rows||`<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes con esos filtros</td></tr>`;
+  const cnt=document.getElementById('rd-vacs-count');
+  if(cnt)cnt.innerHTML=`Mostrando <strong>${list.length}</strong> de <strong>${_rdVacsAll.length}</strong> vacantes`;
 }
 
 function exportarReclutador(recId) {

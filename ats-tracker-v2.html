@@ -2813,11 +2813,14 @@ async function saveVacante(){
   const folioManual=(document.getElementById('vac-folio')?.value||'').trim();
   const emp=DB.empresas.find(e=>e.id===empresa_id)||{};
   const empPrefix=(emp.nombre||'EMP').substring(0,3).toUpperCase().replace(/\s/g,'');
-  const vacEmpresa=DB.vacantes.filter(v=>v.empresa_id===empresa_id).length+1;
   const fecha=new Date();
   const mesAnio=String(fecha.getMonth()+1).padStart(2,'0')+fecha.getFullYear().toString().substr(2);
-  const folioAuto=`${empPrefix}-${String(vacEmpresa).padStart(3,'0')}-${mesAnio}`;
+  let seq=DB.vacantes.filter(v=>v.empresa_id===empresa_id).length+1;
+  let folioAuto=`${empPrefix}-${String(seq).padStart(3,'0')}-${mesAnio}`;
+  while(DB.vacantes.some(v=>v.folio===folioAuto && v.id!==id)){seq++;folioAuto=`${empPrefix}-${String(seq).padStart(3,'0')}-${mesAnio}`;}
   const folio=folioManual||folioAuto;
+  const folioRepetido=DB.vacantes.some(v=>v.folio===folio && v.id!==id);
+  if(folioRepetido){showToast('⚠️ El folio "'+folio+'" ya existe. Elige uno diferente.','error');return;}
   const slaSelect=document.getElementById('vac-sla')?.value||'';
   const sla_dias=slaSelect==='custom'?parseInt(document.getElementById('vac-sla-custom')?.value||'0')||null:slaSelect?parseInt(slaSelect):null;
   const data={

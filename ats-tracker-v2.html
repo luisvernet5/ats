@@ -1079,6 +1079,8 @@ let currentUserData = null;
 let _edVacsAll = [];
 let _edCurrentEmpId = null;
 let empresaVistaActual = 'folio';
+let _rkVacPage = 1;
+let _rkVacData = [];
 
 const hashParams = new URLSearchParams(window.location.hash.substring(1));
 const accessToken = hashParams.get('access_token');
@@ -4775,9 +4777,14 @@ function renderRanking(){
   const empOptsR=DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
   const recOptsR=DB.reclutadores.map(r=>`<option value="${r.id}">${r.nombre}</option>`).join('');
   document.getElementById('ranking-filters').innerHTML=`
-    <select id="rk-empresa" onchange="filterRankingVacs()"><option value="">Todas las empresas</option>${empOptsR}</select>
-    <select id="rk-reclutador" onchange="filterRankingVacs()"><option value="">Todos los reclutadores</option>${recOptsR}</select>
-    <input id="rk-posicion" placeholder="Buscar posición..." oninput="filterRankingVacs()" style="min-width:160px">
+    <select id="rk-empresa" onchange="_rkVacPage=1;filterRankingVacs()"><option value="">Todas las empresas</option>${empOptsR}</select>
+    <select id="rk-reclutador" onchange="_rkVacPage=1;filterRankingVacs()"><option value="">Todos los reclutadores</option>${recOptsR}</select>
+    <input id="rk-posicion" placeholder="Buscar posición..." oninput="_rkVacPage=1;filterRankingVacs()" style="min-width:160px">
+    <select id="rk-page-size" onchange="_rkVacPage=1;filterRankingVacs()" style="width:auto;min-width:130px">
+      <option value="30">30 por página</option>
+      <option value="100">100 por página</option>
+      <option value="0">Todos</option>
+    </select>
   `;
   filterRankingVacs();
   // Ranking table con tabs
@@ -4940,21 +4947,43 @@ function filterRankingVacs(){
   if(empId)vacs=vacs.filter(v=>v.empresa_id===empId);
   if(recId)vacs=vacs.filter(v=>v.reclutador_id===recId);
   if(q)vacs=vacs.filter(v=>v.nombre.toLowerCase().includes(q));
-  const rows=vacs.map(v=>{
+  _rkVacData=vacs.map(v=>{
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const r=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
     const dias=v.fecha_apertura?daysBetween(v.fecha_apertura,today()):null;
     return{v,emp,r,dias};
-  }).sort((a,b)=>(b.dias||0)-(a.dias||0)).map(({v,emp,r,dias})=>`<tr>
+  }).sort((a,b)=>(b.dias||0)-(a.dias||0));
+  _rkVacRender();
+}
+function _rkVacRender(){
+  const el=document.getElementById('ranking-vac-table');
+  if(!el)return;
+  const pageSize=parseInt(document.getElementById('rk-page-size')?.value||'30')||0;
+  const total=_rkVacData.length;
+  const pages=pageSize>0?Math.ceil(total/pageSize):1;
+  if(_rkVacPage<1)_rkVacPage=1;
+  if(_rkVacPage>pages)_rkVacPage=pages||1;
+  const slice=pageSize>0?_rkVacData.slice((_rkVacPage-1)*pageSize,_rkVacPage*pageSize):_rkVacData;
+  const from=total>0?(pageSize>0?(_rkVacPage-1)*pageSize+1:1):0;
+  const to=from+slice.length-1;
+  const rows=slice.map(({v,emp,r,dias})=>`<tr>
     <td class="td-p">${v.nombre}</td>
     <td><span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${emp.color||'#888'}"></span>${emp.nombre||'—'}</span></td>
     <td>${r.nombre||'—'}</td>
     <td>${fmt(v.fecha_apertura)}</td>
     <td>${dias!==null?`<span class="dpill ${dClass(dias)}">${dias}d</span>`:'—'}</td>
   </tr>`).join('');
-  const el=document.getElementById('ranking-vac-table');
-  if(el)el.innerHTML=`<table><thead><tr><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Días abierta</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes abiertas</td></tr>'}</tbody></table>`;
+  const footer=total>0?`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:12px;color:#9ca3af">
+    <span>Mostrando <strong>${from}–${to}</strong> de <strong>${total}</strong> registros</span>
+    ${pages>1?`<span style="display:flex;gap:6px">
+      <button onclick="rkVacIrPagina(${_rkVacPage-1})" ${_rkVacPage<=1?'disabled':''} style="padding:3px 10px;border:1px solid #ddd;border-radius:5px;background:white;cursor:pointer;font-size:12px;color:#374151">‹ Ant.</button>
+      <span style="padding:3px 8px;font-weight:600">${_rkVacPage} / ${pages}</span>
+      <button onclick="rkVacIrPagina(${_rkVacPage+1})" ${_rkVacPage>=pages?'disabled':''} style="padding:3px 10px;border:1px solid #ddd;border-radius:5px;background:white;cursor:pointer;font-size:12px;color:#374151">Sig. ›</button>
+    </span>`:''}
+  </div>`:'';
+  el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Días abierta</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes abiertas</td></tr>'}</tbody></table></div>${footer}`;
 }
+function rkVacIrPagina(n){_rkVacPage=n;_rkVacRender();}
 
 /* ============================================================
    GARANTÍAS

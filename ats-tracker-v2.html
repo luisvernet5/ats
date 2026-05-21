@@ -6471,7 +6471,8 @@ function renderContratados(){
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
-    </div>` : '<div style="color:var(--text3);font-size:13px;padding:16px 0">Sin vacantes cubiertas registradas.</div>'}
+    </div>
+    <div style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right;">Mostrando <strong>${list.length}</strong> contratado${list.length!==1?'s':''}</div>` : '<div style="color:var(--text3);font-size:13px;padding:16px 0">Sin vacantes cubiertas registradas.</div>'}
   </div>`;
 }
 

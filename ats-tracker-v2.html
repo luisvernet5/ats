@@ -2036,12 +2036,43 @@ function buildColorPicker(sel){
   c.innerHTML=EMPRESA_COLORS.map(col=>`<div onclick="empColorSel='${col}';buildColorPicker('${col}')" style="width:28px;height:28px;border-radius:50%;background:${col};cursor:pointer;border:3px solid ${col===sel?'#fff':'transparent'};transition:border .15s"></div>`).join('');
 }
 
+let _empDragIdx=null,_empDragType=null;
 function renderEmpChips(type){
   const arr=type==='departamentos'?empDepartamentos:empProyectos;
   const el=document.getElementById(type==='departamentos'?'emp-depto-chips':'emp-proy-chips');
   if(!el)return;
-  el.innerHTML=arr.map((d,i)=>`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--text2)">${d}<button onclick="removeEmpChip('${type}',${i})" style="background:none;border:none;cursor:pointer;padding:0;margin-left:2px;color:var(--text3);font-size:14px;line-height:1">×</button></span>`).join('');
+  el.innerHTML=arr.map((d,i)=>`<span draggable="true"
+    ondragstart="empChipDragStart(event,'${type}',${i})"
+    ondragover="empChipDragOver(event,this)"
+    ondragleave="this.style.outline=''"
+    ondrop="empChipDrop(event,'${type}',${i})"
+    ondragend="empChipDragEnd('${type}')"
+    style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--text2);cursor:grab;user-select:none">
+    <i class="fa fa-grip-lines" style="font-size:9px;color:var(--text3);opacity:.5"></i>
+    ${d}
+    <button onclick="removeEmpChip('${type}',${i})" style="background:none;border:none;cursor:pointer;padding:0;margin-left:2px;color:var(--text3);font-size:14px;line-height:1">×</button>
+  </span>`).join('');
 }
+function empChipDragStart(e,type,idx){
+  _empDragIdx=idx; _empDragType=type;
+  e.dataTransfer.effectAllowed='move';
+  setTimeout(()=>e.target.style.opacity='0.4',0);
+}
+function empChipDragOver(e,el){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  el.style.outline='2px solid var(--accent)';
+}
+function empChipDrop(e,type,targetIdx){
+  e.preventDefault();
+  if(_empDragIdx===null||_empDragType!==type||_empDragIdx===targetIdx)return;
+  const arr=type==='departamentos'?empDepartamentos:empProyectos;
+  const[moved]=arr.splice(_empDragIdx,1);
+  arr.splice(targetIdx,0,moved);
+  _empDragIdx=null;
+  renderEmpChips(type);
+}
+function empChipDragEnd(type){_empDragIdx=null;renderEmpChips(type);}
 function addEmpChip(type){
   const inputId=type==='departamentos'?'emp-depto-input':'emp-proy-input';
   const val=document.getElementById(inputId).value.trim();

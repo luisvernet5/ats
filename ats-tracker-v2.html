@@ -2037,7 +2037,45 @@ function doExport(){
    ============================================================ */
 function buildColorPicker(sel){
   const c=document.getElementById('emp-color-picker');
-  c.innerHTML=EMPRESA_COLORS.map(col=>`<div onclick="empColorSel='${col}';buildColorPicker('${col}')" style="width:28px;height:28px;border-radius:50%;background:${col};cursor:pointer;border:3px solid ${col===sel?'#fff':'transparent'};transition:border .15s"></div>`).join('');
+  const circles=EMPRESA_COLORS.map(col=>`<div onclick="empColorPickerSel('${col}')" style="width:28px;height:28px;border-radius:50%;background:${col};cursor:pointer;border:3px solid ${col===sel?'#fff':'transparent'};box-shadow:${col===sel?'0 0 0 2px '+col:'none'};transition:all .15s"></div>`).join('');
+  c.innerHTML=`<div id="emp-color-circles" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">${circles}</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+      <input type="color" id="emp-color-native" value="${sel||'#2AAADE'}" oninput="empColorPickerSel(this.value)" style="width:32px;height:32px;padding:2px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer">
+      <input type="text" id="emp-color-hex" value="${sel||'#2AAADE'}" maxlength="7" placeholder="#000000" oninput="empColorHexInput(this.value)" style="width:88px;font-family:var(--mono);font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1)">
+      <div id="emp-color-preview" style="width:28px;height:28px;border-radius:50%;background:${sel||'#2AAADE'};border:1px solid var(--border2);flex-shrink:0"></div>
+    </div>`;
+}
+
+function empColorPickerSel(col){
+  empColorSel=col;
+  const circles=document.querySelectorAll('#emp-color-circles div');
+  EMPRESA_COLORS.forEach((c,i)=>{
+    if(!circles[i]) return;
+    circles[i].style.border=`3px solid ${c===col?'#fff':'transparent'}`;
+    circles[i].style.boxShadow=c===col?`0 0 0 2px ${c}`:'none';
+  });
+  const native=document.getElementById('emp-color-native');
+  const hex=document.getElementById('emp-color-hex');
+  const preview=document.getElementById('emp-color-preview');
+  if(native) native.value=col;
+  if(hex) hex.value=col;
+  if(preview) preview.style.background=col;
+}
+
+function empColorHexInput(val){
+  if(/^#[0-9A-Fa-f]{6}$/.test(val)){
+    empColorSel=val;
+    const native=document.getElementById('emp-color-native');
+    const preview=document.getElementById('emp-color-preview');
+    const circles=document.querySelectorAll('#emp-color-circles div');
+    if(native) native.value=val;
+    if(preview) preview.style.background=val;
+    EMPRESA_COLORS.forEach((c,i)=>{
+      if(!circles[i]) return;
+      circles[i].style.border=`3px solid ${c===val?'#fff':'transparent'}`;
+      circles[i].style.boxShadow=c===val?`0 0 0 2px ${c}`:'none';
+    });
+  }
 }
 
 let _empDragIdx=null,_empDragType=null;

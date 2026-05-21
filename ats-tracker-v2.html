@@ -2353,16 +2353,12 @@ function _buildEDVacsRowsPorProyecto(vacs, empId, etapas){
   });
   // Sort within each group by fecha_apertura asc
   Object.values(groups).forEach(arr=>arr.sort((a,b)=>(a.fecha_apertura||'').localeCompare(b.fecha_apertura||'')));
-  // Build ordered keys: named projects first (sorted), then empty at end
-  const namedKeys = Object.keys(groups).filter(k=>k).sort((a,b)=>a.localeCompare(b));
-  const orderedKeys = [...namedKeys, ...(groups['']?['']:[] )];
+  // Order groups by their oldest vacancy date asc; "Sin proyecto" at end
+  const namedKeys = Object.keys(groups).filter(k=>k)
+    .sort((a,b)=>(groups[a][0]?.fecha_apertura||'').localeCompare(groups[b][0]?.fecha_apertura||''));
+  const orderedKeys = [...namedKeys, ...(groups['']?['']:[])];
   let html = '';
-  orderedKeys.forEach(key=>{
-    const label = key || 'Sin proyecto';
-    const arr = groups[key];
-    html += `<tr style="background:#f1f5f9"><td colspan="10" style="font-weight:600;padding:8px 12px;color:#374151;border-top:2px solid #e2e8f0">${label} (${arr.length} vacante${arr.length!==1?'s':''})</td></tr>`;
-    html += _buildEDVacsRows(arr, empId, etapas);
-  });
+  orderedKeys.forEach(key=>{ html += _buildEDVacsRows(groups[key], empId, etapas); });
   return html;
 }
 
@@ -2660,12 +2656,11 @@ function doExportDirect(empId,recId,est,tipo){
     const groups = {};
     vacs.forEach(v=>{ const k=v.proyecto||''; if(!groups[k]) groups[k]=[]; groups[k].push(v); });
     Object.values(groups).forEach(arr=>arr.sort((a,b)=>(a.fecha_apertura||'').localeCompare(b.fecha_apertura||'')));
-    const namedKeys = Object.keys(groups).filter(k=>k).sort((a,b)=>a.localeCompare(b));
+    const namedKeys = Object.keys(groups).filter(k=>k)
+      .sort((a,b)=>(groups[a][0]?.fecha_apertura||'').localeCompare(groups[b][0]?.fecha_apertura||''));
     const orderedKeys = [...namedKeys, ...(groups['']?['']:[])];
     aoa1 = [h1];
     orderedKeys.forEach(key=>{
-      const label = key||'Sin proyecto';
-      aoa1.push([label,'','','','','','','','','','','','','','']);
       groups[key].forEach(v=>{
         const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
         const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};

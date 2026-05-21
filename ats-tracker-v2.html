@@ -2228,10 +2228,10 @@ function openEmpresaDetail(empId){
   const daysArr=allCands.filter(c=>esColocado(c)&&processTotal(c)).map(c=>processTotal(c));
   const avgDays=daysArr.length?Math.round(daysArr.reduce((a,b)=>a+b,0)/daysArr.length):null;
 
-  _edVacsAll = vacs;
+  _edVacsAll = vacs.filter(v=>v.estado==='Abierta');
   _edCurrentEmpId = empId;
   empresaVistaActual = 'folio';
-  const vacsRows = _buildEDVacsRows([...vacs].sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true})), empId, etapas);
+  const vacsRows = _buildEDVacsRows([..._edVacsAll].sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true})), empId, etapas);
 
   // Process flow for this company
   const processHtml=etapas.map((et,i)=>{

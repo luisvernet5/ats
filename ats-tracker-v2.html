@@ -4820,9 +4820,9 @@ function renderRanking(){
   const empOptsR=DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
   const recOptsR=DB.reclutadores.map(r=>`<option value="${r.id}">${r.nombre}</option>`).join('');
   document.getElementById('ranking-filters').innerHTML=`
-    <select id="rk-empresa" onchange="_rkVacPage=1;filterRankingVacs()"><option value="">Todas las empresas</option>${empOptsR}</select>
-    <select id="rk-reclutador" onchange="_rkVacPage=1;filterRankingVacs()"><option value="">Todos los reclutadores</option>${recOptsR}</select>
-    <input id="rk-posicion" placeholder="Buscar posición..." oninput="_rkVacPage=1;filterRankingVacs()" style="min-width:160px">
+    <select id="rk-empresa" onchange="_rkVacPage=1;filterRankingVacs()" style="width:auto;min-width:160px"><option value="">Todas las empresas</option>${empOptsR}</select>
+    <select id="rk-reclutador" onchange="_rkVacPage=1;filterRankingVacs()" style="width:auto;min-width:160px"><option value="">Todos los reclutadores</option>${recOptsR}</select>
+    <input id="rk-posicion" placeholder="Buscar posición..." oninput="_rkVacPage=1;filterRankingVacs()" style="width:auto;min-width:160px">
     <select id="rk-page-size" onchange="_rkVacPage=1;filterRankingVacs()" style="width:auto;min-width:130px">
       <option value="30">30 por página</option>
       <option value="100">100 por página</option>

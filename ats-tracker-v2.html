@@ -4582,9 +4582,11 @@ function renderCandidatosTable(){
     <tbody>${rows||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos</td></tr>'}</tbody>
   </table>
   <div style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right;">Mostrando <strong>${list.length}</strong> registros</div>`;
-  document.getElementById('candidatos-table').style.overflow='visible';
-  const tbl=document.getElementById('candidatos-table').querySelector('table');
-  if(tbl)tbl.style.overflow='visible';
+  if(window.innerWidth>768){
+    document.getElementById('candidatos-table').style.overflow='visible';
+    const tbl=document.getElementById('candidatos-table').querySelector('table');
+    if(tbl)tbl.style.overflow='visible';
+  }
   openCandRows.forEach(cid=>{
     const row=document.getElementById('cx-'+cid);
     const icon=document.getElementById('cx-icon-'+cid);

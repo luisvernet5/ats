@@ -1078,6 +1078,7 @@ let currentUser = null;
 let currentUserData = null;
 let _edVacsAll = [];
 let _edCurrentEmpId = null;
+let empresaVistaActual = 'folio';
 
 const hashParams = new URLSearchParams(window.location.hash.substring(1));
 const accessToken = hashParams.get('access_token');
@@ -2174,7 +2175,8 @@ function openEmpresaDetail(empId){
 
   _edVacsAll = vacs;
   _edCurrentEmpId = empId;
-  const vacsRows = _buildEDVacsRows(vacs, empId, etapas);
+  empresaVistaActual = 'folio';
+  const vacsRows = _buildEDVacsRows([...vacs].sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true})), empId, etapas);
 
   // Process flow for this company
   const processHtml=etapas.map((et,i)=>{
@@ -2222,6 +2224,8 @@ function openEmpresaDetail(empId){
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
       <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:0">
         <strong style="margin-right:8px;white-space:nowrap">Vacantes</strong>
+        <button id="btn-vista-folio" onclick="cambiarVistaEmpresa('folio')" style="height:30px;font-size:12px;padding:4px 10px;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600">☰ Por folio</button>
+        <button id="btn-vista-proyecto" onclick="cambiarVistaEmpresa('proyecto')" style="height:30px;font-size:12px;padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:white;color:#666;cursor:pointer">⊞ Por proyecto</button>
         <select id="filtroProyecto" onchange="filtrarVacantesEmpresa()" style="display:inline-block;width:auto;min-width:110px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
           <option value="">Proyecto</option>
           ${[...new Set(vacs.map(v=>v.proyecto).filter(Boolean))].map(p=>`<option value="${p}">${p}</option>`).join('')}
@@ -2328,6 +2332,40 @@ function _buildEDVacsRows(vacs, empId, etapas){
   }).join('');
 }
 
+function cambiarVistaEmpresa(vista){
+  empresaVistaActual = vista;
+  const btnFolio   = document.getElementById('btn-vista-folio');
+  const btnProy    = document.getElementById('btn-vista-proyecto');
+  const activeStyle   = 'height:30px;font-size:12px;padding:4px 10px;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600';
+  const inactiveStyle = 'height:30px;font-size:12px;padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:white;color:#666;cursor:pointer';
+  if(btnFolio)   btnFolio.setAttribute('style',   vista==='folio'   ? activeStyle : inactiveStyle);
+  if(btnProy)    btnProy.setAttribute('style',     vista==='proyecto'? activeStyle : inactiveStyle);
+  filtrarVacantesEmpresa();
+}
+
+function _buildEDVacsRowsPorProyecto(vacs, empId, etapas){
+  if(!vacs.length) return '';
+  const groups = {};
+  vacs.forEach(v=>{
+    const key = v.proyecto||'';
+    if(!groups[key]) groups[key]=[];
+    groups[key].push(v);
+  });
+  // Sort within each group by fecha_apertura asc
+  Object.values(groups).forEach(arr=>arr.sort((a,b)=>(a.fecha_apertura||'').localeCompare(b.fecha_apertura||'')));
+  // Build ordered keys: named projects first (sorted), then empty at end
+  const namedKeys = Object.keys(groups).filter(k=>k).sort((a,b)=>a.localeCompare(b));
+  const orderedKeys = [...namedKeys, ...(groups['']?['']:[] )];
+  let html = '';
+  orderedKeys.forEach(key=>{
+    const label = key || 'Sin proyecto';
+    const arr = groups[key];
+    html += `<tr style="background:#f1f5f9"><td colspan="10" style="font-weight:600;padding:8px 12px;color:#374151;border-top:2px solid #e2e8f0">📁 ${label} (${arr.length} vacante${arr.length!==1?'s':''})</td></tr>`;
+    html += _buildEDVacsRows(arr, empId, etapas);
+  });
+  return html;
+}
+
 function filtrarVacantesEmpresa(){
   const empId = _edCurrentEmpId; if(!empId) return;
   const proy  = document.getElementById('filtroProyecto')?.value||'';
@@ -2342,7 +2380,13 @@ function filtrarVacantesEmpresa(){
   if(desde) filtered = filtered.filter(v=>v.fecha_apertura>=desde);
   if(hasta) filtered = filtered.filter(v=>v.fecha_apertura<=hasta);
   const etapas = getEmpresaEtapas(empId);
-  const rows = _buildEDVacsRows(filtered, empId, etapas);
+  let rows;
+  if(empresaVistaActual==='proyecto'){
+    rows = _buildEDVacsRowsPorProyecto(filtered, empId, etapas);
+  } else {
+    const sorted = [...filtered].sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true}));
+    rows = _buildEDVacsRows(sorted, empId, etapas);
+  }
   const tbody = document.getElementById('ed-tbody');
   if(tbody) tbody.innerHTML = rows||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes con esos filtros</td></tr>';
   const edCount = document.getElementById('ed-count');
@@ -2608,8 +2652,41 @@ function doExportDirect(empId,recId,est,tipo){
       });
   });
 
+  let sheet1Name = 'Vacantes';
+  let aoa1 = [h1,...r1];
+  if(empId && empresaVistaActual==='proyecto'){
+    // Build grouped rows with project header rows
+    sheet1Name = 'Vacantes por Proyecto';
+    const groups = {};
+    vacs.forEach(v=>{ const k=v.proyecto||''; if(!groups[k]) groups[k]=[]; groups[k].push(v); });
+    Object.values(groups).forEach(arr=>arr.sort((a,b)=>(a.fecha_apertura||'').localeCompare(b.fecha_apertura||'')));
+    const namedKeys = Object.keys(groups).filter(k=>k).sort((a,b)=>a.localeCompare(b));
+    const orderedKeys = [...namedKeys, ...(groups['']?['']:[])];
+    aoa1 = [h1];
+    orderedKeys.forEach(key=>{
+      const label = key||'Sin proyecto';
+      aoa1.push([`📁 ${label}`,'','','','','','','','','','','','','','']);
+      groups[key].forEach(v=>{
+        const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
+        const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+        const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
+        aoa1.push([
+          v.folio||'—', v.nombre, emp.nombre||'—', rec.nombre||'—',
+          v.proyecto||'—', v.departamento||'—',
+          v.tipo_vacante||'—', v.colaborador_sustituido||'—',
+          fmt(v.fecha_apertura), v.estado,
+          daysBetween(v.fecha_apertura)||0,
+          cands.length,
+          cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length,
+          cands.filter(c=>c.etapa==='Validado').length,
+          cands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).length
+        ]);
+      });
+    });
+  }
+
   const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([h1,...r1]), 'Vacantes');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa1), sheet1Name);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([h2,...r2]), 'Candidatos');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([h3,...r3]), 'Deserciones');
   XLSX.writeFile(wb, `${empName.replace(/\s/g,'_')}_reporte_${today()}.xlsx`);

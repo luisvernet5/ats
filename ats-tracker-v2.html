@@ -1217,8 +1217,15 @@ async function initSession() {
   adaptUIToRole();
   initSidebarState();
   const lastPage = sessionStorage.getItem('lastPage');
-  if(lastPage) showPage(lastPage);
-  else renderDashboard();
+  if(lastPage === 'empresa-detail'){
+    const lastEmpId = sessionStorage.getItem('lastEmpId');
+    if(lastEmpId) openEmpresaDetail(lastEmpId);
+    else renderDashboard();
+  } else if(lastPage){
+    showPage(lastPage);
+  } else {
+    renderDashboard();
+  }
 }
 
 function adaptUIToRole() {
@@ -1729,6 +1736,7 @@ function initSidebarState(){
 async function doLogout() {
   if(!confirm('¿Cerrar sesión?')) return;
   sessionStorage.removeItem('lastPage');
+  sessionStorage.removeItem('lastEmpId');
   await sbClient.auth.signOut();
   currentUser = null;
   currentUserData = null;
@@ -2177,6 +2185,8 @@ function renderEmpresas(){
 function openEmpresaDetail(empId){
   const e=DB.empresas.find(x=>x.id===empId);
   if(!e)return;
+  sessionStorage.setItem('lastPage','empresa-detail');
+  sessionStorage.setItem('lastEmpId',empId);
   const vacs=DB.vacantes.filter(v=>v.empresa_id===empId);
   const allCands=DB.candidatos.filter(c=>vacs.find(v=>v.id===c.vacante_id));
   const vacAct=vacs.filter(v=>v.estado==='Abierta').length;

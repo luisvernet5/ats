@@ -4575,13 +4575,13 @@ function openReclutadorDetail(recId) {
 
   const filtrosHtml = `
     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:12px">
-      <select id="rd-flt-emp" onchange="filtrarVacsReclutador()" style="height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;min-width:160px">
+      <select id="rd-flt-emp" onchange="filtrarVacsReclutador()" style="width:auto;min-width:160px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
         <option value="">Todas las empresas</option>${empOpts}
       </select>
-      <select id="rd-flt-proy" onchange="filtrarVacsReclutador()" style="height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;min-width:130px">
+      <select id="rd-flt-proy" onchange="filtrarVacsReclutador()" style="width:auto;min-width:130px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
         <option value="">Proyecto</option>${proyOpts}
       </select>
-      <select id="rd-flt-dep" onchange="filtrarVacsReclutador()" style="height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;min-width:130px">
+      <select id="rd-flt-dep" onchange="filtrarVacsReclutador()" style="width:auto;min-width:130px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
         <option value="">Departamento</option>${depOpts}
       </select>
       <button onclick="document.getElementById('rd-flt-emp').value='';document.getElementById('rd-flt-proy').value='';document.getElementById('rd-flt-dep').value='';filtrarVacsReclutador()" style="height:30px;font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#666">× Limpiar</button>

@@ -6671,8 +6671,11 @@ function _ctRender(){
   const totalPages = pageSize===0?1:Math.ceil(total/pageSize);
   const from = pageSize===0?1:start+1;
   const to = pageSize===0?total:end;
-  const sizeBtns = [{label:'30',val:30},{label:'100',val:100},{label:'Todos',val:0}]
-    .map(b=>`<button class="btn btn-ghost btn-sm${(page._ctPageSize||30)===b.val?' btn-active':''}" onclick="ctSetPageSize(${b.val})">${b.label}</button>`).join('');
+  const sizeBtns = `<select onchange="ctSetPageSize(parseInt(this.value))" style="width:auto;font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1);cursor:pointer">
+    <option value="30" ${pageSize===30?'selected':''}>30 registros</option>
+    <option value="100" ${pageSize===100?'selected':''}>100 registros</option>
+    <option value="0" ${pageSize===0?'selected':''}>Todos</option>
+  </select>`;
   const navBtns = totalPages>1 ? `<div style="display:flex;align-items:center;gap:4px">
     <button class="btn btn-ghost btn-sm" onclick="ctIrPagina(${cur-1})" ${cur<=1?'disabled':''}>‹</button>
     <span>Pág ${cur} / ${totalPages}</span>

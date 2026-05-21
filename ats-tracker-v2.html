@@ -1485,6 +1485,8 @@ function exportarResumen(){
   a.click();
 }
 
+let logPaginaActual = 1;
+
 async function renderActivityLog(){
   console.log('renderActivityLog ejecutado');
   const page = document.getElementById('page-activity-log');
@@ -1495,52 +1497,34 @@ async function renderActivityLog(){
     .from('activity_log')
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(500);
+    .limit(5000);
 
   if(error){ page.innerHTML=`<div style="padding:24px 28px;color:var(--err)">${error.message}</div>`; return; }
   if(!data?.length){ page.innerHTML='<div style="padding:24px 28px;color:var(--text3);font-size:13px">Sin actividad registrada.</div>'; return; }
+
+  window._logData = data;
+  logPaginaActual = 1;
 
   const usuariosOpts = [...new Map(data.map(d=>[d.usuario_email, d.usuario_nombre])).entries()]
     .map(([email, nombre])=>`<option value="${email}">${nombre||email}</option>`).join('');
   const accionesOpts = [...new Set(data.map(d=>d.accion))]
     .map(a=>`<option value="${a}">${a}</option>`).join('');
 
-  const rows = data.map(d=>{
-    const fecha = new Date(d.created_at).toLocaleString('es-MX');
-    const accionColor = {
-      'Nueva vacante':'var(--accent)',
-      'Editar vacante':'var(--warn)',
-      'Eliminar vacante':'var(--err)',
-      'Nuevo candidato':'var(--accent)',
-      'Editar candidato':'var(--warn)',
-      'Cambio de etapa':'#8b5cf6',
-      'Nueva empresa':'var(--accent)',
-      'Editar empresa':'var(--warn)',
-      'Eliminar usuario':'var(--err)',
-    }[d.accion]||'var(--text3)';
-    const rowDate = d.created_at ? d.created_at.split('T')[0] : '';
-    return`<tr data-date="${rowDate}">
-      <td style="font-size:11px;color:var(--text3);white-space:nowrap">${fecha}</td>
-      <td class="td-p">
-        <div style="font-size:12px;font-weight:500">${d.usuario_nombre||'—'}</div>
-        <div style="font-size:11px;color:var(--text3)">${d.usuario_email||''}</div>
-      </td>
-      <td><span style="font-size:11px;font-weight:600;color:${accionColor};background:${accionColor}18;padding:3px 8px;border-radius:20px">${d.accion||'—'}</span></td>
-      <td style="font-size:11px;color:var(--text3)">${d.entidad||'—'}</td>
-      <td style="font-size:12px">${d.detalle||'—'}</td>
-    </tr>`;
-  }).join('');
-
   page.innerHTML=`<div style="padding:24px 28px">
     <div class="fbar" style="margin-bottom:18px;flex-wrap:wrap;gap:8px">
-      <select id="log-flt-user" onchange="filtrarLog()" style="min-width:180px">
+      <select id="log-flt-user" onchange="logPaginaActual=1;filtrarLog()" style="min-width:180px">
         <option value="">Todos los usuarios</option>${usuariosOpts}
       </select>
-      <select id="log-flt-accion" onchange="filtrarLog()" style="min-width:180px">
+      <select id="log-flt-accion" onchange="logPaginaActual=1;filtrarLog()" style="min-width:180px">
         <option value="">Todas las acciones</option>${accionesOpts}
       </select>
-      <input type="date" id="log-flt-f1" onchange="filtrarLog()" title="Desde">
-      <input type="date" id="log-flt-f2" onchange="filtrarLog()" title="Hasta">
+      <input type="date" id="log-flt-f1" onchange="logPaginaActual=1;filtrarLog()" title="Desde">
+      <input type="date" id="log-flt-f2" onchange="logPaginaActual=1;filtrarLog()" title="Hasta">
+      <select id="log-page-size" onchange="logPaginaActual=1;filtrarLog()" style="min-width:140px">
+        <option value="30">30 registros</option>
+        <option value="100">100 registros</option>
+        <option value="99999">Todos</option>
+      </select>
       <div class="sp"></div>
       <button class="btn btn-ghost btn-sm" onclick="renderActivityLog()">
         <i class="fa fa-sync"></i> Actualizar
@@ -1557,49 +1541,110 @@ async function renderActivityLog(){
         <thead><tr>
           <th>Fecha y hora</th><th>Usuario</th><th>Acción</th><th>Módulo</th><th>Detalle</th>
         </tr></thead>
-        <tbody>${rows}</tbody>
+        <tbody id="log-tbody"></tbody>
       </table>
     </div>
+    <div id="log-footer" style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap;gap:8px"></div>
   </div>`;
+
+  filtrarLog();
 }
 
 function exportarLog(){
-  const header = ['Fecha y hora','Usuario','Email','Acción','Módulo','Detalle'];
-  const filas = [header];
-  document.querySelectorAll('#log-table tbody tr').forEach(tr=>{
-    if(tr.style.display==='none') return;
-    const tds = tr.querySelectorAll('td');
-    const fecha = tds[0]?.textContent.trim()||'';
-    const nombre = tds[1]?.querySelector('div:first-child')?.textContent.trim()||'';
-    const email = tds[1]?.querySelector('div:last-child')?.textContent.trim()||'';
-    const accionTd = tds[2]?.textContent.trim()||'';
-    const modulo = tds[3]?.textContent.trim()||'';
-    const detalle = tds[4]?.textContent.trim()||'';
-    filas.push([fecha, nombre, email, accionTd, modulo, detalle]);
+  if(!window._logData?.length){ showToast('Sin datos para exportar','err'); return; }
+  const user   = document.getElementById('log-flt-user')?.value||'';
+  const accion = document.getElementById('log-flt-accion')?.value||'';
+  const f1     = document.getElementById('log-flt-f1')?.value||'';
+  const f2     = document.getElementById('log-flt-f2')?.value||'';
+  const filtrados = window._logData.filter(d=>{
+    const rowDate = d.created_at ? d.created_at.split('T')[0] : '';
+    return (!user   || (d.usuario_email||'').includes(user) || (d.usuario_nombre||'').includes(user))
+        && (!accion || d.accion===accion)
+        && (!f1     || rowDate >= f1)
+        && (!f2     || rowDate <= f2);
   });
+  const header = ['Fecha y hora','Usuario','Email','Acción','Módulo','Detalle'];
+  const filas = [header, ...filtrados.map(d=>[
+    new Date(d.created_at).toLocaleString('es-MX'),
+    d.usuario_nombre||'—', d.usuario_email||'—',
+    d.accion||'—', d.entidad||'—', d.detalle||'—'
+  ])];
   const csv = filas.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const BOM = '﻿';
-  const blob = new Blob([BOM+csv],{type:'text/csv;charset=utf-8;'});
+  const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `log_actividad_${today()}.csv`;
   a.click();
+  showToast(`${filtrados.length} registros exportados ✓`);
 }
 
 function filtrarLog(){
-  const user = document.getElementById('log-flt-user')?.value||'';
+  const tbody = document.getElementById('log-tbody');
+  const footer = document.getElementById('log-footer');
+  if(!tbody || !window._logData) return;
+
+  const user   = document.getElementById('log-flt-user')?.value||'';
   const accion = document.getElementById('log-flt-accion')?.value||'';
-  const f1 = document.getElementById('log-flt-f1')?.value||'';
-  const f2 = document.getElementById('log-flt-f2')?.value||'';
-  document.querySelectorAll('#log-table tbody tr').forEach(tr=>{
-    const tds = tr.querySelectorAll('td');
-    const userMatch = !user || tds[1]?.textContent.includes(user);
-    const accionMatch = !accion || tds[2]?.textContent.includes(accion);
-    const rowDate = tr.dataset.date||'';
-    const f1Match = !f1 || rowDate >= f1;
-    const f2Match = !f2 || rowDate <= f2;
-    tr.style.display = userMatch && accionMatch && f1Match && f2Match ? '' : 'none';
+  const f1     = document.getElementById('log-flt-f1')?.value||'';
+  const f2     = document.getElementById('log-flt-f2')?.value||'';
+  const size   = parseInt(document.getElementById('log-page-size')?.value||30);
+
+  const filtrados = window._logData.filter(d=>{
+    const rowDate = d.created_at ? d.created_at.split('T')[0] : '';
+    return (!user   || (d.usuario_email||'').includes(user) || (d.usuario_nombre||'').includes(user))
+        && (!accion || d.accion===accion)
+        && (!f1     || rowDate >= f1)
+        && (!f2     || rowDate <= f2);
   });
+
+  const total = filtrados.length;
+  const totalPaginas = Math.max(1, Math.ceil(total / size));
+  if(logPaginaActual > totalPaginas) logPaginaActual = 1;
+
+  const inicio = (logPaginaActual - 1) * size;
+  const fin    = Math.min(inicio + size, total);
+  const pagina = filtrados.slice(inicio, fin);
+
+  const accionColor = a => ({
+    'Nueva vacante':'var(--accent)','Editar vacante':'var(--warn)','Eliminar vacante':'var(--err)',
+    'Nuevo candidato':'var(--accent)','Editar candidato':'var(--warn)','Cambio de etapa':'#8b5cf6',
+    'Nueva empresa':'var(--accent)','Editar empresa':'var(--warn)','Eliminar usuario':'var(--err)',
+  }[a]||'var(--text3)');
+
+  tbody.innerHTML = pagina.map(d=>{
+    const fecha = new Date(d.created_at).toLocaleString('es-MX');
+    const col = accionColor(d.accion);
+    return`<tr>
+      <td style="font-size:11px;color:var(--text3);white-space:nowrap">${fecha}</td>
+      <td class="td-p">
+        <div style="font-size:12px;font-weight:500">${d.usuario_nombre||'—'}</div>
+        <div style="font-size:11px;color:var(--text3)">${d.usuario_email||''}</div>
+      </td>
+      <td><span style="font-size:11px;font-weight:600;color:${col};background:${col}18;padding:3px 8px;border-radius:20px">${d.accion||'—'}</span></td>
+      <td style="font-size:11px;color:var(--text3)">${d.entidad||'—'}</td>
+      <td style="font-size:12px">${d.detalle||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  if(footer){
+    const contadorHtml = total
+      ? `<span style="font-size:12px;color:var(--text3)">Mostrando ${inicio+1}–${fin} de ${total} registros</span>`
+      : `<span style="font-size:12px;color:var(--text3)">Sin resultados</span>`;
+    const prevDis = logPaginaActual<=1 ? 'disabled' : '';
+    const nextDis = logPaginaActual>=totalPaginas ? 'disabled' : '';
+    const paginacionHtml = totalPaginas > 1 ? `
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="logIrPagina(${logPaginaActual-1})" ${prevDis}>← Anterior</button>
+        <span style="font-size:12px;color:var(--text2)">Página ${logPaginaActual} de ${totalPaginas}</span>
+        <button class="btn btn-ghost btn-sm" onclick="logIrPagina(${logPaginaActual+1})" ${nextDis}>Siguiente →</button>
+      </div>` : '<div></div>';
+    footer.innerHTML = contadorHtml + paginacionHtml;
+  }
+}
+
+function logIrPagina(n){
+  logPaginaActual = n;
+  filtrarLog();
 }
 
 async function logActivity(accion, entidad, entidadId, detalle, anterior, nuevo){

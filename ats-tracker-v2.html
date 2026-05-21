@@ -3967,13 +3967,14 @@ function renderVacantesTable(){
   if(depFlt)list=list.filter(v=>v.departamento===depFlt);
   if(desdeFlt)list=list.filter(v=>(v.fecha_apertura||'')>=desdeFlt);
   if(hastaFlt)list=list.filter(v=>(v.fecha_apertura||'')<=hastaFlt);
-  const rows=list.map(v=>{
+  const rows=list.map((v,i)=>{
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
     const dias=daysBetween(v.fecha_apertura);
     const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
     const act=cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length;
     return`<tr>
+      <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
       <td class="td-p" style="cursor:pointer" onclick="openVacanteDetailView('${v.id}','${v.empresa_id}')">
         ${v.nombre}
       </td>
@@ -3995,7 +3996,7 @@ function renderVacantesTable(){
       </td>
     </tr>
     <tr id="detail-${v.id}" style="display:none">
-      <td colspan="12" style="padding:0;background:var(--surface2)">
+      <td colspan="13" style="padding:0;background:var(--surface2)">
         <div style="padding:16px 20px">
           <div id="resumen-${v.id}" style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap"></div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -4008,8 +4009,8 @@ function renderVacantesTable(){
     </tr>`;
   }).join('');
   document.getElementById('vacantes-table').innerHTML=`<table>
-    <thead><tr><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>SLA</th><th>Días</th><th>Cands.</th><th style="min-width:120px">Acción</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>
+    <thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>SLA</th><th>Días</th><th>Cands.</th><th style="min-width:120px">Acción</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="13" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>
   </table>
   <div style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right;">Mostrando <strong>${list.length}</strong> registros</div>`;
 }

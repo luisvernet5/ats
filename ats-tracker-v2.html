@@ -491,13 +491,13 @@ input[type=date]{color:var(--text)}
         <input id="emp-depto-input" placeholder="Ej. Recursos Humanos" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addEmpChip('departamentos')}">
         <button class="btn btn-ghost btn-sm" onclick="addEmpChip('departamentos')"><i class="fa fa-plus"></i> Agregar</button>
       </div>
-      <div id="emp-depto-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:24px;margin-bottom:4px"></div>
+      <div id="emp-depto-chips" style="display:flex;flex-direction:column;gap:4px;min-height:24px;margin-bottom:4px"></div>
       <div class="sep">Proyectos</div>
       <div style="display:flex;gap:6px;margin-bottom:8px">
         <input id="emp-proy-input" placeholder="Ej. Expansión 2025" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addEmpChip('proyectos')}">
         <button class="btn btn-ghost btn-sm" onclick="addEmpChip('proyectos')"><i class="fa fa-plus"></i> Agregar</button>
       </div>
-      <div id="emp-proy-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:24px;margin-bottom:4px"></div>
+      <div id="emp-proy-chips" style="display:flex;flex-direction:column;gap:4px;min-height:24px;margin-bottom:4px"></div>
       <div class="sep">Color de identificación</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap" id="emp-color-picker"></div>
     </div>

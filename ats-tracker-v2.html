@@ -5213,6 +5213,43 @@ async function showHCTab(tab){
       </div>`;
     setTimeout(renderHCHistorico, 80);
   }
+
+  else if(tab==='historico_plantilla'){
+    const gEmpId3 = window.hcCurrentEmpId || empId;
+    const gAnio3  = window.hcCurrentAnio  || new Date().getFullYear();
+    const semAct3 = getISOWeek(new Date());
+    const defDesde3 = Math.max(1, semAct3 - 14);
+    const gEmp3 = DB.empresas.find(x=>x.id===gEmpId3)||{};
+    const mkOpts3 = sel => Array.from({length:52},(_,i)=>i+1)
+      .map(n=>`<option value="${n}"${n===sel?' selected':''}>${n}</option>`).join('');
+
+    window._hcPlantHistEmpId = gEmpId3;
+    window._hcPlantHistAnio  = gAnio3;
+
+    content.innerHTML=`
+      <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${gEmpId3}')" style="margin-bottom:12px"><i class="fa fa-arrow-left"></i> Semanas</button>
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+        <div style="font-size:14px;font-weight:600">${gEmp3.nombre||''} — Histórico Plantilla ${gAnio3}</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px">
+          <label>Desde sem. <select id="hc-plhist-desde" style="margin-left:4px">${mkOpts3(defDesde3)}</select></label>
+          <label>Hasta sem. <select id="hc-plhist-hasta" style="margin-left:4px">${mkOpts3(semAct3)}</select></label>
+          <button class="btn btn-ghost btn-sm" onclick="renderHCPlantHistorico()"><i class="fa fa-sync"></i> Actualizar</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+        <div style="min-width:360px;flex:0 0 40%;overflow-x:auto">
+          <div id="hc-plhist-tabla"><div style="color:var(--text3);font-size:13px">Cargando...</div></div>
+          <button class="btn btn-primary btn-sm" onclick="guardarHCPlantHistorico()" style="margin-top:10px"><i class="fa fa-save"></i> Guardar</button>
+        </div>
+        <div style="flex:1;min-width:320px">
+          <div style="height:360px;position:relative">
+            <canvas id="hc-plhist-chart"></canvas>
+          </div>
+          <div id="hc-plhist-cumplimiento" style="margin-top:12px"></div>
+        </div>
+      </div>`;
+    setTimeout(renderHCPlantHistorico, 80);
+  }
 }
 
 function getISOWeek(date){
@@ -5269,6 +5306,7 @@ async function showHCWeekList(empId){
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="showHCTab('grafica')"><i class="fa fa-chart-bar"></i> Gráfica</button>
         <button class="btn btn-ghost btn-sm" onclick="showHCTab('historico')"><i class="fa fa-history"></i> Histórico Vacantes</button>
+        <button class="btn btn-ghost btn-sm" onclick="showHCTab('historico_plantilla')"><i class="fa fa-table"></i> Histórico Plantilla</button>
         <button class="btn btn-ghost btn-sm" onclick="openHCProyectoModal('${empId}')"><i class="fa fa-cog"></i> Plantilla</button>
       </div>
     </div>
@@ -5368,6 +5406,7 @@ async function abrirTablaHC(empId, semana, anio){
         <button class="btn btn-ghost btn-sm" onclick="openHCProyectoModal('${empId}')"><i class="fa fa-cog"></i> Plantilla</button>
         <button class="btn btn-ghost btn-sm" onclick="showHCTab('grafica')"><i class="fa fa-chart-bar"></i> Gráfica</button>
         <button class="btn btn-ghost btn-sm" onclick="showHCTab('historico')"><i class="fa fa-history"></i> Histórico Vacantes</button>
+        <button class="btn btn-ghost btn-sm" onclick="showHCTab('historico_plantilla')"><i class="fa fa-table"></i> Histórico Plantilla</button>
         <button class="btn btn-primary btn-sm" onclick="guardarSemanaHC('${empId}',${semana},${anio})"><i class="fa fa-save"></i> Guardar semana</button>
       </div>
     </div>
@@ -5702,6 +5741,162 @@ async function guardarHCHistorico(){
   if(error){showToast('Error: '+error.message,'err');return;}
   showToast('Histórico guardado ✓');
   renderHCHistorico();
+}
+
+async function renderHCPlantHistorico(){
+  const gEmpId = window._hcPlantHistEmpId || window.hcCurrentEmpId;
+  const gAnio  = window._hcPlantHistAnio  || window.hcCurrentAnio || new Date().getFullYear();
+  const desde  = parseInt(document.getElementById('hc-plhist-desde')?.value)||1;
+  const hasta  = parseInt(document.getElementById('hc-plhist-hasta')?.value)||52;
+  const tablaEl = document.getElementById('hc-plhist-tabla');
+  if(!tablaEl) return;
+  tablaEl.innerHTML='<div style="color:var(--text3);font-size:13px">Cargando...</div>';
+
+  const{data,error}=await sbClient.from('hc_plantilla_historico')
+    .select('*').eq('empresa_id',gEmpId).eq('anio',gAnio)
+    .gte('semana_num',desde).lte('semana_num',hasta)
+    .order('semana_num',{ascending:true});
+  if(error){tablaEl.innerHTML=`<div style="color:red">Error: ${error.message}</div>`;return;}
+
+  const histMap={};
+  (data||[]).forEach(r=>histMap[r.semana_num]=r);
+  const semanas=[];
+  for(let s=desde;s<=hasta;s++) semanas.push(s);
+
+  const rows=semanas.map(s=>{
+    const h=histMap[s]||{};
+    const plant=h.plantilla_autorizada!=null?h.plantilla_autorizada:'';
+    const act=h.activos!=null?h.activos:'';
+    const pN=parseFloat(plant)||0;
+    const aN=parseFloat(act)||0;
+    const minV=pN?(pN-pN*0.075).toFixed(1):'';
+    const maxV=pN?(pN-pN*0.035).toFixed(1):'';
+    const cumV=pN?((aN*100/pN).toFixed(2)+'%'):'';
+    return`<tr>
+      <td style="text-align:center;font-size:12px;white-space:nowrap;padding:4px 6px">Sem ${s}</td>
+      <td style="padding:3px"><input id="hphi-plant-${s}" type="number" value="${plant}" oninput="hcPlantHistRecalc(${s})" style="width:70px;border:1px solid #ddd;border-radius:4px;padding:2px 4px;font-size:12px;text-align:right"></td>
+      <td style="padding:3px"><input id="hphi-act-${s}" type="number" value="${act}" oninput="hcPlantHistRecalc(${s})" style="width:60px;border:1px solid #ddd;border-radius:4px;padding:2px 4px;font-size:12px;text-align:right"></td>
+      <td id="hphi-min-${s}" style="text-align:right;font-size:12px;padding:4px 8px;background:var(--surface2);color:var(--text2)">${minV}</td>
+      <td id="hphi-max-${s}" style="text-align:right;font-size:12px;padding:4px 8px;background:var(--surface2);color:var(--text2)">${maxV}</td>
+      <td id="hphi-cum-${s}" style="text-align:right;font-size:12px;padding:4px 8px;background:var(--surface2);color:var(--text2)">${cumV}</td>
+    </tr>`;
+  });
+
+  tablaEl.innerHTML=`
+    <table style="border-collapse:collapse;width:100%">
+      <thead>
+        <tr style="background:var(--surface2)">
+          <th style="padding:6px 8px;white-space:nowrap;font-size:11px;text-align:center">SEMANA</th>
+          <th style="padding:6px 8px;white-space:nowrap;font-size:11px">PLANTA AUTH.</th>
+          <th style="padding:6px 8px;white-space:nowrap;font-size:11px">ACTIVOS</th>
+          <th style="padding:6px 8px;white-space:nowrap;font-size:11px">MÍN 7.5%</th>
+          <th style="padding:6px 8px;white-space:nowrap;font-size:11px">MÁX 3.5%</th>
+          <th style="padding:6px 8px;white-space:nowrap;font-size:11px">CUMPL. %</th>
+        </tr>
+      </thead>
+      <tbody>${rows.join('')}</tbody>
+    </table>`;
+
+  // --- Gráfica ---
+  const chartEl=document.getElementById('hc-plhist-chart');
+  if(!chartEl) return;
+  if(window._hcPlantHistChart) window._hcPlantHistChart.destroy();
+
+  const labels   = semanas.map(s=>`Sem ${s}`);
+  const plantArr = semanas.map(s=>{ const v=parseFloat(document.getElementById('hphi-plant-'+s)?.value); return isNaN(v)||v===0?null:v; });
+  const actArr   = semanas.map(s=>{ const v=parseFloat(document.getElementById('hphi-act-'+s)?.value);   return isNaN(v)||v===0?null:v; });
+  const minArr   = semanas.map(s=>{ const p=parseFloat(document.getElementById('hphi-plant-'+s)?.value)||0; return p?+(p-p*0.075).toFixed(1):null; });
+  const maxArr   = semanas.map(s=>{ const p=parseFloat(document.getElementById('hphi-plant-'+s)?.value)||0; return p?+(p-p*0.035).toFixed(1):null; });
+
+  // Cumplimiento promedio
+  const cumVals=semanas.map(s=>{
+    const p=parseFloat(document.getElementById('hphi-plant-'+s)?.value)||0;
+    const a=parseFloat(document.getElementById('hphi-act-'+s)?.value)||0;
+    return p?(a*100/p):null;
+  }).filter(v=>v!==null);
+  const cumProm=cumVals.length?(cumVals.reduce((a,b)=>a+b,0)/cumVals.length):0;
+  const cumColor=cumProm>=95?'#22c55e':cumProm>=90?'#f59e0b':'#ef4444';
+  const cumEl=document.getElementById('hc-plhist-cumplimiento');
+  if(cumEl) cumEl.innerHTML=`
+    <div style="background:white;border:1px solid #e5e7eb;border-radius:8px;padding:12px 20px;display:inline-block;margin-top:12px">
+      <div style="font-size:12px;color:#888">Cumplimiento promedio del período</div>
+      <div style="font-size:24px;font-weight:700;color:${cumColor}">${cumProm.toFixed(2)}%</div>
+    </div>`;
+
+  const semActual=getISOWeek(new Date());
+  window._hcPlantHistChart=new Chart(chartEl,{
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {label:'Plantilla Autorizada', data:plantArr, borderColor:'#ef4444', backgroundColor:'transparent', borderWidth:2, pointRadius:3, tension:0},
+        {label:'Activos',              data:actArr,   borderColor:'#f97316', backgroundColor:'transparent', borderWidth:2, pointRadius:3, tension:0},
+        {label:'Mín vacantes (7.5%)', data:minArr,   borderColor:'#eab308', backgroundColor:'transparent', borderWidth:2, pointRadius:3, tension:0},
+        {label:'Máx vacantes (3.5%)', data:maxArr,   borderColor:'#22c55e', backgroundColor:'transparent', borderWidth:2, pointRadius:3, tension:0},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        title:{display:true, text:`HC Semana ${semActual}`, font:{size:14,weight:'bold'}},
+        legend:{position:'bottom', labels:{boxWidth:12,font:{size:11}}},
+        datalabels:false
+      },
+      scales:{
+        y:{beginAtZero:false, ticks:{stepSize:5}, grid:{color:'#e5e7eb'}},
+        x:{ticks:{maxRotation:45,font:{size:10}}, grid:{display:false}}
+      },
+      elements:{point:{radius:3}, line:{borderWidth:2,tension:0}},
+      animation:{
+        onComplete:function(){
+          const c=this.ctx; c.save(); c.font='bold 10px Arial';
+          c.textAlign='center'; c.textBaseline='bottom';
+          this.data.datasets.forEach((dataset,i)=>{
+            const meta=this.getDatasetMeta(i); c.fillStyle=dataset.borderColor;
+            meta.data.forEach((point,j)=>{
+              const val=dataset.data[j];
+              if(val!=null&&val>0) c.fillText(val,point.x,point.y-6);
+            });
+          }); c.restore();
+        }
+      }
+    }
+  });
+}
+
+function hcPlantHistRecalc(s){
+  const p=parseFloat(document.getElementById('hphi-plant-'+s)?.value)||0;
+  const a=parseFloat(document.getElementById('hphi-act-'+s)?.value)||0;
+  document.getElementById('hphi-min-'+s).textContent=p?(p-p*0.075).toFixed(1):'';
+  document.getElementById('hphi-max-'+s).textContent=p?(p-p*0.035).toFixed(1):'';
+  document.getElementById('hphi-cum-'+s).textContent=p?((a*100/p).toFixed(2)+'%'):'';
+}
+
+async function guardarHCPlantHistorico(){
+  const gEmpId=window._hcPlantHistEmpId||window.hcCurrentEmpId;
+  const gAnio =window._hcPlantHistAnio ||window.hcCurrentAnio||new Date().getFullYear();
+  const desde =parseInt(document.getElementById('hc-plhist-desde')?.value)||1;
+  const hasta =parseInt(document.getElementById('hc-plhist-hasta')?.value)||52;
+  const filas=[];
+  for(let s=desde;s<=hasta;s++){
+    const plantEl=document.getElementById(`hphi-plant-${s}`);
+    const actEl  =document.getElementById(`hphi-act-${s}`);
+    if(!plantEl) continue;
+    const plant =parseInt(plantEl.value)||0;
+    const activos=parseInt(actEl?.value)||0;
+    if(!plant&&!activos) continue;
+    filas.push({
+      id:`${gEmpId}-plhist-${s}-${gAnio}`,
+      empresa_id:gEmpId, semana_num:s, semana_label:`Semana ${s}`,
+      anio:gAnio, plantilla_autorizada:plant, activos,
+      updated_at:new Date().toISOString()
+    });
+  }
+  if(!filas.length){showToast('Sin datos para guardar');return;}
+  const{error}=await sbClient.from('hc_plantilla_historico').upsert(filas);
+  if(error){showToast('Error: '+error.message,'err');return;}
+  showToast('Histórico Plantilla guardado ✓');
+  renderHCPlantHistorico();
 }
 
 async function updateHCRow(empId, proyecto, auth, el, campo){

@@ -2875,7 +2875,11 @@ async function saveVacante(){
     const _lv = id ? DB.vacantes.find(x=>x.id===id) : DB.vacantes[DB.vacantes.length-1];
     await logActivity(_lv&&_vacAnterior?'Editar vacante':'Nueva vacante','vacantes',_lv?.id,_lv?.nombre||'',_vacAnterior,_lv);
     closeModal('modal-vacante');
-    setTimeout(()=>renderPage(document.querySelector('.page.active').id.replace('page-','')),100);
+    setTimeout(()=>{
+      const activePage=document.querySelector('.page.active')?.id.replace('page-','');
+      if(activePage==='empresa-detail'&&_edCurrentEmpId) openEmpresaDetail(_edCurrentEmpId);
+      else renderPage(activePage);
+    },100);
   } catch(e) {
     showToast('Error al guardar vacante: '+e.message,'err');
   }

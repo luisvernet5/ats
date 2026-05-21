@@ -1799,6 +1799,7 @@ function daysBetween(d1,d2){
 function dClass(d){if(d===null||d===undefined)return'dok';if(d<=14)return'dok';if(d<=30)return'dwarn';return'dover'}
 function showToast(msg,t='ok'){const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${t==='ok'?'tok':'terr'} show`;setTimeout(()=>el.className='toast',2800)}
 function recargarVistaActiva(){const p=document.querySelector('.page.active');if(p)renderPage(p.id.replace('page-',''));}
+async function recargarDatosActivos(){await loadDB();const p=document.querySelector('.page.active')?.id.replace('page-','');if(p)renderPage(p);}
 function openModal(id){document.getElementById(id).classList.add('open')}
 function openReclutadorModal(){
   document.getElementById('rec-nombre').value='';
@@ -5508,6 +5509,7 @@ async function guardarSemanaHC(empId, semana, anio){
   const{error}=await sbClient.from('hc_resumen').upsert(filas);
   if(error){showToast('Error: '+error.message,'err');return;}
   showToast(`Semana ${semana} guardada ✓`);
+  await abrirTablaHC(empId, semana, anio);
 }
 
 async function hcEliminarFila(proyId, empId, semana, anio){

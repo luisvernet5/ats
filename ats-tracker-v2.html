@@ -1079,6 +1079,7 @@ input[type=date]{color:var(--text)}
             <option value="admin">Admin — acceso total</option>
             <option value="reclutador">Reclutador — solo sus vacantes</option>
             <option value="rh_cliente">RH Cliente — solo su empresa</option>
+            <option value="facturacion">Facturación — solo Garantías</option>
           </select>
         </div>
       </div>
@@ -1267,6 +1268,10 @@ async function initSession() {
   adaptUIToRole();
   initSidebarState();
   document.body.style.visibility = 'visible';
+  if(currentUserData?.rol === 'facturacion') {
+    showPage('garantias');
+    return;
+  }
   const lastPage = sessionStorage.getItem('lastPage');
   if(lastPage === 'empresa-detail'){
     const lastEmpId = sessionStorage.getItem('lastEmpId');
@@ -1305,6 +1310,35 @@ function adaptUIToRole() {
     ['nav-empresas','nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-config','nav-headcount'].forEach(id => {
       const el = document.getElementById(id); if(el) el.style.display='none';
     });
+  } else if(rol === 'facturacion') {
+    // Ocultar todos los ítems y secciones del menú
+    ['nav-dashboard','nav-empresas','nav-pipeline','nav-vacantes','nav-candidatos',
+     'nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-headcount',
+     'nav-contratados','nav-config'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.style.display='none';
+    });
+    document.querySelectorAll('.nav-section').forEach(el => el.style.display='none');
+    // Ocultar botones del topbar
+    const topbarActFac = document.querySelector('.topbar-actions');
+    if(topbarActFac) topbarActFac.querySelectorAll('button').forEach(btn => btn.style.display='none');
+    // Crear nav-garantias si no existe
+    if(!document.getElementById('nav-garantias')) {
+      const garantiaItem = document.createElement('div');
+      garantiaItem.className = 'nav-item';
+      garantiaItem.id = 'nav-garantias';
+      garantiaItem.dataset.tooltip = 'Garantías';
+      garantiaItem.innerHTML = '<i class="fa fa-shield-alt"></i><span class="nav-item-text"> Garantías</span>';
+      garantiaItem.setAttribute('onclick', "showPage('garantias')");
+      const navEl = document.querySelector('.sb-nav');
+      if(navEl) navEl.appendChild(garantiaItem);
+    }
+    // Crear page-garantias si no existe
+    if(!document.getElementById('page-garantias')) {
+      const pg = document.createElement('div');
+      pg.className = 'page';
+      pg.id = 'page-garantias';
+      document.querySelector('.main').appendChild(pg);
+    }
   }
   if(currentUser?.email==='lukaarrever@gmail.com') {
     const navEl = document.querySelector('.sb-nav');
@@ -1978,6 +2012,7 @@ function nav(p){showPage(p)}
 function showPage(p){
   const _noRestore=['empresa-detail','vacante-detail','reclutador-detail'];
   if(!_noRestore.includes(p)) sessionStorage.setItem('lastPage', p);
+  if(currentUserData?.rol==='facturacion' && p!=='garantias') { showPage('garantias'); return; }
   if(window.innerWidth<=768) closeMobileMenu();
   console.log('showPage llamado con:', p);
   console.log('USUARIO ACTUAL (auth):', JSON.stringify({id:currentUser?.id,email:currentUser?.email}));

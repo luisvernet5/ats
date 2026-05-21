@@ -2360,7 +2360,7 @@ function _buildEDVacsRowsPorProyecto(vacs, empId, etapas){
   orderedKeys.forEach(key=>{
     const label = key || 'Sin proyecto';
     const arr = groups[key];
-    html += `<tr style="background:#f1f5f9"><td colspan="10" style="font-weight:600;padding:8px 12px;color:#374151;border-top:2px solid #e2e8f0">📁 ${label} (${arr.length} vacante${arr.length!==1?'s':''})</td></tr>`;
+    html += `<tr style="background:#f1f5f9"><td colspan="10" style="font-weight:600;padding:8px 12px;color:#374151;border-top:2px solid #e2e8f0">${label} (${arr.length} vacante${arr.length!==1?'s':''})</td></tr>`;
     html += _buildEDVacsRows(arr, empId, etapas);
   });
   return html;
@@ -2665,7 +2665,7 @@ function doExportDirect(empId,recId,est,tipo){
     aoa1 = [h1];
     orderedKeys.forEach(key=>{
       const label = key||'Sin proyecto';
-      aoa1.push([`📁 ${label}`,'','','','','','','','','','','','','','']);
+      aoa1.push([label,'','','','','','','','','','','','','','']);
       groups[key].forEach(v=>{
         const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
         const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};

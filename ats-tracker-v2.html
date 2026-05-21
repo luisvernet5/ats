@@ -4789,9 +4789,10 @@ function filterTiemposVacs(){
     <td>${r.nombre||'—'}</td>
     <td>${fmt(v.fecha_apertura)}</td>
     <td>${dias!==null?`<span class="dpill ${dClass(dias)}">${dias}d</span>`:'—'}</td>
+    <td style="min-width:130px">${getSLAStatus(v)}</td>
   </tr>`).join('');
   const el=document.getElementById('tiempos-vacs-table');
-  if(el)el.innerHTML=`<table><thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Días abierta</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes abiertas</td></tr>'}</tbody></table>`;
+  if(el)el.innerHTML=`<table><thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Días abierta</th><th>SLA</th></tr></thead><tbody>${rows||'<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes abiertas</td></tr>'}</tbody></table>`;
 }
 
 /* ============================================================

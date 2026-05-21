@@ -1216,7 +1216,9 @@ async function initSession() {
   await loadDB();
   adaptUIToRole();
   initSidebarState();
-  renderDashboard();
+  const lastPage = sessionStorage.getItem('lastPage');
+  if(lastPage) showPage(lastPage);
+  else renderDashboard();
 }
 
 function adaptUIToRole() {
@@ -1726,6 +1728,7 @@ function initSidebarState(){
 
 async function doLogout() {
   if(!confirm('¿Cerrar sesión?')) return;
+  sessionStorage.removeItem('lastPage');
   await sbClient.auth.signOut();
   currentUser = null;
   currentUserData = null;
@@ -1899,6 +1902,7 @@ function getCandEtapaIdx(c){
    ============================================================ */
 function nav(p){showPage(p)}
 function showPage(p){
+  sessionStorage.setItem('lastPage', p);
   console.log('showPage llamado con:', p);
   console.log('USUARIO ACTUAL (auth):', JSON.stringify({id:currentUser?.id,email:currentUser?.email}));
   console.log('USUARIO ACTUAL (app):', JSON.stringify(currentUserData));

@@ -6571,24 +6571,73 @@ async function exportarHC(){
 function renderContratados(){
   const page = document.getElementById('page-contratados');
   if(!page) return;
-  const recId = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
+  const recIdRole = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   const empIdC = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
   const vacsCerradas = DB.vacantes.filter(v=>v.estado==='Cubierta');
-  const vacsVis = recId ? vacsCerradas.filter(v=>v.reclutador_id===recId) : empIdC ? vacsCerradas.filter(v=>v.empresa_id===empIdC) : vacsCerradas;
-  const empFiltro = page._empFiltro||'';
-  const list = empFiltro ? vacsVis.filter(v=>v.empresa_id===empFiltro) : vacsVis;
+  const vacsVis = recIdRole ? vacsCerradas.filter(v=>v.reclutador_id===recIdRole) : empIdC ? vacsCerradas.filter(v=>v.empresa_id===empIdC) : vacsCerradas;
 
   const empOpts = [...new Set(vacsVis.map(v=>v.empresa_id))]
-    .map(eid=>{ const e=DB.empresas.find(x=>x.id===eid)||{}; return `<option value="${eid}" ${empFiltro===eid?'selected':''}>${e.nombre||eid}</option>`; }).join('');
+    .map(eid=>{ const e=DB.empresas.find(x=>x.id===eid)||{}; return `<option value="${eid}">${e.nombre||eid}</option>`; }).join('');
+  const recOpts = [...new Set(vacsVis.map(v=>v.reclutador_id).filter(Boolean))]
+    .map(rid=>{ const r=DB.reclutadores.find(x=>x.id===rid)||{}; return `<option value="${rid}">${r.nombre||rid}</option>`; }).join('');
 
-  const rows = list.map(v=>{
-    const emp = DB.empresas.find(x=>x.id===v.empresa_id)||{};
-    const rec = DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
-    const cands = DB.candidatos.filter(c=>c.vacante_id===v.id);
-    const contratado = cands.find(c=>c.etapa==='Validado'||c.etapa==='Contratación') || cands[cands.length-1] || {};
-    const diasTotal = daysBetween(v.fecha_apertura, v.fecha_cierre||contratado.fecha_salida||today());
-    const diasCliente = contratado.id ? clienteDays(contratado) : null;
+  page._ctVacsVis = vacsVis;
+  page._ctPage = 1;
+  page._ctPageSize = 30;
+
+  page.innerHTML=`<div style="padding:24px 28px">
+    <div class="fbar" style="margin-bottom:18px">
+      <select id="ct-emp-filter" onchange="filtrarContratados()" style="width:auto;min-width:180px">
+        <option value="">Todas las empresas</option>
+        ${empOpts}
+      </select>
+      <select id="ct-rec-filter" onchange="filtrarContratados()" style="width:auto;min-width:170px">
+        <option value="">Todos los reclutadores</option>
+        ${recOpts}
+      </select>
+      <div class="sp"></div>
+      <button class="btn btn-green btn-sm" onclick="exportContratados()"><i class="fa fa-file-csv"></i> Exportar Excel</button>
+    </div>
+    <div id="ct-table-wrap"></div>
+    <div id="ct-pager" style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:12px;color:#9ca3af;gap:10px;flex-wrap:wrap"></div>
+  </div>`;
+
+  filtrarContratados();
+}
+
+function filtrarContratados(){
+  const page = document.getElementById('page-contratados');
+  if(!page) return;
+  const empFiltro = document.getElementById('ct-emp-filter')?.value||'';
+  const recFiltro = document.getElementById('ct-rec-filter')?.value||'';
+  let list = page._ctVacsVis||[];
+  if(empFiltro) list = list.filter(v=>v.empresa_id===empFiltro);
+  if(recFiltro) list = list.filter(v=>v.reclutador_id===recFiltro);
+  page._ctFiltered = list;
+  page._ctPage = 1;
+  _ctRender();
+}
+
+function _ctRender(){
+  const page = document.getElementById('page-contratados');
+  if(!page) return;
+  const list = page._ctFiltered||[];
+  const pageSize = page._ctPageSize||30;
+  const cur = page._ctPage||1;
+  const total = list.length;
+  const start = pageSize===0?0:(cur-1)*pageSize;
+  const end = pageSize===0?total:Math.min(start+pageSize,total);
+  const slice = list.slice(start,end);
+
+  const rows = slice.map((v,i)=>{
+    const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+    const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
+    const contratado=cands.find(c=>c.etapa==='Validado'||c.etapa==='Contratación')||cands[cands.length-1]||{};
+    const diasTotal=daysBetween(v.fecha_apertura,v.fecha_cierre||contratado.fecha_salida||today());
+    const diasCliente=contratado.id?clienteDays(contratado):null;
     return`<tr>
+      <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${start+i+1}</td>
       <td class="td-p">${v.nombre||'—'}</td>
       <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td>
       <td><span style="display:flex;align-items:center;gap:5px">
@@ -6599,53 +6648,70 @@ function renderContratados(){
       <td>${contratado.nombre||'—'}</td>
       <td>${v.departamento||'—'}</td>
       <td>${v.proyecto||'—'}</td>
-      <td>${v.salario||'—'}</td>
       <td>${v.fecha_apertura||'—'}</td>
       <td>${diasTotal!==null?`<span class="dpill ${dClass(diasTotal)}">${diasTotal}d</span>`:'—'}</td>
       <td>${diasCliente!==null?`<span class="dpill dwarn">${diasCliente}d</span>`:'—'}</td>
     </tr>`;
   }).join('');
 
-  page.innerHTML=`<div style="padding:24px 28px">
-    <div class="fbar" style="margin-bottom:18px">
-      <select onchange="document.getElementById('page-contratados')._empFiltro=this.value;renderContratados()" style="min-width:200px">
-        <option value="">Todas las empresas</option>
-        ${empOpts}
-      </select>
-      <div class="sp"></div>
-      <button class="btn btn-green btn-sm" onclick="exportContratados()"><i class="fa fa-file-csv"></i> Exportar Excel</button>
-    </div>
-    ${list.length ? `
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th>
-          <th>Contratado</th><th>Departamento</th><th>Proyecto</th><th>Salario</th>
-          <th>Apertura</th><th>Días proceso</th><th>Días cliente</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-    <div style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right;">Mostrando <strong>${list.length}</strong> contratado${list.length!==1?'s':''}</div>` : '<div style="color:var(--text3);font-size:13px;padding:16px 0">Sin vacantes cubiertas registradas.</div>'}
-  </div>`;
+  const tw = document.getElementById('ct-table-wrap');
+  if(tw) tw.innerHTML = total ? `<div class="table-wrap"><table>
+    <thead><tr>
+      <th style="width:36px;text-align:center">#</th>
+      <th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th>
+      <th>Contratado</th><th>Departamento</th><th>Proyecto</th>
+      <th>Apertura</th><th>Días proceso</th><th>Días cliente</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>` : '<div style="color:var(--text3);font-size:13px;padding:16px 0">Sin vacantes cubiertas registradas.</div>';
+
+  const pager = document.getElementById('ct-pager');
+  if(!pager) return;
+  if(!total){ pager.innerHTML=''; return; }
+  const totalPages = pageSize===0?1:Math.ceil(total/pageSize);
+  const from = pageSize===0?1:start+1;
+  const to = pageSize===0?total:end;
+  const sizeBtns = [{label:'30',val:30},{label:'100',val:100},{label:'Todos',val:0}]
+    .map(b=>`<button class="btn btn-ghost btn-sm${(page._ctPageSize||30)===b.val?' btn-active':''}" onclick="ctSetPageSize(${b.val})">${b.label}</button>`).join('');
+  const navBtns = totalPages>1 ? `<div style="display:flex;align-items:center;gap:4px">
+    <button class="btn btn-ghost btn-sm" onclick="ctIrPagina(${cur-1})" ${cur<=1?'disabled':''}>‹</button>
+    <span>Pág ${cur} / ${totalPages}</span>
+    <button class="btn btn-ghost btn-sm" onclick="ctIrPagina(${cur+1})" ${cur>=totalPages?'disabled':''}>›</button>
+  </div>` : '';
+  pager.innerHTML=`<span>Mostrando <strong>${from}–${to}</strong> de <strong>${total}</strong> contratado${total!==1?'s':''}</span>
+    <div style="display:flex;align-items:center;gap:8px">${sizeBtns}${navBtns}</div>`;
+}
+
+function ctIrPagina(n){
+  const page=document.getElementById('page-contratados');
+  if(!page) return;
+  const pageSize=page._ctPageSize||30;
+  const total=(page._ctFiltered||[]).length;
+  const totalPages=pageSize===0?1:Math.ceil(total/pageSize);
+  page._ctPage=Math.max(1,Math.min(n,totalPages));
+  _ctRender();
+}
+
+function ctSetPageSize(n){
+  const page=document.getElementById('page-contratados');
+  if(!page) return;
+  page._ctPageSize=n;
+  page._ctPage=1;
+  _ctRender();
 }
 
 function exportContratados(){
-  const recId = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   const page = document.getElementById('page-contratados');
-  const empFiltro = page?._empFiltro||'';
-  let vacsVis = DB.vacantes.filter(v=>v.estado==='Cubierta');
-  if(recId) vacsVis = vacsVis.filter(v=>v.reclutador_id===recId);
-  if(empFiltro) vacsVis = vacsVis.filter(v=>v.empresa_id===empFiltro);
-  const header = ['Vacante','Folio','Empresa','Reclutador','Contratado','Departamento','Proyecto','Salario','Apertura','Días proceso','Días cliente'];
-  const rows = vacsVis.map(v=>{
+  const vacsVis = page?._ctFiltered || DB.vacantes.filter(v=>v.estado==='Cubierta');
+  const header = ['#','Vacante','Folio','Empresa','Reclutador','Contratado','Departamento','Proyecto','Apertura','Días proceso','Días cliente'];
+  const rows = vacsVis.map((v,i)=>{
     const emp = DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const rec = DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
     const cands = DB.candidatos.filter(c=>c.vacante_id===v.id);
     const contratado = cands.find(c=>c.etapa==='Validado'||c.etapa==='Contratación')||cands[cands.length-1]||{};
     const diasTotal = daysBetween(v.fecha_apertura, v.fecha_cierre||contratado.fecha_salida||today());
     const diasCliente = contratado.id ? clienteDays(contratado) : null;
-    return [v.nombre,v.folio||'',emp.nombre||'',rec.nombre||'',contratado.nombre||'',v.departamento||'',v.proyecto||'',v.salario||'',v.fecha_apertura||'',diasTotal!==null?diasTotal+'d':'',diasCliente!==null?diasCliente+'d':''];
+    return [i+1,v.nombre,v.folio||'',emp.nombre||'',rec.nombre||'',contratado.nombre||'',v.departamento||'',v.proyecto||'',v.fecha_apertura||'',diasTotal!==null?diasTotal+'d':'',diasCliente!==null?diasCliente+'d':''];
   });
   const csv = [header,...rows].map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
   const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});

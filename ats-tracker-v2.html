@@ -1860,6 +1860,14 @@ function getEmpresaEtapas(empId){
   if(!e||!e.etapas||!e.etapas.length)return DEFAULT_ETAPAS.map(x=>({...x}));
   return e.etapas;
 }
+function esColocado(c){
+  if(!c) return false;
+  if(c.etapa==='Validado'||c.etapa==='Contratación') return true;
+  const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+  const etapas=getEmpresaEtapas(v.empresa_id);
+  const cierre=etapas.find(e=>e.tipo==='cierre');
+  return cierre?c.etapa===cierre.label:false;
+}
 
 function processTotal(c){
   const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
@@ -2137,7 +2145,7 @@ function renderEmpresas(){
     const vacs=DB.vacantes.filter(v=>v.empresa_id===e.id);
     const vacAct=vacs.filter(v=>v.estado==='Abierta').length;
     const cands=DB.candidatos.filter(c=>DB.vacantes.find(v=>v.id===c.vacante_id&&v.empresa_id===e.id));
-    const validados=cands.filter(c=>c.etapa==='Validado').length;
+    const validados=cands.filter(esColocado).length;
     return`<div class="empresa-card" onclick="openEmpresaDetail('${e.id}')">
       <div class="ec-accent" style="background:${e.color||'var(--accent)'}"></div>
       ${e.logo?`<img src="${e.logo}" style="width:40px;height:40px;object-fit:contain;border-radius:8px;margin-bottom:8px;border:1px solid var(--border)">`:
@@ -2167,10 +2175,10 @@ function openEmpresaDetail(empId){
   const vacs=DB.vacantes.filter(v=>v.empresa_id===empId);
   const allCands=DB.candidatos.filter(c=>vacs.find(v=>v.id===c.vacante_id));
   const vacAct=vacs.filter(v=>v.estado==='Abierta').length;
-  const validados=allCands.filter(c=>c.etapa==='Validado').length;
+  const validados=allCands.filter(esColocado).length;
   const desertores=allCands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).length;
   const etapas=getEmpresaEtapas(empId);
-  const daysArr=allCands.filter(c=>c.etapa==='Validado'&&processTotal(c)).map(c=>processTotal(c));
+  const daysArr=allCands.filter(c=>esColocado(c)&&processTotal(c)).map(c=>processTotal(c));
   const avgDays=daysArr.length?Math.round(daysArr.reduce((a,b)=>a+b,0)/daysArr.length):null;
 
   _edVacsAll = vacs;
@@ -2389,9 +2397,9 @@ function filtrarVacantesEmpresa(){
   if(edCount) edCount.innerHTML = `Mostrando <strong>${filtered.length}</strong> registros`;
   const filtCands = DB.candidatos.filter(c=>filtered.find(v=>v.id===c.vacante_id));
   const vacAct   = filtered.filter(v=>v.estado==='Abierta').length;
-  const validados= filtCands.filter(c=>c.etapa==='Validado').length;
+  const validados= filtCands.filter(esColocado).length;
   const deser    = filtCands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).length;
-  const dArr     = filtCands.filter(c=>c.etapa==='Validado'&&processTotal(c)).map(c=>processTotal(c));
+  const dArr     = filtCands.filter(c=>esColocado(c)&&processTotal(c)).map(c=>processTotal(c));
   const avgDays  = dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):null;
   const kv = id => document.getElementById(id);
   if(kv('ed-kpi-abiertas'))  kv('ed-kpi-abiertas').textContent  = vacAct;
@@ -3513,8 +3521,8 @@ function renderDashboard(){
       : DB.empresas;
   const vacAct=vacantes.filter(v=>v.estado==='Abierta').length;
   const activos=candidatos.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length;
-  const validados=candidatos.filter(c=>c.etapa==='Validado').length;
-  const dArr=candidatos.filter(c=>c.etapa==='Validado'&&processTotal(c)).map(c=>processTotal(c));
+  const validados=candidatos.filter(esColocado).length;
+  const dArr=candidatos.filter(c=>esColocado(c)&&processTotal(c)).map(c=>processTotal(c));
   const avgD=dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):null;
 
   document.getElementById('dash-kpis').innerHTML=`
@@ -3531,7 +3539,7 @@ function renderDashboard(){
     const vacs=vacantes.filter(v=>v.empresa_id===e.id);
     const vacAct=vacs.filter(v=>v.estado==='Abierta').length;
     const cands=DB.candidatos.filter(c=>vacs.find(v=>v.id===c.vacante_id));
-    const val=cands.filter(c=>c.etapa==='Validado').length;
+    const val=cands.filter(esColocado).length;
     return`<div class="empresa-card" onclick="openEmpresaDetail('${e.id}')">
       <div class="ec-accent" style="background:${e.color||'var(--accent)'}"></div>
       ${e.logo?`<img src="${e.logo}" style="width:36px;height:36px;object-fit:contain;border-radius:6px;margin-bottom:6px">`:
@@ -3940,7 +3948,7 @@ function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {
   const cands = DB.candidatos.filter(c=>c.vacante_id===vacId);
   const activos = cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa));
   const desertores = cands.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
-  const validados = cands.filter(c=>c.etapa==='Validado');
+  const validados = cands.filter(esColocado);
   const dArr = cands.filter(c=>processTotal(c)).map(c=>processTotal(c));
   const avgDias = dArr.length ? Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length) : null;
 
@@ -4421,9 +4429,9 @@ function renderReclutadores(){
     const vacs=DB.vacantes.filter(v=>v.reclutador_id===r.id);
     const vacAct=vacs.filter(v=>v.estado==='Abierta').length;
     const cands=DB.candidatos.filter(c=>c.reclutador_id===r.id);
-    const val=cands.filter(c=>c.etapa==='Validado').length;
+    const val=cands.filter(esColocado).length;
     const des=cands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).length;
-    const dArr=cands.filter(c=>c.etapa==='Validado'&&processTotal(c)).map(c=>processTotal(c));
+    const dArr=cands.filter(c=>esColocado(c)&&processTotal(c)).map(c=>processTotal(c));
     const avg=dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):null;
     const ini=r.nombre.split(' ').map(n=>n[0]).join('').substr(0,2).toUpperCase();
     return`<div class="card" style="cursor:pointer" onclick="openReclutadorDetail('${r.id}')">
@@ -4447,7 +4455,7 @@ function openReclutadorDetail(recId) {
   if(!r) return;
   const vacs = DB.vacantes.filter(v=>v.reclutador_id===recId);
   const allCands = DB.candidatos.filter(c=>c.reclutador_id===recId);
-  const validados = allCands.filter(c=>c.etapa==='Validado');
+  const validados = allCands.filter(esColocado);
   const desertores = allCands.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
   const dArr = validados.filter(c=>processTotal(c)).map(c=>processTotal(c));
   const avgDias = dArr.length ? Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length) : null;
@@ -4565,7 +4573,7 @@ function toggleRecCandRow(vid){
    TIEMPOS
    ============================================================ */
 function renderTiempos(){
-  const validados=DB.candidatos.filter(c=>c.etapa==='Validado');
+  const validados=DB.candidatos.filter(esColocado);
   const avgTotal=validados.filter(c=>processTotal(c)).map(c=>processTotal(c));
   const avgTD=avgTotal.length?Math.round(avgTotal.reduce((a,b)=>a+b,0)/avgTotal.length):null;
   const cliDArr=DB.candidatos.filter(c=>clienteDays(c)!==null).map(c=>clienteDays(c));
@@ -4677,13 +4685,13 @@ function renderRanking(){
   const avgDiasGlobal=diasArr.length?Math.round(diasArr.reduce((a,b)=>a+b,0)/diasArr.length):null;
   // reclutador más rápido
   const recSpeed=DB.reclutadores.map(r=>{
-    const d=DB.candidatos.filter(c=>c.reclutador_id===r.id&&c.etapa==='Validado'&&processTotal(c)!==null).map(c=>processTotal(c));
+    const d=DB.candidatos.filter(c=>c.reclutador_id===r.id&&esColocado(c)&&processTotal(c)!==null).map(c=>processTotal(c));
     return{r,avg:d.length?Math.round(d.reduce((a,b)=>a+b,0)/d.length):null};
   }).filter(x=>x.avg!==null).sort((a,b)=>a.avg-b.avg);
   const masRapido=recSpeed[0]||null;
   // reclutador con más colocados
   const masColocados=DB.reclutadores.map(r=>({
-    r,val:DB.candidatos.filter(c=>c.reclutador_id===r.id&&c.etapa==='Validado').length
+    r,val:DB.candidatos.filter(c=>c.reclutador_id===r.id&&esColocado(c)).length
   })).sort((a,b)=>b.val-a.val)[0]||null;
   document.getElementById('ranking-kpis').innerHTML=`
     <div class="card"><div class="card-title">Vacantes abiertas</div><div class="card-value">${vacsAbiertas.length}</div><div class="card-sub">en curso</div></div>

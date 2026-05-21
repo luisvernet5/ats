@@ -6589,12 +6589,12 @@ function renderDesercion(){
   const pct=DB.candidatos.length?Math.round(des.length/DB.candidatos.length*100):0;
   const motC={};MOTIVOS.forEach(m=>{const n=des.filter(c=>c.motivo_desercion===m).length;if(n)motC[m]=n;});
   const topM=Object.entries(motC).sort((a,b)=>b[1]-a[1]);
-  const rows=des.map(c=>{
+  const rows=des.map((c,i)=>{
     const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const r=DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
     const d=processTotal(c);
-    return`<tr><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td>${emp.nombre||'—'}</td><td>${r.nombre||'—'}</td><td>${badgeEtapa(c.etapa,v.empresa_id)}</td><td style="color:var(--red)">${c.motivo_desercion||'—'}</td><td>${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:'—'}</td><td>${fmt(c.fecha_salida)}</td></tr>`;
+    return`<tr><td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td>${emp.nombre||'—'}</td><td>${r.nombre||'—'}</td><td>${badgeEtapa(c.etapa,v.empresa_id)}</td><td style="color:var(--red)">${c.motivo_desercion||'—'}</td><td>${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:'—'}</td><td>${fmt(c.fecha_salida)}</td></tr>`;
   }).join('');
   document.getElementById('page-desercion').innerHTML=`
     <div style="display:flex;gap:6px;margin-bottom:20px">
@@ -6617,7 +6617,7 @@ function renderDesercion(){
       </div>
     </div>
     <div id="des-panel-historial" style="display:none">
-      <div class="table-wrap"><table><thead><tr><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Tipo</th><th>Motivo</th><th>Días</th><th>Fecha</th></tr></thead><tbody>${rows||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">Sin deserciones</td></tr>'}</tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th style="width:36px;text-align:center">#</th><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Tipo</th><th>Motivo</th><th>Días</th><th>Fecha</th></tr></thead><tbody>${rows||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin deserciones</td></tr>'}</tbody></table></div>
     </div>`;
 }
 function desercionTab(tab){

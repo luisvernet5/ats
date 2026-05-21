@@ -213,7 +213,7 @@ input[type=date]{color:var(--text)}
 .cand-expand-td{border-left:3px solid var(--accent)!important;background:var(--surface2)}
 </style>
 </head>
-<body>
+<body style="visibility:hidden">
 <div id="auth-screen" style="position:fixed;inset:0;background:#F4F6F9;display:flex;align-items:center;justify-content:center;z-index:9999">
   <div style="background:#fff;border:1px solid #E5E7EB;border-radius:16px;padding:36px 40px;width:380px;box-shadow:0 4px 24px rgba(0,0,0,.08)">
     <div style="text-align:center;margin-bottom:28px">
@@ -1216,6 +1216,7 @@ async function initSession() {
   await loadDB();
   adaptUIToRole();
   initSidebarState();
+  document.body.style.visibility = 'visible';
   const lastPage = sessionStorage.getItem('lastPage');
   if(lastPage === 'empresa-detail'){
     const lastEmpId = sessionStorage.getItem('lastEmpId');
@@ -7246,6 +7247,7 @@ if(_inviteType === 'invite' && _inviteToken){
         Establecer contraseña
       </button>`;
   }
+  document.body.style.visibility = 'visible';
 } else {
 
 // Verificar sesión activa al cargar
@@ -7253,6 +7255,7 @@ sbClient.auth.getSession().then(async ({ data: { session } }) => {
   if(tokenType === 'recovery' && accessToken) {
     await sbClient.auth.setSession({ access_token: accessToken, refresh_token: hashParams.get('refresh_token') });
     showResetPasswordScreen();
+    document.body.style.visibility = 'visible';
     return;
   }
   if(session) {
@@ -7260,6 +7263,7 @@ sbClient.auth.getSession().then(async ({ data: { session } }) => {
     initSession();
   } else {
     document.getElementById('auth-screen').style.display = 'flex';
+    document.body.style.visibility = 'visible';
   }
 });
 

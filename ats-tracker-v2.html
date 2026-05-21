@@ -1902,7 +1902,8 @@ function getCandEtapaIdx(c){
    ============================================================ */
 function nav(p){showPage(p)}
 function showPage(p){
-  sessionStorage.setItem('lastPage', p);
+  const _noRestore=['empresa-detail','vacante-detail','reclutador-detail'];
+  if(!_noRestore.includes(p)) sessionStorage.setItem('lastPage', p);
   console.log('showPage llamado con:', p);
   console.log('USUARIO ACTUAL (auth):', JSON.stringify({id:currentUser?.id,email:currentUser?.email}));
   console.log('USUARIO ACTUAL (app):', JSON.stringify(currentUserData));

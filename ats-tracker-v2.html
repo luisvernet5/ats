@@ -2303,8 +2303,8 @@ function openEmpresaDetail(empId){
       </div>
     </div>
     <div class="table-wrap">
-      <table><thead><tr><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
-      <tbody id="ed-tbody">${vacsRows||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes registradas</td></tr>'}</tbody>
+      <table><thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
+      <tbody id="ed-tbody">${vacsRows||'<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes registradas</td></tr>'}</tbody>
       </table>
     </div>
     <div id="ed-count" style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right;">Mostrando <strong>${vacs.length}</strong> registros</div>
@@ -2327,9 +2327,10 @@ function openEmpresaDetail(empId){
   setTimeout(() => renderAnalyticsTab(empId, 'general'), 100);
 }
 
-function _buildEDVacsRows(vacs, empId, etapas){
+function _buildEDVacsRows(vacs, empId, etapas, startIdx=1){
   if(!vacs.length) return '';
-  return vacs.map(v=>{
+  return vacs.map((v,i)=>{
+    const _rowNum=startIdx+i;
     const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
     const vcands=DB.candidatos.filter(c=>c.vacante_id===v.id);
     const activos=vcands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa));
@@ -2351,6 +2352,7 @@ function _buildEDVacsRows(vacs, empId, etapas){
         }).join('')
       :`<tr><td colspan="6" style="padding:14px 10px;text-align:center;color:var(--text3);font-size:12px">Sin candidatos registrados</td></tr>`;
     return`<tr id="tr-vac-${v.id}">
+      <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${_rowNum}</td>
       <td class="td-p" style="cursor:pointer" onclick="openVacanteDetailView('${v.id}','${empId}')">
         ${v.nombre}
       </td>
@@ -2368,7 +2370,7 @@ function _buildEDVacsRows(vacs, empId, etapas){
       </td>
     </tr>
     <tr class="vac-expand-row" id="tr-expand-${v.id}">
-      <td colspan="10" style="padding:0;background:var(--surface2)">
+      <td colspan="11" style="padding:0;background:var(--surface2)">
         <div style="padding:8px 14px 12px">
           <table style="width:100%;border-collapse:collapse;font-size:12px">
             <thead><tr style="background:var(--surface3)">
@@ -2419,8 +2421,11 @@ function _buildEDVacsRowsPorProyecto(vacs, empId, etapas){
     return ia-ib;
   });
   const orderedKeys = [...namedKeys, ...(groups['']?['']:[])];
-  let html = '';
-  orderedKeys.forEach(key=>{ html += _buildEDVacsRows(groups[key], empId, etapas); });
+  let html = '', counter = 1;
+  orderedKeys.forEach(key=>{
+    html += _buildEDVacsRows(groups[key], empId, etapas, counter);
+    counter += groups[key].length;
+  });
   return html;
 }
 
@@ -2656,15 +2661,15 @@ function doExportDirect(empId,recId,est,tipo){
   const empName=(DB.empresas.find(x=>x.id===empId)||{}).nombre||'todas';
 
   // ── Hoja 1: Vacantes
-  const h1=['Folio','Vacante','Empresa','Reclutador','Proyecto','Departamento',
+  const h1=['#','Folio','Vacante','Empresa','Reclutador','Proyecto','Departamento',
     'Tipo','Colaborador que salió','Fecha apertura','Estado',
     'Días abierta','Total candidatos','Activos','Validados','Deserciones'];
-  const r1=vacs.map(v=>{
+  const r1=vacs.map((v,i)=>{
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
     const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
     return[
-      v.folio||'—', v.nombre, emp.nombre||'—', rec.nombre||'—',
+      i+1, v.folio||'—', v.nombre, emp.nombre||'—', rec.nombre||'—',
       v.proyecto||'—', v.departamento||'—',
       v.tipo_vacante||'—', v.colaborador_sustituido||'—',
       fmt(v.fecha_apertura), v.estado,
@@ -2727,13 +2732,14 @@ function doExportDirect(empId,recId,est,tipo){
     });
     const orderedKeys = [...namedKeys, ...(groups['']?['']:[])];
     aoa1 = [h1];
+    let _pCounter=1;
     orderedKeys.forEach(key=>{
       groups[key].forEach(v=>{
         const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
         const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
         const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
         aoa1.push([
-          v.folio||'—', v.nombre, emp.nombre||'—', rec.nombre||'—',
+          _pCounter++, v.folio||'—', v.nombre, emp.nombre||'—', rec.nombre||'—',
           v.proyecto||'—', v.departamento||'—',
           v.tipo_vacante||'—', v.colaborador_sustituido||'—',
           fmt(v.fecha_apertura), v.estado,

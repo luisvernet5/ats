@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#F4F4F8;--surface:#FFFFFF;--surface2:#EBEBF2;--surface3:#E0E0EA;--border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);--accent:#2AAADE;--accent2:#1B7FAF;--glow:rgba(42,170,222,0.10);--text:#16162A;--text2:#4A4A6A;--text3:#8A8AA8;--green:#16A34A;--amber:#D97706;--red:#DC2626;--purple:#9333EA;--orange:#EA580C;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;--r:10px;--rl:14px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -2498,25 +2499,75 @@ function exportarCSVEmpresa(empId){
 }
 
 function doExportDirect(empId,recId,est,tipo){
-  let rows=[];
+  if(!window.XLSX){ showToast('SheetJS no cargó','err'); return; }
   let vacs=DB.vacantes;
-  if(empId)vacs=vacs.filter(v=>v.empresa_id===empId);
-  if(recId)vacs=vacs.filter(v=>v.reclutador_id===recId);
-  if(est)vacs=vacs.filter(v=>v.estado===est);
-  const header=['Vacante','Empresa','Reclutador','Fecha apertura','Estado','Días abierta','Total candidatos','Activos','Validados','Deserciones'];
-  rows.push(header);
-  vacs.forEach(v=>{
+  if(empId) vacs=vacs.filter(v=>v.empresa_id===empId);
+  if(recId) vacs=vacs.filter(v=>v.reclutador_id===recId);
+  if(est)   vacs=vacs.filter(v=>v.estado===est);
+
+  const empName=(DB.empresas.find(x=>x.id===empId)||{}).nombre||'todas';
+
+  // ── Hoja 1: Vacantes
+  const h1=['Folio','Vacante','Empresa','Reclutador','Proyecto','Departamento',
+    'Tipo','Colaborador que salió','Fecha apertura','Estado',
+    'Días abierta','Total candidatos','Activos','Validados','Deserciones'];
+  const r1=vacs.map(v=>{
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
     const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
-    rows.push([v.nombre,emp.nombre||'—',rec.nombre||'—',fmt(v.fecha_apertura),v.estado,daysBetween(v.fecha_apertura)||0,cands.length,cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length,cands.filter(c=>c.etapa==='Validado').length,cands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).length]);
+    return[
+      v.folio||'—', v.nombre, emp.nombre||'—', rec.nombre||'—',
+      v.proyecto||'—', v.departamento||'—',
+      v.tipo_vacante||'—', v.colaborador_sustituido||'—',
+      fmt(v.fecha_apertura), v.estado,
+      daysBetween(v.fecha_apertura)||0,
+      cands.length,
+      cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length,
+      cands.filter(c=>c.etapa==='Validado').length,
+      cands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).length
+    ];
   });
-  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  const empName=(DB.empresas.find(x=>x.id===empId)||{}).nombre||'todas';
-  a.download=`ats_${empName.replace(/\s/g,'_')}_${today()}.csv`;a.click();
-  showToast('CSV descargado ✓');
+
+  // ── Hoja 2: Candidatos activos
+  const h2=['Vacante','Folio vacante','Candidato','Reclutador',
+    'Proyecto','Departamento','Etapa actual','Días en proceso','Fuente reclutamiento'];
+  const r2=[];
+  vacs.forEach(v=>{
+    const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+    DB.candidatos
+      .filter(c=>c.vacante_id===v.id && !ETAPAS_SALIDA.includes(c.etapa))
+      .forEach(c=>{
+        r2.push([
+          v.nombre, v.folio||'—', c.nombre, rec.nombre||'—',
+          v.proyecto||'—', v.departamento||'—',
+          c.etapa||'—', processTotal(c)||0, c.fuente||'—'
+        ]);
+      });
+  });
+
+  // ── Hoja 3: Deserciones
+  const h3=['Vacante','Folio vacante','Candidato','Reclutador',
+    'Proyecto','Departamento','Etapa donde desertó','Motivo salida','Fecha salida'];
+  const r3=[];
+  vacs.forEach(v=>{
+    const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+    DB.candidatos
+      .filter(c=>c.vacante_id===v.id && (ETAPAS_SALIDA.includes(c.etapa)||c.motivo_desercion))
+      .forEach(c=>{
+        r3.push([
+          v.nombre, v.folio||'—', c.nombre, rec.nombre||'—',
+          v.proyecto||'—', v.departamento||'—',
+          c.etapa||'—', c.motivo_desercion||'—', fmt(c.fecha_salida)||'—'
+        ]);
+      });
+  });
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([h1,...r1]), 'Vacantes');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([h2,...r2]), 'Candidatos');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([h3,...r3]), 'Deserciones');
+  XLSX.writeFile(wb, `${empName.replace(/\s/g,'_')}_reporte_${today()}.xlsx`);
+  showToast('Excel descargado ✓');
 }
 
 /* ============================================================

@@ -211,6 +211,50 @@ input[type=date]{color:var(--text)}
 .vac-expand-icon{display:inline-block;transition:transform .2s;font-size:9px;margin-right:5px;color:var(--text3)}
 .vac-expand-icon.expanded{transform:rotate(90deg)}
 .cand-expand-td{border-left:3px solid var(--accent)!important;background:var(--surface2)}
+
+@media (max-width: 768px) {
+  /* SIDEBAR — drawer oculto por defecto */
+  .sidebar {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    width: 224px;
+    z-index: 999;
+    box-shadow: 4px 0 24px rgba(0,0,0,.28);
+  }
+  .sidebar.mobile-open { display: flex; }
+  /* Overlay oscuro detrás del drawer */
+  .mob-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 998; }
+  .mob-overlay.open { display: block; }
+  /* Botón hamburguesa */
+  .mob-menu-btn { display: flex !important; align-items: center; justify-content: center; }
+  /* MAIN — ancho completo */
+  .main { width: 100%; }
+  /* TOPBAR */
+  .topbar { padding: 10px 14px !important; gap: 10px; }
+  .topbar-title { font-size: 14px !important; }
+  /* Ocultar botones secundarios en topbar para ahorrar espacio */
+  .topbar-actions .btn-ghost { display: none; }
+  /* PÁGINAS */
+  .page { padding: 14px 12px !important; }
+  /* GRIDS — una columna */
+  .g4, .g3, .g2 { grid-template-columns: 1fr !important; }
+  /* DASHBOARD empresa-grid */
+  #dash-empresas { grid-template-columns: 1fr !important; }
+  /* TABLAS — scroll horizontal */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { min-width: 540px; }
+  /* KPI cards — 2 columnas en móvil */
+  .g4 { grid-template-columns: repeat(2,1fr) !important; }
+  /* FILTROS */
+  .fbar { flex-wrap: wrap; gap: 6px !important; }
+  .fbar input, .fbar select { width: 100% !important; min-width: unset !important; box-sizing: border-box; }
+  /* MODALES — pantalla completa */
+  .modal { width: 100% !important; max-width: 100% !important; max-height: 100vh !important; border-radius: 0 !important; margin: 0 !important; }
+  /* CHIPS drag (empresa modal) */
+  #emp-depto-chips, #emp-proy-chips { max-height: 240px; overflow-y: auto; }
+}
 </style>
 </head>
 <body style="visibility:hidden">
@@ -253,6 +297,7 @@ input[type=date]{color:var(--text)}
   </div>
 </div>
 <div class="app">
+<div class="mob-overlay" id="mob-overlay" onclick="closeMobileMenu()"></div>
 <aside class="sidebar">
   <div class="sb-logo">
     <div class="brand">ATS Tracker</div>
@@ -286,6 +331,7 @@ input[type=date]{color:var(--text)}
 
 <main class="main">
   <div class="topbar">
+    <button class="mob-menu-btn" onclick="toggleMobileMenu()" style="display:none;background:var(--accent);color:#fff;border:none;border-radius:6px;width:34px;height:34px;font-size:17px;cursor:pointer;flex-shrink:0">☰</button>
     <div class="topbar-title" id="page-title">Dashboard</div>
     <div class="topbar-actions">
       <div id="mode-badge" style="font-size:11px;padding:3px 8px;border-radius:5px;font-weight:500"></div>
@@ -1727,6 +1773,21 @@ function toggleSidebar(){
   if(floatBtn) floatBtn.style.display = 'none';
 }
 
+function toggleMobileMenu(){
+  const sb=document.querySelector('.sidebar');
+  const ov=document.getElementById('mob-overlay');
+  if(!sb) return;
+  sb.classList.toggle('mobile-open');
+  if(ov) ov.classList.toggle('open');
+}
+
+function closeMobileMenu(){
+  const sb=document.querySelector('.sidebar');
+  const ov=document.getElementById('mob-overlay');
+  if(sb) sb.classList.remove('mobile-open');
+  if(ov) ov.classList.remove('open');
+}
+
 function initSidebarState(){
   if(localStorage.getItem('sb_collapsed')==='1'){
     const sb = document.querySelector('.sb') || document.querySelector('.sidebar');
@@ -1917,6 +1978,7 @@ function nav(p){showPage(p)}
 function showPage(p){
   const _noRestore=['empresa-detail','vacante-detail','reclutador-detail'];
   if(!_noRestore.includes(p)) sessionStorage.setItem('lastPage', p);
+  if(window.innerWidth<=768) closeMobileMenu();
   console.log('showPage llamado con:', p);
   console.log('USUARIO ACTUAL (auth):', JSON.stringify({id:currentUser?.id,email:currentUser?.email}));
   console.log('USUARIO ACTUAL (app):', JSON.stringify(currentUserData));

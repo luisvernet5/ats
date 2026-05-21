@@ -2408,9 +2408,16 @@ function _buildEDVacsRowsPorProyecto(vacs, empId, etapas){
   });
   // Sort within each group by fecha_apertura asc
   Object.values(groups).forEach(arr=>arr.sort((a,b)=>(a.fecha_apertura||'').localeCompare(b.fecha_apertura||'')));
-  // Order groups by their oldest vacancy date asc; "Sin proyecto" at end
-  const namedKeys = Object.keys(groups).filter(k=>k)
-    .sort((a,b)=>(groups[a][0]?.fecha_apertura||'').localeCompare(groups[b][0]?.fecha_apertura||''));
+  // Order groups using empresa.proyectos array order; unknowns at end, "Sin proyecto" last
+  const emp = DB.empresas.find(x=>x.id===empId)||{};
+  const proyOrder = emp.proyectos||[];
+  const namedKeys = Object.keys(groups).filter(k=>k).sort((a,b)=>{
+    const ia = proyOrder.indexOf(a); const ib = proyOrder.indexOf(b);
+    if(ia===-1&&ib===-1) return a.localeCompare(b);
+    if(ia===-1) return 1;
+    if(ib===-1) return -1;
+    return ia-ib;
+  });
   const orderedKeys = [...namedKeys, ...(groups['']?['']:[])];
   let html = '';
   orderedKeys.forEach(key=>{ html += _buildEDVacsRows(groups[key], empId, etapas); });
@@ -2711,8 +2718,13 @@ function doExportDirect(empId,recId,est,tipo){
     const groups = {};
     vacs.forEach(v=>{ const k=v.proyecto||''; if(!groups[k]) groups[k]=[]; groups[k].push(v); });
     Object.values(groups).forEach(arr=>arr.sort((a,b)=>(a.fecha_apertura||'').localeCompare(b.fecha_apertura||'')));
-    const namedKeys = Object.keys(groups).filter(k=>k)
-      .sort((a,b)=>(groups[a][0]?.fecha_apertura||'').localeCompare(groups[b][0]?.fecha_apertura||''));
+    const _expEmp = DB.empresas.find(x=>x.id===empId)||{};
+    const _expPoyOrder = _expEmp.proyectos||[];
+    const namedKeys = Object.keys(groups).filter(k=>k).sort((a,b)=>{
+      const ia=_expPoyOrder.indexOf(a),ib=_expPoyOrder.indexOf(b);
+      if(ia===-1&&ib===-1) return a.localeCompare(b);
+      if(ia===-1) return 1; if(ib===-1) return -1; return ia-ib;
+    });
     const orderedKeys = [...namedKeys, ...(groups['']?['']:[])];
     aoa1 = [h1];
     orderedKeys.forEach(key=>{

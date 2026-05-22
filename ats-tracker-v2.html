@@ -4176,23 +4176,31 @@ function renderVacantesTable(){
     </tr>`;
   };
 
-  const _groupVacs=(campo,sinLabel)=>{
-    const groups={};
-    list.forEach(v=>{const k=v[campo]||sinLabel;if(!groups[k])groups[k]=[];groups[k].push(v);});
-    const keys=Object.keys(groups).sort((a,b)=>a===sinLabel?1:b===sinLabel?-1:a.localeCompare(b));
-    let n=1,r='';
-    keys.forEach(key=>{
-      r+=`<tr style="background:var(--surface2)"><td colspan="13" style="padding:7px 14px;font-size:12px;font-weight:600;color:var(--text2);border-top:2px solid var(--border2)">${key}</td></tr>`;
-      groups[key].forEach(v=>{r+=_vacRow(v,n++);});
+  const _sortByEmpConfig=(campo)=>{
+    list.sort((a,b)=>{
+      const empA=DB.empresas.find(x=>x.id===a.empresa_id)||{};
+      const empB=DB.empresas.find(x=>x.id===b.empresa_id)||{};
+      // Si misma empresa, usar el orden del arreglo de configuración
+      if(a.empresa_id===b.empresa_id){
+        const ord=empA[campo==='proyecto'?'proyectos':'departamentos']||[];
+        const ia=ord.indexOf(a[campo]??''); const ib=ord.indexOf(b[campo]??'');
+        if(ia===-1&&ib===-1) return (a.fecha_apertura||'').localeCompare(b.fecha_apertura||'');
+        if(ia===-1) return 1; if(ib===-1) return -1;
+        if(ia!==ib) return ia-ib;
+        return (a.fecha_apertura||'').localeCompare(b.fecha_apertura||'');
+      }
+      // Distinta empresa: ordenar por nombre de empresa
+      return (empA.nombre||'').localeCompare(empB.nombre||'');
     });
-    return r;
   };
 
   let rows='';
   if(_vacVistaActual==='proyecto'){
-    rows=_groupVacs('proyecto','Sin proyecto');
+    _sortByEmpConfig('proyecto');
+    list.forEach((v,i)=>{rows+=_vacRow(v,i+1);});
   } else if(_vacVistaActual==='departamento'){
-    rows=_groupVacs('departamento','Sin departamento');
+    _sortByEmpConfig('departamento');
+    list.forEach((v,i)=>{rows+=_vacRow(v,i+1);});
   } else {
     list.sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true}));
     list.forEach((v,i)=>{rows+=_vacRow(v,i+1);});

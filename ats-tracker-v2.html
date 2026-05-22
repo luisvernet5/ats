@@ -2005,11 +2005,14 @@ function getEmpresaEtapas(empId){
 }
 function esColocado(c){
   if(!c) return false;
-  if(c.etapa==='Validado'||c.etapa==='Contratación') return true;
   const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+  if(v.estado!=='Cubierta') return false;
+  // Si hay candidato designado, solo ese cuenta
+  if(v.candidato_contratado) return v.candidato_contratado===c.id;
+  // Fallback: candidato en etapa de cierre
   const etapas=getEmpresaEtapas(v.empresa_id);
   const cierre=etapas.find(e=>e.tipo==='cierre');
-  return cierre?c.etapa===cierre.label:false;
+  return cierre?c.etapa===cierre.label:(c.etapa==='Validado'||c.etapa==='Contratación');
 }
 
 function processTotal(c){
@@ -2371,7 +2374,7 @@ function renderEmpresas(){
       <div class="ec-stats">
         <div class="ec-stat"><div class="ec-stat-v" style="color:${e.color||'var(--accent)'}">${vacAct}</div><div class="ec-stat-l">Abiertas</div></div>
         <div class="ec-stat"><div class="ec-stat-v">${vacs.length}</div><div class="ec-stat-l">Total vac.</div></div>
-        <div class="ec-stat"><div class="ec-stat-v" style="color:var(--green)">${validados}</div><div class="ec-stat-l">Colocados</div></div>
+        <div class="ec-stat"><div class="ec-stat-v" style="color:var(--green)">${validados}</div><div class="ec-stat-l">Contratados</div></div>
       </div>
       <div style="display:flex;gap:6px;margin-top:12px;justify-content:flex-end">
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openEmpresaModal('${e.id}')"><i class="fa fa-edit"></i></button>
@@ -2438,7 +2441,7 @@ function openEmpresaDetail(empId){
       <div class="ed-kpis">
         <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-abiertas" style="color:${e.color||'var(--accent)'}">${vacAct}</div><div class="ed-kpi-l">Abiertas</div></div>
         <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-total">${vacs.length}</div><div class="ed-kpi-l">Total vac.</div></div>
-        <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-validados" style="color:var(--green)">${validados}</div><div class="ed-kpi-l">Colocados</div></div>
+        <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-validados" style="color:var(--green)">${validados}</div><div class="ed-kpi-l">Contratados</div></div>
         <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-avgdays" style="color:var(--amber)">${avgDays||'—'}</div><div class="ed-kpi-l">Días prom.</div></div>
         <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-deser" style="color:var(--red)">${desertores}</div><div class="ed-kpi-l">Deserciones</div></div>
       </div>
@@ -3786,7 +3789,7 @@ function renderDashboard(){
   document.getElementById('dash-kpis').innerHTML=`
     <div class="card"><div class="card-title">Vacantes activas</div><div class="card-value">${vacAct}</div><div class="card-sub">de ${vacantes.length} total</div></div>
     <div class="card"><div class="card-title">Empresas cliente</div><div class="card-value">${empresas.length}</div><div class="card-sub">con proceso activo</div></div>
-    <div class="card"><div class="card-title">Candidatos colocados</div><div class="card-value" style="color:var(--green)">${validados}</div></div>
+    <div class="card"><div class="card-title">Contratados</div><div class="card-value" style="color:var(--green)">${validados}</div></div>
     <div class="card"><div class="card-title">Días prom. cobertura</div><div class="card-value" style="color:var(--amber)">${avgD||'—'}</div></div>
   `;
 
@@ -3807,7 +3810,7 @@ function renderDashboard(){
       <div class="ec-stats">
         <div class="ec-stat"><div class="ec-stat-v" style="color:${e.color||'var(--accent)'}">${vacAct}</div><div class="ec-stat-l">Abiertas</div></div>
         <div class="ec-stat"><div class="ec-stat-v">${vacs.length}</div><div class="ec-stat-l">Total</div></div>
-        <div class="ec-stat"><div class="ec-stat-v" style="color:var(--green)">${val}</div><div class="ec-stat-l">Colocados</div></div>
+        <div class="ec-stat"><div class="ec-stat-v" style="color:var(--green)">${val}</div><div class="ec-stat-l">Contratados</div></div>
       </div>
     </div>`;
   }).join('');
@@ -4776,7 +4779,7 @@ function renderReclutadores(){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Vacantes abiertas</div><div style="font-size:18px;font-weight:600;font-family:var(--mono)">${vacAct}</div></div>
-        <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Colocados</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--green)">${val}</div></div>
+        <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Contratados</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--green)">${val}</div></div>
         <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Días prom.</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--amber)">${avg||'—'}</div></div>
         <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Deserciones</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--red)">${des}</div></div>
       </div>
@@ -5074,7 +5077,7 @@ function renderRanking(){
     <div class="card"><div class="card-title">Vacantes abiertas</div><div class="card-value">${vacsAbiertas.length}</div><div class="card-sub">en curso</div></div>
     <div class="card"><div class="card-title">Días promedio abierta</div><div class="card-value ${dClass(avgDiasGlobal||0)}">${avgDiasGlobal!==null?avgDiasGlobal+'d':'—'}</div><div class="card-sub">global</div></div>
     <div class="card"><div class="card-title">Reclutador más rápido</div><div class="card-value" style="font-size:14px;color:var(--green)">${masRapido?masRapido.r.nombre:'—'}</div><div class="card-sub">${masRapido?masRapido.avg+'d prom.':''}</div></div>
-    <div class="card"><div class="card-title">Más colocados</div><div class="card-value" style="font-size:14px;color:var(--accent)">${masColocados&&masColocados.val?masColocados.r.nombre:'—'}</div><div class="card-sub">${masColocados&&masColocados.val?masColocados.val+' validados':''}</div></div>
+    <div class="card"><div class="card-title">Más contratados</div><div class="card-value" style="font-size:14px;color:var(--accent)">${masColocados&&masColocados.val?masColocados.r.nombre:'—'}</div><div class="card-sub">${masColocados&&masColocados.val?masColocados.val+' contratados':''}</div></div>
   `;
   // Filtros
   const empOptsR=DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');

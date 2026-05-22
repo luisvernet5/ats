@@ -410,6 +410,7 @@ input[type=date]{color:var(--text)}
     <div style="display:flex;gap:6px;margin-bottom:10px">
       <button id="vac-vista-folio" class="btn btn-ghost btn-sm btn-active" onclick="setVacVista('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
       <button id="vac-vista-proyecto" class="btn btn-ghost btn-sm" onclick="setVacVista('proyecto')"><i class="fa fa-layer-group"></i> Por proyecto</button>
+      <button id="vac-vista-departamento" class="btn btn-ghost btn-sm" onclick="setVacVista('departamento')"><i class="fa fa-sitemap"></i> Por departamento</button>
     </div>
     <div class="table-wrap" id="vacantes-table"></div>
   </div>
@@ -4089,8 +4090,7 @@ async function eliminarVacante(id){
    ============================================================ */
 function setVacVista(v){
   _vacVistaActual=v;
-  document.getElementById('vac-vista-folio')?.classList.toggle('btn-active',v==='folio');
-  document.getElementById('vac-vista-proyecto')?.classList.toggle('btn-active',v==='proyecto');
+  ['folio','proyecto','departamento'].forEach(k=>document.getElementById('vac-vista-'+k)?.classList.toggle('btn-active',v===k));
   renderVacantesTable();
 }
 
@@ -4176,16 +4176,23 @@ function renderVacantesTable(){
     </tr>`;
   };
 
+  const _groupVacs=(campo,sinLabel)=>{
+    const groups={};
+    list.forEach(v=>{const k=v[campo]||sinLabel;if(!groups[k])groups[k]=[];groups[k].push(v);});
+    const keys=Object.keys(groups).sort((a,b)=>a===sinLabel?1:b===sinLabel?-1:a.localeCompare(b));
+    let n=1,r='';
+    keys.forEach(key=>{
+      r+=`<tr style="background:var(--surface2)"><td colspan="13" style="padding:7px 14px;font-size:12px;font-weight:600;color:var(--text2);border-top:2px solid var(--border2)">${key}</td></tr>`;
+      groups[key].forEach(v=>{r+=_vacRow(v,n++);});
+    });
+    return r;
+  };
+
   let rows='';
   if(_vacVistaActual==='proyecto'){
-    const groups={};
-    list.forEach(v=>{const k=v.proyecto||'Sin proyecto';if(!groups[k])groups[k]=[];groups[k].push(v);});
-    const keys=Object.keys(groups).sort((a,b)=>a==='Sin proyecto'?1:b==='Sin proyecto'?-1:a.localeCompare(b));
-    let n=1;
-    keys.forEach(key=>{
-      rows+=`<tr style="background:var(--surface2)"><td colspan="13" style="padding:7px 14px;font-size:12px;font-weight:600;color:var(--text2);border-top:2px solid var(--border2)">${key} <span style="font-weight:400;color:var(--text3)">(${groups[key].length})</span></td></tr>`;
-      groups[key].forEach(v=>{rows+=_vacRow(v,n++);});
-    });
+    rows=_groupVacs('proyecto','Sin proyecto');
+  } else if(_vacVistaActual==='departamento'){
+    rows=_groupVacs('departamento','Sin departamento');
   } else {
     list.sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true}));
     list.forEach((v,i)=>{rows+=_vacRow(v,i+1);});

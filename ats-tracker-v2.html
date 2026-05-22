@@ -1967,6 +1967,15 @@ function daysBetween(d1,d2){
   return Math.max(0,Math.round((new Date(d2||new Date())-new Date(d1))/86400000));
 }
 function dClass(d){if(d===null||d===undefined)return'dok';if(d<=14)return'dok';if(d<=30)return'dwarn';return'dover'}
+function getWeekNumber(dateStr){
+  if(!dateStr)return null;
+  const d=new Date(dateStr+'T12:00:00');
+  if(isNaN(d))return null;
+  const thu=new Date(d);
+  thu.setDate(thu.getDate()+4-(thu.getDay()||7));
+  const yearStart=new Date(thu.getFullYear(),0,1);
+  return{week:Math.ceil(((thu-yearStart)/86400000+1)/7),year:thu.getFullYear()};
+}
 function showToast(msg,t='ok'){const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${t==='ok'?'tok':'terr'} show`;setTimeout(()=>el.className='toast',2800)}
 function recargarVistaActiva(){const p=document.querySelector('.page.active');if(p)renderPage(p.id.replace('page-',''));}
 async function recargarDatosActivos(){await loadDB();const p=document.querySelector('.page.active')?.id.replace('page-','');if(p)renderPage(p);}
@@ -6819,6 +6828,18 @@ function renderContratados(){
   const recOpts = [...new Set(vacsVis.map(v=>v.reclutador_id).filter(Boolean))]
     .map(rid=>{ const r=DB.reclutadores.find(x=>x.id===rid)||{}; return `<option value="${rid}">${r.nombre||rid}</option>`; }).join('');
 
+  // Calcular semanas disponibles a partir de fecha de contratación
+  const semanasSet = new Map();
+  vacsVis.forEach(v=>{
+    const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
+    const contratado=cands.find(c=>c.etapa==='Validado'||c.etapa==='Contratación')||cands[cands.length-1]||{};
+    const fechaCont=v.fecha_cierre||contratado.fecha_salida||null;
+    const wn=getWeekNumber(fechaCont);
+    if(wn){const key=`${wn.year}-W${String(wn.week).padStart(2,'0')}`;if(!semanasSet.has(key))semanasSet.set(key,wn);}
+  });
+  const semanaOpts=[...semanasSet.entries()].sort((a,b)=>a[0].localeCompare(b[0]))
+    .map(([key,wn])=>`<option value="${key}">Semana ${wn.week} – ${wn.year}</option>`).join('');
+
   page._ctVacsVis = vacsVis;
   page._ctPage = 1;
   page._ctPageSize = 30;
@@ -6832,6 +6853,10 @@ function renderContratados(){
       <select id="ct-rec-filter" onchange="filtrarContratados()" style="width:auto;min-width:170px">
         <option value="">Todos los reclutadores</option>
         ${recOpts}
+      </select>
+      <select id="ct-semana-filter" onchange="filtrarContratados()" style="width:auto;min-width:160px">
+        <option value="">Todas las semanas</option>
+        ${semanaOpts}
       </select>
       <div class="sp"></div>
       <button class="btn btn-green btn-sm" onclick="exportContratados()"><i class="fa fa-file-csv"></i> Exportar Excel</button>
@@ -6853,9 +6878,19 @@ function filtrarContratados(){
   if(!page) return;
   const empFiltro = document.getElementById('ct-emp-filter')?.value||'';
   const recFiltro = document.getElementById('ct-rec-filter')?.value||'';
+  const semanaFiltro = document.getElementById('ct-semana-filter')?.value||'';
   let list = page._ctVacsVis||[];
   if(empFiltro) list = list.filter(v=>v.empresa_id===empFiltro);
   if(recFiltro) list = list.filter(v=>v.reclutador_id===recFiltro);
+  if(semanaFiltro) list = list.filter(v=>{
+    const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
+    const contratado=cands.find(c=>c.etapa==='Validado'||c.etapa==='Contratación')||cands[cands.length-1]||{};
+    const fechaCont=v.fecha_cierre||contratado.fecha_salida||null;
+    const wn=getWeekNumber(fechaCont);
+    if(!wn)return false;
+    const key=`${wn.year}-W${String(wn.week).padStart(2,'0')}`;
+    return key===semanaFiltro;
+  });
   page._ctFiltered = list;
   page._ctPage = 1;
   _ctRender();
@@ -6897,7 +6932,9 @@ function _ctRender(){
     const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
     const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
     const contratado=cands.find(c=>c.etapa==='Validado'||c.etapa==='Contratación')||cands[cands.length-1]||{};
-    const diasTotal=daysBetween(v.fecha_apertura,v.fecha_cierre||contratado.fecha_salida||today());
+    const fechaCont=v.fecha_cierre||contratado.fecha_salida||null;
+    const wn=getWeekNumber(fechaCont);
+    const diasTotal=daysBetween(v.fecha_apertura,fechaCont||today());
     const diasCliente=contratado.id?clienteDays(contratado):null;
     return`<tr>
       <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${start+i+1}</td>
@@ -6912,6 +6949,8 @@ function _ctRender(){
       <td>${v.departamento||'—'}</td>
       <td>${v.proyecto||'—'}</td>
       <td>${v.fecha_apertura||'—'}</td>
+      <td style="font-family:var(--mono);font-size:12px">${fechaCont?fmt(fechaCont):'—'}</td>
+      <td style="text-align:center">${wn?`<span style="background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:2px 7px;font-size:11px;font-family:var(--mono);font-weight:500">S${wn.week}</span>`:'—'}</td>
       <td>${diasTotal!==null?`<span class="dpill ${dClass(diasTotal)}">${diasTotal}d</span>`:'—'}</td>
       <td>${diasCliente!==null?`<span class="dpill dwarn">${diasCliente}d</span>`:'—'}</td>
     </tr>`;
@@ -6923,7 +6962,8 @@ function _ctRender(){
       <th style="width:36px;text-align:center">#</th>
       <th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th>
       <th>Contratado</th><th>Departamento</th><th>Proyecto</th>
-      <th>Apertura</th><th>Días proceso</th><th>Días cliente</th>
+      <th>Apertura</th><th>Fecha contratación</th><th style="text-align:center">Semana</th>
+      <th>Días proceso</th><th>Días cliente</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table></div>` : '<div style="color:var(--text3);font-size:13px;padding:16px 0">Sin vacantes cubiertas registradas.</div>';
@@ -6986,15 +7026,17 @@ function ctSetPageSize(n){
 function exportContratados(){
   const page = document.getElementById('page-contratados');
   const vacsVis = page?._ctFiltered || DB.vacantes.filter(v=>v.estado==='Cubierta');
-  const header = ['#','Vacante','Folio','Empresa','Reclutador','Contratado','Departamento','Proyecto','Apertura','Días proceso','Días cliente'];
+  const header = ['#','Vacante','Folio','Empresa','Reclutador','Contratado','Departamento','Proyecto','Apertura','Fecha contratación','Semana','Días proceso','Días cliente'];
   const rows = vacsVis.map((v,i)=>{
     const emp = DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const rec = DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
     const cands = DB.candidatos.filter(c=>c.vacante_id===v.id);
     const contratado = cands.find(c=>c.etapa==='Validado'||c.etapa==='Contratación')||cands[cands.length-1]||{};
-    const diasTotal = daysBetween(v.fecha_apertura, v.fecha_cierre||contratado.fecha_salida||today());
+    const fechaCont = v.fecha_cierre||contratado.fecha_salida||null;
+    const wn = getWeekNumber(fechaCont);
+    const diasTotal = daysBetween(v.fecha_apertura, fechaCont||today());
     const diasCliente = contratado.id ? clienteDays(contratado) : null;
-    return [i+1,v.nombre,v.folio||'',emp.nombre||'',rec.nombre||'',contratado.nombre||'',v.departamento||'',v.proyecto||'',v.fecha_apertura||'',diasTotal!==null?diasTotal+'d':'',diasCliente!==null?diasCliente+'d':''];
+    return [i+1,v.nombre,v.folio||'',emp.nombre||'',rec.nombre||'',contratado.nombre||'',v.departamento||'',v.proyecto||'',v.fecha_apertura||'',fechaCont||'',wn?`S${wn.week} (${wn.year})`:'',diasTotal!==null?diasTotal+'d':'',diasCliente!==null?diasCliente+'d':''];
   });
   const csv = [header,...rows].map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
   const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});

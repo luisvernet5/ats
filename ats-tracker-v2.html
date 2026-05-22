@@ -1976,6 +1976,16 @@ function getWeekNumber(dateStr){
   const yearStart=new Date(thu.getFullYear(),0,1);
   return{week:Math.ceil(((thu-yearStart)/86400000+1)/7),year:thu.getFullYear()};
 }
+function getFechaContratacion(v, contratado){
+  if(v.fecha_cierre) return v.fecha_cierre;
+  if(!contratado||!contratado.id) return null;
+  const etapas=getEmpresaEtapas(v.empresa_id);
+  const finalIdx=etapas.findIndex(e=>e.tipo==='cierre');
+  if(finalIdx>=0 && contratado['f_'+finalIdx]) return contratado['f_'+finalIdx];
+  // fallback: last non-null f_X
+  for(let i=etapas.length-1;i>=0;i--){ if(contratado['f_'+i]) return contratado['f_'+i]; }
+  return null;
+}
 function showToast(msg,t='ok'){const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${t==='ok'?'tok':'terr'} show`;setTimeout(()=>el.className='toast',2800)}
 function recargarVistaActiva(){const p=document.querySelector('.page.active');if(p)renderPage(p.id.replace('page-',''));}
 async function recargarDatosActivos(){await loadDB();const p=document.querySelector('.page.active')?.id.replace('page-','');if(p)renderPage(p);}
@@ -3942,6 +3952,7 @@ async function confirmarCierreVacante(){
     if(ci>=0){DB.candidatos[ci].etapa='Validado';DB.candidatos[ci].activo=true;await saveRecord('candidatos',DB.candidatos[ci]);}
     DB.vacantes[vi].estado='Cubierta';
     DB.vacantes[vi].candidato_contratado=sel.value;
+    if(!DB.vacantes[vi].fecha_cierre) DB.vacantes[vi].fecha_cierre=today();
   }else{
     const motivo=document.getElementById('cierre-motivo').value;
     if(!motivo){showToast('Selecciona un motivo','err');return;}
@@ -6833,7 +6844,7 @@ function renderContratados(){
   vacsVis.forEach(v=>{
     const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
     const contratado=cands.find(c=>c.etapa==='Validado'||c.etapa==='Contratación')||cands[cands.length-1]||{};
-    const fechaCont=v.fecha_cierre||contratado.fecha_salida||null;
+    const fechaCont=getFechaContratacion(v,contratado);
     const wn=getWeekNumber(fechaCont);
     if(wn){const key=`${wn.year}-W${String(wn.week).padStart(2,'0')}`;if(!semanasSet.has(key))semanasSet.set(key,wn);}
   });
@@ -6885,7 +6896,7 @@ function filtrarContratados(){
   if(semanaFiltro) list = list.filter(v=>{
     const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
     const contratado=cands.find(c=>c.etapa==='Validado'||c.etapa==='Contratación')||cands[cands.length-1]||{};
-    const fechaCont=v.fecha_cierre||contratado.fecha_salida||null;
+    const fechaCont=getFechaContratacion(v,contratado);
     const wn=getWeekNumber(fechaCont);
     if(!wn)return false;
     const key=`${wn.year}-W${String(wn.week).padStart(2,'0')}`;
@@ -6932,7 +6943,7 @@ function _ctRender(){
     const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
     const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
     const contratado=cands.find(c=>c.etapa==='Validado'||c.etapa==='Contratación')||cands[cands.length-1]||{};
-    const fechaCont=v.fecha_cierre||contratado.fecha_salida||null;
+    const fechaCont=getFechaContratacion(v,contratado);
     const wn=getWeekNumber(fechaCont);
     const diasTotal=daysBetween(v.fecha_apertura,fechaCont||today());
     const diasCliente=contratado.id?clienteDays(contratado):null;
@@ -7032,7 +7043,7 @@ function exportContratados(){
     const rec = DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
     const cands = DB.candidatos.filter(c=>c.vacante_id===v.id);
     const contratado = cands.find(c=>c.etapa==='Validado'||c.etapa==='Contratación')||cands[cands.length-1]||{};
-    const fechaCont = v.fecha_cierre||contratado.fecha_salida||null;
+    const fechaCont = getFechaContratacion(v,contratado);
     const wn = getWeekNumber(fechaCont);
     const diasTotal = daysBetween(v.fecha_apertura, fechaCont||today());
     const diasCliente = contratado.id ? clienteDays(contratado) : null;

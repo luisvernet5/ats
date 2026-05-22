@@ -423,6 +423,11 @@ input[type=date]{color:var(--text)}
       <select id="flt-cand-rec" onchange="renderCandidatosTable()"><option value="">Todos los reclutadores</option></select>
       <span class="sp"></span>
     </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button id="cand-vista-folio" class="btn btn-ghost btn-sm btn-active" onclick="setVistaCand('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
+      <button id="cand-vista-proyecto" class="btn btn-ghost btn-sm" onclick="setVistaCand('proyecto')"><i class="fa fa-layer-group"></i> Por proyecto</button>
+      <button id="cand-vista-departamento" class="btn btn-ghost btn-sm" onclick="setVistaCand('departamento')"><i class="fa fa-sitemap"></i> Por departamento</button>
+    </div>
     <div class="table-wrap" id="candidatos-table"></div>
   </div>
 
@@ -1137,6 +1142,7 @@ let _rdVacsAll = [];
 let _rdRecId = null;
 let _vacVistaActual = 'folio';
 let _ctVistaActual = 'folio';
+let _candVistaActual = 'folio';
 
 const hashParams = new URLSearchParams(window.location.hash.substring(1));
 const accessToken = hashParams.get('access_token');

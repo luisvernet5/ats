@@ -395,7 +395,7 @@ input[type=date]{color:var(--text)}
       <input type="text" id="flt-vac-q" placeholder="Buscar..." oninput="renderVacantesTable()">
       <select id="flt-vac-emp" onchange="renderVacantesTable()"><option value="">Todas las empresas</option></select>
       <select id="flt-vac-est" onchange="renderVacantesTable()">
-        <option value="">Todos los estados</option><option>Abierta</option><option>Cancelada</option>
+        <option value="">Todos los estados</option><option>Abierta</option><option>Cubierta</option><option>Cancelada</option>
       </select>
       <select id="flt-vac-rec" onchange="renderVacantesTable()"><option value="">Reclutador</option></select>
       <select id="flt-vac-proy" onchange="renderVacantesTable()"><option value="">Proyecto</option></select>
@@ -4113,7 +4113,7 @@ function renderVacantesTable(){
   if(empSel){const cur=empSel.value;empSel.innerHTML='<option value="">Todas las empresas</option>';(currentUserData?.rol==='rh_cliente'?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).forEach(e=>empSel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
   const _recIdV = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   const _empIdV = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
-  const base = (_recIdV ? DB.vacantes.filter(v=>v.reclutador_id===_recIdV) : _empIdV ? DB.vacantes.filter(v=>v.empresa_id===_empIdV) : DB.vacantes).filter(v=>v.estado!=='Cubierta');
+  const base = _recIdV ? DB.vacantes.filter(v=>v.reclutador_id===_recIdV) : _empIdV ? DB.vacantes.filter(v=>v.empresa_id===_empIdV) : DB.vacantes;
   // populate reclutador select (scoped to visible vacantes)
   const recSel=document.getElementById('flt-vac-rec');
   if(recSel){const cur=recSel.value;const rIds=[...new Set(base.map(v=>v.reclutador_id).filter(Boolean))];recSel.innerHTML='<option value="">Reclutador</option>'+rIds.map(id=>{const r=DB.reclutadores.find(x=>x.id===id)||{};return`<option value="${id}" ${cur===id?'selected':''}>${r.nombre||id}</option>`;}).join('');}

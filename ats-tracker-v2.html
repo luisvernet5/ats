@@ -4560,7 +4560,34 @@ function renderCandidatosTable(){
   if(empId){const vids=_vacsC.filter(v=>v.empresa_id===empId).map(v=>v.id);list=list.filter(c=>vids.includes(c.vacante_id));}
   if(recFlt)list=list.filter(c=>c.reclutador_id===recFlt);
 
-  const rows=list.map(c=>{
+  // Sort based on current vista
+  if(_candVistaActual==='folio'){
+    list=[...list].sort((a,b)=>{
+      const va=DB.vacantes.find(x=>x.id===a.vacante_id)||{};
+      const vb=DB.vacantes.find(x=>x.id===b.vacante_id)||{};
+      return (va.folio||'').localeCompare(vb.folio||'',undefined,{numeric:true});
+    });
+  } else {
+    const campo=_candVistaActual; // 'proyecto' or 'departamento'
+    list=[...list].sort((a,b)=>{
+      const va=DB.vacantes.find(x=>x.id===a.vacante_id)||{};
+      const vb=DB.vacantes.find(x=>x.id===b.vacante_id)||{};
+      if(va.empresa_id===vb.empresa_id){
+        const empA=DB.empresas.find(x=>x.id===va.empresa_id)||{};
+        const ord=empA[campo==='proyecto'?'proyectos':'departamentos']||[];
+        const ia=ord.indexOf(va[campo]??''); const ib=ord.indexOf(vb[campo]??'');
+        if(ia===-1&&ib===-1) return (va.fecha_apertura||'').localeCompare(vb.fecha_apertura||'');
+        if(ia===-1) return 1; if(ib===-1) return -1;
+        if(ia!==ib) return ia-ib;
+        return (va.fecha_apertura||'').localeCompare(vb.fecha_apertura||'');
+      }
+      const empA=DB.empresas.find(x=>x.id===va.empresa_id)||{};
+      const empB=DB.empresas.find(x=>x.id===vb.empresa_id)||{};
+      return (empA.nombre||'').localeCompare(empB.nombre||'');
+    });
+  }
+
+  const rows=list.map((c,i)=>{
     const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const r=DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
@@ -4586,15 +4613,21 @@ function renderCandidatosTable(){
       </div>`;
     }).join('');
     return`<tr>
-      <td class="td-p">
-        <span class="vac-expand-icon" id="cx-icon-${c.id}">▶</span>${c.nombre}
+      <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
+      <td class="td-p" style="white-space:normal;word-break:break-word;min-width:140px;max-width:180px">
+        <div style="display:flex;align-items:flex-start;gap:4px">
+          <span class="vac-expand-icon" id="cx-icon-${c.id}" style="flex-shrink:0;margin-top:2px">▶</span>
+          <span>${c.nombre}</span>
+        </div>
       </td>
-      <td>
+      <td style="min-width:120px">
         <div style="font-weight:500;color:var(--text)">${v.nombre||'—'}</div>
         ${v.folio?`<div style="font-size:10px;font-family:var(--mono);color:var(--text3)">${v.folio}</div>`:''}
       </td>
       <td><span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${emp.color||'#888'}"></span>${emp.nombre||'—'}</span></td>
       <td>${r.nombre||'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${v.proyecto||'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${v.departamento||'—'}</td>
       <td style="cursor:pointer" onclick="toggleCandRow('${c.id}')">${badgeEtapa(c.etapa,v.empresa_id)}<i class="fa fa-pencil-alt" style="font-size:10px;margin-left:5px;color:var(--text3)"></i></td>
       <td>${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:'—'}</td>
       <td>${cd!==null?`<span class="dpill dwarn">${cd}d</span>`:'—'}</td>
@@ -4615,7 +4648,7 @@ function renderCandidatosTable(){
       </td>
     </tr>
     <tr class="vac-expand-row" id="cx-${c.id}">
-      <td colspan="8" class="cand-expand-td" style="padding:0">
+      <td colspan="11" class="cand-expand-td" style="padding:0">
         <div style="padding:14px 16px">
           <div class="sep" style="margin-top:0">Edición del proceso</div>
           <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:start">
@@ -4646,8 +4679,8 @@ function renderCandidatosTable(){
     </tr>`;
   }).join('');
   document.getElementById('candidatos-table').innerHTML=`<table>
-    <thead><tr><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Etapa</th><th>Días proceso</th><th>Días cliente</th><th>Acción</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos</td></tr>'}</tbody>
+    <thead><tr><th style="width:36px;text-align:center">#</th><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Etapa</th><th>Días proceso</th><th>Días cliente</th><th>Acción</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos</td></tr>'}</tbody>
   </table>
   <div style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right;">Mostrando <strong>${list.length}</strong> registros</div>`;
   if(window.innerWidth>768){
@@ -6933,6 +6966,13 @@ function setCtVista(v){
   const page=document.getElementById('page-contratados');
   if(page) page._ctPage=1;
   _ctRender();
+}
+function setVistaCand(v){
+  _candVistaActual=v;
+  ['folio','proyecto','departamento'].forEach(k=>{
+    document.getElementById('cand-vista-'+k)?.classList.toggle('btn-active',v===k);
+  });
+  renderCandidatosTable();
 }
 
 function ctSetPageSize(n){

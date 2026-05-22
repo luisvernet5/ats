@@ -3458,8 +3458,13 @@ function onCandEmpresaChange(){
   const empId=document.getElementById('cand-empresa').value;
   const vacSel=document.getElementById('cand-vacante');
   vacSel.innerHTML='<option value="">Seleccionar vacante...</option>';
-  const vacs=DB.vacantes.filter(v=>v.empresa_id===empId);
-  vacs.forEach(v=>{const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};const label=`[${v.folio||'S/F'}] ${v.nombre} | ${rec.nombre||'Sin reclutador'} | ${fmt(v.fecha_apertura)}`;vacSel.innerHTML+=`<option value="${v.id}">${label}</option>`;});
+  const vacs=DB.vacantes.filter(v=>v.empresa_id===empId)
+    .sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true}));
+  vacs.forEach(v=>{
+    const extra=[v.proyecto,v.departamento].filter(Boolean).join(' / ');
+    const label=`[${v.folio||'S/F'}] ${v.nombre}${extra?' — '+extra:''}`;
+    vacSel.innerHTML+=`<option value="${v.id}">${label}</option>`;
+  });
 }
 async function filtrarVacantesNuevoCandidato(empresaId){
   const sel=document.getElementById('cand-vacante');
@@ -3468,20 +3473,30 @@ async function filtrarVacantesNuevoCandidato(empresaId){
   if(!empresaId)return;
   if(SANDBOX_MODE){
     DB.vacantes.filter(v=>v.empresa_id===empresaId&&v.estado==='Abierta')
-      .forEach(v=>{const o=document.createElement('option');o.value=v.id;o.textContent=`[${v.folio||'S/F'}] ${v.nombre}`;sel.appendChild(o);});
+      .sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true}))
+      .forEach(v=>{
+        const extra=[v.proyecto,v.departamento].filter(Boolean).join(' / ');
+        const o=document.createElement('option');
+        o.value=v.id;
+        o.textContent=`[${v.folio||'S/F'}] ${v.nombre}${extra?' — '+extra:''}`;
+        sel.appendChild(o);
+      });
     return;
   }
   const{data,error}=await sbClient.from('vacantes').select('id,data')
     .filter('data->>empresa_id','eq',empresaId)
     .filter('data->>estado','eq','Abierta');
   if(error){console.error('filtrarVacantes:',error);return;}
-  (data||[]).forEach(r=>{
-    const v=r.data||{};
-    const o=document.createElement('option');
-    o.value=v.id||r.id;
-    o.textContent=`[${v.folio||'S/F'}] ${v.nombre}`;
-    sel.appendChild(o);
-  });
+  (data||[])
+    .map(r=>({id:r.id,v:r.data||{}}))
+    .sort((a,b)=>(a.v.folio||'').localeCompare(b.v.folio||'',undefined,{numeric:true}))
+    .forEach(({id,v})=>{
+      const extra=[v.proyecto,v.departamento].filter(Boolean).join(' / ');
+      const o=document.createElement('option');
+      o.value=v.id||id;
+      o.textContent=`[${v.folio||'S/F'}] ${v.nombre}${extra?' — '+extra:''}`;
+      sel.appendChild(o);
+    });
 }
 
 function onCandVacanteChange(){

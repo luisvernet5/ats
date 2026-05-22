@@ -407,6 +407,10 @@ input[type=date]{color:var(--text)}
       <button class="btn btn-green btn-sm" onclick="exportarCSV()"><i class="fa fa-file-csv"></i> Exportar</button>
       <button class="btn btn-primary" onclick="openVacanteModal()"><i class="fa fa-plus"></i> Nueva</button>
     </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button id="vac-vista-folio" class="btn btn-ghost btn-sm btn-active" onclick="setVacVista('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
+      <button id="vac-vista-proyecto" class="btn btn-ghost btn-sm" onclick="setVacVista('proyecto')"><i class="fa fa-layer-group"></i> Por proyecto</button>
+    </div>
     <div class="table-wrap" id="vacantes-table"></div>
   </div>
 
@@ -1130,6 +1134,7 @@ let _rkVacPage = 1;
 let _rkVacData = [];
 let _rdVacsAll = [];
 let _rdRecId = null;
+let _vacVistaActual = 'folio';
 
 const hashParams = new URLSearchParams(window.location.hash.substring(1));
 const accessToken = hashParams.get('access_token');
@@ -4082,6 +4087,13 @@ async function eliminarVacante(id){
 /* ============================================================
    VACANTES TABLE
    ============================================================ */
+function setVacVista(v){
+  _vacVistaActual=v;
+  document.getElementById('vac-vista-folio')?.classList.toggle('btn-active',v==='folio');
+  document.getElementById('vac-vista-proyecto')?.classList.toggle('btn-active',v==='proyecto');
+  renderVacantesTable();
+}
+
 function limpiarFiltrosVacantes(){
   ['flt-vac-q','flt-vac-emp','flt-vac-est','flt-vac-rec','flt-vac-proy','flt-vac-dep','flt-vac-desde','flt-vac-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   renderVacantesTable();
@@ -4119,14 +4131,17 @@ function renderVacantesTable(){
   if(depFlt)list=list.filter(v=>v.departamento===depFlt);
   if(desdeFlt)list=list.filter(v=>(v.fecha_apertura||'')>=desdeFlt);
   if(hastaFlt)list=list.filter(v=>(v.fecha_apertura||'')<=hastaFlt);
-  const rows=list.map((v,i)=>{
+  // Ordenar de más vieja a más reciente como base
+  list.sort((a,b)=>(a.fecha_apertura||'').localeCompare(b.fecha_apertura||''));
+
+  const _vacRow=(v,n)=>{
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
     const dias=daysBetween(v.fecha_apertura);
     const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
     const act=cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length;
     return`<tr>
-      <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
+      <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${n}</td>
       <td class="td-p" style="cursor:pointer" onclick="openVacanteDetailView('${v.id}','${v.empresa_id}')">
         ${v.nombre}
       </td>
@@ -4159,7 +4174,23 @@ function renderVacantesTable(){
         </div>
       </td>
     </tr>`;
-  }).join('');
+  };
+
+  let rows='';
+  if(_vacVistaActual==='proyecto'){
+    const groups={};
+    list.forEach(v=>{const k=v.proyecto||'Sin proyecto';if(!groups[k])groups[k]=[];groups[k].push(v);});
+    const keys=Object.keys(groups).sort((a,b)=>a==='Sin proyecto'?1:b==='Sin proyecto'?-1:a.localeCompare(b));
+    let n=1;
+    keys.forEach(key=>{
+      rows+=`<tr style="background:var(--surface2)"><td colspan="13" style="padding:7px 14px;font-size:12px;font-weight:600;color:var(--text2);border-top:2px solid var(--border2)">${key} <span style="font-weight:400;color:var(--text3)">(${groups[key].length})</span></td></tr>`;
+      groups[key].forEach(v=>{rows+=_vacRow(v,n++);});
+    });
+  } else {
+    list.sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true}));
+    list.forEach((v,i)=>{rows+=_vacRow(v,i+1);});
+  }
+
   document.getElementById('vacantes-table').innerHTML=`<table>
     <thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>SLA</th><th>Días</th><th>Cands.</th><th style="min-width:120px">Acción</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="13" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>

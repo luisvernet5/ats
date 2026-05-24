@@ -530,13 +530,18 @@ input[type=date]{color:var(--text)}
   <!-- RANKING -->
   <div class="page" id="page-ranking">
     <div class="g4" id="ranking-kpis"></div>
-    <br>
-    <div class="sec-title">Vacantes abiertas — días transcurridos</div>
-    <div class="fbar" id="ranking-filters"></div>
-    <div class="table-wrap" id="ranking-vac-table"></div>
-    <br>
-    <div class="sec-title">Ranking de reclutadores</div>
-    <div id="ranking-rec-wrap"></div>
+    <div style="display:flex;gap:8px;margin:20px 0 16px">
+      <button id="rmtab-vacantes" class="btn btn-primary" onclick="switchRankingMain('vacantes')"><i class="fa fa-list"></i> Vacantes abiertas</button>
+      <button id="rmtab-reclutadores" class="btn btn-ghost" onclick="switchRankingMain('reclutadores')"><i class="fa fa-trophy"></i> Ranking reclutadores</button>
+    </div>
+    <div id="ranking-section-vacantes">
+      <div class="sec-title">Vacantes abiertas — días transcurridos</div>
+      <div class="fbar" id="ranking-filters"></div>
+      <div class="table-wrap" id="ranking-vac-table"></div>
+    </div>
+    <div id="ranking-section-reclutadores" style="display:none">
+      <div id="ranking-rec-wrap"></div>
+    </div>
   </div>
 
   <!-- CONTRATADOS -->
@@ -5624,6 +5629,13 @@ function renderRanking(){
     <div id="ranking-rec-table"></div>
   `;
   renderRankingTable('colocados');
+}
+
+function switchRankingMain(tab) {
+  document.getElementById('rmtab-vacantes').className = `btn ${tab==='vacantes' ? 'btn-primary' : 'btn-ghost'}`;
+  document.getElementById('rmtab-reclutadores').className = `btn ${tab==='reclutadores' ? 'btn-primary' : 'btn-ghost'}`;
+  document.getElementById('ranking-section-vacantes').style.display = tab==='vacantes' ? '' : 'none';
+  document.getElementById('ranking-section-reclutadores').style.display = tab==='reclutadores' ? '' : 'none';
 }
 
 function switchRankingTab(tipo) {

@@ -1771,6 +1771,28 @@ function exportarLog(){
   showToast(`${filtrados.length} registros exportados ✓`);
 }
 
+function buildPager(cur, total, gotoFn) {
+  if (total <= 1) return '';
+  const pages = [];
+  if (total <= 7) {
+    for (let i = 1; i <= total; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (cur > 3) pages.push('...');
+    for (let i = Math.max(2, cur - 1); i <= Math.min(total - 1, cur + 1); i++) pages.push(i);
+    if (cur < total - 2) pages.push('...');
+    pages.push(total);
+  }
+  const btns = pages.map(p => {
+    if (p === '...') return `<span style="padding:0 2px;color:var(--text3);font-size:12px;line-height:1;align-self:center">…</span>`;
+    const active = p === cur;
+    return `<button class="btn ${active ? 'btn-primary' : 'btn-ghost'} btn-sm" style="min-width:28px;padding:3px 7px" onclick="${gotoFn}(${p})" ${active ? 'disabled' : ''}>${p}</button>`;
+  }).join('');
+  const prev = `<button class="btn btn-ghost btn-sm" style="padding:3px 8px" onclick="${gotoFn}(${cur - 1})" ${cur <= 1 ? 'disabled' : ''}><i class="fa fa-chevron-left" style="font-size:10px"></i></button>`;
+  const next = `<button class="btn btn-ghost btn-sm" style="padding:3px 8px" onclick="${gotoFn}(${cur + 1})" ${cur >= total ? 'disabled' : ''}><i class="fa fa-chevron-right" style="font-size:10px"></i></button>`;
+  return `<div style="display:flex;align-items:center;gap:3px">${prev}${btns}${next}</div>`;
+}
+
 function filtrarLog(){
   const tbody = document.getElementById('log-tbody');
   const footer = document.getElementById('log-footer');
@@ -1825,12 +1847,7 @@ function filtrarLog(){
       : `<span style="font-size:12px;color:var(--text3)">Sin resultados</span>`;
     const prevDis = logPaginaActual<=1 ? 'disabled' : '';
     const nextDis = logPaginaActual>=totalPaginas ? 'disabled' : '';
-    const paginacionHtml = totalPaginas > 1 ? `
-      <div style="display:flex;align-items:center;gap:8px">
-        <button class="btn btn-ghost btn-sm" onclick="logIrPagina(${logPaginaActual-1})" ${prevDis}>← Anterior</button>
-        <span style="font-size:12px;color:var(--text2)">Página ${logPaginaActual} de ${totalPaginas}</span>
-        <button class="btn btn-ghost btn-sm" onclick="logIrPagina(${logPaginaActual+1})" ${nextDis}>Siguiente →</button>
-      </div>` : '<div></div>';
+    const paginacionHtml = buildPager(logPaginaActual, totalPaginas, 'logIrPagina');
     footer.innerHTML = contadorHtml + paginacionHtml;
   }
 }
@@ -5796,13 +5813,9 @@ function _rkVacRender(){
     <td>${fmt(v.fecha_apertura)}</td>
     <td>${dias!==null?`<span class="dpill ${dClass(dias)}">${dias}d</span>`:'—'}</td>
   </tr>`).join('');
-  const footer=total>0?`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:12px;color:#9ca3af">
-    <span>Mostrando <strong>${from}–${to}</strong> de <strong>${total}</strong> registros</span>
-    ${pages>1?`<span style="display:flex;gap:6px">
-      <button onclick="rkVacIrPagina(${_rkVacPage-1})" ${_rkVacPage<=1?'disabled':''} style="padding:3px 10px;border:1px solid #ddd;border-radius:5px;background:white;cursor:pointer;font-size:12px;color:#374151">‹ Ant.</button>
-      <span style="padding:3px 8px;font-weight:600">${_rkVacPage} / ${pages}</span>
-      <button onclick="rkVacIrPagina(${_rkVacPage+1})" ${_rkVacPage>=pages?'disabled':''} style="padding:3px 10px;border:1px solid #ddd;border-radius:5px;background:white;cursor:pointer;font-size:12px;color:#374151">Sig. ›</button>
-    </span>`:''}
+  const footer=total>0?`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0">
+    <span style="font-size:12px;color:var(--text3)">Mostrando <strong>${from}–${to}</strong> de <strong>${total}</strong> registros</span>
+    ${buildPager(_rkVacPage, pages, 'rkVacIrPagina')}
   </div>`:'';
   el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Días abierta</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes abiertas</td></tr>'}</tbody></table></div>${footer}`;
 }
@@ -7515,11 +7528,7 @@ function _ctRender(){
     <option value="100" ${pageSize===100?'selected':''}>100 registros</option>
     <option value="0" ${pageSize===0?'selected':''}>Todos</option>
   </select>`;
-  const navBtns = totalPages>1 ? `<div style="display:flex;align-items:center;gap:4px">
-    <button class="btn btn-ghost btn-sm" onclick="ctIrPagina(${cur-1})" ${cur<=1?'disabled':''}>‹</button>
-    <span>Pág ${cur} / ${totalPages}</span>
-    <button class="btn btn-ghost btn-sm" onclick="ctIrPagina(${cur+1})" ${cur>=totalPages?'disabled':''}>›</button>
-  </div>` : '';
+  const navBtns = buildPager(cur, totalPages, 'ctIrPagina');
   pager.innerHTML=`<span>Mostrando <strong>${from}–${to}</strong> de <strong>${total}</strong> contratado${total!==1?'s':''}</span>
     <div style="display:flex;align-items:center;gap:8px">${sizeBtns}${navBtns}</div>`;
 }

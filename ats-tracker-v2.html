@@ -7599,11 +7599,12 @@ function exportContratados(){
 /* ============================================================
    DESERCION
    ============================================================ */
+let _desF={anio:'',mes:'',empresa:'',proyecto:''};
+let _desEmpId=null;
+let _desDF={anio:'',mes:'',proyecto:''};
+
 function renderDesercion(){
   const des=DB.candidatos.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
-  const pct=DB.candidatos.length?Math.round(des.length/DB.candidatos.length*100):0;
-  const motC={};MOTIVOS.forEach(m=>{const n=des.filter(c=>c.motivo_desercion===m).length;if(n)motC[m]=n;});
-  const topM=Object.entries(motC).sort((a,b)=>b[1]-a[1]);
   const rows=des.map((c,i)=>{
     const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
@@ -7611,20 +7612,14 @@ function renderDesercion(){
     const d=processTotal(c);
     return`<tr><td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td>${emp.nombre||'—'}</td><td>${r.nombre||'—'}</td><td>${badgeEtapa(c.etapa,v.empresa_id)}</td><td style="color:var(--red)">${c.motivo_desercion||'—'}</td><td>${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:'—'}</td><td>${fmt(c.fecha_salida)}</td></tr>`;
   }).join('');
+  _desEmpId=null; _desF={anio:'',mes:'',empresa:'',proyecto:''}; _desDF={anio:'',mes:'',proyecto:''};
   document.getElementById('page-desercion').innerHTML=`
     <div style="display:flex;gap:6px;margin-bottom:20px">
       <button id="dtab-resumen" class="btn btn-primary" onclick="desercionTab('resumen')">Resumen</button>
       <button id="dtab-graficas" class="btn btn-ghost" onclick="desercionTab('graficas')">Gráficas</button>
       <button id="dtab-historial" class="btn btn-ghost" onclick="desercionTab('historial')">Historial</button>
     </div>
-    <div id="des-panel-resumen">
-      <div class="g4">
-        <div class="card"><div class="card-title">Total deserciones</div><div class="card-value" style="color:var(--red)">${des.length}</div></div>
-        <div class="card"><div class="card-title">Tasa de deserción</div><div class="card-value">${pct}%</div></div>
-        <div class="card"><div class="card-title">Motivo más frecuente</div><div class="card-value" style="font-size:14px">${topM[0]?topM[0][0]:'—'}</div><div class="card-sub">${topM[0]?topM[0][1]+' casos':''}</div></div>
-        <div class="card"><div class="card-title">Con motivo registrado</div><div class="card-value">${des.filter(c=>c.motivo_desercion).length}</div><div class="card-sub">de ${des.length}</div></div>
-      </div>
-    </div>
+    <div id="des-panel-resumen"></div>
     <div id="des-panel-graficas" style="display:none">
       <div class="g2">
         <div><div class="sec-title">Por motivo</div><div class="card"><div class="chart-box" style="height:260px"><canvas id="chMotivos" role="img" aria-label="Motivos deserción"></canvas></div></div></div>
@@ -7636,6 +7631,201 @@ function renderDesercion(){
       <div style="font-size:12px;color:var(--text3);padding:8px 0;">Mostrando <strong>${des.length}</strong> registros</div>
     </div>`;
 }
+  _renderDesResumen();
+}
+
+function _renderDesResumen(){
+  const panel=document.getElementById('des-panel-resumen');
+  if(!panel)return;
+  if(_desEmpId){_renderDesEmpresaDetalle(panel);return;}
+
+  const desAll=DB.candidatos.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
+  const des=desAll.filter(c=>{
+    const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+    const f=c.fecha_salida||'';
+    if(_desF.anio&&f.slice(0,4)!==_desF.anio)return false;
+    if(_desF.mes&&f.slice(5,7)!==_desF.mes)return false;
+    if(_desF.empresa&&v.empresa_id!==_desF.empresa)return false;
+    if(_desF.proyecto&&(v.proyecto||'')!==_desF.proyecto)return false;
+    return true;
+  });
+
+  const years=[...new Set(desAll.filter(c=>c.fecha_salida).map(c=>c.fecha_salida.slice(0,4)))].sort().reverse();
+  const empConDes=DB.empresas.filter(e=>desAll.some(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};return v.empresa_id===e.id;}));
+  const proyectos=[...new Set(desAll.map(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};return v.proyecto;}).filter(Boolean))].sort();
+  const pct=DB.candidatos.length?Math.round(des.length/DB.candidatos.length*100):0;
+  const motC={};des.forEach(c=>{if(c.motivo_desercion)motC[c.motivo_desercion]=(motC[c.motivo_desercion]||0)+1;});
+  const topM=Object.entries(motC).sort((a,b)=>b[1]-a[1]);
+  const hasFilters=_desF.anio||_desF.mes||_desF.empresa||_desF.proyecto;
+
+  const empCards=empConDes.map(emp=>{
+    const empDes=des.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};return v.empresa_id===emp.id;});
+    if(!empDes.length)return'';
+    const empMotC={};empDes.forEach(c=>{if(c.motivo_desercion)empMotC[c.motivo_desercion]=(empMotC[c.motivo_desercion]||0)+1;});
+    const empTopM=Object.entries(empMotC).sort((a,b)=>b[1]-a[1]);
+    const empTotal=DB.candidatos.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};return v.empresa_id===emp.id;}).length;
+    const tasa=empTotal?Math.round(empDes.length/empTotal*100):0;
+    return`<div class="card" style="cursor:pointer" onclick="_desEmpId='${emp.id}';_desDF={anio:'',mes:'',proyecto:''};_renderDesResumen()">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        ${emp.color?`<span style="width:10px;height:10px;border-radius:50%;background:${emp.color};flex-shrink:0"></span>`:''}
+        <span style="font-size:13px;font-weight:600;color:var(--text)">${emp.nombre}</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--text3)">${tasa}% tasa</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="background:var(--surface2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:2px">Deserciones</div>
+          <div style="font-size:22px;font-weight:700;color:var(--red);font-family:var(--mono)">${empDes.length}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:2px">Con motivo</div>
+          <div style="font-size:22px;font-weight:700;color:var(--accent);font-family:var(--mono)">${empDes.filter(c=>c.motivo_desercion).length}</div>
+        </div>
+      </div>
+      ${empTopM[0]?`<div style="font-size:11px;color:var(--text3)">Top motivo: <span style="color:var(--text2);font-weight:500">${empTopM[0][0]}</span> (${empTopM[0][1]})</div>`:'<div style="font-size:11px;color:var(--text3)">Sin motivos registrados</div>'}
+    </div>`;
+  }).filter(Boolean).join('');
+
+  panel.innerHTML=`
+    <div class="g4" style="margin-bottom:20px">
+      <div class="card"><div class="card-title">Total deserciones</div><div class="card-value" style="color:var(--red)">${des.length}</div></div>
+      <div class="card"><div class="card-title">Tasa global</div><div class="card-value">${pct}%</div></div>
+      <div class="card"><div class="card-title">Motivo más frecuente</div><div class="card-value" style="font-size:14px">${topM[0]?topM[0][0]:'—'}</div><div class="card-sub">${topM[0]?topM[0][1]+' casos':''}</div></div>
+      <div class="card"><div class="card-title">Con motivo registrado</div><div class="card-value">${des.filter(c=>c.motivo_desercion).length}</div><div class="card-sub">de ${des.length}</div></div>
+    </div>
+    <div class="fbar" style="margin-bottom:20px">
+      <select onchange="_desF.anio=this.value;_renderDesResumen()" style="width:auto;min-width:130px">
+        <option value="">Todos los años</option>
+        ${years.map(y=>`<option value="${y}" ${_desF.anio===y?'selected':''}>${y}</option>`).join('')}
+      </select>
+      <select onchange="_desF.mes=this.value;_renderDesResumen()" style="width:auto;min-width:130px">
+        <option value="">Todos los meses</option>
+        ${['01','02','03','04','05','06','07','08','09','10','11','12'].map((m,mi)=>`<option value="${m}" ${_desF.mes===m?'selected':''}>${['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][mi]}</option>`).join('')}
+      </select>
+      <select onchange="_desF.empresa=this.value;_renderDesResumen()" style="width:auto;min-width:160px">
+        <option value="">Todas las empresas</option>
+        ${empConDes.map(e=>`<option value="${e.id}" ${_desF.empresa===e.id?'selected':''}>${e.nombre}</option>`).join('')}
+      </select>
+      <select onchange="_desF.proyecto=this.value;_renderDesResumen()" style="width:auto;min-width:150px">
+        <option value="">Todos los proyectos</option>
+        ${proyectos.map(p=>`<option value="${p}" ${_desF.proyecto===p?'selected':''}>${p}</option>`).join('')}
+      </select>
+      ${hasFilters?`<button class="btn btn-ghost btn-sm" onclick="_desF={anio:'',mes:'',empresa:'',proyecto:''};_renderDesResumen()"><i class="fa fa-times"></i> Limpiar</button>`:''}
+    </div>
+    ${empCards?`<div class="sec-title">Por empresa</div><div class="g3" style="margin-top:8px">${empCards}</div>`
+    :`<div style="text-align:center;padding:32px 0;color:var(--text3);font-size:13px"><i class="fa fa-check-circle" style="color:var(--green);margin-right:6px"></i>Sin deserciones en el período seleccionado</div>`}
+  `;
+}
+
+function _renderDesEmpresaDetalle(panel){
+  const emp=DB.empresas.find(e=>e.id===_desEmpId)||{};
+  const desAll=DB.candidatos.filter(c=>ETAPAS_SALIDA.includes(c.etapa)&&(()=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};return v.empresa_id===_desEmpId;})());
+  const des=desAll.filter(c=>{
+    const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+    const f=c.fecha_salida||'';
+    if(_desDF.anio&&f.slice(0,4)!==_desDF.anio)return false;
+    if(_desDF.mes&&f.slice(5,7)!==_desDF.mes)return false;
+    if(_desDF.proyecto&&(v.proyecto||'')!==_desDF.proyecto)return false;
+    return true;
+  });
+
+  const years=[...new Set(desAll.filter(c=>c.fecha_salida).map(c=>c.fecha_salida.slice(0,4)))].sort().reverse();
+  const proyectos=[...new Set(desAll.map(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};return v.proyecto;}).filter(Boolean))].sort();
+  const motC={};des.forEach(c=>{if(c.motivo_desercion)motC[c.motivo_desercion]=(motC[c.motivo_desercion]||0)+1;});
+  const topM=Object.entries(motC).sort((a,b)=>b[1]-a[1]);
+  const dias=des.map(c=>processTotal(c)).filter(d=>d!==null);
+  const avgDias=dias.length?Math.round(dias.reduce((a,b)=>a+b,0)/dias.length):null;
+  const empTotal=DB.candidatos.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};return v.empresa_id===_desEmpId;}).length;
+  const tasa=empTotal?Math.round(des.length/empTotal*100):0;
+  const hasFilters=_desDF.anio||_desDF.mes||_desDF.proyecto;
+
+  const motiList=topM.slice(0,6).map(([motivo,cnt])=>{
+    const pct=des.length?Math.round(cnt/des.length*100):0;
+    return`<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span style="color:var(--text2)">${motivo}</span>
+        <span style="color:var(--text3);font-family:var(--mono)">${cnt} &nbsp;(${pct}%)</span>
+      </div>
+      <div style="height:6px;border-radius:4px;background:var(--surface2)">
+        <div style="height:6px;border-radius:4px;background:var(--red);width:${pct}%"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const rows=des.map((c,i)=>{
+    const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+    const r=DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
+    const d=processTotal(c);
+    return`<tr>
+      <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
+      <td class="td-p">${c.nombre}</td>
+      <td>${v.nombre||'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${v.proyecto||'—'}</td>
+      <td>${r.nombre||'—'}</td>
+      <td>${badgeEtapa(c.etapa,_desEmpId)}</td>
+      <td style="color:var(--red);font-size:12px">${c.motivo_desercion||'—'}</td>
+      <td>${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:'—'}</td>
+      <td style="font-size:12px;color:var(--text3)">${fmt(c.fecha_salida)}</td>
+    </tr>`;
+  }).join('');
+
+  panel.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <button class="btn btn-ghost btn-sm" onclick="_desEmpId=null;_renderDesResumen()"><i class="fa fa-arrow-left"></i> Volver</button>
+      ${emp.color?`<span style="width:10px;height:10px;border-radius:50%;background:${emp.color}"></span>`:''}
+      <span style="font-size:15px;font-weight:600;color:var(--text)">${emp.nombre}</span>
+    </div>
+    <div class="fbar" style="margin-bottom:20px">
+      <select onchange="_desDF.anio=this.value;_renderDesResumen()" style="width:auto;min-width:130px">
+        <option value="">Todos los años</option>
+        ${years.map(y=>`<option value="${y}" ${_desDF.anio===y?'selected':''}>${y}</option>`).join('')}
+      </select>
+      <select onchange="_desDF.mes=this.value;_renderDesResumen()" style="width:auto;min-width:130px">
+        <option value="">Todos los meses</option>
+        ${['01','02','03','04','05','06','07','08','09','10','11','12'].map((m,mi)=>`<option value="${m}" ${_desDF.mes===m?'selected':''}>${['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][mi]}</option>`).join('')}
+      </select>
+      <select onchange="_desDF.proyecto=this.value;_renderDesResumen()" style="width:auto;min-width:150px">
+        <option value="">Todos los proyectos</option>
+        ${proyectos.map(p=>`<option value="${p}" ${_desDF.proyecto===p?'selected':''}>${p}</option>`).join('')}
+      </select>
+      ${hasFilters?`<button class="btn btn-ghost btn-sm" onclick="_desDF={anio:'',mes:'',proyecto:''};_renderDesResumen()"><i class="fa fa-times"></i> Limpiar</button>`:''}
+    </div>
+    <div class="g4" style="margin-bottom:24px">
+      <div class="card"><div class="card-title">Deserciones</div><div class="card-value" style="color:var(--red)">${des.length}</div></div>
+      <div class="card"><div class="card-title">Tasa</div><div class="card-value">${tasa}%</div></div>
+      <div class="card"><div class="card-title">Días prom. proceso</div><div class="card-value ${dClass(avgDias||0)}">${avgDias!==null?avgDias+'d':'—'}</div></div>
+      <div class="card"><div class="card-title">Con motivo registrado</div><div class="card-value">${des.filter(c=>c.motivo_desercion).length}</div><div class="card-sub">de ${des.length}</div></div>
+    </div>
+    ${topM.length?`
+    <div class="g2" style="margin-bottom:24px">
+      <div>
+        <div class="sec-title">Motivos de deserción</div>
+        <div class="card" style="padding:16px 20px">${motiList}</div>
+      </div>
+      <div>
+        <div class="sec-title">Desglose</div>
+        <div class="card" style="padding:0 4px">
+          ${topM.map(([m,n])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border)">
+            <span style="font-size:13px;color:var(--text2)">${m}</span>
+            <span style="font-size:14px;font-weight:700;font-family:var(--mono);color:var(--red)">${n}</span>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>` : ''}
+    <div class="sec-title">Historial de deserciones</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:36px;text-align:center">#</th>
+          <th>Candidato</th><th>Vacante</th><th>Proyecto</th><th>Reclutador</th>
+          <th>Etapa</th><th>Motivo</th><th>Días</th><th>Fecha</th>
+        </tr></thead>
+        <tbody>${rows||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin deserciones en este período</td></tr>'}</tbody>
+      </table>
+    </div>
+    <div style="font-size:12px;color:var(--text3);padding:8px 0;">Mostrando <strong>${des.length}</strong> registros</div>
+  `;
+}
+
 function desercionTab(tab){
   ['resumen','graficas','historial'].forEach(t=>{
     const panel=document.getElementById('des-panel-'+t);

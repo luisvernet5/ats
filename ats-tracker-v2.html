@@ -4255,6 +4255,7 @@ function renderVacantesEliminadas(){
         <tbody>${rows}</tbody>
       </table>
     </div>
+    <div style="font-size:12px;color:var(--text3);padding:8px 0;">Mostrando <strong>${eliminadas.length}</strong> registros</div>
   </div>`;
 }
 
@@ -5783,7 +5784,8 @@ function renderRankingTable(tipo) {
       ${metricaHeader}
     </tr></thead>
     <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin datos</td></tr>'}</tbody>
-  </table></div>`;
+  </table></div>
+  <div style="font-size:12px;color:var(--text3);padding:8px 0;">Mostrando <strong>${sorted.length}</strong> reclutadores</div>`;
 }
 function filterRankingVacs(){
   const empId=document.getElementById('rk-empresa')?.value||'';
@@ -6102,6 +6104,7 @@ async function renderGarantias(){
         <tbody>${rows}</tbody>
       </table>
     </div>
+    <div style="font-size:12px;color:var(--text3);padding:8px 0;">Mostrando <strong>${vacsConGarantia.length}</strong> registros</div>
     </div>
   </div>`;
 }
@@ -7633,6 +7636,7 @@ function renderDesercion(){
     </div>
     <div id="des-panel-historial" style="display:none">
       <div class="table-wrap"><table><thead><tr><th style="width:36px;text-align:center">#</th><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Tipo</th><th>Motivo</th><th>Días</th><th>Fecha</th></tr></thead><tbody>${rows||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin deserciones</td></tr>'}</tbody></table></div>
+      <div style="font-size:12px;color:var(--text3);padding:8px 0;">Mostrando <strong>${des.length}</strong> registros</div>
     </div>`;
 }
 function desercionTab(tab){
@@ -8101,7 +8105,8 @@ async function loadUsuarios() {
           <i class="fa fa-user-plus"></i> Nuevo usuario
         </button>
       </div>
-      <div class="table-wrap" id="usuarios-table"></div>`;
+      <div class="table-wrap" id="usuarios-table"></div>
+      <div id="usuarios-count" style="font-size:12px;color:var(--text3);padding:8px 0;"></div>`;
   }
   const { data: usuarios } = await sbClient.from('usuarios').select('*');
   const list = usuarios || [];
@@ -8126,6 +8131,8 @@ async function loadUsuarios() {
     <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Asignado a</th><th>Acción</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin usuarios registrados</td></tr>'}</tbody>
   </table>`;
+  const _ucnt = document.getElementById('usuarios-count');
+  if(_ucnt) _ucnt.innerHTML = `Mostrando <strong>${list.length}</strong> registros`;
 }
 
 function renderStageBuilder(){

@@ -1843,7 +1843,7 @@ function filtrarLog(){
 
   if(footer){
     const contadorHtml = total
-      ? `<span style="font-size:12px;color:var(--text3)">Mostrando ${inicio+1}–${fin} de ${total} registros</span>`
+      ? `<span style="font-size:12px;color:var(--text3)">Mostrando <strong>${inicio+1}–${fin}</strong> de <strong>${total}</strong> registros</span>`
       : `<span style="font-size:12px;color:var(--text3)">Sin resultados</span>`;
     const prevDis = logPaginaActual<=1 ? 'disabled' : '';
     const nextDis = logPaginaActual>=totalPaginas ? 'disabled' : '';
@@ -2585,7 +2585,7 @@ function openEmpresaDetail(empId){
         <tbody id="ed-tbody">${vacsRows||'<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes registradas</td></tr>'}</tbody>
         </table>
       </div>
-      <div id="ed-count" style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right;">Mostrando <strong>${vacs.length}</strong> registros</div>
+      <div id="ed-count" style="font-size:12px;color:var(--text3);padding:8px 0;">Mostrando <strong>${vacs.length}</strong> registros</div>
       <div style="margin-top:24px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
           <div class="sec-title" style="margin:0">Analytics de la empresa</div>
@@ -4431,7 +4431,7 @@ function renderVacantesTable(){
     <thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>SLA</th><th>Días</th><th>Cands.</th><th style="min-width:120px">Acción</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="13" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>
   </table>
-  <div style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right;">Mostrando <strong>${list.length}</strong> registros</div>`;
+  <div style="font-size:12px;color:var(--text3);padding:8px 0;">Mostrando <strong>${list.length}</strong> registros</div>`;
 }
 
 function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {
@@ -4729,7 +4729,7 @@ function _renderTablaDescartados(lista){
     <thead><tr><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Etapa</th><th>Fecha descarte</th><th>Motivo</th><th>Acción</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos descartados</td></tr>'}</tbody>
   </table>
-  <div style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right;">Mostrando <strong>${lista.length}</strong> registros</div>`;
+  <div style="font-size:12px;color:var(--text3);padding:8px 0;">Mostrando <strong>${lista.length}</strong> registros</div>`;
 }
 
 async function reactivarCandidato(candId){
@@ -4896,7 +4896,7 @@ function renderCandidatosTable(){
     <thead><tr><th style="width:36px;text-align:center">#</th><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Etapa</th><th>Días proceso</th><th>Días cliente</th><th>Acción</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos</td></tr>'}</tbody>
   </table>
-  <div style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right;">Mostrando <strong>${list.length}</strong> registros</div>`;
+  <div style="font-size:12px;color:var(--text3);padding:8px 0;">Mostrando <strong>${list.length}</strong> registros</div>`;
   if(window.innerWidth>768){
     document.getElementById('candidatos-table').style.overflow='visible';
     const tbl=document.getElementById('candidatos-table').querySelector('table');
@@ -5093,7 +5093,7 @@ function filtrarVacsReclutador(){
   const tbody=document.getElementById('rd-vacs-tbody');
   if(tbody)tbody.innerHTML=rows||`<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes con esos filtros</td></tr>`;
   const cnt=document.getElementById('rd-vacs-count');
-  if(cnt)cnt.innerHTML=`Mostrando <strong>${list.length}</strong> de <strong>${_rdVacsAll.length}</strong> vacantes`;
+  if(cnt)cnt.innerHTML=`<span style="font-size:12px;color:var(--text3)">Mostrando <strong>${list.length}</strong> de <strong>${_rdVacsAll.length}</strong> vacantes</span>`;
 }
 
 function exportarReclutador(recId) {
@@ -7529,7 +7529,7 @@ function _ctRender(){
     <option value="0" ${pageSize===0?'selected':''}>Todos</option>
   </select>`;
   const navBtns = buildPager(cur, totalPages, 'ctIrPagina');
-  pager.innerHTML=`<span>Mostrando <strong>${from}–${to}</strong> de <strong>${total}</strong> contratado${total!==1?'s':''}</span>
+  pager.innerHTML=`<span style="font-size:12px;color:var(--text3)">Mostrando <strong>${from}–${to}</strong> de <strong>${total}</strong> contratado${total!==1?'s':''}</span>
     <div style="display:flex;align-items:center;gap:8px">${sizeBtns}${navBtns}</div>`;
 }
 

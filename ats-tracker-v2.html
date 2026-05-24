@@ -5123,6 +5123,7 @@ let _teGrupo='proyecto';
 let _teMes=0;
 let _teAnio=new Date().getFullYear();
 let _teVista='proyectos';
+let _teGrupoSel='';
 
 function renderTiempos(){
   const validados=DB.candidatos.filter(esColocado);
@@ -5196,6 +5197,7 @@ function tiemposTab(tab){
 
 function setTeGrupo(g){
   _teGrupo=g;
+  _teGrupoSel='';
   ['proyecto','departamento'].forEach(k=>{
     const btn=document.getElementById('te-grp-'+k);
     if(!btn)return;
@@ -5204,7 +5206,7 @@ function setTeGrupo(g){
     btn.style.color=on?'#fff':'var(--text2)';
     btn.style.fontWeight=on?'600':'500';
   });
-  _teApplyFilters();
+  renderTiemposEmpresa();
 }
 function setTeMes(m){
   _teMes=m;
@@ -5233,6 +5235,10 @@ function setTeVista(v){
   });
   _teApplyFilters();
 }
+function setTeGrupoSel(v){
+  _teGrupoSel=v;
+  _teApplyFilters();
+}
 
 function _vacCierreDate(v){
   if(v.fecha_cierre)return v.fecha_cierre;
@@ -5258,6 +5264,18 @@ function renderTiemposEmpresa(){
   const vacsAnio=allVacs.filter(v=>parseInt(v.fecha_apertura.split('-')[0])===_teAnio);
   const mesesConDatos=[...new Set(vacsAnio.map(v=>parseInt(v.fecha_apertura.split('-')[1])))].sort((a,b)=>a-b);
   const MESES_CORTO=['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const configGroups=_teGrupo==='proyecto'?(emp.proyectos||[]):(emp.departamentos||[]);
+  const vacGroups=[...new Set(allVacs.map(v=>v[_teGrupo]).filter(Boolean))];
+  const allGroups=[...new Set([...configGroups,...vacGroups])];
+  const hasSin=allVacs.some(v=>!v[_teGrupo]);
+  const sinLabel='(Sin '+(_teGrupo==='proyecto'?'proyecto':'departamento')+')';
+  const groupPlaceholder='Todos los '+(_teGrupo==='proyecto'?'proyectos':'departamentos');
+  const groupOptsHTML=[
+    `<option value="">${groupPlaceholder}</option>`,
+    ...allGroups.map(g=>`<option value="${g}"${g===_teGrupoSel?' selected':''}>${g}</option>`),
+    ...(hasSin?[`<option value="${sinLabel}"${sinLabel===_teGrupoSel?' selected':''}>${sinLabel}</option>`]:[])
+  ].join('');
   const btnBase='padding:5px 11px;border:none;border-radius:7px;cursor:pointer;font-size:12px;transition:all .15s';
   const yearBtns=years.map(y=>{
     const on=y===_teAnio;
@@ -5271,12 +5289,15 @@ function renderTiemposEmpresa(){
     <button id="te-vista-proyectos" onclick="setTeVista('proyectos')" style="${btnBase};font-weight:${_teVista==='proyectos'?'600':'500'};background:${_teVista==='proyectos'?'var(--text)':'var(--surface3)'};color:${_teVista==='proyectos'?'#fff':'var(--text2)'}"><i class="fa fa-th-large"></i> Proyectos</button>
     <button id="te-vista-historico" onclick="setTeVista('historico')" style="${btnBase};font-weight:${_teVista==='historico'?'600':'500'};background:${_teVista==='historico'?'var(--text)':'var(--surface3)'};color:${_teVista==='historico'?'#fff':'var(--text2)'}"><i class="fa fa-history"></i> Histórico</button>`;
   content.innerHTML=`
-    <div style="display:flex;gap:10px;margin-bottom:18px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;gap:10px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
       <div style="display:flex;gap:4px;flex-wrap:wrap">${yearBtns}</div>
       <div style="width:1px;height:22px;background:var(--border2);flex-shrink:0"></div>
       <div style="display:flex;gap:4px;flex-wrap:wrap">${mesBtns}</div>
       <span style="flex:1"></span>
       <div style="display:flex;gap:4px">${vistaBtns}</div>
+    </div>
+    <div style="margin-bottom:18px">
+      <select id="te-grupo-sel" onchange="setTeGrupoSel(this.value)" style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;font-size:13px;color:var(--text);font-family:var(--font);width:auto;min-width:220px;max-width:380px">${groupOptsHTML}</select>
     </div>
     <div id="te-kpis" style="margin-bottom:20px"></div>
     <div id="te-main"></div>`;
@@ -5300,19 +5321,22 @@ function _teApplyFilters(){
     const rec=DB.reclutadores.find(r=>r.id===v.reclutador_id)||{};
     return{v,fechaCierre,abierta,diasTotales,diasCliente,diasInternos,rec};
   };
+  const sinLabel='(Sin '+(_teGrupo==='proyecto'?'proyecto':'departamento')+')';
   const filtered=allVacs.filter(v=>{
     const[yr,mo]=v.fecha_apertura.split('-').map(Number);
     if(yr!==_teAnio)return false;
     if(_teMes!==0&&mo!==_teMes)return false;
     return true;
   });
-  const items=filtered.map(mkItem);
+  let items=filtered.map(mkItem);
+  if(_teGrupoSel)items=items.filter(x=>(x.v[_teGrupo]||sinLabel)===_teGrupoSel);
   const avg=arr=>arr.length?Math.round(arr.reduce((a,b)=>a+b,0)/arr.length):0;
   const totT=avg(items.map(x=>x.diasTotales));
   const totC=avg(items.map(x=>x.diasCliente));
   const totI=avg(items.map(x=>x.diasInternos));
   const abiertas=items.filter(x=>x.abierta).length;
   const cubiertas=items.length-abiertas;
+  const periodoLabel=_teGrupoSel?_teGrupoSel:(_teMes?'período':'año seleccionado');
   kpisEl.innerHTML=`
     <div class="g4">
       <div class="card">
@@ -5323,17 +5347,25 @@ function _teApplyFilters(){
           <span class="badge bb">${abiertas} abiertas</span>
         </div>
       </div>
-      <div class="card"><div class="card-title">Prom. días proceso total</div><div class="card-value"><span class="dpill ${dClass(totT)}" style="font-size:22px">${totT}d</span></div><div class="card-sub">apertura → cierre (o hoy)</div></div>
+      <div class="card"><div class="card-title">Prom. días proceso total</div><div class="card-value"><span class="dpill ${dClass(totT)}" style="font-size:22px">${totT||'—'}d</span></div><div class="card-sub">apertura → cierre (o hoy)</div></div>
       <div class="card"><div class="card-title">Prom. días cliente</div><div class="card-value" style="color:var(--amber)">${totC}d</div><div class="card-sub">tiempo de validación cliente</div></div>
-      <div class="card"><div class="card-title">Prom. días internos</div><div class="card-value"><span class="dpill ${dClass(totI)}" style="font-size:22px">${totI}d</span></div><div class="card-sub">proceso interno neto</div></div>
+      <div class="card"><div class="card-title">Prom. días internos</div><div class="card-value"><span class="dpill ${dClass(totI)}" style="font-size:22px">${totI||'—'}d</span></div><div class="card-sub">proceso interno neto</div></div>
     </div>`;
-  mainEl.innerHTML=_teVista==='historico'?_buildTeHistorico(allVacs.map(mkItem)):_buildTeProyectos(items);
+  if(_teVista==='historico'){
+    const histItems=_teGrupoSel?allVacs.filter(v=>(v[_teGrupo]||sinLabel)===_teGrupoSel).map(mkItem):allVacs.map(mkItem);
+    mainEl.innerHTML=_buildTeHistorico(histItems);
+  } else {
+    mainEl.innerHTML=_buildTeProyectos(items,sinLabel);
+  }
 }
 
-function _buildTeProyectos(items){
-  if(!items.length)return`<div style="text-align:center;padding:32px;color:var(--text3);font-size:13px">Sin vacantes para el período seleccionado</div>`;
+function _buildTeProyectos(items,sinLabel){
+  sinLabel=sinLabel||'(Sin '+(_teGrupo==='proyecto'?'proyecto':'departamento')+')';
+  if(!items.length){
+    const ctx=_teGrupoSel?`"${_teGrupoSel}" en el período seleccionado`:'el período seleccionado';
+    return`<div style="text-align:center;padding:32px;color:var(--text3);font-size:13px"><i class="fa fa-search" style="font-size:22px;margin-bottom:10px;display:block;opacity:.3"></i>Sin vacantes para ${ctx}</div>`;
+  }
   const avg=arr=>arr.length?Math.round(arr.reduce((a,b)=>a+b,0)/arr.length):0;
-  const sinLabel='(Sin '+(_teGrupo==='proyecto'?'proyecto':'departamento')+')';
   const groups={};
   items.forEach(item=>{
     const gKey=item.v[_teGrupo]||sinLabel;

@@ -493,6 +493,7 @@ input[type=date]{color:var(--text)}
       <button id="vac-vista-departamento" class="btn btn-ghost btn-sm" onclick="setVacVista('departamento')"><i class="fa fa-sitemap"></i> Por departamento</button>
     </div>
     <div class="table-wrap" id="vacantes-table"></div>
+    <div id="vacantes-count" style="font-size:12px;color:var(--text3);padding:8px 0;"></div>
   </div>
 
   <!-- CANDIDATOS -->
@@ -509,6 +510,7 @@ input[type=date]{color:var(--text)}
       <button id="cand-vista-departamento" class="btn btn-ghost btn-sm" onclick="setVistaCand('departamento')"><i class="fa fa-sitemap"></i> Por departamento</button>
     </div>
     <div class="table-wrap" id="candidatos-table"></div>
+    <div id="candidatos-count" style="font-size:12px;color:var(--text3);padding:8px 0;"></div>
   </div>
 
   <!-- RECLUTADORES -->
@@ -4430,8 +4432,9 @@ function renderVacantesTable(){
   document.getElementById('vacantes-table').innerHTML=`<table>
     <thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>SLA</th><th>Días</th><th>Cands.</th><th style="min-width:120px">Acción</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="13" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>
-  </table>
-  <div style="font-size:12px;color:var(--text3);padding:8px 0;">Mostrando <strong>${list.length}</strong> registros</div>`;
+  </table>`;
+  const _vcnt=document.getElementById('vacantes-count');
+  if(_vcnt)_vcnt.innerHTML=`Mostrando <strong>${list.length}</strong> registros`;
 }
 
 function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {
@@ -4672,7 +4675,8 @@ function renderCandidatosDescartados(){
       <input type="date" id="desc-hasta" style="display:inline-block;width:auto;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" onchange="_filtrarDescartados()">
       <button onclick="_limpiarFiltrosDesc()" style="display:inline-block;height:30px;font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#666">× Limpiar</button>
     </div>
-    <div id="desc-table-wrap" class="table-wrap"></div>`;
+    <div id="desc-table-wrap" class="table-wrap"></div>
+    <div id="desc-count" style="font-size:12px;color:var(--text3);padding:8px 0;"></div>`;
   _renderTablaDescartados(lista);
 }
 
@@ -4728,8 +4732,9 @@ function _renderTablaDescartados(lista){
   wrap.innerHTML=`<table>
     <thead><tr><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Etapa</th><th>Fecha descarte</th><th>Motivo</th><th>Acción</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos descartados</td></tr>'}</tbody>
-  </table>
-  <div style="font-size:12px;color:var(--text3);padding:8px 0;">Mostrando <strong>${lista.length}</strong> registros</div>`;
+  </table>`;
+  const _dcnt=document.getElementById('desc-count');
+  if(_dcnt)_dcnt.innerHTML=`Mostrando <strong>${lista.length}</strong> registros`;
 }
 
 async function reactivarCandidato(candId){
@@ -4895,8 +4900,9 @@ function renderCandidatosTable(){
   document.getElementById('candidatos-table').innerHTML=`<table>
     <thead><tr><th style="width:36px;text-align:center">#</th><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Etapa</th><th>Días proceso</th><th>Días cliente</th><th>Acción</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos</td></tr>'}</tbody>
-  </table>
-  <div style="font-size:12px;color:var(--text3);padding:8px 0;">Mostrando <strong>${list.length}</strong> registros</div>`;
+  </table>`;
+  const _ccnt=document.getElementById('candidatos-count');
+  if(_ccnt)_ccnt.innerHTML=`Mostrando <strong>${list.length}</strong> registros`;
   if(window.innerWidth>768){
     document.getElementById('candidatos-table').style.overflow='visible';
     const tbl=document.getElementById('candidatos-table').querySelector('table');

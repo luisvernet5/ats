@@ -5621,10 +5621,10 @@ function renderRanking(){
         <span style="color:var(--text3)">→</span>
         <input type="date" id="ranking-fecha-fin" style="width:140px;color:var(--text)" onchange="onRankingPeriodoChange()">
       </div>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:16px" id="ranking-tabs">
-      <button id="tab-colocados" class="btn btn-primary" onclick="switchRankingTab('colocados')">🏆 Por vacantes cubiertas</button>
-      <button id="tab-velocidad" class="btn btn-ghost" onclick="switchRankingTab('velocidad')">⚡ Por velocidad de cobertura</button>
+      <div style="display:flex;gap:8px" id="ranking-tabs">
+        <button id="tab-colocados" class="btn btn-primary" onclick="switchRankingTab('colocados')">🏆 Por vacantes cubiertas</button>
+        <button id="tab-velocidad" class="btn btn-ghost" onclick="switchRankingTab('velocidad')">⚡ Por velocidad de cobertura</button>
+      </div>
     </div>
     <div id="ranking-rec-table"></div>
   `;

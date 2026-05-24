@@ -1734,7 +1734,7 @@ async function renderActivityLog(){
     <div class="table-wrap">
       <table id="log-table">
         <thead><tr>
-          <th>Fecha y hora</th><th>Usuario</th><th>Acción</th><th>Módulo</th><th>Detalle</th>
+          <th style="width:36px;text-align:center">#</th><th>Fecha y hora</th><th>Usuario</th><th>Acción</th><th>Módulo</th><th>Detalle</th>
         </tr></thead>
         <tbody id="log-tbody"></tbody>
       </table>
@@ -1828,10 +1828,11 @@ function filtrarLog(){
     'Nueva empresa':'var(--accent)','Editar empresa':'var(--warn)','Eliminar usuario':'var(--err)',
   }[a]||'var(--text3)');
 
-  tbody.innerHTML = pagina.map(d=>{
+  tbody.innerHTML = pagina.map((d,i)=>{
     const fecha = new Date(d.created_at).toLocaleString('es-MX');
     const col = accionColor(d.accion);
     return`<tr>
+      <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${inicio+i+1}</td>
       <td style="font-size:11px;color:var(--text3);white-space:nowrap">${fecha}</td>
       <td class="td-p">
         <div style="font-size:12px;font-weight:500">${d.usuario_nombre||'—'}</div>
@@ -4199,7 +4200,7 @@ function renderVacantesEliminadas(){
     page.innerHTML='<div style="padding:24px 28px"><div style="color:var(--text3);font-size:13px">No hay vacantes eliminadas.</div></div>';
     return;
   }
-  const rows = eliminadas.map(item=>{
+  const rows = eliminadas.map((item,i)=>{
     const v = item.vacante||{};
     const emp = item.empresa||{};
     const cands = item.candidatos||[];
@@ -4214,6 +4215,7 @@ function renderVacantesEliminadas(){
       </tr>`).join('') : `<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:12px">Sin candidatos</td></tr>`;
     return`
       <tr style="cursor:pointer" onclick="toggleVacEliminada('${item.id}')">
+        <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
         <td class="td-p">${v.nombre||'—'}</td>
         <td>${emp.nombre||'—'}</td>
         <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td>
@@ -4249,7 +4251,7 @@ function renderVacantesEliminadas(){
   page.innerHTML=`<div style="padding:24px 28px">
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Vacante</th><th>Empresa</th><th>Folio</th><th>Estado</th><th>Eliminada</th><th>Cands.</th><th>Acción</th></tr></thead>
+        <thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Empresa</th><th>Folio</th><th>Estado</th><th>Eliminada</th><th>Cands.</th><th>Acción</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -4497,7 +4499,7 @@ function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {
       <div class="card"><div class="card-title">Días prom.</div><div class="card-value" style="color:var(--amber)">${avgDias||'—'}</div></div>
     </div>`;
 
-  const rows = cands.length ? cands.map(c=>{
+  const rows = cands.length ? cands.map((c,i)=>{
     const r2 = DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
     const d = processTotal(c);
     const cd = clienteDays(c);
@@ -4506,6 +4508,7 @@ function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {
       return f?`<div style="font-size:10px;color:var(--text3)">${e.label}: <b style="color:var(--text2)">${fmt(f)}</b></div>`:'';
     }).filter(Boolean).join('');
     return `<tr>
+      <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
       <td class="td-p">${c.nombre}<div style="font-size:10px;color:var(--text3)">${c.contacto||''}</div></td>
       <td>${r2.nombre||'—'}</td>
       <td>${badgeEtapa(c.etapa, empId)}</td>
@@ -4519,7 +4522,7 @@ function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {
         <button class="btn btn-ghost btn-sm" onclick="editCandidato('${c.id}')"><i class="fa fa-edit"></i></button>
       </td>
     </tr>`;
-  }).join('') : `<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:32px">Sin candidatos registrados para esta vacante. <button class="btn btn-primary btn-sm" onclick="openCandModal('${vacId}')">+ Agregar candidato</button></td></tr>`;
+  }).join('') : `<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:32px">Sin candidatos registrados para esta vacante. <button class="btn btn-primary btn-sm" onclick="openCandModal('${vacId}')">+ Agregar candidato</button></td></tr>`;
 
   const tablaHtml = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -4528,7 +4531,7 @@ function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {
     </div>
     <div class="table-wrap">
       <table><thead><tr>
-        <th>Candidato</th><th>Reclutador</th><th>Etapa</th><th>Fechas del proceso</th>
+        <th style="width:36px;text-align:center">#</th><th>Candidato</th><th>Reclutador</th><th>Etapa</th><th>Fechas del proceso</th>
         <th>Días proceso</th><th>Días cliente</th><th>Motivo salida</th><th>Fecha salida</th><th>Acción</th>
       </tr></thead>
       <tbody>${rows}</tbody></table>
@@ -4706,11 +4709,12 @@ function _limpiarFiltrosDesc(){
 
 function _renderTablaDescartados(lista){
   const wrap=document.getElementById('desc-table-wrap');if(!wrap)return;
-  const rows=lista.map(c=>{
+  const rows=lista.map((c,i)=>{
     const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const rec=DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
     return`<tr>
+      <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
       <td>${c.nombre}</td>
       <td>${v.nombre||'—'}</td>
       <td>${emp.nombre||'—'}</td>
@@ -4729,8 +4733,8 @@ function _renderTablaDescartados(lista){
     </tr>`;
   }).join('');
   wrap.innerHTML=`<table>
-    <thead><tr><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Etapa</th><th>Fecha descarte</th><th>Motivo</th><th>Acción</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos descartados</td></tr>'}</tbody>
+    <thead><tr><th style="width:36px;text-align:center">#</th><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Etapa</th><th>Fecha descarte</th><th>Motivo</th><th>Acción</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos descartados</td></tr>'}</tbody>
   </table>`;
   const _dcnt=document.getElementById('desc-count');
   if(_dcnt)_dcnt.innerHTML=`Mostrando <strong>${lista.length}</strong> registros`;
@@ -5810,7 +5814,8 @@ function _rkVacRender(){
   const slice=pageSize>0?_rkVacData.slice((_rkVacPage-1)*pageSize,_rkVacPage*pageSize):_rkVacData;
   const from=total>0?(pageSize>0?(_rkVacPage-1)*pageSize+1:1):0;
   const to=from+slice.length-1;
-  const rows=slice.map(({v,emp,r,dias})=>`<tr>
+  const rows=slice.map(({v,emp,r,dias},i)=>`<tr>
+    <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${from+i}</td>
     <td class="td-p">${v.nombre}</td>
     <td><span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${emp.color||'#888'}"></span>${emp.nombre||'—'}</span></td>
     <td>${r.nombre||'—'}</td>
@@ -5821,7 +5826,7 @@ function _rkVacRender(){
     <span style="font-size:12px;color:var(--text3)">Mostrando <strong>${from}–${to}</strong> de <strong>${total}</strong> registros</span>
     ${buildPager(_rkVacPage, pages, 'rkVacIrPagina')}
   </div>`:'';
-  el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Días abierta</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes abiertas</td></tr>'}</tbody></table></div>${footer}`;
+  el.innerHTML=`<div class="table-wrap"><table><thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Apertura</th><th>Días abierta</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes abiertas</td></tr>'}</tbody></table></div>${footer}`;
 }
 function rkVacIrPagina(n){_rkVacPage=n;_rkVacRender();}
 
@@ -5954,7 +5959,7 @@ async function renderGarantias(){
   }
 
   const hoyStr = today();
-  const rows = vacsConGarantia.map(v=>{
+  const rows = vacsConGarantia.map((v,i)=>{
     const emp = DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const rec = DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
     const g = garantiasDB[v.id];
@@ -5986,6 +5991,7 @@ async function renderGarantias(){
           data-venc="${vencG}"
           class="garantia-row"
           onclick="toggleGarantiaRow('${v.id}')">
+        <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
         <td class="td-p">${v.nombre||'—'}</td>
         <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td>
         <td>${emp.nombre||'—'}</td>
@@ -6093,7 +6099,7 @@ async function renderGarantias(){
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th>
+          <th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th>
           <th>Días</th><th>Inicio</th><th>Vence</th><th>Estatus</th>
           <th>Anticipo</th><th>Finiquito</th>
         </tr></thead>
@@ -8102,11 +8108,12 @@ async function loadUsuarios() {
   }
   const { data: usuarios } = await sbClient.from('usuarios').select('*');
   const list = usuarios || [];
-  const rows = list.map(u => {
+  const rows = list.map((u,i) => {
     const emp = DB.empresas.find(e=>e.id===u.empresa_id)||{};
     const rec = DB.reclutadores.find(r=>r.id===u.reclutador_id)||{};
     const rolBadge = u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':'bg';
     return `<tr>
+      <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
       <td class="td-p">${u.nombre||'—'}</td>
       <td>${u.email||'—'}</td>
       <td><span class="badge ${rolBadge}">${u.rol}</span></td>
@@ -8120,8 +8127,8 @@ async function loadUsuarios() {
   }).join('');
   const tableEl = document.getElementById('usuarios-table');
   if(tableEl) tableEl.innerHTML = `<table>
-    <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Asignado a</th><th>Acción</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin usuarios registrados</td></tr>'}</tbody>
+    <thead><tr><th style="width:36px;text-align:center">#</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Asignado a</th><th>Acción</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin usuarios registrados</td></tr>'}</tbody>
   </table>`;
   const _ucnt = document.getElementById('usuarios-count');
   if(_ucnt) _ucnt.innerHTML = `Mostrando <strong>${list.length}</strong> registros`;

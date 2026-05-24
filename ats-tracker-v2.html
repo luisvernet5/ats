@@ -5164,21 +5164,7 @@ function renderTiempos(){
       <div class="table-wrap" id="tiempos-vacs-table"></div>
     </div>
     <div id="tiempos-panel-empresa" style="display:none">
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:center">
-        <select id="te-empresa" onchange="renderTiemposEmpresa()" style="width:auto;min-width:200px">
-          <option value="">Seleccionar empresa...</option>${empOptsF}
-        </select>
-        <div style="display:flex;gap:4px">
-          <button id="te-grp-proyecto" onclick="setTeGrupo('proyecto')" style="padding:6px 14px;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;background:#2AAADE;color:#fff;transition:all .15s">Por proyecto</button>
-          <button id="te-grp-departamento" onclick="setTeGrupo('departamento')" style="padding:6px 14px;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-weight:500;background:var(--surface3);color:var(--text2);transition:all .15s">Por departamento</button>
-        </div>
-      </div>
-      <div id="te-content">
-        <div style="text-align:center;padding:48px 24px;color:var(--text3);font-size:13px">
-          <i class="fa fa-building" style="font-size:28px;margin-bottom:12px;display:block;opacity:.4"></i>
-          Selecciona una empresa para ver el análisis de tiempos por vacante
-        </div>
-      </div>
+      <div id="te-content"></div>
     </div>`;
   filterTiemposVacs();
 }
@@ -5198,14 +5184,6 @@ function tiemposTab(tab){
 function setTeGrupo(g){
   _teGrupo=g;
   _teGrupoSel='';
-  ['proyecto','departamento'].forEach(k=>{
-    const btn=document.getElementById('te-grp-'+k);
-    if(!btn)return;
-    const on=k===g;
-    btn.style.background=on?'#2AAADE':'var(--surface3)';
-    btn.style.color=on?'#fff':'var(--text2)';
-    btn.style.fontWeight=on?'600':'500';
-  });
   renderTiemposEmpresa();
 }
 function setTeMes(m){
@@ -5225,14 +5203,6 @@ function setTeAnio(a){
 }
 function setTeVista(v){
   _teVista=v;
-  ['proyectos','historico'].forEach(k=>{
-    const btn=document.getElementById('te-vista-'+k);
-    if(!btn)return;
-    const on=k===v;
-    btn.style.background=on?'var(--text)':'var(--surface3)';
-    btn.style.color=on?'#fff':'var(--text2)';
-    btn.style.fontWeight=on?'600':'500';
-  });
   _teApplyFilters();
 }
 function setTeGrupoSel(v){
@@ -5250,13 +5220,25 @@ function renderTiemposEmpresa(){
   const empId=document.getElementById('te-empresa')?.value||'';
   const content=document.getElementById('te-content');
   if(!content)return;
+  const empOptsAll=DB.empresas.map(e=>`<option value="${e.id}"${e.id===empId?' selected':''}>${e.nombre}</option>`).join('');
+  const selBase='background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--text);font-family:var(--font)';
+  const btnBase='padding:5px 11px;border:none;border-radius:7px;cursor:pointer;font-size:12px;transition:all .15s;white-space:nowrap';
+  const sep='<div style="width:1px;height:22px;background:var(--border2);flex-shrink:0"></div>';
   if(!empId){
-    content.innerHTML=`<div style="text-align:center;padding:48px 24px;color:var(--text3);font-size:13px"><i class="fa fa-building" style="font-size:28px;margin-bottom:12px;display:block;opacity:.4"></i>Selecciona una empresa para ver el análisis de tiempos</div>`;
+    content.innerHTML=`
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:18px">
+        <select id="te-empresa" onchange="renderTiemposEmpresa()" style="${selBase};min-width:200px"><option value="">Seleccionar empresa...</option>${empOptsAll}</select>
+      </div>
+      <div style="text-align:center;padding:40px 24px;color:var(--text3);font-size:13px"><i class="fa fa-building" style="font-size:28px;margin-bottom:12px;display:block;opacity:.4"></i>Selecciona una empresa para ver el análisis de tiempos</div>`;
     return;
   }
   const allVacs=DB.vacantes.filter(v=>v.empresa_id===empId&&v.fecha_apertura);
   if(!allVacs.length){
-    content.innerHTML=`<div style="text-align:center;padding:48px 24px;color:var(--text3);font-size:13px"><i class="fa fa-clock" style="font-size:28px;margin-bottom:12px;display:block;opacity:.4"></i>No hay vacantes registradas para esta empresa</div>`;
+    content.innerHTML=`
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:18px">
+        <select id="te-empresa" onchange="renderTiemposEmpresa()" style="${selBase};min-width:200px"><option value="">Seleccionar empresa...</option>${empOptsAll}</select>
+      </div>
+      <div style="text-align:center;padding:40px 24px;color:var(--text3);font-size:13px"><i class="fa fa-clock" style="font-size:28px;margin-bottom:12px;display:block;opacity:.4"></i>No hay vacantes registradas para esta empresa</div>`;
     return;
   }
   const years=[...new Set(allVacs.map(v=>parseInt(v.fecha_apertura.split('-')[0])))].sort().reverse();
@@ -5276,28 +5258,24 @@ function renderTiemposEmpresa(){
     ...allGroups.map(g=>`<option value="${g}"${g===_teGrupoSel?' selected':''}>${g}</option>`),
     ...(hasSin?[`<option value="${sinLabel}"${sinLabel===_teGrupoSel?' selected':''}>${sinLabel}</option>`]:[])
   ].join('');
-  const btnBase='padding:5px 11px;border:none;border-radius:7px;cursor:pointer;font-size:12px;transition:all .15s';
-  const yearBtns=years.map(y=>{
-    const on=y===_teAnio;
-    return`<button onclick="setTeAnio(${y})" style="${btnBase};font-weight:${on?'600':'400'};background:${on?'var(--text)':'var(--surface3)'};color:${on?'#fff':'var(--text2)'}">${y}</button>`;
-  }).join('');
-  const mesBtns=[0,...mesesConDatos].map(m=>{
-    const on=m===_teMes;
-    return`<button data-temes="${m}" onclick="setTeMes(${m})" style="${btnBase};font-weight:${on?'600':'500'};background:${on?'#2AAADE':'var(--surface3)'};color:${on?'#fff':'var(--text2)'}">${m===0?'Todos':MESES_CORTO[m]}</button>`;
-  }).join('');
-  const vistaBtns=`
-    <button id="te-vista-proyectos" onclick="setTeVista('proyectos')" style="${btnBase};font-weight:${_teVista==='proyectos'?'600':'500'};background:${_teVista==='proyectos'?'var(--text)':'var(--surface3)'};color:${_teVista==='proyectos'?'#fff':'var(--text2)'}"><i class="fa fa-th-large"></i> Proyectos</button>
-    <button id="te-vista-historico" onclick="setTeVista('historico')" style="${btnBase};font-weight:${_teVista==='historico'?'600':'500'};background:${_teVista==='historico'?'var(--text)':'var(--surface3)'};color:${_teVista==='historico'?'#fff':'var(--text2)'}"><i class="fa fa-history"></i> Histórico</button>`;
+  const yearBtns=years.map(y=>{const on=y===_teAnio;return`<button onclick="setTeAnio(${y})" style="${btnBase};font-weight:${on?'600':'400'};background:${on?'var(--text)':'var(--surface3)'};color:${on?'#fff':'var(--text2)'}">${y}</button>`;}).join('');
+  const mesBtns=[0,...mesesConDatos].map(m=>{const on=m===_teMes;return`<button data-temes="${m}" onclick="setTeMes(${m})" style="${btnBase};font-weight:${on?'600':'500'};background:${on?'#2AAADE':'var(--surface3)'};color:${on?'#fff':'var(--text2)'}">${m===0?'Todos':MESES_CORTO[m]}</button>`;}).join('');
+  const grpProy=`<button id="te-grp-proyecto" onclick="setTeGrupo('proyecto')" style="${btnBase};font-weight:${_teGrupo==='proyecto'?'600':'500'};background:${_teGrupo==='proyecto'?'#2AAADE':'var(--surface3)'};color:${_teGrupo==='proyecto'?'#fff':'var(--text2)'}">Por proyecto</button>`;
+  const grpDep=`<button id="te-grp-departamento" onclick="setTeGrupo('departamento')" style="${btnBase};font-weight:${_teGrupo==='departamento'?'600':'500'};background:${_teGrupo==='departamento'?'#2AAADE':'var(--surface3)'};color:${_teGrupo==='departamento'?'#fff':'var(--text2)'}">Por departamento</button>`;
+  const vProy=`<button id="te-vista-proyectos" onclick="setTeVista('proyectos')" style="${btnBase};font-weight:${_teVista==='proyectos'?'600':'500'};background:${_teVista==='proyectos'?'var(--text)':'var(--surface3)'};color:${_teVista==='proyectos'?'#fff':'var(--text2)'}"><i class="fa fa-th-large"></i> Proyectos</button>`;
+  const vHist=`<button id="te-vista-historico" onclick="setTeVista('historico')" style="${btnBase};font-weight:${_teVista==='historico'?'600':'500'};background:${_teVista==='historico'?'var(--text)':'var(--surface3)'};color:${_teVista==='historico'?'#fff':'var(--text2)'}"><i class="fa fa-history"></i> Histórico</button>`;
   content.innerHTML=`
-    <div style="display:flex;gap:10px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
-      <div style="display:flex;gap:4px;flex-wrap:wrap">${yearBtns}</div>
-      <div style="width:1px;height:22px;background:var(--border2);flex-shrink:0"></div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap">${mesBtns}</div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:18px">
+      <select id="te-empresa" onchange="renderTiemposEmpresa()" style="${selBase};min-width:160px;max-width:220px">${empOptsAll}</select>
+      ${sep}
+      ${grpProy}${grpDep}
+      ${sep}
+      ${yearBtns}
+      ${sep}
+      ${mesBtns}
+      <select id="te-grupo-sel" onchange="setTeGrupoSel(this.value)" style="${selBase};min-width:180px;max-width:320px">${groupOptsHTML}</select>
       <span style="flex:1"></span>
-      <div style="display:flex;gap:4px">${vistaBtns}</div>
-    </div>
-    <div style="margin-bottom:18px">
-      <select id="te-grupo-sel" onchange="setTeGrupoSel(this.value)" style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;font-size:13px;color:var(--text);font-family:var(--font);width:auto;min-width:220px;max-width:380px">${groupOptsHTML}</select>
+      ${vProy}${vHist}
     </div>
     <div id="te-kpis" style="margin-bottom:20px"></div>
     <div id="te-main"></div>`;

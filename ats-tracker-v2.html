@@ -6452,7 +6452,7 @@ async function showHCWeekList(empId){
 }
 
 async function crearSemanaHC(empId, semana, anio){
-  const{data:plantilla}=await sbClient.from('hc_plantilla').select('*').eq('empresa_id',empId).order('orden',{ascending:true});
+  const{data:plantilla}=await sbClient.from('hc_plantilla').select('*').eq('empresa_id',empId).eq('activo',true).order('orden',{ascending:true});
   if(!plantilla?.length){
     showToast('No hay proyectos en la plantilla. Configura proyectos primero.','err');
     return;
@@ -6477,7 +6477,7 @@ async function abrirTablaHC(empId, semana, anio){
   const emp=DB.empresas.find(x=>x.id===empId)||{};
   currentHCEmpId=empId; currentHCSemana=semana; currentHCAnio=anio;
   window.hcCurrentEmpId=empId; window.hcCurrentSemana=semana; window.hcCurrentAnio=anio;
-  const{data:plantilla}=await sbClient.from('hc_plantilla').select('*').eq('empresa_id',empId).order('orden',{ascending:true});
+  const{data:plantilla}=await sbClient.from('hc_plantilla').select('*').eq('empresa_id',empId).eq('activo',true).order('orden',{ascending:true});
   const{data:resumen}=await sbClient.from('hc_resumen').select('*')
     .eq('empresa_id',empId).eq('semana',semana).eq('anio',anio);
   const resumenMap={};
@@ -6490,7 +6490,7 @@ async function abrirTablaHC(empId, semana, anio){
   const fFinEl=document.getElementById('hc-fecha-fin');
   if(fFinEl) fFinEl.value=viernes.toLocaleDateString('es-MX',{day:'2-digit',month:'short',timeZone:'UTC'});
   const inp=(v,ev='')=>`<input type="number" class="hc-inp" value="${v}" style="width:50px;text-align:center;font-size:11px;padding:3px 2px" onkeydown="hcKeyNav(event,this)" onpaste="hcPaste(event,this)"${ev?' oninput="'+ev+'"':''}>`;
-  const mkRow=(proy,proyId,auth,r={})=>{
+  const mkRow=(proy,proyId,auth,r={},plantId='')=>{
     const actual=r.actual||0,cartera=r.cartera||0,entrevista=r.entrevista||0;
     const validacion=r.validacion||0,procCont=r.proceso_contratacion||0;
     const contratados=r.contratados||0,bajas=r.bajas||0,detenidas=r.detenidas||0;
@@ -6515,12 +6515,13 @@ async function abrirTablaHC(empId, semana, anio){
       <td id="hc-cierre-${proyId}" style="text-align:center;font-weight:500">${statusCierre}</td>
       <td style="text-align:center">${inp(detenidas,"recalcHCRow('"+proyId+"')")}</td>
       <td id="hc-pcant-${proyId}" style="text-align:center;font-weight:500">${plantillaCierre}</td>
-      <td style="text-align:center">
-        <button class="btn btn-danger btn-sm" onclick="hcEliminarFila('${proyId}','${empId}',${semana},${anio})" title="Eliminar"><i class="fa fa-trash" style="font-size:11px"></i></button>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn btn-danger btn-sm" onclick="hcEliminarFila('${proyId}','${empId}',${semana},${anio})" title="Eliminar semana"><i class="fa fa-trash" style="font-size:11px"></i></button>
+        ${plantId?`<button onclick="eliminarHCProyecto('${plantId}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;padding:2px 4px;vertical-align:middle" title="Eliminar proyecto de plantilla">🗑️</button>`:''}
       </td>
     </tr>`;
   };
-  const rows=(plantilla||[]).map(p=>mkRow(p.proyecto,p.proyecto.replace(/[^a-zA-Z0-9]/g,'_'),p.plantilla_autorizada||0,resumenMap[p.proyecto]||{})).join('');
+  const rows=(plantilla||[]).map(p=>mkRow(p.proyecto,p.proyecto.replace(/[^a-zA-Z0-9]/g,'_'),p.plantilla_autorizada||0,resumenMap[p.proyecto]||{},p.id||'')).join('');
   content.innerHTML=`
     <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${empId}')"><i class="fa fa-arrow-left"></i> Semanas</button>
@@ -6593,6 +6594,14 @@ async function hcEliminarFila(proyId, empId, semana, anio){
   if(error){showToast('Error: '+error.message,'err');return;}
   tr.remove();
   showToast('Fila eliminada ✓');
+}
+
+async function eliminarHCProyecto(proyectoId){
+  if(!confirm('¿Eliminar este proyecto? El historial previo se conservará pero no aparecerá en semanas nuevas.')) return;
+  const{error}=await sbClient.from('hc_plantilla').update({activo:false}).eq('id',proyectoId);
+  if(error){showToast('Error: '+error.message,'err');return;}
+  showToast('Proyecto eliminado ✓');
+  abrirTablaHC(window.hcCurrentEmpId,window.hcCurrentSemana,window.hcCurrentAnio);
 }
 
 function hcAgregarFila(empId, semana, anio){

@@ -7875,6 +7875,81 @@ function toggleSandbox(){
   location.reload();
 }
 
+function clearAllData(){
+  const overlay=document.createElement('div');
+  overlay.id='clear-data-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:300;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
+  overlay.innerHTML=`
+    <div style="background:var(--surface);border-radius:14px;padding:28px;width:440px;max-width:94vw">
+      <div id="clear-step-1">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span style="font-size:24px">⚠️</span>
+          <span style="font-size:16px;font-weight:700;color:var(--red)">Zona de peligro</span>
+        </div>
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px;margin-bottom:18px">
+          <div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:6px">¿Estás seguro de que deseas eliminar todos los datos locales?</div>
+          <div style="font-size:12px;color:#b91c1c;line-height:1.6">
+            Esta acción es <strong>irreversible</strong>. Se borrarán todos los datos del modo Sandbox almacenados en este navegador (empresas, vacantes, candidatos, reclutadores). Los datos en Supabase no se verán afectados.
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('clear-data-overlay').remove()">Cancelar</button>
+          <button class="btn btn-danger btn-sm" onclick="document.getElementById('clear-step-1').style.display='none';document.getElementById('clear-step-2').style.display=''">
+            Sí, continuar →
+          </button>
+        </div>
+      </div>
+      <div id="clear-step-2" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span style="font-size:22px">🔒</span>
+          <span style="font-size:15px;font-weight:600;color:var(--text)">Confirma tu identidad</span>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:16px">
+          Ingresa la contraseña de <strong>lukaarrever@gmail.com</strong> para confirmar la eliminación.
+        </div>
+        <div class="fg" style="margin-bottom:18px">
+          <label style="font-size:12px;color:var(--text2);margin-bottom:4px;display:block">Contraseña</label>
+          <input type="password" id="clear-data-pass" placeholder="••••••••"
+            style="width:100%;padding:8px 12px;border:1px solid var(--border2);border-radius:8px;font-size:14px;background:var(--surface2);color:var(--text)"
+            onkeydown="if(event.key==='Enter')_confirmarClearData()">
+        </div>
+        <div id="clear-data-err" style="font-size:12px;color:var(--red);margin-bottom:10px;display:none"></div>
+        <div style="display:flex;justify-content:flex-end;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('clear-data-overlay').remove()">Cancelar</button>
+          <button id="clear-data-btn" class="btn btn-danger btn-sm" onclick="_confirmarClearData()">
+            <i class="fa fa-trash"></i> Eliminar datos
+          </button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  setTimeout(()=>document.getElementById('clear-data-pass')?.focus(),80);
+}
+
+async function _confirmarClearData(){
+  const pass=document.getElementById('clear-data-pass')?.value;
+  const errEl=document.getElementById('clear-data-err');
+  const btn=document.getElementById('clear-data-btn');
+  if(!pass){errEl.textContent='Ingresa tu contraseña.';errEl.style.display='';return;}
+  btn.disabled=true;
+  btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Verificando…';
+  errEl.style.display='none';
+  const{error}=await sbClient.auth.signInWithPassword({email:'lukaarrever@gmail.com',password:pass});
+  if(error){
+    errEl.textContent='Contraseña incorrecta. Inténtalo de nuevo.';
+    errEl.style.display='';
+    btn.disabled=false;
+    btn.innerHTML='<i class="fa fa-trash"></i> Eliminar datos';
+    document.getElementById('clear-data-pass').value='';
+    document.getElementById('clear-data-pass').focus();
+    return;
+  }
+  ['sandbox_empresas','sandbox_vacantes','sandbox_candidatos','sandbox_reclutadores','vacantes_eliminadas'].forEach(k=>localStorage.removeItem(k));
+  document.getElementById('clear-data-overlay').remove();
+  showToast('Datos locales eliminados ✓');
+}
+
 function updateSandboxUI(){
   const ind=document.getElementById('sandbox-indicator');
   const lbl=document.getElementById('sandbox-label');

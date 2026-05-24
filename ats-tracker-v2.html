@@ -2451,55 +2451,57 @@ function openEmpresaDetail(empId){
         <div class="ed-kpi ed-kpi-btn" id="ed-kpi-chip-deserciones" onclick="showEDKpiPanel('deserciones','${empId}')"><div class="ed-kpi-v" id="ed-kpi-deser" style="color:var(--red)">${desertores}</div><div class="ed-kpi-l">Deserciones</div></div>
       </div>
     </div>
-    <div id="ed-kpi-panel" style="display:none"></div>
-    <div style="margin-bottom:20px">
-      <div class="sec-title">Proceso de reclutamiento configurado</div>
-      <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${processHtml}</div>
-    </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:0">
-        <strong style="margin-right:8px;white-space:nowrap">Vacantes</strong>
-        <button id="btn-vista-folio" onclick="cambiarVistaEmpresa('folio')" style="height:30px;font-size:12px;padding:4px 10px;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600">☰ Por folio</button>
-        <button id="btn-vista-proyecto" onclick="cambiarVistaEmpresa('proyecto')" style="height:30px;font-size:12px;padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:white;color:#666;cursor:pointer">⊞ Por proyecto</button>
-        <select id="filtroProyecto" onchange="filtrarVacantesEmpresa()" style="display:inline-block;width:auto;min-width:110px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
-          <option value="">Proyecto</option>
-          ${[...new Set(vacs.map(v=>v.proyecto).filter(Boolean))].map(p=>`<option value="${p}">${p}</option>`).join('')}
-        </select>
-        <select id="filtroDepartamento" onchange="filtrarVacantesEmpresa()" style="display:inline-block;width:auto;min-width:120px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
-          <option value="">Departamento</option>
-          ${[...new Set(vacs.map(v=>v.departamento).filter(Boolean))].map(d=>`<option value="${d}">${d}</option>`).join('')}
-        </select>
-        <select id="filtroReclutador" onchange="filtrarVacantesEmpresa()" style="display:inline-block;width:auto;min-width:110px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
-          <option value="">Reclutador</option>
-          ${[...new Set(vacs.map(v=>v.reclutador_id).filter(Boolean))].map(rid=>{const r=DB.reclutadores.find(x=>x.id===rid)||{};return`<option value="${rid}">${r.nombre||rid}</option>`;}).join('')}
-        </select>
-        <input type="date" id="filtroFechaDesde" onchange="filtrarVacantesEmpresa()" style="display:inline-block;width:auto;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
-        <input type="date" id="filtroFechaHasta" onchange="filtrarVacantesEmpresa()" style="display:inline-block;width:auto;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
-        <button onclick="limpiarFiltrosEmpresa()" style="display:inline-block;height:30px;font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#666">× Limpiar</button>
+    <div id="ed-kpi-view" style="display:none"></div>
+    <div id="ed-normal-view">
+      <div style="margin-bottom:20px">
+        <div class="sec-title">Proceso de reclutamiento configurado</div>
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${processHtml}</div>
       </div>
-      <div style="display:flex;gap:8px;flex-shrink:0">
-        <button class="btn btn-green btn-sm" onclick="exportarCSVEmpresa('${empId}')"><i class="fa fa-download"></i> Exportar esta empresa</button>
-        <button class="btn btn-primary btn-sm" onclick="openVacanteModal(null,'${empId}')"><i class="fa fa-plus"></i> Nueva vacante</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:0">
+          <strong style="margin-right:8px;white-space:nowrap">Vacantes</strong>
+          <button id="btn-vista-folio" onclick="cambiarVistaEmpresa('folio')" style="height:30px;font-size:12px;padding:4px 10px;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600">☰ Por folio</button>
+          <button id="btn-vista-proyecto" onclick="cambiarVistaEmpresa('proyecto')" style="height:30px;font-size:12px;padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:white;color:#666;cursor:pointer">⊞ Por proyecto</button>
+          <select id="filtroProyecto" onchange="filtrarVacantesEmpresa()" style="display:inline-block;width:auto;min-width:110px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
+            <option value="">Proyecto</option>
+            ${[...new Set(vacs.map(v=>v.proyecto).filter(Boolean))].map(p=>`<option value="${p}">${p}</option>`).join('')}
+          </select>
+          <select id="filtroDepartamento" onchange="filtrarVacantesEmpresa()" style="display:inline-block;width:auto;min-width:120px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
+            <option value="">Departamento</option>
+            ${[...new Set(vacs.map(v=>v.departamento).filter(Boolean))].map(d=>`<option value="${d}">${d}</option>`).join('')}
+          </select>
+          <select id="filtroReclutador" onchange="filtrarVacantesEmpresa()" style="display:inline-block;width:auto;min-width:110px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
+            <option value="">Reclutador</option>
+            ${[...new Set(vacs.map(v=>v.reclutador_id).filter(Boolean))].map(rid=>{const r=DB.reclutadores.find(x=>x.id===rid)||{};return`<option value="${rid}">${r.nombre||rid}</option>`;}).join('')}
+          </select>
+          <input type="date" id="filtroFechaDesde" onchange="filtrarVacantesEmpresa()" style="display:inline-block;width:auto;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
+          <input type="date" id="filtroFechaHasta" onchange="filtrarVacantesEmpresa()" style="display:inline-block;width:auto;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
+          <button onclick="limpiarFiltrosEmpresa()" style="display:inline-block;height:30px;font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#666">× Limpiar</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <button class="btn btn-green btn-sm" onclick="exportarCSVEmpresa('${empId}')"><i class="fa fa-download"></i> Exportar esta empresa</button>
+          <button class="btn btn-primary btn-sm" onclick="openVacanteModal(null,'${empId}')"><i class="fa fa-plus"></i> Nueva vacante</button>
+        </div>
       </div>
-    </div>
-    <div class="table-wrap">
-      <table><thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
-      <tbody id="ed-tbody">${vacsRows||'<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes registradas</td></tr>'}</tbody>
-      </table>
-    </div>
-    <div id="ed-count" style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right;">Mostrando <strong>${vacs.length}</strong> registros</div>
-    <div style="margin-top:24px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <div class="sec-title" style="margin:0">Analytics de la empresa</div>
+      <div class="table-wrap">
+        <table><thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
+        <tbody id="ed-tbody">${vacsRows||'<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes registradas</td></tr>'}</tbody>
+        </table>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:16px" id="analytics-tabs-${empId}">
-        <button class="btn btn-primary btn-sm" id="atab-general-${empId}" onclick="switchAnalyticsTab('${empId}','general')">General</button>
-        <button class="btn btn-ghost btn-sm" id="atab-depto-${empId}" onclick="switchAnalyticsTab('${empId}','depto')">Por departamento</button>
-        <button class="btn btn-ghost btn-sm" id="atab-proyecto-${empId}" onclick="switchAnalyticsTab('${empId}','proyecto')">Por proyecto</button>
-        <button class="btn btn-ghost btn-sm" id="atab-desercion-${empId}" onclick="switchAnalyticsTab('${empId}','desercion')">Deserción</button>
-        <button class="btn btn-ghost btn-sm" id="atab-top-vacantes-${empId}" onclick="switchAnalyticsTab('${empId}','top-vacantes')">Top vacantes</button>
+      <div id="ed-count" style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right;">Mostrando <strong>${vacs.length}</strong> registros</div>
+      <div style="margin-top:24px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div class="sec-title" style="margin:0">Analytics de la empresa</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:16px" id="analytics-tabs-${empId}">
+          <button class="btn btn-primary btn-sm" id="atab-general-${empId}" onclick="switchAnalyticsTab('${empId}','general')">General</button>
+          <button class="btn btn-ghost btn-sm" id="atab-depto-${empId}" onclick="switchAnalyticsTab('${empId}','depto')">Por departamento</button>
+          <button class="btn btn-ghost btn-sm" id="atab-proyecto-${empId}" onclick="switchAnalyticsTab('${empId}','proyecto')">Por proyecto</button>
+          <button class="btn btn-ghost btn-sm" id="atab-desercion-${empId}" onclick="switchAnalyticsTab('${empId}','desercion')">Deserción</button>
+          <button class="btn btn-ghost btn-sm" id="atab-top-vacantes-${empId}" onclick="switchAnalyticsTab('${empId}','top-vacantes')">Top vacantes</button>
+        </div>
+        <div id="analytics-content-${empId}"></div>
       </div>
-      <div id="analytics-content-${empId}"></div>
     </div>
   `;
   document.getElementById('page-title').textContent=e.nombre;
@@ -2508,23 +2510,22 @@ function openEmpresaDetail(empId){
 }
 
 function showEDKpiPanel(type, empId){
-  const panel = document.getElementById('ed-kpi-panel');
-  if(!panel) return;
+  const kpiView = document.getElementById('ed-kpi-view');
+  const normalView = document.getElementById('ed-normal-view');
+  if(!kpiView||!normalView) return;
+
   const chips = ['abiertas','total','contratados','deserciones'];
-  // Toggle: si ya está activo el mismo, cierra
-  if(panel.dataset.activeType===type && panel.style.display!=='none'){
-    panel.style.display='none'; panel.dataset.activeType='';
-    chips.forEach(k=>document.getElementById('ed-kpi-chip-'+k)?.classList.remove('ed-kpi-active'));
-    return;
+  // Toggle: mismo KPI activo → volver a vista normal
+  if(kpiView.dataset.activeType===type && kpiView.style.display!=='none'){
+    edKpiVolver(); return;
   }
   chips.forEach(k=>document.getElementById('ed-kpi-chip-'+k)?.classList.remove('ed-kpi-active'));
   document.getElementById('ed-kpi-chip-'+type)?.classList.add('ed-kpi-active');
-  panel.dataset.activeType=type;
+  kpiView.dataset.activeType=type;
 
   const vacs = DB.vacantes.filter(v=>v.empresa_id===empId);
   const allCands = DB.candidatos.filter(c=>vacs.find(v=>v.id===c.vacante_id));
-
-  let title='', thead='', tbody='';
+  let title='', thead='', tbody='', cols=9;
 
   if(type==='abiertas'){
     const list=vacs.filter(v=>v.estado==='Abierta');
@@ -2535,17 +2536,19 @@ function showEDKpiPanel(type, empId){
       const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
       const act=cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length;
       const dias=daysBetween(v.fecha_apertura);
-      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px">${i+1}</td><td class="td-p">${v.nombre}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td style="font-size:12px">${v.proyecto||'—'}</td><td style="font-size:12px">${v.departamento||'—'}</td><td>${fmt(v.fecha_apertura)}</td><td><span class="dpill ${dClass(dias)}">${dias}d</span></td><td style="text-align:center">${act}/${cands.length}</td></tr>`;
+      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px;width:36px">${i+1}</td><td class="td-p">${v.nombre}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td style="font-size:12px">${v.proyecto||'—'}</td><td style="font-size:12px">${v.departamento||'—'}</td><td>${fmt(v.fecha_apertura)}</td><td><span class="dpill ${dClass(dias)}">${dias}d</span></td><td style="text-align:center">${act}/${cands.length}</td></tr>`;
     }).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Sin vacantes abiertas</td></tr>`;
   }
   else if(type==='total'){
     title=`Todas las vacantes — ${vacs.length} registro${vacs.length!==1?'s':''}`;
-    thead=`<tr><th>#</th><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Estado</th><th>Apertura</th><th>Días</th></tr>`;
+    thead=`<tr><th>#</th><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Estado</th><th>Apertura</th><th>Días</th><th>Cands.</th></tr>`; cols=10;
     tbody=[...vacs].sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true})).map((v,i)=>{
       const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+      const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
+      const act=cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length;
       const dias=daysBetween(v.fecha_apertura);
-      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px">${i+1}</td><td class="td-p">${v.nombre}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td style="font-size:12px">${v.proyecto||'—'}</td><td style="font-size:12px">${v.departamento||'—'}</td><td>${badgeVacEst(v.estado)}</td><td>${fmt(v.fecha_apertura)}</td><td><span class="dpill ${dClass(dias)}">${dias}d</span></td></tr>`;
-    }).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Sin vacantes</td></tr>`;
+      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px;width:36px">${i+1}</td><td class="td-p">${v.nombre}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td style="font-size:12px">${v.proyecto||'—'}</td><td style="font-size:12px">${v.departamento||'—'}</td><td>${badgeVacEst(v.estado)}</td><td>${fmt(v.fecha_apertura)}</td><td><span class="dpill ${dClass(dias)}">${dias}d</span></td><td style="text-align:center">${act}/${cands.length}</td></tr>`;
+    }).join('')||`<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">Sin vacantes</td></tr>`;
   }
   else if(type==='contratados'){
     const list=allCands.filter(esColocado);
@@ -2557,7 +2560,7 @@ function showEDKpiPanel(type, empId){
       const fechaCont=getFechaContratacion(v,c);
       const wn=getWeekNumber(fechaCont);
       const dias=daysBetween(v.fecha_apertura,fechaCont||today());
-      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px">${i+1}</td><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td style="font-size:12px">${v.proyecto||'—'}</td><td style="font-family:var(--mono);font-size:12px">${fechaCont?fmt(fechaCont):'—'}</td><td style="text-align:center">${wn?`<span style="background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:2px 7px;font-size:11px;font-family:var(--mono);font-weight:500">S${wn.week}</span>`:'—'}</td><td>${dias!==null?`<span class="dpill ${dClass(dias)}">${dias}d</span>`:'—'}</td></tr>`;
+      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px;width:36px">${i+1}</td><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td style="font-size:12px">${v.proyecto||'—'}</td><td style="font-family:var(--mono);font-size:12px">${fechaCont?fmt(fechaCont):'—'}</td><td style="text-align:center">${wn?`<span style="background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:2px 7px;font-size:11px;font-family:var(--mono);font-weight:500">S${wn.week}</span>`:'—'}</td><td>${dias!==null?`<span class="dpill ${dClass(dias)}">${dias}d</span>`:'—'}</td></tr>`;
     }).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Sin contratados</td></tr>`;
   }
   else if(type==='deserciones'){
@@ -2568,22 +2571,28 @@ function showEDKpiPanel(type, empId){
       const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
       const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
       const dias=processTotal(c);
-      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px">${i+1}</td><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td><span class="badge br">${c.etapa}</span></td><td style="font-size:12px;color:var(--text2)">${c.motivo_desercion||'—'}</td><td style="font-family:var(--mono);font-size:12px">${c.fecha_salida?fmt(c.fecha_salida):'—'}</td><td>${dias!==null?`<span class="dpill ${dClass(dias)}">${dias}d</span>`:'—'}</td></tr>`;
+      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px;width:36px">${i+1}</td><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td><span class="badge br">${c.etapa}</span></td><td style="font-size:12px;color:var(--text2)">${c.motivo_desercion||'—'}</td><td style="font-family:var(--mono);font-size:12px">${c.fecha_salida?fmt(c.fecha_salida):'—'}</td><td>${dias!==null?`<span class="dpill ${dClass(dias)}">${dias}d</span>`:'—'}</td></tr>`;
     }).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Sin deserciones registradas</td></tr>`;
   }
 
-  panel.style.display='block';
-  panel.className='ed-kpi-panel';
-  panel.innerHTML=`
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="font-size:14px;font-weight:600;color:var(--text)">${title}</div>
-      <button onclick="document.getElementById('ed-kpi-panel').style.display='none';document.getElementById('ed-kpi-panel').dataset.activeType='';document.querySelectorAll('.ed-kpi-btn').forEach(el=>el.classList.remove('ed-kpi-active'))" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text3);line-height:1;padding:2px 6px;border-radius:5px" title="Cerrar">×</button>
+  normalView.style.display='none';
+  kpiView.style.display='block';
+  kpiView.innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <button class="btn btn-ghost btn-sm" onclick="edKpiVolver()"><i class="fa fa-arrow-left"></i> Volver al resumen</button>
+      <span style="font-size:15px;font-weight:600;color:var(--text)">${title}</span>
     </div>
-    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
-      <thead style="background:var(--surface2)">${thead}</thead>
-      <tbody>${tbody}</tbody>
-    </table></div>`;
-  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+    <div class="table-wrap" style="animation:fadeInDown .18s ease">
+      <table><thead style="background:var(--surface2)">${thead}</thead><tbody>${tbody}</tbody></table>
+    </div>`;
+}
+
+function edKpiVolver(){
+  const kpiView=document.getElementById('ed-kpi-view');
+  const normalView=document.getElementById('ed-normal-view');
+  if(kpiView) { kpiView.style.display='none'; kpiView.dataset.activeType=''; }
+  if(normalView) normalView.style.display='block';
+  document.querySelectorAll('.ed-kpi-btn').forEach(el=>el.classList.remove('ed-kpi-active'));
 }
 
 function _buildEDVacsRows(vacs, empId, etapas, startIdx=1){

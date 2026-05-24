@@ -5219,89 +5219,137 @@ function renderTiemposEmpresa(){
     return;
   }
   const emp=DB.empresas.find(e=>e.id===empId)||{};
-  const todasVacs=DB.vacantes.filter(v=>v.empresa_id===empId&&v.estado==='Cubierta'&&v.fecha_apertura);
-  const vacs=todasVacs.filter(v=>_vacCierreDate(v));
+  const vacs=DB.vacantes.filter(v=>v.empresa_id===empId&&v.fecha_apertura);
   if(!vacs.length){
-    content.innerHTML=`<div style="text-align:center;padding:48px 24px;color:var(--text3);font-size:13px"><i class="fa fa-clock" style="font-size:28px;margin-bottom:12px;display:block;opacity:.4"></i>No hay vacantes cubiertas con fechas de apertura y cierre registradas para esta empresa</div>`;
+    content.innerHTML=`<div style="text-align:center;padding:48px 24px;color:var(--text3);font-size:13px"><i class="fa fa-clock" style="font-size:28px;margin-bottom:12px;display:block;opacity:.4"></i>No hay vacantes registradas para esta empresa</div>`;
     return;
   }
+  const MESES=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const avg=arr=>arr.length?Math.round(arr.reduce((a,b)=>a+b,0)/arr.length):0;
+  const groupLabel=_teGrupo==='proyecto'?'Proyecto':'Departamento';
+  const sinLabel='(Sin '+(_teGrupo==='proyecto'?'proyecto':'departamento')+')';
   const items=vacs.map(v=>{
     const fechaCierre=_vacCierreDate(v);
-    const diasTotales=daysBetween(v.fecha_apertura,fechaCierre)||0;
+    const abierta=v.estado==='Abierta'||!fechaCierre;
+    const endDate=fechaCierre||today();
+    const diasTotales=daysBetween(v.fecha_apertura,endDate)||0;
     const hired=DB.candidatos.find(c=>c.vacante_id===v.id&&esColocado(c));
     const diasCliente=hired?(clienteDays(hired)||0):0;
     const diasInternos=Math.max(0,diasTotales-diasCliente);
     const rec=DB.reclutadores.find(r=>r.id===v.reclutador_id)||{};
-    return{v,fechaCierre,diasTotales,diasCliente,diasInternos,rec};
+    const [yr,mo]=v.fecha_apertura.split('-');
+    return{v,fechaCierre,abierta,diasTotales,diasCliente,diasInternos,rec,monthKey:`${yr}-${mo}`,yr:parseInt(yr),mo:parseInt(mo)};
   });
-  const groups={};
-  const sinLabel='(Sin '+(_teGrupo==='proyecto'?'proyecto':'departamento')+')';
-  items.forEach(item=>{
-    const gKey=item.v[_teGrupo]||sinLabel;
-    if(!groups[gKey])groups[gKey]=[];
-    groups[gKey].push(item);
-  });
-  const avg=arr=>arr.length?Math.round(arr.reduce((a,b)=>a+b,0)/arr.length):0;
-  const groupLabel=_teGrupo==='proyecto'?'Proyecto':'Departamento';
-  const summaryRows=Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0])).map(([key,its])=>{
-    const aT=avg(its.map(x=>x.diasTotales));
-    const aC=avg(its.map(x=>x.diasCliente));
-    const aI=avg(its.map(x=>x.diasInternos));
-    return`<tr>
-      <td class="td-p">${key}</td>
-      <td style="text-align:center;font-family:var(--mono)">${its.length}</td>
-      <td><span class="dpill ${dClass(aT)}">${aT}d</span></td>
-      <td><span class="dpill dwarn">${aC}d</span></td>
-      <td><span class="dpill ${dClass(aI)}">${aI}d</span></td>
-    </tr>`;
-  }).join('');
   const totT=avg(items.map(x=>x.diasTotales));
   const totC=avg(items.map(x=>x.diasCliente));
   const totI=avg(items.map(x=>x.diasInternos));
-  const detailRows=items.sort((a,b)=>(a.v[_teGrupo]||'').localeCompare(b.v[_teGrupo]||'')).map((item,i)=>`<tr>
-    <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
-    <td class="td-p">${item.v.nombre}</td>
-    <td style="font-size:12px;color:var(--text2)">${item.v.proyecto||'—'}</td>
-    <td style="font-size:12px;color:var(--text2)">${item.v.departamento||'—'}</td>
-    <td>${item.rec.nombre||'—'}</td>
-    <td style="font-size:12px">${fmt(item.v.fecha_apertura)}</td>
-    <td style="font-size:12px">${fmt(item.fechaCierre)}</td>
-    <td><span class="dpill ${dClass(item.diasTotales)}">${item.diasTotales}d</span></td>
-    <td><span class="dpill dwarn">${item.diasCliente}d</span></td>
-    <td><span class="dpill ${dClass(item.diasInternos)}">${item.diasInternos}d</span></td>
-  </tr>`).join('');
-  content.innerHTML=`
-    <div class="g4" style="margin-bottom:20px">
-      <div class="card"><div class="card-title">Vacantes cubiertas</div><div class="card-value">${vacs.length}</div><div class="card-sub">${emp.nombre||''}</div></div>
-      <div class="card"><div class="card-title">Prom. días proceso total</div><div class="card-value"><span class="dpill ${dClass(totT)}" style="font-size:22px">${totT}d</span></div><div class="card-sub">apertura → cierre vacante</div></div>
+  const abiertas=items.filter(x=>x.abierta).length;
+  const cubiertas=items.filter(x=>!x.abierta).length;
+  const byMonth={};
+  items.forEach(item=>{
+    if(!byMonth[item.monthKey])byMonth[item.monthKey]=[];
+    byMonth[item.monthKey].push(item);
+  });
+  const monthKeys=Object.keys(byMonth).sort().reverse();
+  let html=`
+    <div class="g4" style="margin-bottom:24px">
+      <div class="card">
+        <div class="card-title">Total vacantes</div>
+        <div class="card-value">${vacs.length}</div>
+        <div class="card-sub" style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="badge bg">${cubiertas} cubiertas</span>
+          <span class="badge bb">${abiertas} abiertas</span>
+        </div>
+      </div>
+      <div class="card"><div class="card-title">Prom. días proceso total</div><div class="card-value"><span class="dpill ${dClass(totT)}" style="font-size:22px">${totT}d</span></div><div class="card-sub">apertura → cierre (o hoy si abierta)</div></div>
       <div class="card"><div class="card-title">Prom. días cliente</div><div class="card-value" style="color:var(--amber)">${totC}d</div><div class="card-sub">tiempo de validación cliente</div></div>
       <div class="card"><div class="card-title">Prom. días internos</div><div class="card-value"><span class="dpill ${dClass(totI)}" style="font-size:22px">${totI}d</span></div><div class="card-sub">proceso interno neto</div></div>
-    </div>
-    <div class="sec-title">Resumen por ${groupLabel.toLowerCase()}</div>
-    <div class="table-wrap" style="margin-bottom:20px">
-      <table>
-        <thead><tr>
-          <th>${groupLabel}</th>
-          <th style="text-align:center">Vacantes</th>
-          <th>Prom. días totales</th>
-          <th>Prom. días cliente</th>
-          <th>Prom. días internos</th>
-        </tr></thead>
-        <tbody>${summaryRows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Sin agrupación disponible</td></tr>'}</tbody>
-      </table>
-    </div>
-    <div class="sec-title">Detalle por vacante</div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th style="width:36px;text-align:center">#</th>
-          <th>Vacante</th><th>Proyecto</th><th>Departamento</th><th>Reclutador</th>
-          <th>Apertura</th><th>Cierre</th>
-          <th>Días totales</th><th>Días cliente</th><th>Días internos</th>
-        </tr></thead>
-        <tbody>${detailRows||'<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">Sin vacantes</td></tr>'}</tbody>
-      </table>
     </div>`;
+  monthKeys.forEach(mk=>{
+    const monthItems=byMonth[mk];
+    const [yr,mo]=mk.split('-');
+    const monthLabel=MESES[parseInt(mo)]+' '+yr;
+    const mT=avg(monthItems.map(x=>x.diasTotales));
+    const mC=avg(monthItems.map(x=>x.diasCliente));
+    const mI=avg(monthItems.map(x=>x.diasInternos));
+    const mAbiertas=monthItems.filter(x=>x.abierta).length;
+    const mGroups={};
+    monthItems.forEach(item=>{
+      const gKey=item.v[_teGrupo]||sinLabel;
+      if(!mGroups[gKey])mGroups[gKey]=[];
+      mGroups[gKey].push(item);
+    });
+    const groupKeys=Object.keys(mGroups).sort((a,b)=>a.localeCompare(b));
+    const groupSummaryRows=groupKeys.map(key=>{
+      const its=mGroups[key];
+      const aT=avg(its.map(x=>x.diasTotales));
+      const aC=avg(its.map(x=>x.diasCliente));
+      const aI=avg(its.map(x=>x.diasInternos));
+      const gAb=its.filter(x=>x.abierta).length;
+      return`<tr>
+        <td class="td-p">${key}</td>
+        <td style="text-align:center;font-family:var(--mono)">${its.length}${gAb?` <span style="font-size:10px;color:var(--accent)">(${gAb} abiertas)</span>`:''}
+        </td>
+        <td><span class="dpill ${dClass(aT)}">${aT}d</span></td>
+        <td><span class="dpill dwarn">${aC}d</span></td>
+        <td><span class="dpill ${dClass(aI)}">${aI}d</span></td>
+      </tr>`;
+    }).join('');
+    const vacRows=[...monthItems].sort((a,b)=>(a.v[_teGrupo]||'').localeCompare(b.v[_teGrupo]||'')||(a.v.fecha_apertura||'').localeCompare(b.v.fecha_apertura||'')).map((item,i)=>{
+      const estadoBadge=item.v.estado==='Cubierta'?`<span class="badge bg" style="font-size:10px">Cubierta</span>`:item.v.estado==='Cancelada'?`<span class="badge br" style="font-size:10px">Cancelada</span>`:`<span class="badge bb" style="font-size:10px">Abierta</span>`;
+      const cierreCell=item.fechaCierre?fmt(item.fechaCierre):`<span style="color:var(--accent);font-size:11px">En curso</span>`;
+      return`<tr>
+        <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
+        <td class="td-p">${item.v.nombre}</td>
+        <td>${estadoBadge}</td>
+        <td style="font-size:12px;color:var(--text2)">${item.v.proyecto||'—'}</td>
+        <td style="font-size:12px;color:var(--text2)">${item.v.departamento||'—'}</td>
+        <td>${item.rec.nombre||'—'}</td>
+        <td style="font-size:12px">${fmt(item.v.fecha_apertura)}</td>
+        <td style="font-size:12px">${cierreCell}</td>
+        <td><span class="dpill ${dClass(item.diasTotales)}">${item.diasTotales}d${item.abierta?' <i class="fa fa-hourglass-half" style="font-size:9px;opacity:.7" title="En curso"></i>':''}</span></td>
+        <td><span class="dpill dwarn">${item.diasCliente}d</span></td>
+        <td><span class="dpill ${dClass(item.diasInternos)}">${item.diasInternos}d</span></td>
+      </tr>`;
+    }).join('');
+    html+=`
+      <div style="margin-bottom:32px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+          <div style="font-size:15px;font-weight:700;color:var(--text)">${monthLabel}</div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <span style="font-size:12px;color:var(--text3)">${monthItems.length} vacante${monthItems.length!==1?'s':''}${mAbiertas?' · '+mAbiertas+' en curso':''}</span>
+            <span class="dpill ${dClass(mT)}">${mT}d prom. total</span>
+            <span class="dpill dwarn">${mC}d cliente</span>
+            <span class="dpill ${dClass(mI)}">${mI}d internos</span>
+          </div>
+        </div>
+        ${groupKeys.length>1?`
+        <div class="table-wrap" style="margin-bottom:12px">
+          <table>
+            <thead><tr>
+              <th>${groupLabel}</th>
+              <th style="text-align:center">Vacantes</th>
+              <th>Prom. días totales</th>
+              <th>Prom. días cliente</th>
+              <th>Prom. días internos</th>
+            </tr></thead>
+            <tbody>${groupSummaryRows}</tbody>
+          </table>
+        </div>`:''}
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th style="width:36px;text-align:center">#</th>
+              <th>Vacante</th><th>Estado</th><th>Proyecto</th><th>Departamento</th><th>Reclutador</th>
+              <th>Apertura</th><th>Cierre</th>
+              <th>Días totales</th><th>Días cliente</th><th>Días internos</th>
+            </tr></thead>
+            <tbody>${vacRows||'<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:16px">Sin vacantes</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>`;
+  });
+  content.innerHTML=html;
 }
 function _renderTiemposCharts(){
   const recL=DB.reclutadores.map(r=>r.nombre.split(' ')[0]);

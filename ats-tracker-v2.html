@@ -488,7 +488,7 @@ input[type=date]{color:var(--text)}
       <button class="btn btn-primary" onclick="openVacanteModal()"><i class="fa fa-plus"></i> Nueva</button>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">
-      <button id="vac-vista-folio" class="btn btn-ghost btn-sm btn-active" onclick="setVacVista('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
+      <button id="vac-vista-folio" class="btn btn-primary btn-sm" onclick="setVacVista('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
       <button id="vac-vista-proyecto" class="btn btn-ghost btn-sm" onclick="setVacVista('proyecto')"><i class="fa fa-layer-group"></i> Por proyecto</button>
       <button id="vac-vista-departamento" class="btn btn-ghost btn-sm" onclick="setVacVista('departamento')"><i class="fa fa-sitemap"></i> Por departamento</button>
     </div>
@@ -505,7 +505,7 @@ input[type=date]{color:var(--text)}
       <span class="sp"></span>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">
-      <button id="cand-vista-folio" class="btn btn-ghost btn-sm btn-active" onclick="setVistaCand('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
+      <button id="cand-vista-folio" class="btn btn-primary btn-sm" onclick="setVistaCand('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
       <button id="cand-vista-proyecto" class="btn btn-ghost btn-sm" onclick="setVistaCand('proyecto')"><i class="fa fa-layer-group"></i> Por proyecto</button>
       <button id="cand-vista-departamento" class="btn btn-ghost btn-sm" onclick="setVistaCand('departamento')"><i class="fa fa-sitemap"></i> Por departamento</button>
     </div>
@@ -2559,8 +2559,8 @@ function openEmpresaDetail(empId){
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:0">
           <strong style="margin-right:8px;white-space:nowrap">Vacantes</strong>
-          <button id="btn-vista-folio" onclick="cambiarVistaEmpresa('folio')" style="height:30px;font-size:12px;padding:4px 10px;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600">☰ Por folio</button>
-          <button id="btn-vista-proyecto" onclick="cambiarVistaEmpresa('proyecto')" style="height:30px;font-size:12px;padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:white;color:#666;cursor:pointer">⊞ Por proyecto</button>
+          <button id="btn-vista-folio" class="btn btn-primary btn-sm" onclick="cambiarVistaEmpresa('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
+          <button id="btn-vista-proyecto" class="btn btn-ghost btn-sm" onclick="cambiarVistaEmpresa('proyecto')"><i class="fa fa-layer-group"></i> Por proyecto</button>
           <select id="filtroProyecto" onchange="filtrarVacantesEmpresa()" style="display:inline-block;width:auto;min-width:110px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
             <option value="">Proyecto</option>
             ${[...new Set(vacs.map(v=>v.proyecto).filter(Boolean))].map(p=>`<option value="${p}">${p}</option>`).join('')}
@@ -2760,10 +2760,8 @@ function cambiarVistaEmpresa(vista){
   empresaVistaActual = vista;
   const btnFolio   = document.getElementById('btn-vista-folio');
   const btnProy    = document.getElementById('btn-vista-proyecto');
-  const activeStyle   = 'height:30px;font-size:12px;padding:4px 10px;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600';
-  const inactiveStyle = 'height:30px;font-size:12px;padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:white;color:#666;cursor:pointer';
-  if(btnFolio)   btnFolio.setAttribute('style',   vista==='folio'   ? activeStyle : inactiveStyle);
-  if(btnProy)    btnProy.setAttribute('style',     vista==='proyecto'? activeStyle : inactiveStyle);
+  if(btnFolio)  btnFolio.className  = `btn btn-sm ${vista==='folio'   ?'btn-primary':'btn-ghost'}`;
+  if(btnProy)   btnProy.className   = `btn btn-sm ${vista==='proyecto'?'btn-primary':'btn-ghost'}`;
   filtrarVacantesEmpresa();
 }
 
@@ -4314,7 +4312,7 @@ async function eliminarVacante(id){
    ============================================================ */
 function setVacVista(v){
   _vacVistaActual=v;
-  ['folio','proyecto','departamento'].forEach(k=>document.getElementById('vac-vista-'+k)?.classList.toggle('btn-active',v===k));
+  ['folio','proyecto','departamento'].forEach(k=>{const el=document.getElementById('vac-vista-'+k);if(el)el.className=`btn btn-sm ${v===k?'btn-primary':'btn-ghost'}`;});
   renderVacantesTable();
 }
 
@@ -5210,10 +5208,10 @@ function renderTiempos(){
   }).join('');
   document.getElementById('page-tiempos').innerHTML=`
     <div style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap">
-      <button id="ttab-resumen" onclick="tiemposTab('resumen')" style="padding:8px 22px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;background:#2AAADE;color:#fff;transition:all .15s">Resumen</button>
-      <button id="ttab-graficas" onclick="tiemposTab('graficas')" style="padding:8px 22px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;background:var(--surface3);color:var(--text2);transition:all .15s">Gráficas</button>
-      <button id="ttab-vacantes" onclick="tiemposTab('vacantes')" style="padding:8px 22px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;background:var(--surface3);color:var(--text2);transition:all .15s">Vacantes abiertas</button>
-      <button id="ttab-empresa" onclick="tiemposTab('empresa')" style="padding:8px 22px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;background:var(--surface3);color:var(--text2);transition:all .15s">Por empresa</button>
+      <button id="ttab-resumen" class="btn btn-primary" onclick="tiemposTab('resumen')">Resumen</button>
+      <button id="ttab-graficas" class="btn btn-ghost" onclick="tiemposTab('graficas')">Gráficas</button>
+      <button id="ttab-vacantes" class="btn btn-ghost" onclick="tiemposTab('vacantes')">Vacantes abiertas</button>
+      <button id="ttab-empresa" class="btn btn-ghost" onclick="tiemposTab('empresa')">Por empresa</button>
     </div>
     <div id="tiempos-panel-resumen">
       <div class="g4" style="margin-bottom:24px">
@@ -5253,7 +5251,7 @@ function tiemposTab(tab){
     const btn=document.getElementById('ttab-'+t);
     const on=t===tab;
     if(panel)panel.style.display=on?'':'none';
-    if(btn){btn.style.background=on?'#2AAADE':'var(--surface3)';btn.style.color=on?'#fff':'var(--text2)';btn.style.fontWeight=on?'600':'500';}
+    if(btn)btn.className=`btn ${on?'btn-primary':'btn-ghost'}`;
   });
   if(tab==='graficas')_renderTiemposCharts();
   if(tab==='empresa')renderTiemposEmpresa();
@@ -5268,9 +5266,7 @@ function setTeMes(m){
   _teMes=m;
   document.querySelectorAll('[data-temes]').forEach(btn=>{
     const on=parseInt(btn.dataset.temes)===m;
-    btn.style.background=on?'#2AAADE':'var(--surface3)';
-    btn.style.color=on?'#fff':'var(--text2)';
-    btn.style.fontWeight=on?'600':'500';
+    btn.className=`btn btn-sm ${on?'btn-primary':'btn-ghost'}`;
   });
   _teApplyFilters();
 }
@@ -5342,12 +5338,12 @@ function renderTiemposEmpresa(){
     ...allGroups.map(g=>`<option value="${g}"${g===_teGrupoSel?' selected':''}>${g}</option>`),
     ...(hasSin?[`<option value="${sinLabel}"${sinLabel===_teGrupoSel?' selected':''}>${sinLabel}</option>`]:[])
   ].join('');
-  const yearBtns=years.map(y=>{const on=y===_teAnio;return`<button onclick="setTeAnio(${y})" style="${btnBase};font-weight:${on?'600':'400'};background:${on?'var(--text)':'var(--surface3)'};color:${on?'#fff':'var(--text2)'}">${y}</button>`;}).join('');
-  const mesBtns=[0,...mesesConDatos].map(m=>{const on=m===_teMes;return`<button data-temes="${m}" onclick="setTeMes(${m})" style="${btnBase};font-weight:${on?'600':'500'};background:${on?'#2AAADE':'var(--surface3)'};color:${on?'#fff':'var(--text2)'}">${m===0?'Todos':MESES_CORTO[m]}</button>`;}).join('');
-  const grpProy=`<button id="te-grp-proyecto" onclick="setTeGrupo('proyecto')" style="${btnBase};font-weight:${_teGrupo==='proyecto'?'600':'500'};background:${_teGrupo==='proyecto'?'#2AAADE':'var(--surface3)'};color:${_teGrupo==='proyecto'?'#fff':'var(--text2)'}">Por proyecto</button>`;
-  const grpDep=`<button id="te-grp-departamento" onclick="setTeGrupo('departamento')" style="${btnBase};font-weight:${_teGrupo==='departamento'?'600':'500'};background:${_teGrupo==='departamento'?'#2AAADE':'var(--surface3)'};color:${_teGrupo==='departamento'?'#fff':'var(--text2)'}">Por departamento</button>`;
-  const vProy=`<button id="te-vista-proyectos" onclick="setTeVista('proyectos')" style="${btnBase};font-weight:${_teVista==='proyectos'?'600':'500'};background:${_teVista==='proyectos'?'var(--text)':'var(--surface3)'};color:${_teVista==='proyectos'?'#fff':'var(--text2)'}"><i class="fa fa-th-large"></i> Proyectos</button>`;
-  const vHist=`<button id="te-vista-historico" onclick="setTeVista('historico')" style="${btnBase};font-weight:${_teVista==='historico'?'600':'500'};background:${_teVista==='historico'?'var(--text)':'var(--surface3)'};color:${_teVista==='historico'?'#fff':'var(--text2)'}"><i class="fa fa-history"></i> Histórico</button>`;
+  const yearBtns=years.map(y=>{const on=y===_teAnio;return`<button onclick="setTeAnio(${y})" class="btn btn-sm ${on?'btn-primary':'btn-ghost'}">${y}</button>`;}).join('');
+  const mesBtns=[0,...mesesConDatos].map(m=>{const on=m===_teMes;return`<button data-temes="${m}" onclick="setTeMes(${m})" class="btn btn-sm ${on?'btn-primary':'btn-ghost'}">${m===0?'Todos':MESES_CORTO[m]}</button>`;}).join('');
+  const grpProy=`<button id="te-grp-proyecto" onclick="setTeGrupo('proyecto')" class="btn btn-sm ${_teGrupo==='proyecto'?'btn-primary':'btn-ghost'}">Por proyecto</button>`;
+  const grpDep=`<button id="te-grp-departamento" onclick="setTeGrupo('departamento')" class="btn btn-sm ${_teGrupo==='departamento'?'btn-primary':'btn-ghost'}">Por departamento</button>`;
+  const vProy=`<button id="te-vista-proyectos" onclick="setTeVista('proyectos')" class="btn btn-sm ${_teVista==='proyectos'?'btn-primary':'btn-ghost'}"><i class="fa fa-th-large"></i> Proyectos</button>`;
+  const vHist=`<button id="te-vista-historico" onclick="setTeVista('historico')" class="btn btn-sm ${_teVista==='historico'?'btn-primary':'btn-ghost'}"><i class="fa fa-history"></i> Histórico</button>`;
   content.innerHTML=`
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:18px">
       <select id="te-empresa" onchange="renderTiemposEmpresa()" style="${selBase};min-width:160px;max-width:220px">${empOptsAll}</select>
@@ -7554,18 +7550,14 @@ function ctIrPagina(n){
 
 function setCtVista(v){
   _ctVistaActual=v;
-  ['folio','proyecto','departamento'].forEach(k=>{
-    document.getElementById('ct-vista-'+k)?.classList.toggle('btn-active',v===k);
-  });
+  ['folio','proyecto','departamento'].forEach(k=>{const el=document.getElementById('ct-vista-'+k);if(el)el.className=`btn btn-sm ${v===k?'btn-primary':'btn-ghost'}`;});
   const page=document.getElementById('page-contratados');
   if(page) page._ctPage=1;
   _ctRender();
 }
 function setVistaCand(v){
   _candVistaActual=v;
-  ['folio','proyecto','departamento'].forEach(k=>{
-    document.getElementById('cand-vista-'+k)?.classList.toggle('btn-active',v===k);
-  });
+  ['folio','proyecto','departamento'].forEach(k=>{const el=document.getElementById('cand-vista-'+k);if(el)el.className=`btn btn-sm ${v===k?'btn-primary':'btn-ghost'}`;});
   renderCandidatosTable();
 }
 
@@ -7616,9 +7608,9 @@ function renderDesercion(){
   }).join('');
   document.getElementById('page-desercion').innerHTML=`
     <div style="display:flex;gap:6px;margin-bottom:20px">
-      <button id="dtab-resumen" onclick="desercionTab('resumen')" style="padding:8px 22px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;background:#2AAADE;color:#fff;transition:all .15s">Resumen</button>
-      <button id="dtab-graficas" onclick="desercionTab('graficas')" style="padding:8px 22px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;background:var(--surface3);color:var(--text2);transition:all .15s">Gráficas</button>
-      <button id="dtab-historial" onclick="desercionTab('historial')" style="padding:8px 22px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;background:var(--surface3);color:var(--text2);transition:all .15s">Historial</button>
+      <button id="dtab-resumen" class="btn btn-primary" onclick="desercionTab('resumen')">Resumen</button>
+      <button id="dtab-graficas" class="btn btn-ghost" onclick="desercionTab('graficas')">Gráficas</button>
+      <button id="dtab-historial" class="btn btn-ghost" onclick="desercionTab('historial')">Historial</button>
     </div>
     <div id="des-panel-resumen">
       <div class="g4">
@@ -7645,7 +7637,7 @@ function desercionTab(tab){
     const btn=document.getElementById('dtab-'+t);
     const on=t===tab;
     if(panel)panel.style.display=on?'':'none';
-    if(btn){btn.style.background=on?'#2AAADE':'var(--surface3)';btn.style.color=on?'#fff':'var(--text2)';btn.style.fontWeight=on?'600':'500';}
+    if(btn)btn.className=`btn ${on?'btn-primary':'btn-ghost'}`;
   });
   if(tab==='graficas')_renderDesercionCharts();
 }

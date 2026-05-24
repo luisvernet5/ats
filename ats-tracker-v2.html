@@ -229,36 +229,111 @@ input[type=date]{color:var(--text)}
     box-shadow: 4px 0 24px rgba(0,0,0,.28);
   }
   .sidebar.mobile-open { display: flex; }
-  /* Overlay oscuro detrás del drawer */
   .mob-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 998; }
   .mob-overlay.open { display: block; }
-  /* Botón hamburguesa */
   .mob-menu-btn { display: flex !important; align-items: center; justify-content: center; }
-  /* MAIN — ancho completo */
   .main { width: 100%; }
+
   /* TOPBAR */
-  .topbar { padding: 10px 14px !important; gap: 10px; }
-  .topbar-title { font-size: 14px !important; }
-  /* Ocultar botones secundarios en topbar para ahorrar espacio */
+  .topbar { padding: 10px 14px !important; gap: 8px; }
+  .topbar-title { font-size: 13px !important; }
   .topbar-actions .btn-ghost { display: none; }
+
   /* PÁGINAS */
-  .page { padding: 14px 12px !important; }
-  /* GRIDS — una columna */
-  .g4, .g3, .g2 { grid-template-columns: 1fr !important; }
-  /* DASHBOARD empresa-grid */
+  .page { padding: 12px 10px !important; }
+
+  /* GRIDS */
+  .g3, .g2 { grid-template-columns: 1fr !important; }
+  .g4 { grid-template-columns: repeat(2,1fr) !important; }
   #dash-empresas { grid-template-columns: 1fr !important; }
+
   /* TABLAS — scroll horizontal */
   .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  table { min-width: 540px; }
-  /* KPI cards — 2 columnas en móvil */
-  .g4 { grid-template-columns: repeat(2,1fr) !important; }
+  table { min-width: 520px; }
+
   /* FILTROS */
   .fbar { flex-wrap: wrap; gap: 6px !important; }
   .fbar input, .fbar select { width: 100% !important; min-width: unset !important; box-sizing: border-box; }
-  /* MODALES — pantalla completa */
+
+  /* MODALES */
   .modal { width: 100% !important; max-width: 100% !important; max-height: 100vh !important; border-radius: 0 !important; margin: 0 !important; }
-  /* CHIPS drag (empresa modal) */
   #emp-depto-chips, #emp-proy-chips { max-height: 240px; overflow-y: auto; }
+
+  /* =====================================================
+     EMPRESA DETAIL — cabecera
+     ===================================================== */
+  .empresa-detail-header {
+    flex-direction: column !important;
+    gap: 14px !important;
+    padding: 14px 14px !important;
+  }
+  .ed-left { width: 100%; }
+  .ed-name { font-size: 16px !important; }
+  .ed-meta { gap: 6px !important; font-size: 11px !important; }
+
+  /* KPIs: 3 columnas compactas en móvil */
+  .ed-kpis {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+    width: 100%;
+  }
+  .ed-kpi { min-width: unset !important; padding: 8px 6px !important; }
+  .ed-kpi-v { font-size: 17px !important; }
+  .ed-kpi-l { font-size: 9px !important; }
+
+  /* Proceso de reclutamiento — cajas más pequeñas */
+  .empresa-detail-header + div .sec-title { font-size: 12px !important; }
+
+  /* =====================================================
+     EMPRESA CARDS en dashboard
+     ===================================================== */
+  .empresa-card { padding: 14px 12px !important; }
+  .empresa-card .ec-stats { gap: 4px !important; }
+  .empresa-card .ec-stat { padding: 5px 4px !important; }
+  .empresa-card .ec-stat-v { font-size: 14px !important; }
+
+  /* =====================================================
+     RECLUTADOR DETAIL — KPIs y cabecera
+     ===================================================== */
+  .rd-kpis-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  /* Cabecera reclutador — stack en móvil */
+  #reclutador-detail-content > div:first-child {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    padding: 14px !important;
+  }
+  /* Filtros reclutador */
+  #reclutador-detail-content select {
+    width: 100% !important;
+    min-width: unset !important;
+    box-sizing: border-box;
+  }
+
+  /* =====================================================
+     CANDIDATOS TABLE
+     ===================================================== */
+  /* Ocultar columnas menos críticas en móvil */
+  #candidatos-table th:nth-child(4),
+  #candidatos-table td:nth-child(4),
+  #candidatos-table th:nth-child(6),
+  #candidatos-table td:nth-child(6),
+  #candidatos-table th:nth-child(7),
+  #candidatos-table td:nth-child(7) { display: none; }
+
+  /* =====================================================
+     PANEL KPI DETALLE (vista empresa)
+     ===================================================== */
+  .ed-kpi-panel { padding: 12px !important; }
+
+  /* =====================================================
+     TOPBAR BUTTONS — colapsar texto en móvil
+     ===================================================== */
+  .topbar-actions .btn span { display: none; }
+  .topbar-actions .btn { padding: 7px 10px !important; }
 }
 </style>
 </head>
@@ -4910,7 +4985,7 @@ function openReclutadorDetail(recId) {
     </div>`;
 
   const kpisHtml = `
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
+    <div class="rd-kpis-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
       <div class="card"><div class="card-title">Total vacantes</div><div class="card-value">${vacs.length}</div></div>
       <div class="card"><div class="card-title">Abiertas</div><div class="card-value" style="color:var(--accent)">${vacs.filter(v=>v.estado==='Abierta').length}</div></div>
       <div class="card"><div class="card-title">Cubiertas</div><div class="card-value" style="color:var(--green)">${vacs.filter(v=>v.estado==='Cubierta').length}</div></div>

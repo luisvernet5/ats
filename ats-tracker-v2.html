@@ -7975,32 +7975,46 @@ function updateSandboxUI(){
 async function exportarRespaldo(){
   showToast('Generando respaldo...');
   try {
-    const [vacantes, candidatos, empresas, reclutadores, garantias, usuarios] = await Promise.all([
+    const [
+      vacantes, candidatos, empresas, reclutadores, garantias, usuarios,
+      referencias, hc_plantilla, hc_resumen, hc_historico, hc_plantilla_historico
+    ] = await Promise.all([
       sbClient.from('vacantes').select('*'),
       sbClient.from('candidatos').select('*'),
       sbClient.from('empresas').select('*'),
       sbClient.from('reclutadores').select('*'),
       sbClient.from('garantias').select('*'),
       sbClient.from('usuarios').select('*'),
+      sbClient.from('referencias').select('*'),
+      sbClient.from('hc_plantilla').select('*'),
+      sbClient.from('hc_resumen').select('*'),
+      sbClient.from('hc_historico').select('*'),
+      sbClient.from('hc_plantilla_historico').select('*'),
     ]);
     const backup = {
-      version: '1.0',
+      version: '2.0',
       fecha: new Date().toISOString(),
       tablas: {
-        vacantes: vacantes.data||[],
-        candidatos: candidatos.data||[],
         empresas: empresas.data||[],
         reclutadores: reclutadores.data||[],
-        garantias: garantias.data||[],
         usuarios: usuarios.data||[],
+        vacantes: vacantes.data||[],
+        candidatos: candidatos.data||[],
+        garantias: garantias.data||[],
+        referencias: referencias.data||[],
+        hc_plantilla: hc_plantilla.data||[],
+        hc_resumen: hc_resumen.data||[],
+        hc_historico: hc_historico.data||[],
+        hc_plantilla_historico: hc_plantilla_historico.data||[],
       }
     };
+    const counts = Object.entries(backup.tablas).map(([k,v])=>`${k}: ${v.length}`).join(', ');
     const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `respaldo_ats_${today()}.json`;
     a.click();
-    showToast('Respaldo descargado ✓');
+    showToast(`Respaldo descargado ✓ (${counts})`);
   } catch(e){
     showToast('Error: '+e.message,'err');
   }
@@ -8015,7 +8029,7 @@ async function importarRespaldo(input){
     const backup = JSON.parse(text);
     if(!backup.tablas) throw new Error('Archivo de respaldo inválido');
     showToast('Importando datos...');
-    const tablas = ['empresas','reclutadores','vacantes','candidatos','garantias','usuarios'];
+    const tablas = ['empresas','reclutadores','usuarios','vacantes','candidatos','garantias','referencias','hc_plantilla','hc_resumen','hc_historico','hc_plantilla_historico'];
     for(const tabla of tablas){
       const registros = backup.tablas[tabla];
       if(!registros?.length) continue;

@@ -200,10 +200,15 @@ input[type=date]{color:var(--text)}
 .ed-left{}
 .ed-name{font-size:20px;font-weight:600;margin-bottom:4px}
 .ed-meta{font-size:12px;color:var(--text3);display:flex;gap:14px;flex-wrap:wrap}
-.ed-kpis{display:flex;gap:14px}
-.ed-kpi{background:var(--surface2);border-radius:9px;padding:10px 14px;text-align:center;min-width:80px}
+.ed-kpis{display:flex;gap:14px;flex-wrap:wrap}
+.ed-kpi{background:var(--surface2);border-radius:9px;padding:10px 14px;text-align:center;min-width:80px;transition:all .15s}
+.ed-kpi-btn{cursor:pointer;border:2px solid transparent}
+.ed-kpi-btn:hover{background:var(--surface3);transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.08)}
+.ed-kpi-active{border-color:var(--accent)!important;background:var(--glow)!important}
 .ed-kpi-v{font-size:20px;font-weight:600;font-family:var(--mono)}
 .ed-kpi-l{font-size:10px;color:var(--text3)}
+.ed-kpi-panel{background:var(--surface);border:1px solid var(--border2);border-radius:var(--rl);padding:16px 18px;margin-bottom:18px;animation:fadeInDown .18s ease}
+@keyframes fadeInDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
 
 /* VACANTE EXPAND ROW */
 .vac-expand-row{display:none}
@@ -2439,13 +2444,14 @@ function openEmpresaDetail(empId){
         </div>
       </div>
       <div class="ed-kpis">
-        <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-abiertas" style="color:${e.color||'var(--accent)'}">${vacAct}</div><div class="ed-kpi-l">Abiertas</div></div>
-        <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-total">${vacs.length}</div><div class="ed-kpi-l">Total vac.</div></div>
-        <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-validados" style="color:var(--green)">${validados}</div><div class="ed-kpi-l">Contratados</div></div>
-        <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-avgdays" style="color:var(--amber)">${avgDays||'—'}</div><div class="ed-kpi-l">Días prom.</div></div>
-        <div class="ed-kpi"><div class="ed-kpi-v" id="ed-kpi-deser" style="color:var(--red)">${desertores}</div><div class="ed-kpi-l">Deserciones</div></div>
+        <div class="ed-kpi ed-kpi-btn" id="ed-kpi-chip-abiertas" onclick="showEDKpiPanel('abiertas','${empId}')"><div class="ed-kpi-v" id="ed-kpi-abiertas" style="color:${e.color||'var(--accent)'}">${vacAct}</div><div class="ed-kpi-l">Abiertas</div></div>
+        <div class="ed-kpi ed-kpi-btn" id="ed-kpi-chip-total" onclick="showEDKpiPanel('total','${empId}')"><div class="ed-kpi-v" id="ed-kpi-total">${vacs.length}</div><div class="ed-kpi-l">Total vac.</div></div>
+        <div class="ed-kpi ed-kpi-btn" id="ed-kpi-chip-contratados" onclick="showEDKpiPanel('contratados','${empId}')"><div class="ed-kpi-v" id="ed-kpi-validados" style="color:var(--green)">${validados}</div><div class="ed-kpi-l">Contratados</div></div>
+        <div class="ed-kpi" title="Promedio de días para cubrir una vacante"><div class="ed-kpi-v" id="ed-kpi-avgdays" style="color:var(--amber)">${avgDays||'—'}</div><div class="ed-kpi-l">Días prom.</div></div>
+        <div class="ed-kpi ed-kpi-btn" id="ed-kpi-chip-deserciones" onclick="showEDKpiPanel('deserciones','${empId}')"><div class="ed-kpi-v" id="ed-kpi-deser" style="color:var(--red)">${desertores}</div><div class="ed-kpi-l">Deserciones</div></div>
       </div>
     </div>
+    <div id="ed-kpi-panel" style="display:none"></div>
     <div style="margin-bottom:20px">
       <div class="sec-title">Proceso de reclutamiento configurado</div>
       <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${processHtml}</div>
@@ -2499,6 +2505,85 @@ function openEmpresaDetail(empId){
   document.getElementById('page-title').textContent=e.nombre;
   showPage('empresa-detail');
   setTimeout(() => renderAnalyticsTab(empId, 'general'), 100);
+}
+
+function showEDKpiPanel(type, empId){
+  const panel = document.getElementById('ed-kpi-panel');
+  if(!panel) return;
+  const chips = ['abiertas','total','contratados','deserciones'];
+  // Toggle: si ya está activo el mismo, cierra
+  if(panel.dataset.activeType===type && panel.style.display!=='none'){
+    panel.style.display='none'; panel.dataset.activeType='';
+    chips.forEach(k=>document.getElementById('ed-kpi-chip-'+k)?.classList.remove('ed-kpi-active'));
+    return;
+  }
+  chips.forEach(k=>document.getElementById('ed-kpi-chip-'+k)?.classList.remove('ed-kpi-active'));
+  document.getElementById('ed-kpi-chip-'+type)?.classList.add('ed-kpi-active');
+  panel.dataset.activeType=type;
+
+  const vacs = DB.vacantes.filter(v=>v.empresa_id===empId);
+  const allCands = DB.candidatos.filter(c=>vacs.find(v=>v.id===c.vacante_id));
+
+  let title='', thead='', tbody='';
+
+  if(type==='abiertas'){
+    const list=vacs.filter(v=>v.estado==='Abierta');
+    title=`Vacantes abiertas — ${list.length} registro${list.length!==1?'s':''}`;
+    thead=`<tr><th>#</th><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Días</th><th>Cands.</th></tr>`;
+    tbody=list.map((v,i)=>{
+      const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+      const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
+      const act=cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length;
+      const dias=daysBetween(v.fecha_apertura);
+      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px">${i+1}</td><td class="td-p">${v.nombre}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td style="font-size:12px">${v.proyecto||'—'}</td><td style="font-size:12px">${v.departamento||'—'}</td><td>${fmt(v.fecha_apertura)}</td><td><span class="dpill ${dClass(dias)}">${dias}d</span></td><td style="text-align:center">${act}/${cands.length}</td></tr>`;
+    }).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Sin vacantes abiertas</td></tr>`;
+  }
+  else if(type==='total'){
+    title=`Todas las vacantes — ${vacs.length} registro${vacs.length!==1?'s':''}`;
+    thead=`<tr><th>#</th><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Estado</th><th>Apertura</th><th>Días</th></tr>`;
+    tbody=[...vacs].sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true})).map((v,i)=>{
+      const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+      const dias=daysBetween(v.fecha_apertura);
+      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px">${i+1}</td><td class="td-p">${v.nombre}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td style="font-size:12px">${v.proyecto||'—'}</td><td style="font-size:12px">${v.departamento||'—'}</td><td>${badgeVacEst(v.estado)}</td><td>${fmt(v.fecha_apertura)}</td><td><span class="dpill ${dClass(dias)}">${dias}d</span></td></tr>`;
+    }).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Sin vacantes</td></tr>`;
+  }
+  else if(type==='contratados'){
+    const list=allCands.filter(esColocado);
+    title=`Contratados — ${list.length} registro${list.length!==1?'s':''}`;
+    thead=`<tr><th>#</th><th>Candidato</th><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Proyecto</th><th>Fecha contratación</th><th>Semana</th><th>Días proceso</th></tr>`;
+    tbody=list.map((c,i)=>{
+      const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+      const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+      const fechaCont=getFechaContratacion(v,c);
+      const wn=getWeekNumber(fechaCont);
+      const dias=daysBetween(v.fecha_apertura,fechaCont||today());
+      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px">${i+1}</td><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td style="font-size:12px">${v.proyecto||'—'}</td><td style="font-family:var(--mono);font-size:12px">${fechaCont?fmt(fechaCont):'—'}</td><td style="text-align:center">${wn?`<span style="background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:2px 7px;font-size:11px;font-family:var(--mono);font-weight:500">S${wn.week}</span>`:'—'}</td><td>${dias!==null?`<span class="dpill ${dClass(dias)}">${dias}d</span>`:'—'}</td></tr>`;
+    }).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Sin contratados</td></tr>`;
+  }
+  else if(type==='deserciones'){
+    const list=allCands.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
+    title=`Deserciones — ${list.length} registro${list.length!==1?'s':''}`;
+    thead=`<tr><th>#</th><th>Candidato</th><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Etapa salida</th><th>Motivo</th><th>Fecha</th><th>Días proceso</th></tr>`;
+    tbody=list.map((c,i)=>{
+      const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+      const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+      const dias=processTotal(c);
+      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px">${i+1}</td><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td><span class="badge br">${c.etapa}</span></td><td style="font-size:12px;color:var(--text2)">${c.motivo_desercion||'—'}</td><td style="font-family:var(--mono);font-size:12px">${c.fecha_salida?fmt(c.fecha_salida):'—'}</td><td>${dias!==null?`<span class="dpill ${dClass(dias)}">${dias}d</span>`:'—'}</td></tr>`;
+    }).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Sin deserciones registradas</td></tr>`;
+  }
+
+  panel.style.display='block';
+  panel.className='ed-kpi-panel';
+  panel.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:600;color:var(--text)">${title}</div>
+      <button onclick="document.getElementById('ed-kpi-panel').style.display='none';document.getElementById('ed-kpi-panel').dataset.activeType='';document.querySelectorAll('.ed-kpi-btn').forEach(el=>el.classList.remove('ed-kpi-active'))" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text3);line-height:1;padding:2px 6px;border-radius:5px" title="Cerrar">×</button>
+    </div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+      <thead style="background:var(--surface2)">${thead}</thead>
+      <tbody>${tbody}</tbody>
+    </table></div>`;
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
 function _buildEDVacsRows(vacs, empId, etapas, startIdx=1){

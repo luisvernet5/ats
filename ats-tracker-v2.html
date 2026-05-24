@@ -5124,6 +5124,7 @@ let _teMes=0;
 let _teAnio=new Date().getFullYear();
 let _teVista='proyectos';
 let _teGrupoSel='';
+let _tePendingEmpId='';
 
 function renderTiempos(){
   const validados=DB.candidatos.filter(esColocado);
@@ -5134,6 +5135,51 @@ function renderTiempos(){
   const empActivas=DB.empresas.filter(e=>DB.vacantes.find(v=>v.empresa_id===e.id&&v.estado==='Abierta')).length;
   const empOptsF=DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
   const recOptsF=DB.reclutadores.map(r=>`<option value="${r.id}">${r.nombre}</option>`).join('');
+  const avg=arr=>arr.length?Math.round(arr.reduce((a,b)=>a+b,0)/arr.length):0;
+  const empCards=DB.empresas.map(emp=>{
+    const vacs=DB.vacantes.filter(v=>v.empresa_id===emp.id&&v.fecha_apertura);
+    if(!vacs.length)return'';
+    const items=vacs.map(v=>{
+      const fc=_vacCierreDate(v);
+      const abierta=v.estado==='Abierta'||!fc;
+      const dT=daysBetween(v.fecha_apertura,fc||today())||0;
+      const hired=DB.candidatos.find(c=>c.vacante_id===v.id&&esColocado(c));
+      const dC=hired?(clienteDays(hired)||0):0;
+      return{abierta,dT,dC,dI:Math.max(0,dT-dC)};
+    });
+    const aT=avg(items.map(x=>x.dT));
+    const aC=avg(items.map(x=>x.dC));
+    const aI=avg(items.map(x=>x.dI));
+    const ab=items.filter(x=>x.abierta).length;
+    const cu=items.length-ab;
+    const col=emp.color||'var(--accent)';
+    return`<div onclick="goToEmpresaTiempos('${emp.id}')" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;cursor:pointer;transition:border-color .15s,transform .15s" onmouseover="this.style.borderColor='var(--border2)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform=''">
+      <div style="height:3px;background:${col}"></div>
+      <div style="padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px">${emp.nombre}</div>
+            <div style="font-size:11px;color:var(--text3)">${vacs.length} vacante${vacs.length!==1?'s':''}&ensp;<span class="badge bg" style="font-size:10px">${cu} cub.</span>&ensp;<span class="badge bb" style="font-size:10px">${ab} ab.</span></div>
+          </div>
+          <span style="font-size:11px;color:var(--accent)">Ver detalle <i class="fa fa-arrow-right" style="font-size:10px"></i></span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div style="background:var(--surface2);border-radius:8px;padding:8px;text-align:center">
+            <div class="dpill ${dClass(aT)}" style="font-size:13px;font-weight:600;margin-bottom:3px">${aT}d</div>
+            <div style="font-size:10px;color:var(--text3)">prom. total</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:8px;text-align:center">
+            <div class="dpill dwarn" style="font-size:13px;font-weight:600;margin-bottom:3px">${aC}d</div>
+            <div style="font-size:10px;color:var(--text3)">cliente</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:8px;text-align:center">
+            <div class="dpill ${dClass(aI)}" style="font-size:13px;font-weight:600;margin-bottom:3px">${aI}d</div>
+            <div style="font-size:10px;color:var(--text3)">neto</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
   document.getElementById('page-tiempos').innerHTML=`
     <div style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap">
       <button id="ttab-resumen" onclick="tiemposTab('resumen')" style="padding:8px 22px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;background:#2AAADE;color:#fff;transition:all .15s">Resumen</button>
@@ -5142,11 +5188,15 @@ function renderTiempos(){
       <button id="ttab-empresa" onclick="tiemposTab('empresa')" style="padding:8px 22px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;background:var(--surface3);color:var(--text2);transition:all .15s">Por empresa</button>
     </div>
     <div id="tiempos-panel-resumen">
-      <div class="g4">
+      <div class="g4" style="margin-bottom:24px">
         <div class="card"><div class="card-title">Prom. días proceso total</div><div class="card-value">${avgTD||'—'}</div><div class="card-sub">apertura → validación</div></div>
         <div class="card"><div class="card-title">Prom. días cliente</div><div class="card-value" style="color:var(--amber)">${avgCli||'—'}</div><div class="card-sub">valoración → validación</div></div>
         <div class="card"><div class="card-title">Candidatos validados</div><div class="card-value" style="color:var(--green)">${validados.length}</div></div>
         <div class="card"><div class="card-title">Empresas activas</div><div class="card-value">${empActivas}</div></div>
+      </div>
+      <div class="sec-title">Tiempos por empresa</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">
+        ${empCards||'<div style="color:var(--text3);font-size:13px;padding:20px 0">Sin empresas con vacantes registradas</div>'}
       </div>
     </div>
     <div id="tiempos-panel-graficas" style="display:none">
@@ -5209,6 +5259,11 @@ function setTeGrupoSel(v){
   _teGrupoSel=v;
   _teApplyFilters();
 }
+function goToEmpresaTiempos(empId){
+  _tePendingEmpId=empId;
+  _teMes=0;
+  tiemposTab('empresa');
+}
 
 function _vacCierreDate(v){
   if(v.fecha_cierre)return v.fecha_cierre;
@@ -5217,7 +5272,8 @@ function _vacCierreDate(v){
 }
 
 function renderTiemposEmpresa(){
-  const empId=document.getElementById('te-empresa')?.value||'';
+  let empId=document.getElementById('te-empresa')?.value||'';
+  if(_tePendingEmpId){empId=_tePendingEmpId;_tePendingEmpId='';}
   const content=document.getElementById('te-content');
   if(!content)return;
   const empOptsAll=DB.empresas.map(e=>`<option value="${e.id}"${e.id===empId?' selected':''}>${e.nombre}</option>`).join('');

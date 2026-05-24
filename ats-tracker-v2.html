@@ -5120,6 +5120,9 @@ function toggleRecCandRow(vid){
    TIEMPOS
    ============================================================ */
 let _teGrupo='proyecto';
+let _teMes=0;
+let _teAnio=new Date().getFullYear();
+let _teVista='proyectos';
 
 function renderTiempos(){
   const validados=DB.candidatos.filter(esColocado);
@@ -5201,7 +5204,34 @@ function setTeGrupo(g){
     btn.style.color=on?'#fff':'var(--text2)';
     btn.style.fontWeight=on?'600':'500';
   });
+  _teApplyFilters();
+}
+function setTeMes(m){
+  _teMes=m;
+  document.querySelectorAll('[data-temes]').forEach(btn=>{
+    const on=parseInt(btn.dataset.temes)===m;
+    btn.style.background=on?'#2AAADE':'var(--surface3)';
+    btn.style.color=on?'#fff':'var(--text2)';
+    btn.style.fontWeight=on?'600':'500';
+  });
+  _teApplyFilters();
+}
+function setTeAnio(a){
+  _teAnio=a;
+  _teMes=0;
   renderTiemposEmpresa();
+}
+function setTeVista(v){
+  _teVista=v;
+  ['proyectos','historico'].forEach(k=>{
+    const btn=document.getElementById('te-vista-'+k);
+    if(!btn)return;
+    const on=k===v;
+    btn.style.background=on?'var(--text)':'var(--surface3)';
+    btn.style.color=on?'#fff':'var(--text2)';
+    btn.style.fontWeight=on?'600':'500';
+  });
+  _teApplyFilters();
 }
 
 function _vacCierreDate(v){
@@ -5215,141 +5245,200 @@ function renderTiemposEmpresa(){
   const content=document.getElementById('te-content');
   if(!content)return;
   if(!empId){
-    content.innerHTML=`<div style="text-align:center;padding:48px 24px;color:var(--text3);font-size:13px"><i class="fa fa-building" style="font-size:28px;margin-bottom:12px;display:block;opacity:.4"></i>Selecciona una empresa para ver el análisis de tiempos por vacante</div>`;
+    content.innerHTML=`<div style="text-align:center;padding:48px 24px;color:var(--text3);font-size:13px"><i class="fa fa-building" style="font-size:28px;margin-bottom:12px;display:block;opacity:.4"></i>Selecciona una empresa para ver el análisis de tiempos</div>`;
     return;
   }
-  const emp=DB.empresas.find(e=>e.id===empId)||{};
-  const vacs=DB.vacantes.filter(v=>v.empresa_id===empId&&v.fecha_apertura);
-  if(!vacs.length){
+  const allVacs=DB.vacantes.filter(v=>v.empresa_id===empId&&v.fecha_apertura);
+  if(!allVacs.length){
     content.innerHTML=`<div style="text-align:center;padding:48px 24px;color:var(--text3);font-size:13px"><i class="fa fa-clock" style="font-size:28px;margin-bottom:12px;display:block;opacity:.4"></i>No hay vacantes registradas para esta empresa</div>`;
     return;
   }
-  const MESES=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const avg=arr=>arr.length?Math.round(arr.reduce((a,b)=>a+b,0)/arr.length):0;
-  const groupLabel=_teGrupo==='proyecto'?'Proyecto':'Departamento';
-  const sinLabel='(Sin '+(_teGrupo==='proyecto'?'proyecto':'departamento')+')';
-  const items=vacs.map(v=>{
+  const years=[...new Set(allVacs.map(v=>parseInt(v.fecha_apertura.split('-')[0])))].sort().reverse();
+  if(!years.includes(_teAnio))_teAnio=years[0];
+  const vacsAnio=allVacs.filter(v=>parseInt(v.fecha_apertura.split('-')[0])===_teAnio);
+  const mesesConDatos=[...new Set(vacsAnio.map(v=>parseInt(v.fecha_apertura.split('-')[1])))].sort((a,b)=>a-b);
+  const MESES_CORTO=['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const btnBase='padding:5px 11px;border:none;border-radius:7px;cursor:pointer;font-size:12px;transition:all .15s';
+  const yearBtns=years.map(y=>{
+    const on=y===_teAnio;
+    return`<button onclick="setTeAnio(${y})" style="${btnBase};font-weight:${on?'600':'400'};background:${on?'var(--text)':'var(--surface3)'};color:${on?'#fff':'var(--text2)'}">${y}</button>`;
+  }).join('');
+  const mesBtns=[0,...mesesConDatos].map(m=>{
+    const on=m===_teMes;
+    return`<button data-temes="${m}" onclick="setTeMes(${m})" style="${btnBase};font-weight:${on?'600':'500'};background:${on?'#2AAADE':'var(--surface3)'};color:${on?'#fff':'var(--text2)'}">${m===0?'Todos':MESES_CORTO[m]}</button>`;
+  }).join('');
+  const vistaBtns=`
+    <button id="te-vista-proyectos" onclick="setTeVista('proyectos')" style="${btnBase};font-weight:${_teVista==='proyectos'?'600':'500'};background:${_teVista==='proyectos'?'var(--text)':'var(--surface3)'};color:${_teVista==='proyectos'?'#fff':'var(--text2)'}"><i class="fa fa-th-large"></i> Proyectos</button>
+    <button id="te-vista-historico" onclick="setTeVista('historico')" style="${btnBase};font-weight:${_teVista==='historico'?'600':'500'};background:${_teVista==='historico'?'var(--text)':'var(--surface3)'};color:${_teVista==='historico'?'#fff':'var(--text2)'}"><i class="fa fa-history"></i> Histórico</button>`;
+  content.innerHTML=`
+    <div style="display:flex;gap:10px;margin-bottom:18px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;gap:4px;flex-wrap:wrap">${yearBtns}</div>
+      <div style="width:1px;height:22px;background:var(--border2);flex-shrink:0"></div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">${mesBtns}</div>
+      <span style="flex:1"></span>
+      <div style="display:flex;gap:4px">${vistaBtns}</div>
+    </div>
+    <div id="te-kpis" style="margin-bottom:20px"></div>
+    <div id="te-main"></div>`;
+  _teApplyFilters();
+}
+
+function _teApplyFilters(){
+  const empId=document.getElementById('te-empresa')?.value||'';
+  if(!empId)return;
+  const kpisEl=document.getElementById('te-kpis');
+  const mainEl=document.getElementById('te-main');
+  if(!kpisEl||!mainEl)return;
+  const allVacs=DB.vacantes.filter(v=>v.empresa_id===empId&&v.fecha_apertura);
+  const mkItem=v=>{
     const fechaCierre=_vacCierreDate(v);
     const abierta=v.estado==='Abierta'||!fechaCierre;
-    const endDate=fechaCierre||today();
-    const diasTotales=daysBetween(v.fecha_apertura,endDate)||0;
+    const diasTotales=daysBetween(v.fecha_apertura,fechaCierre||today())||0;
     const hired=DB.candidatos.find(c=>c.vacante_id===v.id&&esColocado(c));
     const diasCliente=hired?(clienteDays(hired)||0):0;
     const diasInternos=Math.max(0,diasTotales-diasCliente);
     const rec=DB.reclutadores.find(r=>r.id===v.reclutador_id)||{};
-    const [yr,mo]=v.fecha_apertura.split('-');
-    return{v,fechaCierre,abierta,diasTotales,diasCliente,diasInternos,rec,monthKey:`${yr}-${mo}`,yr:parseInt(yr),mo:parseInt(mo)};
+    return{v,fechaCierre,abierta,diasTotales,diasCliente,diasInternos,rec};
+  };
+  const filtered=allVacs.filter(v=>{
+    const[yr,mo]=v.fecha_apertura.split('-').map(Number);
+    if(yr!==_teAnio)return false;
+    if(_teMes!==0&&mo!==_teMes)return false;
+    return true;
   });
+  const items=filtered.map(mkItem);
+  const avg=arr=>arr.length?Math.round(arr.reduce((a,b)=>a+b,0)/arr.length):0;
   const totT=avg(items.map(x=>x.diasTotales));
   const totC=avg(items.map(x=>x.diasCliente));
   const totI=avg(items.map(x=>x.diasInternos));
   const abiertas=items.filter(x=>x.abierta).length;
-  const cubiertas=items.filter(x=>!x.abierta).length;
-  const byMonth={};
-  items.forEach(item=>{
-    if(!byMonth[item.monthKey])byMonth[item.monthKey]=[];
-    byMonth[item.monthKey].push(item);
-  });
-  const monthKeys=Object.keys(byMonth).sort().reverse();
-  let html=`
-    <div class="g4" style="margin-bottom:24px">
+  const cubiertas=items.length-abiertas;
+  kpisEl.innerHTML=`
+    <div class="g4">
       <div class="card">
-        <div class="card-title">Total vacantes</div>
-        <div class="card-value">${vacs.length}</div>
-        <div class="card-sub" style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="card-title">Vacantes en período</div>
+        <div class="card-value">${items.length}</div>
+        <div class="card-sub" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
           <span class="badge bg">${cubiertas} cubiertas</span>
           <span class="badge bb">${abiertas} abiertas</span>
         </div>
       </div>
-      <div class="card"><div class="card-title">Prom. días proceso total</div><div class="card-value"><span class="dpill ${dClass(totT)}" style="font-size:22px">${totT}d</span></div><div class="card-sub">apertura → cierre (o hoy si abierta)</div></div>
+      <div class="card"><div class="card-title">Prom. días proceso total</div><div class="card-value"><span class="dpill ${dClass(totT)}" style="font-size:22px">${totT}d</span></div><div class="card-sub">apertura → cierre (o hoy)</div></div>
       <div class="card"><div class="card-title">Prom. días cliente</div><div class="card-value" style="color:var(--amber)">${totC}d</div><div class="card-sub">tiempo de validación cliente</div></div>
       <div class="card"><div class="card-title">Prom. días internos</div><div class="card-value"><span class="dpill ${dClass(totI)}" style="font-size:22px">${totI}d</span></div><div class="card-sub">proceso interno neto</div></div>
     </div>`;
-  monthKeys.forEach(mk=>{
-    const monthItems=byMonth[mk];
-    const [yr,mo]=mk.split('-');
-    const monthLabel=MESES[parseInt(mo)]+' '+yr;
-    const mT=avg(monthItems.map(x=>x.diasTotales));
-    const mC=avg(monthItems.map(x=>x.diasCliente));
-    const mI=avg(monthItems.map(x=>x.diasInternos));
-    const mAbiertas=monthItems.filter(x=>x.abierta).length;
-    const mGroups={};
-    monthItems.forEach(item=>{
-      const gKey=item.v[_teGrupo]||sinLabel;
-      if(!mGroups[gKey])mGroups[gKey]=[];
-      mGroups[gKey].push(item);
-    });
-    const groupKeys=Object.keys(mGroups).sort((a,b)=>a.localeCompare(b));
-    const groupSummaryRows=groupKeys.map(key=>{
-      const its=mGroups[key];
-      const aT=avg(its.map(x=>x.diasTotales));
-      const aC=avg(its.map(x=>x.diasCliente));
-      const aI=avg(its.map(x=>x.diasInternos));
-      const gAb=its.filter(x=>x.abierta).length;
-      return`<tr>
-        <td class="td-p">${key}</td>
-        <td style="text-align:center;font-family:var(--mono)">${its.length}${gAb?` <span style="font-size:10px;color:var(--accent)">(${gAb} abiertas)</span>`:''}
-        </td>
-        <td><span class="dpill ${dClass(aT)}">${aT}d</span></td>
-        <td><span class="dpill dwarn">${aC}d</span></td>
-        <td><span class="dpill ${dClass(aI)}">${aI}d</span></td>
-      </tr>`;
-    }).join('');
-    const vacRows=[...monthItems].sort((a,b)=>(a.v[_teGrupo]||'').localeCompare(b.v[_teGrupo]||'')||(a.v.fecha_apertura||'').localeCompare(b.v.fecha_apertura||'')).map((item,i)=>{
-      const estadoBadge=item.v.estado==='Cubierta'?`<span class="badge bg" style="font-size:10px">Cubierta</span>`:item.v.estado==='Cancelada'?`<span class="badge br" style="font-size:10px">Cancelada</span>`:`<span class="badge bb" style="font-size:10px">Abierta</span>`;
-      const cierreCell=item.fechaCierre?fmt(item.fechaCierre):`<span style="color:var(--accent);font-size:11px">En curso</span>`;
-      return`<tr>
-        <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
-        <td class="td-p">${item.v.nombre}</td>
-        <td>${estadoBadge}</td>
-        <td style="font-size:12px;color:var(--text2)">${item.v.proyecto||'—'}</td>
-        <td style="font-size:12px;color:var(--text2)">${item.v.departamento||'—'}</td>
-        <td>${item.rec.nombre||'—'}</td>
-        <td style="font-size:12px">${fmt(item.v.fecha_apertura)}</td>
-        <td style="font-size:12px">${cierreCell}</td>
-        <td><span class="dpill ${dClass(item.diasTotales)}">${item.diasTotales}d${item.abierta?' <i class="fa fa-hourglass-half" style="font-size:9px;opacity:.7" title="En curso"></i>':''}</span></td>
-        <td><span class="dpill dwarn">${item.diasCliente}d</span></td>
-        <td><span class="dpill ${dClass(item.diasInternos)}">${item.diasInternos}d</span></td>
-      </tr>`;
-    }).join('');
-    html+=`
-      <div style="margin-bottom:32px">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
-          <div style="font-size:15px;font-weight:700;color:var(--text)">${monthLabel}</div>
-          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-            <span style="font-size:12px;color:var(--text3)">${monthItems.length} vacante${monthItems.length!==1?'s':''}${mAbiertas?' · '+mAbiertas+' en curso':''}</span>
-            <span class="dpill ${dClass(mT)}">${mT}d prom. total</span>
-            <span class="dpill dwarn">${mC}d cliente</span>
-            <span class="dpill ${dClass(mI)}">${mI}d internos</span>
-          </div>
-        </div>
-        ${groupKeys.length>1?`
-        <div class="table-wrap" style="margin-bottom:12px">
-          <table>
-            <thead><tr>
-              <th>${groupLabel}</th>
-              <th style="text-align:center">Vacantes</th>
-              <th>Prom. días totales</th>
-              <th>Prom. días cliente</th>
-              <th>Prom. días internos</th>
-            </tr></thead>
-            <tbody>${groupSummaryRows}</tbody>
-          </table>
-        </div>`:''}
-        <div class="table-wrap">
-          <table>
-            <thead><tr>
-              <th style="width:36px;text-align:center">#</th>
-              <th>Vacante</th><th>Estado</th><th>Proyecto</th><th>Departamento</th><th>Reclutador</th>
-              <th>Apertura</th><th>Cierre</th>
-              <th>Días totales</th><th>Días cliente</th><th>Días internos</th>
-            </tr></thead>
-            <tbody>${vacRows||'<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:16px">Sin vacantes</td></tr>'}</tbody>
-          </table>
-        </div>
-      </div>`;
+  mainEl.innerHTML=_teVista==='historico'?_buildTeHistorico(allVacs.map(mkItem)):_buildTeProyectos(items);
+}
+
+function _buildTeProyectos(items){
+  if(!items.length)return`<div style="text-align:center;padding:32px;color:var(--text3);font-size:13px">Sin vacantes para el período seleccionado</div>`;
+  const avg=arr=>arr.length?Math.round(arr.reduce((a,b)=>a+b,0)/arr.length):0;
+  const sinLabel='(Sin '+(_teGrupo==='proyecto'?'proyecto':'departamento')+')';
+  const groups={};
+  items.forEach(item=>{
+    const gKey=item.v[_teGrupo]||sinLabel;
+    if(!groups[gKey])groups[gKey]=[];
+    groups[gKey].push(item);
   });
-  content.innerHTML=html;
+  const thS='padding:7px 12px;text-align:left;font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-top:1px solid var(--border)';
+  return Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0])).map(([key,its])=>{
+    const aT=avg(its.map(x=>x.diasTotales));
+    const aC=avg(its.map(x=>x.diasCliente));
+    const aI=avg(its.map(x=>x.diasInternos));
+    const ab=its.filter(x=>x.abierta).length;
+    const sorted=[...its].sort((a,b)=>(a.v.fecha_apertura||'').localeCompare(b.v.fecha_apertura||''));
+    const rows=sorted.map((item,i)=>{
+      const est=item.v.estado==='Cubierta'?`<span class="badge bg" style="font-size:10px">Cubierta</span>`:item.v.estado==='Cancelada'?`<span class="badge br" style="font-size:10px">Cancelada</span>`:`<span class="badge bb" style="font-size:10px">Abierta</span>`;
+      const cierre=item.fechaCierre?fmt(item.fechaCierre):`<span style="color:var(--accent);font-size:11px">En curso</span>`;
+      return`<tr>
+        <td style="font-size:11px;color:var(--text3);font-family:var(--mono);width:28px;text-align:center;padding:8px 6px">${i+1}</td>
+        <td class="td-p" style="padding:8px 12px">${item.v.nombre}</td>
+        <td style="padding:8px 12px">${est}</td>
+        <td style="padding:8px 12px;font-size:12px;color:var(--text2)">${item.rec.nombre||'—'}</td>
+        <td style="padding:8px 12px;font-size:12px">${fmt(item.v.fecha_apertura)}</td>
+        <td style="padding:8px 12px;font-size:12px">${cierre}</td>
+        <td style="padding:8px 12px"><span class="dpill ${dClass(item.diasTotales)}">${item.diasTotales}d${item.abierta?'<i class="fa fa-hourglass-half" style="font-size:9px;margin-left:3px;opacity:.6"></i>':''}</span></td>
+        <td style="padding:8px 12px"><span class="dpill dwarn">${item.diasCliente}d</span></td>
+        <td style="padding:8px 12px"><span class="dpill ${dClass(item.diasInternos)}">${item.diasInternos}d</span></td>
+      </tr>`;
+    }).join('');
+    return`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:14px">
+      <div style="background:var(--surface2);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${key}${ab?` <span style="font-size:11px;font-weight:400;color:var(--accent);margin-left:6px">${ab} en curso</span>`:''}</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:11px;color:var(--text3)">${its.length} vacante${its.length!==1?'s':''}</span>
+          <span class="dpill ${dClass(aT)}">${aT}d prom.</span>
+          <span class="dpill dwarn">${aC}d cliente</span>
+          <span class="dpill ${dClass(aI)}">${aI}d neto</span>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:var(--surface2)">
+          <th style="${thS};width:28px;text-align:center">#</th>
+          <th style="${thS}">Vacante</th>
+          <th style="${thS}">Estado</th>
+          <th style="${thS}">Reclutador</th>
+          <th style="${thS}">Apertura</th>
+          <th style="${thS}">Cierre</th>
+          <th style="${thS}">Días total</th>
+          <th style="${thS}">Días cliente</th>
+          <th style="${thS}">Días neto</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+}
+
+function _buildTeHistorico(allItems){
+  const avg=arr=>arr.length?Math.round(arr.reduce((a,b)=>a+b,0)/arr.length):0;
+  const byMonth={};
+  allItems.forEach(item=>{
+    const[yr,mo]=item.v.fecha_apertura.split('-');
+    const mk=`${yr}-${mo}`;
+    if(!byMonth[mk])byMonth[mk]={items:[],yr:parseInt(yr),mo:parseInt(mo)};
+    byMonth[mk].items.push(item);
+  });
+  const MESES=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const monthKeys=Object.keys(byMonth).sort().reverse();
+  if(!monthKeys.length)return`<div style="text-align:center;padding:32px;color:var(--text3)">Sin datos históricos</div>`;
+  const rows=monthKeys.map(mk=>{
+    const{items,yr,mo}=byMonth[mk];
+    const aT=avg(items.map(x=>x.diasTotales));
+    const aC=avg(items.map(x=>x.diasCliente));
+    const aI=avg(items.map(x=>x.diasInternos));
+    const ab=items.filter(x=>x.abierta).length;
+    const cu=items.length-ab;
+    const isActive=yr===_teAnio&&mo===_teMes;
+    return`<tr onclick="setTeAnio(${yr});setTeMes(${mo});setTeVista('proyectos')" style="cursor:pointer${isActive?';background:var(--glow)':''}" title="Ver proyectos de ${MESES[mo]} ${yr}">
+      <td class="td-p" style="padding:10px 14px">${MESES[mo]} ${yr}</td>
+      <td style="padding:10px 14px;text-align:center;font-family:var(--mono)">${items.length}</td>
+      <td style="padding:10px 14px;text-align:center">
+        ${cu?`<span class="badge bg" style="margin-right:3px">${cu} cub.</span>`:''}
+        ${ab?`<span class="badge bb">${ab} ab.</span>`:''}
+      </td>
+      <td style="padding:10px 14px"><span class="dpill ${dClass(aT)}">${aT}d</span></td>
+      <td style="padding:10px 14px"><span class="dpill dwarn">${aC}d</span></td>
+      <td style="padding:10px 14px"><span class="dpill ${dClass(aI)}">${aI}d</span></td>
+      <td style="padding:10px 14px;font-size:11px;color:var(--accent)"><i class="fa fa-arrow-right"></i></td>
+    </tr>`;
+  }).join('');
+  return`
+    <div style="font-size:12px;color:var(--text3);margin-bottom:10px"><i class="fa fa-info-circle" style="margin-right:4px"></i>Haz clic en un mes para ver el detalle por proyectos</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Mes / Año</th>
+          <th style="text-align:center">Vacantes</th>
+          <th style="text-align:center">Estado</th>
+          <th>Prom. total</th>
+          <th>Prom. cliente</th>
+          <th>Prom. neto</th>
+          <th style="width:32px"></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 function _renderTiemposCharts(){
   const recL=DB.reclutadores.map(r=>r.nombre.split(' ')[0]);

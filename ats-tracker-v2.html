@@ -347,6 +347,7 @@ input[type=date]{color:var(--text)}
 </style>
 </head>
 <body style="visibility:hidden">
+<div id="sb-js-tooltip" style="position:fixed;background:var(--surface3,#1e1e2e);color:var(--text);padding:5px 10px;border-radius:6px;font-size:12px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;box-shadow:0 2px 8px rgba(0,0,0,.3);z-index:9999;transform:translateY(-50%)"></div>
 <div id="auth-screen" style="position:fixed;inset:0;background:#F4F6F9;display:flex;align-items:center;justify-content:center;z-index:9999">
   <div style="background:#fff;border:1px solid #E5E7EB;border-radius:16px;padding:36px 40px;width:380px;box-shadow:0 4px 24px rgba(0,0,0,.08)">
     <div style="text-align:center;margin-bottom:28px">
@@ -1939,6 +1940,8 @@ function toggleSidebar(){
   const icon = document.getElementById('sb-toggle-icon');
   if(icon) icon.className = collapsed ? 'fa fa-chevron-right' : 'fa fa-chevron-left';
   localStorage.setItem('sb_collapsed', collapsed ? '1' : '0');
+  const tip = document.getElementById('sb-js-tooltip');
+  if(tip) tip.style.opacity = '0';
   const topbar = document.querySelector('.topbar');
   if(topbar) topbar.style.paddingLeft = '';
   const floatBtn = document.getElementById('sb-float-btn');
@@ -1973,31 +1976,30 @@ function initSidebarState(){
 }
 
 function _initSidebarTooltip(){
-  let tip = document.getElementById('sb-js-tooltip');
-  if(!tip){
-    tip = document.createElement('div');
-    tip.id = 'sb-js-tooltip';
-    document.body.appendChild(tip);
-  }
-  const sbNav = document.querySelector('.sb-nav');
-  if(!sbNav) return;
-  sbNav.addEventListener('mouseenter', function(e){
-    const item = e.target.closest('.nav-item[data-tooltip]');
-    if(!item) return;
+  if(window._sbTooltipInit) return;
+  window._sbTooltipInit = true;
+  const tip = document.getElementById('sb-js-tooltip');
+  if(!tip) return;
+  document.body.addEventListener('mouseover', function(e){
     const sidebar = document.querySelector('.sidebar');
     if(!sidebar?.classList.contains('collapsed')) return;
+    const item = e.target.closest('.sidebar .nav-item[data-tooltip]');
+    if(!item) return;
+    if(item.contains(e.relatedTarget)) return;
     const rect = item.getBoundingClientRect();
     tip.textContent = item.dataset.tooltip;
     tip.style.left = (rect.right + 8) + 'px';
     tip.style.top = (rect.top + rect.height / 2) + 'px';
     tip.style.opacity = '1';
-  }, true);
-  sbNav.addEventListener('mouseleave', function(e){
-    const item = e.target.closest('.nav-item[data-tooltip]');
+  });
+  document.body.addEventListener('mouseout', function(e){
+    const item = e.target.closest('.sidebar .nav-item[data-tooltip]');
     if(!item) return;
+    if(item.contains(e.relatedTarget)) return;
     tip.style.opacity = '0';
-  }, true);
+  });
 }
+window.addEventListener('load', _initSidebarTooltip);
 
 async function doLogout() {
   if(!confirm('¿Cerrar sesión?')) return;

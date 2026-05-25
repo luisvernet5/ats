@@ -8915,13 +8915,14 @@ function _imgFit(b64, maxW, maxH) {
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {
-      const ratio = img.naturalWidth / img.naturalHeight;
+      const nw = img.naturalWidth, nh = img.naturalHeight;
+      if (!nw || !nh) { resolve({ w: maxW, h: maxH }); return; }
+      const ratio = nw / nh;
       let w = maxW, h = maxW / ratio;
       if (h > maxH) { h = maxH; w = maxH * ratio; }
-      const fmt = (b64.match(/^data:image\/(\w+);/)?.[1] || 'png').toUpperCase();
-      resolve({ w, h, fmt });
+      resolve({ w, h });
     };
-    img.onerror = () => resolve({ w: maxW, h: maxH, fmt: 'PNG' });
+    img.onerror = () => resolve({ w: maxW, h: maxH });
     img.src = b64;
   });
 }
@@ -8934,8 +8935,8 @@ function _pdfHeader(doc, titulo, candNombre, emp, extra) {
       const b64 = await urlToBase64(emp.logo);
       if(b64) {
         try {
-          const { w, h, fmt } = await _imgFit(b64, 38, 18);
-          doc.addImage(b64, fmt, M, y, w, h);
+          const { w, h } = await _imgFit(b64, 38, 18);
+          doc.addImage(b64, 'PNG', M, y, w, h);
         } catch(e){}
       }
     }
@@ -9186,7 +9187,7 @@ async function exportRefNuimCamPDF(){
   const rec=DB.reclutadores.find(r=>r.id===recId)||{};
 
   // ── HEADER ──
-  if(emp?.logo){const b64=await urlToBase64(emp.logo);if(b64){try{const{w,h,fmt}=await _imgFit(b64,30,14);doc.addImage(b64,fmt,PM,y,w,h);}catch(e){}}}
+  if(emp?.logo){const b64=await urlToBase64(emp.logo);if(b64){try{const{w,h}=await _imgFit(b64,30,14);doc.addImage(b64,'PNG',PM,y,w,h);}catch(e){}}}
   doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(0);
   doc.text('Verificación de referencias laborales y',PW/2,y+5,{align:'center'});
   doc.text('personales',PW/2,y+11,{align:'center'});

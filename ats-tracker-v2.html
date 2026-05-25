@@ -41,26 +41,21 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .sidebar.collapsed > div[style*="padding:12px"] button span,
 .sidebar.collapsed > div[style*="padding:12px"] button i + * { display: none; }
 
-.sidebar.collapsed .nav-item::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  left: 62px;
-  top: 50%;
-  transform: translateY(-50%);
+#sb-js-tooltip {
+  position: fixed;
   background: var(--surface3, #1e1e2e);
   color: var(--text);
   padding: 5px 10px;
   border-radius: 6px;
   font-size: 12px;
   white-space: nowrap;
-  opacity: 0;
   pointer-events: none;
+  opacity: 0;
   transition: opacity .15s;
-  box-shadow: 0 2px 8px rgba(0,0,0,.25);
-  z-index: 999;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  z-index: 9999;
+  transform: translateY(-50%);
 }
-.sidebar.collapsed .nav-item:hover::after { opacity: 1; }
-.sidebar.collapsed .sb-nav { overflow: visible; }
 #sb-toggle { transition: right .25s; }
 .main{flex:1;overflow-y:auto;background:var(--bg)}
 .sb-logo{padding:20px 18px 16px;border-bottom:1px solid var(--border)}
@@ -1974,6 +1969,34 @@ function initSidebarState(){
       if(icon) icon.className = 'fa fa-chevron-right';
     }
   }
+  _initSidebarTooltip();
+}
+
+function _initSidebarTooltip(){
+  let tip = document.getElementById('sb-js-tooltip');
+  if(!tip){
+    tip = document.createElement('div');
+    tip.id = 'sb-js-tooltip';
+    document.body.appendChild(tip);
+  }
+  const sbNav = document.querySelector('.sb-nav');
+  if(!sbNav) return;
+  sbNav.addEventListener('mouseenter', function(e){
+    const item = e.target.closest('.nav-item[data-tooltip]');
+    if(!item) return;
+    const sidebar = document.querySelector('.sidebar');
+    if(!sidebar?.classList.contains('collapsed')) return;
+    const rect = item.getBoundingClientRect();
+    tip.textContent = item.dataset.tooltip;
+    tip.style.left = (rect.right + 8) + 'px';
+    tip.style.top = (rect.top + rect.height / 2) + 'px';
+    tip.style.opacity = '1';
+  }, true);
+  sbNav.addEventListener('mouseleave', function(e){
+    const item = e.target.closest('.nav-item[data-tooltip]');
+    if(!item) return;
+    tip.style.opacity = '0';
+  }, true);
 }
 
 async function doLogout() {

@@ -6297,7 +6297,7 @@ async function showHCTab(tab){
     const bajasArr  = (plantilla||[]).map(p=>resumenMap[p.proyecto]?.bajas||0);
     const semLabel  = gSemana ? `Semana ${gSemana} — ${gAnio}` : `${gAnio}`;
     const semOpts   = semanasDisp.map(s=>`<option value="${s}"${s===gSemana?' selected':''}>${s}</option>`).join('');
-    const chartH    = Math.max(420, labelsArr.length * 52 + 100);
+    const chartH    = Math.max(300, labelsArr.length * 32 + 80);
 
     content.innerHTML=`
       <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${gEmpId}')" style="margin-bottom:12px"><i class="fa fa-arrow-left"></i> Semanas</button>
@@ -6323,9 +6323,9 @@ async function showHCTab(tab){
         data:{
           labels: labelsArr,
           datasets:[
-            {label:'PLANTILLA AUTORIZADA', data: authArr,   backgroundColor:'rgba(42,170,222,0.75)',  borderRadius:3, borderSkipped:false},
-            {label:'ACTIVOS',              data: actualArr,  backgroundColor:'rgba(251,146,60,0.75)', borderRadius:3, borderSkipped:false},
-            {label:'BAJAS',                data: bajasArr,   backgroundColor:'rgba(239,68,68,0.75)',  borderRadius:3, borderSkipped:false}
+            {label:'PLANTILLA AUTORIZADA', data: authArr,   backgroundColor:'rgba(42,170,222,0.75)',  borderRadius:3, borderSkipped:false, barThickness:10},
+            {label:'ACTIVOS',              data: actualArr,  backgroundColor:'rgba(251,146,60,0.75)', borderRadius:3, borderSkipped:false, barThickness:10},
+            {label:'BAJAS',                data: bajasArr,   backgroundColor:'rgba(239,68,68,0.75)',  borderRadius:3, borderSkipped:false, barThickness:10}
           ]
         },
         options:{
@@ -6338,7 +6338,7 @@ async function showHCTab(tab){
           },
           scales:{
             x:{beginAtZero:true,ticks:{font:{size:11}},grid:{color:'rgba(0,0,0,0.06)'}},
-            y:{ticks:{font:{size:11}},grid:{display:false}}
+            y:{ticks:{font:{size:10}},grid:{display:false}}
           },
           animation:{
             onComplete:function(){

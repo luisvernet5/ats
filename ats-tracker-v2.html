@@ -9026,12 +9026,13 @@ async function exportEntrevistaPDF() {
 
 async function exportRefLaboralesPDF() {
   if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
+  const empId=document.getElementById('cand-empresa')?.value;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  if(emp.nombre?.toLowerCase().includes('nuim')) return exportRefNuimCamPDF();
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
   const W=216,M=20,CW=176;
   const candNombre=(document.getElementById('cand-nombre')?.value||'Candidato').trim();
-  const empId=document.getElementById('cand-empresa')?.value;
-  const emp=DB.empresas.find(e=>e.id===empId)||{};
   let y=await _pdfHeader(doc,'REFERENCIAS LABORALES',candNombre,emp,`Fecha: ${today()}`);
 
   const cards=document.querySelectorAll('#ref-lab-list .ref-card');
@@ -9088,12 +9089,13 @@ async function exportRefLaboralesPDF() {
 
 async function exportRefPersonalesPDF() {
   if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
+  const empId=document.getElementById('cand-empresa')?.value;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  if(emp.nombre?.toLowerCase().includes('nuim')) return exportRefNuimCamPDF();
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
   const W=216,M=20,CW=176;
   const candNombre=(document.getElementById('cand-nombre')?.value||'Candidato').trim();
-  const empId=document.getElementById('cand-empresa')?.value;
-  const emp=DB.empresas.find(e=>e.id===empId)||{};
   let y=await _pdfHeader(doc,'REFERENCIAS PERSONALES',candNombre,emp,`Fecha: ${today()}`);
 
   const cards=document.querySelectorAll('#ref-per-list .ref-card');
@@ -9128,6 +9130,173 @@ async function exportRefPersonalesPDF() {
   });
   doc.save(`RefPersonales_${candNombre.replace(/[^a-zA-Z0-9]/g,'_')}_${today()}.pdf`);
   showToast('PDF referencias personales generado ✓');
+}
+
+/* ── NuimCam — Verificación de referencias laborales y personales ── */
+async function exportRefNuimCamPDF(){
+  if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
+  const PW=216,PM=14,PCW=188;
+  let y=PM;
+
+  const candNombre=(document.getElementById('cand-nombre')?.value||'').trim();
+  const candContacto=(document.getElementById('cand-contacto')?.value||'').trim();
+  const empId=document.getElementById('cand-empresa')?.value;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const recId=document.getElementById('cand-reclutador')?.value;
+  const rec=DB.reclutadores.find(r=>r.id===recId)||{};
+
+  // ── HEADER ──
+  if(emp?.logo){const b64=await urlToBase64(emp.logo);if(b64){try{doc.addImage(b64,'PNG',PM,y,22,12);}catch(e){}}}
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(0);
+  doc.text('Verificación de referencias laborales y',PW/2,y+5,{align:'center'});
+  doc.text('personales',PW/2,y+11,{align:'center'});
+  const bX=PW-PM-36,bW=36,bH=16;
+  doc.setDrawColor(180);doc.setLineWidth(0.3);doc.rect(bX,y,bW,bH);
+  doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(60);
+  ['RE-RS-5','Creación: jun-23','Versión: 00','Revisión: jun-26'].forEach((t,i)=>doc.text(t,bX+bW/2,y+3.5+i*3.2,{align:'center'}));
+  doc.setFontSize(5.5);doc.setTextColor(110);
+  doc.text('Consultar versión vigente en intranet de Nuim Cam.',PM,y+19);
+  doc.text('Resguardo: 3 años',PW/2,y+19,{align:'center'});
+  doc.text('Página 1 de 1',PW-PM,y+19,{align:'right'});
+  y+=21;
+  doc.setDrawColor(200);doc.setLineWidth(0.2);doc.line(PM,y,PW-PM,y);
+  y+=2;
+
+  // ── HELPERS ──
+  const BGL=[232,232,232],BGH=[205,205,205];
+  const BD=0.25;
+  const chk=(n)=>{if(y+n>264){doc.addPage();y=PM;}};
+  const secHdr=(t)=>{
+    chk(7);doc.setFillColor(...BGH);doc.setDrawColor(140);doc.setLineWidth(BD);
+    doc.rect(PM,y,PCW,6,'FD');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(0);
+    doc.text(t,PW/2,y+4.2,{align:'center'});y+=6;
+  };
+  const rowF=(lbl,val,h=6.5,lw=50)=>{
+    chk(h);doc.setDrawColor(140);doc.setLineWidth(BD);
+    doc.setFillColor(...BGL);doc.rect(PM,y,lw,h,'FD');
+    doc.rect(PM+lw,y,PCW-lw,h,'D');
+    doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(60);
+    doc.text(lbl+':',PM+1.5,y+h/2+1.2);
+    doc.setFont('helvetica','normal');doc.setTextColor(0);
+    if(val){const wv=doc.splitTextToSize(val,PCW-lw-2);doc.text(wv[0],PM+lw+2,y+h/2+1.2);}
+    y+=h;
+  };
+  const row2=(l1,v1,l2,v2,h=6.5)=>{
+    chk(h);const hw=PCW/2,lw=28;
+    doc.setDrawColor(140);doc.setLineWidth(BD);
+    doc.setFillColor(...BGL);doc.rect(PM,y,lw,h,'FD');doc.rect(PM+lw,y,hw-lw,h,'D');
+    doc.setFillColor(...BGL);doc.rect(PM+hw,y,lw,h,'FD');doc.rect(PM+hw+lw,y,hw-lw,h,'D');
+    doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(60);
+    doc.text(l1+':',PM+1.5,y+h/2+1.2);doc.text(l2+':',PM+hw+1.5,y+h/2+1.2);
+    doc.setFont('helvetica','normal');doc.setTextColor(0);
+    if(v1){doc.text(doc.splitTextToSize(v1,hw-lw-2)[0],PM+lw+2,y+h/2+1.2);}
+    if(v2){doc.text(doc.splitTextToSize(v2,hw-lw-2)[0],PM+hw+lw+2,y+h/2+1.2);}
+    y+=h;
+  };
+  const tallRow=(lbl,val,lw)=>{
+    const lines=val?doc.splitTextToSize(val,PCW-lw-2):[];
+    const h=Math.max(7,lines.length*4+4);
+    chk(h);doc.setDrawColor(140);doc.setLineWidth(BD);
+    doc.setFillColor(...BGL);doc.rect(PM,y,lw,h,'FD');doc.rect(PM+lw,y,PCW-lw,h,'D');
+    doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(60);
+    doc.text(lbl+':',PM+1.5,y+4.5);
+    doc.setFont('helvetica','normal');doc.setTextColor(0);
+    if(lines.length)doc.text(lines,PM+lw+2,y+4.5);
+    y+=h;
+  };
+
+  // ── DATOS DEL CANDIDATO ──
+  secHdr('Datos del candidato');
+  rowF('Nombre',candNombre,6.5,35);
+  row2('Teléfono',candContacto,'Fecha',today());
+
+  // NuimCam competency definitions + mapping to stored form keys
+  const NC_COMP=['Iniciativa','Puntualidad','Asistencia','Adaptabilidad','Calidad de trabajo','Honradez-rectitud','Colaboración','Responsabilidad','Proyección','Actitud hacia jefe','Actitud hacia compañeros','Actitud hacia subordinados'];
+  const NC_KEY_MAP={'Honradez-rectitud':'honradez','Responsabilidad':'responsabilidad','Proyección':'proyeccion','Actitud hacia jefe':'actitud_hacia_el_jefe','Actitud hacia compañeros':'actitud_hacia_companeros','Actitud hacia subordinados':'actitud_hacia_subordinados'};
+  const NIVS=['Inferior','Bajo','Promedio','Alto','Superior'];
+
+  // ── REFERENCIAS LABORALES ──
+  document.querySelectorAll('#ref-lab-list .ref-card').forEach((card)=>{
+    const n=card.id.replace('ref-lab-card-','');
+    const gf=id=>document.getElementById(id)?.value||'';
+    chk(80);
+    secHdr('Referencias laborales');
+    rowF('Nombre o razón social',gf(`ref-lab-${n}-empresa`),6.5,55);
+    row2('Nombre del contacto',gf(`ref-lab-${n}-contacto`),'Puesto',gf(`ref-lab-${n}-puesto-contacto`));
+    row2('Correo electrónico','','Teléfono',gf(`ref-lab-${n}-telefono`));
+    rowF('Relación laboral','Si',6.5,35);
+    rowF('Tiempo laborado',gf(`ref-lab-${n}-tiempo-laborado`),6.5,38);
+    rowF('Puestos ocupados',gf(`ref-lab-${n}-puestos`),6.5,50);
+    rowF('Causa de separación',gf(`ref-lab-${n}-separacion`),6.5,50);
+    tallRow('¿Cómo describe su desempeño?',gf(`ref-lab-${n}-desempeno`),55);
+
+    // competency section: instruction left | table right
+    const instrW=52,tblX=PM+instrW+2,tblW=PCW-instrW-2;
+    const nameColW=tblW*0.44,ratW=(tblW-nameColW)/NIVS.length,rowH=5;
+    const totalH=(NC_COMP.length+1)*rowH+4;
+    chk(totalH+4);
+    const instrLines=doc.splitTextToSize('Marque con una "X" el desempeño del solicitante mencionado por la referencia laboral.',instrW-1);
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(60);
+    doc.text(instrLines,PM+1,y+4);
+    // table header
+    doc.setFillColor(...BGL);doc.setDrawColor(140);doc.setLineWidth(BD);
+    doc.rect(tblX,y,tblW,rowH+1,'FD');
+    doc.setFont('helvetica','bold');doc.setFontSize(6);doc.setTextColor(0);
+    NIVS.forEach((niv,i)=>doc.text(niv,tblX+nameColW+(i+0.5)*ratW,y+(rowH+1)/2+1.2,{align:'center'}));
+    y+=rowH+1;
+    // rows
+    NC_COMP.forEach((comp,ci)=>{
+      const sKey=NC_KEY_MAP[comp]||'';
+      const sel=sKey?card.querySelector(`input[name="ref-lab-${n}-${sKey}"]:checked`)?.value||'':'';
+      doc.setFillColor(ci%2===0?248:255,ci%2===0?248:255,ci%2===0?248:255);
+      doc.setDrawColor(170);doc.setLineWidth(0.2);
+      doc.rect(tblX,y,tblW,rowH,'FD');
+      doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(0);
+      doc.text(comp,tblX+nameColW-1.5,y+rowH/2+1.2,{align:'right'});
+      doc.setDrawColor(150);doc.line(tblX+nameColW,y,tblX+nameColW,y+rowH);
+      NIVS.forEach((niv,i)=>{
+        if(i>0)doc.line(tblX+nameColW+i*ratW,y,tblX+nameColW+i*ratW,y+rowH);
+        if(niv===sel){doc.setFont('helvetica','bold');doc.setFontSize(7);doc.text('X',tblX+nameColW+(i+0.5)*ratW,y+rowH/2+1.2,{align:'center'});doc.setFont('helvetica','normal');doc.setFontSize(6);}
+      });
+      y+=rowH;
+    });
+    y+=6;
+  });
+
+  // ── REFERENCIAS PERSONALES ──
+  document.querySelectorAll('#ref-per-list .ref-card').forEach((card)=>{
+    const n=card.id.replace('ref-per-card-','');
+    const gf=id=>document.getElementById(id)?.value||'';
+    chk(50);
+    secHdr('Referencias personales');
+    row2('Nombre del contacto',gf(`ref-per-${n}-contacto`),'Teléfono',gf(`ref-per-${n}-telefono`));
+    rowF('Relación laboral',card.querySelector(`input[name="ref-per-${n}-recomienda"]:checked`)?.value||'Si',6.5,35);
+    rowF('Ocupación',gf(`ref-per-${n}-ocupacion`),6.5,38);
+    rowF('Años de conocer al solicitante',gf(`ref-per-${n}-anos`),6.5,60);
+    tallRow('¿Cómo lo describe?',gf(`ref-per-${n}-descripcion`),55);
+    tallRow('¿Cómo describe su comportamiento?',gf(`ref-per-${n}-obs`),70);
+    y+=3;
+  });
+
+  // ── OBSERVACIONES ──
+  chk(28);
+  secHdr('Observaciones');
+  doc.setDrawColor(140);doc.setLineWidth(BD);doc.rect(PM,y,PCW,20,'D');
+  y+=24;
+
+  // ── VALIDÓ INFORMACIÓN ──
+  chk(18);
+  const vW=55;
+  doc.setDrawColor(140);doc.setLineWidth(BD);doc.rect(PM,y,vW,16,'D');
+  doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(0);
+  doc.text('Validó información',PM+vW/2,y+5,{align:'center'});
+  if(rec?.nombre){doc.setFont('helvetica','normal');doc.setFontSize(7);doc.text(rec.nombre,PM+vW/2,y+11,{align:'center'});}
+
+  doc.save(`RefVerificacion_NuimCam_${candNombre.replace(/[^a-zA-Z0-9]/g,'_')}_${today()}.pdf`);
+  showToast('PDF NuimCam generado ✓');
 }
 </script>
 </body>

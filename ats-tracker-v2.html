@@ -6587,7 +6587,7 @@ async function abrirTablaHC(empId, semana, anio){
   content.innerHTML=`
     <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${empId}')"><i class="fa fa-arrow-left"></i> Semanas</button>
-      <div style="font-size:14px;font-weight:600">${emp.nombre||''} — Semana ${semana} (${label})</div>
+      <div style="font-size:14px;font-weight:600">${emp.nombre||''} — Semana ${semana} — ${anio} (${label})</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="hcAgregarFila('${empId}',${semana},${anio})"><i class="fa fa-plus"></i> Agregar fila</button>
         <button class="btn btn-ghost btn-sm" onclick="openHCProyectoModal('${empId}')"><i class="fa fa-cog"></i> Plantilla</button>

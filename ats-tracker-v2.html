@@ -6291,12 +6291,13 @@ async function showHCTab(tab){
     const resumenMap = {};
     (resumen||[]).forEach(r=>{ if(!resumenMap[r.proyecto]) resumenMap[r.proyecto]=r; });
 
-    const labelsArr = (plantilla||[]).map(p=>p.proyecto.substring(0,18));
+    const labelsArr = (plantilla||[]).map(p=>p.proyecto);
     const authArr   = (plantilla||[]).map(p=>p.plantilla_autorizada||0);
     const actualArr = (plantilla||[]).map(p=>resumenMap[p.proyecto]?.actual||0);
     const bajasArr  = (plantilla||[]).map(p=>resumenMap[p.proyecto]?.bajas||0);
     const semLabel  = gSemana ? `Semana ${gSemana} — ${gAnio}` : `${gAnio}`;
     const semOpts   = semanasDisp.map(s=>`<option value="${s}"${s===gSemana?' selected':''}>${s}</option>`).join('');
+    const chartH    = Math.max(420, labelsArr.length * 52 + 100);
 
     content.innerHTML=`
       <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${gEmpId}')" style="margin-bottom:12px"><i class="fa fa-arrow-left"></i> Semanas</button>
@@ -6309,7 +6310,7 @@ async function showHCTab(tab){
           </select>
         </div>
       </div>
-      <div style="height:400px;position:relative">
+      <div style="height:${chartH}px;position:relative">
         <canvas id="hc-chart"></canvas>
       </div>`;
 
@@ -6322,29 +6323,36 @@ async function showHCTab(tab){
         data:{
           labels: labelsArr,
           datasets:[
-            {label:'Autorizada', data: authArr,   backgroundColor:'rgba(42,170,222,0.7)'},
-            {label:'Activos',    data: actualArr,  backgroundColor:'rgba(251,146,60,0.7)'},
-            {label:'Bajas',      data: bajasArr,   backgroundColor:'rgba(239,68,68,0.7)'}
+            {label:'PLANTILLA AUTORIZADA', data: authArr,   backgroundColor:'rgba(42,170,222,0.75)',  borderRadius:3, borderSkipped:false},
+            {label:'ACTIVOS',              data: actualArr,  backgroundColor:'rgba(251,146,60,0.75)', borderRadius:3, borderSkipped:false},
+            {label:'BAJAS',                data: bajasArr,   backgroundColor:'rgba(239,68,68,0.75)',  borderRadius:3, borderSkipped:false}
           ]
         },
         options:{
+          indexAxis:'y',
           responsive:true,
           maintainAspectRatio:false,
-          plugins:{legend:{position:'top'}},
-          scales:{x:{ticks:{maxRotation:45,font:{size:10}}}},
+          plugins:{
+            title:{display:true,text:'Resumen Semanal',font:{size:16,weight:'bold'},padding:{bottom:18},color:'#16162A'},
+            legend:{position:'top',labels:{font:{size:11},usePointStyle:true,pointStyle:'circle',padding:20}}
+          },
+          scales:{
+            x:{beginAtZero:true,ticks:{font:{size:11}},grid:{color:'rgba(0,0,0,0.06)'}},
+            y:{ticks:{font:{size:11}},grid:{display:false}}
+          },
           animation:{
             onComplete:function(){
               const c=this.ctx;
               c.save();
-              c.font='bold 11px Arial';
-              c.fillStyle='#444';
-              c.textAlign='center';
-              c.textBaseline='bottom';
+              c.font='bold 10px Arial';
+              c.fillStyle='#333';
+              c.textAlign='left';
+              c.textBaseline='middle';
               this.data.datasets.forEach((dataset,i)=>{
                 const meta=this.getDatasetMeta(i);
                 meta.data.forEach((bar,j)=>{
                   const val=dataset.data[j];
-                  if(val>0) c.fillText(val, bar.x, bar.y-2);
+                  if(val>0) c.fillText(val, bar.x+4, bar.y);
                 });
               });
               c.restore();

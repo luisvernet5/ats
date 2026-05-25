@@ -6650,7 +6650,10 @@ async function guardarSemanaHC(empId, semana, anio){
     });
   });
   if(!filas.length){showToast('Sin datos para guardar');return;}
-  const{error}=await sbClient.from('hc_resumen').upsert(filas);
+  // deduplicate by id — same project name appearing twice would conflict on upsert
+  const filasMap={};filas.forEach(f=>{filasMap[f.id]=f;});
+  const filasDed=Object.values(filasMap);
+  const{error}=await sbClient.from('hc_resumen').upsert(filasDed);
   if(error){showToast('Error: '+error.message,'err');return;}
   showToast(`Semana ${semana} guardada ✓`);
   await abrirTablaHC(empId, semana, anio);
@@ -7162,7 +7165,7 @@ function recalcHCRow(proyId){
 function recalcHCTotals(){
   const totalsRow = document.getElementById('hc-totals-row');
   if(!totalsRow) return;
-  const tbody = totalsRow.closest('tbody');
+  const tbody = totalsRow.closest('table')?.querySelector('tbody');
   if(!tbody) return;
   let tAuth=0,tActual=0,tVac=0,tCartera=0,tEntrev=0,tValid=0,tProc=0,tCont=0,tBajas=0,tPrev=0,tCierre=0,tDet=0,tPCant=0;
   tbody.querySelectorAll('tr[id^="hc-tr-"]').forEach(tr=>{

@@ -8962,7 +8962,7 @@ async function exportEntrevistaPDF() {
   const candNombre = val('cand-nombre')||'Candidato';
   const empId = document.getElementById('cand-empresa')?.value;
   const vacId = document.getElementById('cand-vacante')?.value;
-  const emp = DB.empresas.find(e=>e.id===empId)||{};
+  const emp = (empId ? DB.empresas.find(e=>e.id===empId) : null) || _refResolveEmp();
   const vac = DB.vacantes.find(v=>v.id===vacId)||{};
   const fechaEnt = val('ei-fecha-entrevista')||today();
   const extra = `Fecha: ${fechaEnt}${val('ei-firma-entrevistador')?'  |  '+val('ei-firma-entrevistador'):''}`;

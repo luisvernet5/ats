@@ -2579,12 +2579,13 @@ function openEmpresaDetail(empId){
           <button onclick="limpiarFiltrosEmpresa()" style="display:inline-block;height:30px;font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#666">× Limpiar</button>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0">
+          <button id="btn-ed-col-vis" class="btn btn-ghost btn-sm" onclick="openEDColPanel()"><i class="fa fa-columns"></i> Columnas</button>
           <button class="btn btn-green btn-sm" onclick="exportarCSVEmpresa('${empId}')"><i class="fa fa-download"></i> Exportar esta empresa</button>
           <button class="btn btn-primary btn-sm" onclick="openVacanteModal(null,'${empId}')"><i class="fa fa-plus"></i> Nueva vacante</button>
         </div>
       </div>
       <div class="table-wrap">
-        <table><thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
+        <table id="ed-vacantes-table"><thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
         <tbody id="ed-tbody">${vacsRows||'<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes registradas</td></tr>'}</tbody>
         </table>
       </div>
@@ -2606,6 +2607,7 @@ function openEmpresaDetail(empId){
   `;
   document.getElementById('page-title').textContent=e.nombre;
   showPage('empresa-detail');
+  _applyEDColVis();
   setTimeout(() => renderAnalyticsTab(empId, 'general'), 100);
 }
 
@@ -2755,6 +2757,58 @@ function _buildEDVacsRows(vacs, empId, etapas, startIdx=1){
       </td>
     </tr>`;
   }).join('');
+}
+
+let _edColVis = JSON.parse(localStorage.getItem('ed_col_vis')||'{}');
+const _edColDefs = [
+  {key:'folio',        label:'Folio',        col:3},
+  {key:'reclutador',   label:'Reclutador',   col:4},
+  {key:'proyecto',     label:'Proyecto',     col:5},
+  {key:'departamento', label:'Departamento', col:6},
+  {key:'apertura',     label:'Apertura',     col:7},
+  {key:'estado',       label:'Estado',       col:8},
+  {key:'dias',         label:'Días',         col:9},
+  {key:'cands',        label:'Cands.',       col:10},
+];
+
+function _applyEDColVis(){
+  let css='';
+  _edColDefs.forEach(({key,col})=>{
+    if(_edColVis[key]===false)
+      css+=`#ed-vacantes-table th:nth-child(${col}),#ed-vacantes-table td:nth-child(${col}){display:none!important}`;
+  });
+  let s=document.getElementById('ed-col-vis-style');
+  if(!s){s=document.createElement('style');s.id='ed-col-vis-style';document.head.appendChild(s);}
+  s.textContent=css;
+}
+
+function toggleEDCol(key){
+  _edColVis[key]=(_edColVis[key]===false)?true:false;
+  localStorage.setItem('ed_col_vis',JSON.stringify(_edColVis));
+  _applyEDColVis();
+}
+
+function openEDColPanel(){
+  const existing=document.getElementById('ed-col-panel');
+  if(existing){existing.remove();return;}
+  const btn=document.getElementById('btn-ed-col-vis');
+  if(!btn)return;
+  const rect=btn.getBoundingClientRect();
+  const panel=document.createElement('div');
+  panel.id='ed-col-panel';
+  panel.style.cssText=`position:fixed;top:${rect.bottom+4}px;right:${window.innerWidth-rect.right}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:6px 4px;z-index:100;box-shadow:0 4px 20px rgba(0,0,0,.15);min-width:170px`;
+  panel.innerHTML=`<div style="font-size:11px;font-weight:600;color:var(--text3);padding:4px 12px 6px;text-transform:uppercase;letter-spacing:.04em">Columnas visibles</div>`+
+    _edColDefs.map(({key,label})=>`
+      <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;border-radius:6px;font-size:13px;user-select:none"
+        onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        <input type="checkbox" id="ed-col-cb-${key}" ${_edColVis[key]===false?'':'checked'}
+          style="accent-color:var(--accent);width:14px;height:14px"
+          onchange="toggleEDCol('${key}')">
+        ${label}
+      </label>`).join('');
+  document.body.appendChild(panel);
+  const close=e=>{if(!panel.contains(e.target)&&e.target.id!=='btn-ed-col-vis'){panel.remove();document.removeEventListener('mousedown',close);}};
+  setTimeout(()=>document.addEventListener('mousedown',close),0);
 }
 
 function cambiarVistaEmpresa(vista){

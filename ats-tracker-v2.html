@@ -2557,32 +2557,29 @@ function openEmpresaDetail(empId){
         <div class="sec-title">Proceso de reclutamiento configurado</div>
         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${processHtml}</div>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:0">
-          <strong style="margin-right:8px;white-space:nowrap">Vacantes</strong>
-          <button id="btn-vista-folio" class="btn btn-primary btn-sm" onclick="cambiarVistaEmpresa('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
-          <button id="btn-vista-proyecto" class="btn btn-ghost btn-sm" onclick="cambiarVistaEmpresa('proyecto')"><i class="fa fa-layer-group"></i> Por proyecto</button>
-          <select id="filtroProyecto" onchange="filtrarVacantesEmpresa()" style="display:inline-block;width:auto;min-width:110px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
-            <option value="">Proyecto</option>
-            ${[...new Set(vacs.map(v=>v.proyecto).filter(Boolean))].map(p=>`<option value="${p}">${p}</option>`).join('')}
-          </select>
-          <select id="filtroDepartamento" onchange="filtrarVacantesEmpresa()" style="display:inline-block;width:auto;min-width:120px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
-            <option value="">Departamento</option>
-            ${[...new Set(vacs.map(v=>v.departamento).filter(Boolean))].map(d=>`<option value="${d}">${d}</option>`).join('')}
-          </select>
-          <select id="filtroReclutador" onchange="filtrarVacantesEmpresa()" style="display:inline-block;width:auto;min-width:110px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
-            <option value="">Reclutador</option>
-            ${[...new Set(vacs.map(v=>v.reclutador_id).filter(Boolean))].map(rid=>{const r=DB.reclutadores.find(x=>x.id===rid)||{};return`<option value="${rid}">${r.nombre||rid}</option>`;}).join('')}
-          </select>
-          <input type="date" id="filtroFechaDesde" onchange="filtrarVacantesEmpresa()" style="display:inline-block;width:auto;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
-          <input type="date" id="filtroFechaHasta" onchange="filtrarVacantesEmpresa()" style="display:inline-block;width:auto;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
-          <button onclick="limpiarFiltrosEmpresa()" style="display:inline-block;height:30px;font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#666">× Limpiar</button>
-        </div>
-        <div style="display:flex;gap:8px;flex-shrink:0">
-          <button id="btn-ed-col-vis" class="btn btn-ghost btn-sm" onclick="openEDColPanel()"><i class="fa fa-columns"></i> Columnas</button>
-          <button class="btn btn-green btn-sm" onclick="exportarCSVEmpresa('${empId}')"><i class="fa fa-download"></i> Exportar esta empresa</button>
-          <button class="btn btn-primary btn-sm" onclick="openVacanteModal(null,'${empId}')"><i class="fa fa-plus"></i> Nueva vacante</button>
-        </div>
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px">
+        <strong style="white-space:nowrap;font-size:13px;flex-shrink:0">Vacantes</strong>
+        <button id="btn-vista-folio" class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="cambiarVistaEmpresa('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
+        <button id="btn-vista-proyecto" class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="cambiarVistaEmpresa('proyecto')"><i class="fa fa-layer-group"></i> Por proyecto</button>
+        <select id="filtroProyecto" onchange="filtrarVacantesEmpresa()" style="height:28px;font-size:11px;padding:2px 6px;border:1px solid var(--border2);border-radius:6px;max-width:150px;min-width:90px">
+          <option value="">Proyecto</option>
+          ${[...new Set(vacs.map(v=>v.proyecto).filter(Boolean))].map(p=>`<option value="${p}">${p}</option>`).join('')}
+        </select>
+        <select id="filtroDepartamento" onchange="filtrarVacantesEmpresa()" style="height:28px;font-size:11px;padding:2px 6px;border:1px solid var(--border2);border-radius:6px;max-width:130px;min-width:90px">
+          <option value="">Departamento</option>
+          ${[...new Set(vacs.map(v=>v.departamento).filter(Boolean))].map(d=>`<option value="${d}">${d}</option>`).join('')}
+        </select>
+        <select id="filtroReclutador" onchange="filtrarVacantesEmpresa()" style="height:28px;font-size:11px;padding:2px 6px;border:1px solid var(--border2);border-radius:6px;max-width:130px;min-width:90px">
+          <option value="">Reclutador</option>
+          ${[...new Set(vacs.map(v=>v.reclutador_id).filter(Boolean))].map(rid=>{const r=DB.reclutadores.find(x=>x.id===rid)||{};return`<option value="${rid}">${r.nombre||rid}</option>`;}).join('')}
+        </select>
+        <input type="date" id="filtroFechaDesde" onchange="filtrarVacantesEmpresa()" style="height:28px;font-size:11px;padding:2px 6px;border:1px solid var(--border2);border-radius:6px;width:130px;flex-shrink:0">
+        <input type="date" id="filtroFechaHasta" onchange="filtrarVacantesEmpresa()" style="height:28px;font-size:11px;padding:2px 6px;border:1px solid var(--border2);border-radius:6px;width:130px;flex-shrink:0">
+        <button onclick="limpiarFiltrosEmpresa()" class="btn btn-ghost btn-sm" style="flex-shrink:0">× Limpiar</button>
+        <div style="flex:1;min-width:8px"></div>
+        <button id="btn-ed-col-vis" class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="openEDColPanel()"><i class="fa fa-columns"></i> Columnas</button>
+        <button class="btn btn-green btn-sm" style="flex-shrink:0" onclick="exportarCSVEmpresa('${empId}')"><i class="fa fa-download"></i> Exportar</button>
+        <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="openVacanteModal(null,'${empId}')"><i class="fa fa-plus"></i> Nueva vacante</button>
       </div>
       <div class="table-wrap">
         <table id="ed-vacantes-table"><thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>

@@ -2007,14 +2007,21 @@ async function loadDB(){
           : sbClient.from('vacantes').select('*')),
         sbClient.from('candidatos').select('*'),
         sbClient.from('reclutadores').select('*'),
-        sbClient.from('referencias').select('candidato_id,nombre_contacto'),
+        sbClient.from('referencias').select('candidato_id,nombre_contacto,empresa,telefono,data'),
       ]);
       console.log('[loadDB] vacantes cargadas:', vac.data?.length, '| error:', vac.error?.message||null);
       DB.empresas=emp.data?.map(r=>r.data)||[];
       DB.vacantes=vac.data?.map(r=>r.data)||[];
       DB.candidatos=cand.data?.map(r=>r.data)||[];
       DB.reclutadores=rec.data?.map(r=>r.data)||[];
-      _candConRefs=new Set((refs.data||[]).filter(r=>r.nombre_contacto?.trim()).map(r=>r.candidato_id));
+      _candConRefs=new Set((refs.data||[]).flatMap(r=>{
+        const ids=[];
+        // formato nuevo: columnas planas
+        if(r.candidato_id&&(r.nombre_contacto||r.empresa||r.telefono||'').trim())ids.push(r.candidato_id);
+        // formato antiguo: datos dentro de columna data (JSONB)
+        const d=r.data;if(d?.candidato_id&&(d.nombre_contacto||d.empresa||d.telefono||'').trim())ids.push(d.candidato_id);
+        return ids;
+      }));
     }
   }catch(e){
     console.error('Error:',e);
@@ -3431,27 +3438,40 @@ async function openReferenciasModal(id){
   refTabSwitch('lab');
   let refs=[];
   if(!SANDBOX_MODE){
+    // formato nuevo: columnas planas
     const{data:loaded}=await sbClient.from('referencias').select('*').eq('candidato_id',id);
-    if(loaded)refs=loaded;
+    if(loaded?.length)refs=loaded;
+    else{
+      // formato antiguo: datos dentro de columna JSONB 'data'
+      try{
+        const{data:loaded2}=await sbClient.from('referencias').select('*').filter('data->>candidato_id','eq',id);
+        if(loaded2?.length)refs=loaded2.map(r=>({...r,...(r.data||{})}));
+      }catch(e){}
+    }
+    // normalizar: si el registro tiene columna data con más info, mezclarla
+    refs=refs.map(r=>r.data&&typeof r.data==='object'?{...r.data,...r}:r);
   }
-  const labs=refs.filter(r=>r.tipo==='laboral');
-  const pers=refs.filter(r=>r.tipo==='personal');
+  // helper: lee campo con fallbacks para nombres de columna antiguos
+  const rf=(r,...fields)=>{for(const f of fields){const v=r[f];if(v&&String(v).trim())return v;}return'';};
+  const tipo=(r)=>r.tipo||r.data?.tipo||'';
+  const labs=refs.filter(r=>tipo(r)==='laboral');
+  const pers=refs.filter(r=>tipo(r)==='personal');
   const _setField=(elId,val)=>{const el=document.getElementById(elId);if(el)el.value=val||'';};
   const _setRadio=(name,val)=>{if(val){const el=document.querySelector(`input[name="${name}"][value="${val}"]`);if(el)el.checked=true;}};
   if(labs.length){
     labs.forEach(r=>{
       addRefLaboral();
       const n=_refLabNextId-1;
-      _setField(`ref-lab-${n}-contacto`,r.nombre_contacto);
-      _setField(`ref-lab-${n}-telefono`,r.telefono);
-      _setField(`ref-lab-${n}-empresa`,r.empresa);
-      _setField(`ref-lab-${n}-puesto-contacto`,r.puesto_contacto);
-      _setField(`ref-lab-${n}-tiempo-laborado`,r.tiempo_laborado);
-      _setField(`ref-lab-${n}-puestos`,r.puestos_ocupados);
-      _setField(`ref-lab-${n}-separacion`,r.causa_separacion);
-      _setField(`ref-lab-${n}-desempeno`,r.descripcion_desempeno);
-      _setField(`ref-lab-${n}-obs`,r.observaciones);
-      const compMap={logro_de_resultados:r.actuacion_logros,compromiso:r.actuacion_compromiso,trabajo_en_equipo:r.actuacion_trabajo_equipo,inteligencia_emocional:r.actuacion_inteligencia_emocional,profesionalismo:r.actuacion_profesionalismo,honradez:r.actuacion_honradez,confianza:r.actuacion_confianza,responsabilidad:r.actuacion_responsabilidad,disciplina:r.actuacion_disciplina,proyeccion:r.actuacion_proyeccion,actitud_hacia_el_jefe:r.actuacion_actitud_jefe,actitud_hacia_companeros:r.actuacion_actitud_companeros,actitud_hacia_subordinados:r.actuacion_actitud_subordinados};
+      _setField(`ref-lab-${n}-contacto`,rf(r,'nombre_contacto'));
+      _setField(`ref-lab-${n}-telefono`,rf(r,'telefono'));
+      _setField(`ref-lab-${n}-empresa`,rf(r,'empresa'));
+      _setField(`ref-lab-${n}-puesto-contacto`,rf(r,'puesto_contacto'));
+      _setField(`ref-lab-${n}-tiempo-laborado`,rf(r,'tiempo_laborado','tiempo_laboral','tiempo_laborado_en'));
+      _setField(`ref-lab-${n}-puestos`,rf(r,'puestos_ocupados','puestos'));
+      _setField(`ref-lab-${n}-separacion`,rf(r,'causa_separacion','separacion'));
+      _setField(`ref-lab-${n}-desempeno`,rf(r,'descripcion_desempeno','desempeno','descripcion'));
+      _setField(`ref-lab-${n}-obs`,rf(r,'observaciones','obs'));
+      const compMap={logro_de_resultados:rf(r,'actuacion_logros'),compromiso:rf(r,'actuacion_compromiso'),trabajo_en_equipo:rf(r,'actuacion_trabajo_equipo'),inteligencia_emocional:rf(r,'actuacion_inteligencia_emocional'),profesionalismo:rf(r,'actuacion_profesionalismo'),honradez:rf(r,'actuacion_honradez'),confianza:rf(r,'actuacion_confianza'),responsabilidad:rf(r,'actuacion_responsabilidad'),disciplina:rf(r,'actuacion_disciplina'),proyeccion:rf(r,'actuacion_proyeccion'),actitud_hacia_el_jefe:rf(r,'actuacion_actitud_jefe'),actitud_hacia_companeros:rf(r,'actuacion_actitud_companeros'),actitud_hacia_subordinados:rf(r,'actuacion_actitud_subordinados')};
       Object.entries(compMap).forEach(([k,v])=>_setRadio(`ref-lab-${n}-${k}`,v));
     });
   } else {
@@ -3461,14 +3481,14 @@ async function openReferenciasModal(id){
     pers.forEach(r=>{
       addRefPersonal();
       const n=_refPerNextId-1;
-      _setField(`ref-per-${n}-contacto`,r.nombre_contacto);
-      _setField(`ref-per-${n}-telefono`,r.telefono);
-      _setField(`ref-per-${n}-ocupacion`,r.empresa);
-      _setField(`ref-per-${n}-anos`,r.anos_conocerlo);
-      _setField(`ref-per-${n}-descripcion`,r.descripcion_desempeno);
-      _setField(`ref-per-${n}-obs`,r.observaciones);
-      _setRadio(`ref-per-${n}-recomienda`,r.recomienda);
-      _setRadio(`ref-per-${n}-confianza`,r.confianza_negocio);
+      _setField(`ref-per-${n}-contacto`,rf(r,'nombre_contacto'));
+      _setField(`ref-per-${n}-telefono`,rf(r,'telefono'));
+      _setField(`ref-per-${n}-ocupacion`,rf(r,'empresa','ocupacion'));
+      _setField(`ref-per-${n}-anos`,rf(r,'anos_conocerlo','anos'));
+      _setField(`ref-per-${n}-descripcion`,rf(r,'descripcion_desempeno','descripcion'));
+      _setField(`ref-per-${n}-obs`,rf(r,'observaciones','obs'));
+      _setRadio(`ref-per-${n}-recomienda`,rf(r,'recomienda'));
+      _setRadio(`ref-per-${n}-confianza`,rf(r,'confianza_negocio','confianza'));
     });
   } else {
     addRefPersonal();

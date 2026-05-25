@@ -6572,11 +6572,11 @@ async function abrirTablaHC(empId, semana, anio){
       <td style="text-align:center">${inp(procCont,'','pcont')}</td>
       <td style="text-align:center">${inp(contratados,"recalcHCRow('"+proyId+"')",'cont')}</td>
       <td style="text-align:center">${inp(bajas,"recalcHCRow('"+proyId+"')",'bajas')}</td>
-      <td id="hc-prev-${proyId}" style="text-align:center;font-weight:500">${statusPrev}</td>
+      <td id="hc-prev-${proyId}" style="text-align:center;font-weight:600;color:${statusPrev>0?'var(--red)':'inherit'}">${statusPrev}</td>
       <td id="hc-pct-${proyId}" style="text-align:center">${pct}</td>
-      <td id="hc-cierre-${proyId}" style="text-align:center;font-weight:500">${statusCierre}</td>
+      <td id="hc-cierre-${proyId}" style="text-align:center;font-weight:600;color:${statusCierre>0?'var(--red)':'inherit'}">${statusCierre}</td>
       <td style="text-align:center">${inp(detenidas,"recalcHCRow('"+proyId+"')",'det')}</td>
-      <td id="hc-pcant-${proyId}" style="text-align:center;font-weight:500">${plantillaCierre}</td>
+      <td id="hc-pcant-${proyId}" style="text-align:center;font-weight:600;color:${plantillaCierre===auth?'var(--green)':'var(--red)'}">${plantillaCierre}</td>
       <td style="text-align:center;white-space:nowrap">
         <button class="btn btn-danger btn-sm" onclick="hcEliminarFila('${proyId}','${empId}',${semana},${anio})" title="Eliminar semana"><i class="fa fa-trash" style="font-size:11px"></i></button>
         ${plantId?`<button onclick="eliminarHCProyecto('${plantId}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;padding:2px 4px;vertical-align:middle" title="Eliminar proyecto de plantilla">🗑️</button>`:''}
@@ -7164,13 +7164,13 @@ function recalcHCRow(proyId){
   const vacEl = document.getElementById('hc-vac-'+proyId);
   if(vacEl){ vacEl.textContent=vacantes; vacEl.style.color=vacantes>0?'var(--err)':'var(--ok)'; }
   const prevEl = document.getElementById('hc-prev-'+proyId);
-  if(prevEl) prevEl.textContent=statusPrev;
+  if(prevEl){ prevEl.textContent=statusPrev; prevEl.style.color=statusPrev>0?'var(--red)':''; prevEl.style.fontWeight=statusPrev>0?'600':'500'; }
   const pctEl = document.getElementById('hc-pct-'+proyId);
   if(pctEl) pctEl.textContent=pct;
   const cierreEl = document.getElementById('hc-cierre-'+proyId);
-  if(cierreEl) cierreEl.textContent=statusCierre;
+  if(cierreEl){ cierreEl.textContent=statusCierre; cierreEl.style.color=statusCierre>0?'var(--red)':''; cierreEl.style.fontWeight=statusCierre>0?'600':'500'; }
   const pcantEl = document.getElementById('hc-pcant-'+proyId);
-  if(pcantEl) pcantEl.textContent=plantillaCierre;
+  if(pcantEl){ pcantEl.textContent=plantillaCierre; pcantEl.style.color=plantillaCierre===auth?'var(--green)':'var(--red)'; pcantEl.style.fontWeight='600'; }
   recalcHCTotals();
 }
 

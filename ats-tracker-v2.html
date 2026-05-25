@@ -6561,7 +6561,7 @@ async function abrirTablaHC(empId, semana, anio){
       <td style="text-align:center">${inp(cartera)}</td>
       <td style="text-align:center">${inp(entrevista,'','entrev')}</td>
       <td style="text-align:center">${inp(validacion,'','valid')}</td>
-      <td style="text-align:center">${inp(procCont)}</td>
+      <td style="text-align:center">${inp(procCont,'','pcont')}</td>
       <td style="text-align:center">${inp(contratados,"recalcHCRow('"+proyId+"')",'cont')}</td>
       <td style="text-align:center">${inp(bajas,"recalcHCRow('"+proyId+"')",'bajas')}</td>
       <td id="hc-prev-${proyId}" style="text-align:center;font-weight:500">${statusPrev}</td>
@@ -7169,6 +7169,7 @@ function recalcHCRow(proyId){
 const _hcColPalette={
   entrev:{bg:'rgba(59,130,246,.13)',border:'rgba(59,130,246,.45)',color:'#1d4ed8'},
   valid: {bg:'rgba(245,158,11,.13)',border:'rgba(245,158,11,.5)', color:'#92400e'},
+  pcont: {bg:'rgba(202,138,4,.18)', border:'rgba(202,138,4,.6)',  color:'#713f12'},
   cont:  {bg:'rgba(22,163,74,.13)', border:'rgba(22,163,74,.45)', color:'#14532d'},
   bajas: {bg:'rgba(220,38,38,.13)', border:'rgba(220,38,38,.45)', color:'#991b1b'},
   det:   {bg:'rgba(234,88,12,.13)', border:'rgba(234,88,12,.45)', color:'#9a3412'},

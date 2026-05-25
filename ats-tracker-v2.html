@@ -6540,7 +6540,10 @@ async function abrirTablaHC(empId, semana, anio){
   if(fIniEl) fIniEl.value=lunes.toLocaleDateString('es-MX',{day:'2-digit',month:'short',timeZone:'UTC'});
   const fFinEl=document.getElementById('hc-fecha-fin');
   if(fFinEl) fFinEl.value=viernes.toLocaleDateString('es-MX',{day:'2-digit',month:'short',timeZone:'UTC'});
-  const inp=(v,ev='')=>`<input type="number" class="hc-inp" value="${v}" style="width:50px;text-align:center;font-size:11px;padding:3px 2px" onkeydown="hcKeyNav(event,this)" onpaste="hcPaste(event,this)"${ev?' oninput="'+ev+'"':''}>`;
+  const inp=(v,ev='',col='')=>{
+    const oi=[ev,col?'hcColorInp(this)':''].filter(x=>x).join(';');
+    return`<input type="number" class="hc-inp" value="${v}"${col?' data-col="'+col+'"':''} style="width:50px;text-align:center;font-size:11px;padding:3px 2px;border-radius:5px;border:1px solid var(--border2)" onkeydown="hcKeyNav(event,this)" onpaste="hcPaste(event,this)"${oi?' oninput="'+oi+'"':''}>`;
+  };
   const mkRow=(proy,proyId,auth,r={},plantId='')=>{
     const actual=r.actual||0,cartera=r.cartera||0,entrevista=r.entrevista||0;
     const validacion=r.validacion||0,procCont=r.proceso_contratacion||0;
@@ -6556,15 +6559,15 @@ async function abrirTablaHC(empId, semana, anio){
       <td style="text-align:center">${inp(actual,"recalcHCRow('"+proyId+"')")}</td>
       <td id="hc-vac-${proyId}" style="text-align:center;color:${vacantes>0?'var(--err)':'var(--ok)'}">${vacantes}</td>
       <td style="text-align:center">${inp(cartera)}</td>
-      <td style="text-align:center">${inp(entrevista)}</td>
-      <td style="text-align:center">${inp(validacion)}</td>
+      <td style="text-align:center">${inp(entrevista,'','entrev')}</td>
+      <td style="text-align:center">${inp(validacion,'','valid')}</td>
       <td style="text-align:center">${inp(procCont)}</td>
-      <td style="text-align:center">${inp(contratados,"recalcHCRow('"+proyId+"')")}</td>
-      <td style="text-align:center">${inp(bajas,"recalcHCRow('"+proyId+"')")}</td>
+      <td style="text-align:center">${inp(contratados,"recalcHCRow('"+proyId+"')",'cont')}</td>
+      <td style="text-align:center">${inp(bajas,"recalcHCRow('"+proyId+"')",'bajas')}</td>
       <td id="hc-prev-${proyId}" style="text-align:center;font-weight:500">${statusPrev}</td>
       <td id="hc-pct-${proyId}" style="text-align:center">${pct}</td>
       <td id="hc-cierre-${proyId}" style="text-align:center;font-weight:500">${statusCierre}</td>
-      <td style="text-align:center">${inp(detenidas,"recalcHCRow('"+proyId+"')")}</td>
+      <td style="text-align:center">${inp(detenidas,"recalcHCRow('"+proyId+"')",'det')}</td>
       <td id="hc-pcant-${proyId}" style="text-align:center;font-weight:500">${plantillaCierre}</td>
       <td style="text-align:center;white-space:nowrap">
         <button class="btn btn-danger btn-sm" onclick="hcEliminarFila('${proyId}','${empId}',${semana},${anio})" title="Eliminar semana"><i class="fa fa-trash" style="font-size:11px"></i></button>
@@ -6625,6 +6628,7 @@ async function abrirTablaHC(empId, semana, anio){
       </table>
     </div>`;
   recalcHCTotals();
+  hcColorAllInputs();
 }
 
 async function guardarSemanaHC(empId, semana, anio){
@@ -7160,6 +7164,34 @@ function recalcHCRow(proyId){
   const pcantEl = document.getElementById('hc-pcant-'+proyId);
   if(pcantEl) pcantEl.textContent=plantillaCierre;
   recalcHCTotals();
+}
+
+const _hcColPalette={
+  entrev:{bg:'rgba(59,130,246,.13)',border:'rgba(59,130,246,.45)',color:'#1d4ed8'},
+  valid: {bg:'rgba(245,158,11,.13)',border:'rgba(245,158,11,.5)', color:'#92400e'},
+  cont:  {bg:'rgba(22,163,74,.13)', border:'rgba(22,163,74,.45)', color:'#14532d'},
+  bajas: {bg:'rgba(220,38,38,.13)', border:'rgba(220,38,38,.45)', color:'#991b1b'},
+  det:   {bg:'rgba(234,88,12,.13)', border:'rgba(234,88,12,.45)', color:'#9a3412'},
+};
+function hcColorInp(inp){
+  const col=inp.dataset.col;
+  const p=_hcColPalette[col];
+  if(!p)return;
+  const v=parseInt(inp.value)||0;
+  if(v>0){
+    inp.style.background=p.bg;
+    inp.style.borderColor=p.border;
+    inp.style.color=p.color;
+    inp.style.fontWeight='700';
+  }else{
+    inp.style.background='';
+    inp.style.borderColor='';
+    inp.style.color='';
+    inp.style.fontWeight='';
+  }
+}
+function hcColorAllInputs(){
+  document.querySelectorAll('#hc-week-table input.hc-inp[data-col]').forEach(hcColorInp);
 }
 
 function recalcHCTotals(){

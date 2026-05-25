@@ -9024,15 +9024,33 @@ async function exportEntrevistaPDF() {
   showToast('PDF generado ✓');
 }
 
+function _refResolveEmp(){
+  // cand-empresa may be empty when opened via openReferenciasModal (shortcuts to step 3)
+  // fall back to DB lookup via cand-id → vacante → empresa
+  let empId=document.getElementById('cand-empresa')?.value;
+  if(!empId){
+    const candId=document.getElementById('cand-id')?.value;
+    const cand=DB.candidatos.find(x=>x.id===candId)||{};
+    const vac=DB.vacantes.find(v=>v.id===cand.vacante_id)||{};
+    empId=vac.empresa_id||'';
+  }
+  return DB.empresas.find(e=>e.id===empId)||{};
+}
+function _refResolveCandNombre(){
+  const v=document.getElementById('cand-nombre')?.value||'';
+  if(v.trim()&&v.trim()!=='Candidato') return v.trim();
+  const candId=document.getElementById('cand-id')?.value;
+  const cand=DB.candidatos.find(x=>x.id===candId)||{};
+  return cand.nombre||'Candidato';
+}
 async function exportRefLaboralesPDF() {
   if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
-  const empId=document.getElementById('cand-empresa')?.value;
-  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const emp=_refResolveEmp();
   if(emp.nombre?.toLowerCase().includes('nuim')) return exportRefNuimCamPDF();
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
   const W=216,M=20,CW=176;
-  const candNombre=(document.getElementById('cand-nombre')?.value||'Candidato').trim();
+  const candNombre=_refResolveCandNombre();
   let y=await _pdfHeader(doc,'REFERENCIAS LABORALES',candNombre,emp,`Fecha: ${today()}`);
 
   const cards=document.querySelectorAll('#ref-lab-list .ref-card');
@@ -9089,13 +9107,12 @@ async function exportRefLaboralesPDF() {
 
 async function exportRefPersonalesPDF() {
   if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
-  const empId=document.getElementById('cand-empresa')?.value;
-  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const emp=_refResolveEmp();
   if(emp.nombre?.toLowerCase().includes('nuim')) return exportRefNuimCamPDF();
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
   const W=216,M=20,CW=176;
-  const candNombre=(document.getElementById('cand-nombre')?.value||'Candidato').trim();
+  const candNombre=_refResolveCandNombre();
   let y=await _pdfHeader(doc,'REFERENCIAS PERSONALES',candNombre,emp,`Fecha: ${today()}`);
 
   const cards=document.querySelectorAll('#ref-per-list .ref-card');
@@ -9140,11 +9157,12 @@ async function exportRefNuimCamPDF(){
   const PW=216,PM=14,PCW=188;
   let y=PM;
 
-  const candNombre=(document.getElementById('cand-nombre')?.value||'').trim();
+  const candNombre=_refResolveCandNombre();
   const candContacto=(document.getElementById('cand-contacto')?.value||'').trim();
-  const empId=document.getElementById('cand-empresa')?.value;
-  const emp=DB.empresas.find(e=>e.id===empId)||{};
-  const recId=document.getElementById('cand-reclutador')?.value;
+  const emp=_refResolveEmp();
+  const candId=document.getElementById('cand-id')?.value;
+  const cand=DB.candidatos.find(x=>x.id===candId)||{};
+  const recId=document.getElementById('cand-reclutador')?.value||cand.reclutador_id||'';
   const rec=DB.reclutadores.find(r=>r.id===recId)||{};
 
   // ── HEADER ──

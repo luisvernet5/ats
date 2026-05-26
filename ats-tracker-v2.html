@@ -4446,21 +4446,8 @@ function renderPipeline(){
   const hidden=window._pipHiddenStages;
   window._pipAllStages=Object.entries(stageMap).map(([key,s])=>({key,label:s.label,color:s.color,count:s.cands.length}));
   const visibleEntries=Object.entries(stageMap).filter(([key])=>!hidden.has(key));
-  const hiddenEntries=Object.entries(stageMap).filter(([key])=>hidden.has(key));
 
-  const hiddenBar=hiddenEntries.length?`
-    <div style="display:flex;align-items:center;gap:6px;padding:4px 0 10px;flex-wrap:wrap">
-      <span style="font-size:11px;color:var(--text3)">Ocultas:</span>
-      ${hiddenEntries.map(([key,s])=>`
-        <button onclick="_pipToggleCol('${key.replace(/'/g,"\\'")}',true)" title="Mostrar columna"
-          style="display:flex;align-items:center;gap:5px;padding:2px 10px;border:1px solid ${s.color}44;border-radius:20px;background:${s.color}11;cursor:pointer;font-size:11px;color:${s.color};white-space:nowrap">
-          <span style="width:6px;height:6px;border-radius:50%;background:${s.color};flex-shrink:0"></span>
-          ${s.label} <span style="opacity:.7">(${s.cands.length})</span>
-          <i class="fa fa-eye" style="font-size:9px;opacity:.6"></i>
-        </button>`).join('')}
-    </div>`:''  ;
-
-  board.innerHTML=hiddenBar+(visibleEntries.length?visibleEntries.map(([key,s])=>`
+  board.innerHTML=visibleEntries.length?visibleEntries.map(([key,s])=>`
     <div class="stage-col" data-stage-key="${key.replace(/"/g,'&quot;')}" data-stage-label="${s.label.replace(/"/g,'&quot;')}">
       <div class="stage-header">
         <span class="stage-lbl" style="color:${s.color}">${s.label}</span>

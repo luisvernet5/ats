@@ -4983,6 +4983,8 @@ function renderCandidatosDescartados(){
       <input type="date" id="desc-desde" style="display:inline-block;width:auto;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" onchange="_filtrarDescartados()">
       <input type="date" id="desc-hasta" style="display:inline-block;width:auto;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" onchange="_filtrarDescartados()">
       <button onclick="_limpiarFiltrosDesc()" style="display:inline-block;height:30px;font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#666">× Limpiar</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-green btn-sm" onclick="exportDescartadosExcel()" style="height:30px"><i class="fa fa-file-excel"></i> Exportar Excel</button>
     </div>
     <div id="desc-table-wrap" class="table-wrap"></div>
     <div id="desc-count" style="font-size:12px;color:var(--text3);padding:8px 0;"></div>`;
@@ -5012,6 +5014,40 @@ function _filtrarDescartados(){
 function _limpiarFiltrosDesc(){
   ['desc-q','desc-emp','desc-rec','desc-proy','desc-dep','desc-desde','desc-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   _filtrarDescartados();
+}
+
+function exportDescartadosExcel(){
+  const q=(document.getElementById('desc-q')||{}).value||'';
+  const empId=(document.getElementById('desc-emp')||{}).value||'';
+  const recId=(document.getElementById('desc-rec')||{}).value||'';
+  const proy=(document.getElementById('desc-proy')||{}).value||'';
+  const dep=(document.getElementById('desc-dep')||{}).value||'';
+  const desde=(document.getElementById('desc-desde')||{}).value||'';
+  const hasta=(document.getElementById('desc-hasta')||{}).value||'';
+  let lista=DB.candidatos.filter(_esCandDescartado)
+    .sort((a,b)=>((b.fecha_descarte||b.fecha_salida||'')).localeCompare((a.fecha_descarte||a.fecha_salida||'')));
+  if(q)lista=lista.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
+  if(empId){const vids=DB.vacantes.filter(v=>v.empresa_id===empId).map(v=>v.id);lista=lista.filter(c=>vids.includes(c.vacante_id));}
+  if(recId)lista=lista.filter(c=>c.reclutador_id===recId);
+  if(proy)lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return v?.proyecto===proy;});
+  if(dep)lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return v?.departamento===dep;});
+  if(desde)lista=lista.filter(c=>(c.fecha_descarte||c.fecha_salida||'')>=desde);
+  if(hasta)lista=lista.filter(c=>(c.fecha_descarte||c.fecha_salida||'')<=hasta);
+  if(!lista.length){showToast('Sin datos para exportar','err');return;}
+  const header=['#','Candidato','Vacante','Empresa','Reclutador','Proyecto','Departamento','Etapa','Fecha descarte','Motivo'];
+  const filas=lista.map((c,i)=>{
+    const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+    const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const rec=DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
+    return[i+1,c.nombre||'',v.nombre||'',emp.nombre||'',rec.nombre||'',v.proyecto||'',v.departamento||'',c.etapa||'',c.fecha_descarte||c.fecha_salida||'',c.motivo_descarte||c.motivo_desercion||''];
+  });
+  const csv=[header,...filas].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`descartados_${today()}.csv`;
+  a.click();
+  showToast('Excel descargado ✓');
 }
 
 function _renderTablaDescartados(lista){

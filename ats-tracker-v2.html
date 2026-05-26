@@ -475,9 +475,10 @@ input[type=date]{color:var(--text)}
       <div id="wrap-flt-pip-rec" style="flex:none"><button id="btn-flt-pip-rec" onclick="_mfOpen('flt-pip-rec',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:155px;justify-content:space-between"><span id="lbl-flt-pip-rec">Todos los reclutadores</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <div id="wrap-flt-pip-vac" style="flex:none"><button id="btn-flt-pip-vac" onclick="_mfOpen('flt-pip-vac',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between"><span id="lbl-flt-pip-vac">Todas las vacantes</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <span class="sp"></span>
-      <div style="display:flex;gap:4px">
+      <div style="display:flex;gap:4px;align-items:center">
         <button id="pip-btn-cal" class="btn btn-primary btn-sm" onclick="setPipView('cal')"><i class="fa fa-calendar-week"></i> Calendario</button>
         <button id="pip-btn-kanban" class="btn btn-ghost btn-sm" onclick="setPipView('kanban')"><i class="fa fa-columns"></i> Kanban</button>
+        <button id="pip-btn-cols" class="btn btn-ghost btn-sm" onclick="_pipOpenColPanel(event)" style="display:none"><i class="fa fa-eye"></i> Columnas</button>
       </div>
     </div>
     <div id="pip-cal-nav" style="display:flex;align-items:center;gap:10px;padding:14px 0 10px">
@@ -4231,6 +4232,73 @@ function renderDashboard(){
    ============================================================ */
 let _pipViewMode='cal';
 let _pipCalWeekOffset=0;
+window._pipHiddenStages=new Set();
+
+function _pipOpenColPanel(e){
+  e.stopPropagation();
+  const existing=document.getElementById('_pip-col-panel');
+  if(existing){existing.remove();return;}
+  const btn=document.getElementById('pip-btn-cols');
+  if(!btn)return;
+  const rect=btn.getBoundingClientRect();
+  const panel=document.createElement('div');
+  panel.id='_pip-col-panel';
+  panel.style.cssText=`position:fixed;top:${rect.bottom+4}px;right:${window.innerWidth-rect.right}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:6px 4px;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,.15);min-width:220px;max-height:380px;overflow-y:auto`;
+  _pipFillColPanel(panel);
+  document.body.appendChild(panel);
+  const close=ev=>{if(!panel.contains(ev.target)&&ev.target.id!=='pip-btn-cols'){panel.remove();document.removeEventListener('mousedown',close);}};
+  setTimeout(()=>document.addEventListener('mousedown',close),0);
+}
+
+function _pipFillColPanel(panel){
+  const board=document.getElementById('pipeline-board');
+  const allKeys=[...board.querySelectorAll('.stage-col')].map(el=>el.dataset.stageKey).filter(Boolean);
+  const allLabels={};
+  board.querySelectorAll('.stage-col').forEach(el=>{allLabels[el.dataset.stageKey]=el.dataset.stageLabel||el.dataset.stageKey;});
+  if(!allKeys.length){panel.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--text3)">Activa la vista Kanban primero</div>';return;}
+  const hidden=window._pipHiddenStages;
+  panel.innerHTML=`
+    <div style="padding:4px 10px 6px;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Columnas visibles</div>
+    <label style="display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <input type="checkbox" ${hidden.size===0?'checked':''} onchange="_pipToggleAllCols(this)"> <strong>Mostrar todo</strong>
+    </label>
+    <div style="height:1px;background:var(--border2);margin:4px 8px"></div>
+    ${allKeys.map(k=>`
+      <label style="display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        <input type="checkbox" ${!hidden.has(k)?'checked':''} onchange="_pipToggleCol('${k.replace(/'/g,"\\'")}',this.checked)">
+        ${allLabels[k]||k}
+      </label>`).join('')}`;
+}
+
+function _pipToggleAllCols(cb){
+  window._pipHiddenStages.clear();
+  if(!cb.checked){
+    const board=document.getElementById('pipeline-board');
+    board.querySelectorAll('.stage-col').forEach(el=>{if(el.dataset.stageKey)window._pipHiddenStages.add(el.dataset.stageKey);});
+  }
+  _pipUpdateColBtn();
+  renderPipeline();
+  const panel=document.getElementById('_pip-col-panel');
+  if(panel)_pipFillColPanel(panel);
+}
+
+function _pipToggleCol(key,visible){
+  if(visible)window._pipHiddenStages.delete(key);
+  else window._pipHiddenStages.add(key);
+  _pipUpdateColBtn();
+  renderPipeline();
+  const panel=document.getElementById('_pip-col-panel');
+  if(panel)_pipFillColPanel(panel);
+}
+
+function _pipUpdateColBtn(){
+  const btn=document.getElementById('pip-btn-cols');
+  if(!btn)return;
+  const n=window._pipHiddenStages.size;
+  btn.innerHTML=n>0
+    ?`<i class="fa fa-eye-slash"></i> Columnas <span style="background:var(--accent);color:#fff;border-radius:10px;padding:0 6px;font-size:11px;font-weight:700">${n} ocultas</span>`
+    :`<i class="fa fa-eye"></i> Columnas`;
+}
 
 function setPipView(mode){
   _pipViewMode=mode;
@@ -4342,6 +4410,9 @@ function renderPipeline(){
   const mfPipRec=_mfGet('flt-pip-rec');if(mfPipRec)cands=cands.filter(c=>mfPipRec.has(c.reclutador_id||''));
   const mfPipVac=_mfGet('flt-pip-vac');if(mfPipVac)cands=cands.filter(c=>mfPipVac.has(c.vacante_id||''));
 
+  const colsBtn=document.getElementById('pip-btn-cols');
+  if(colsBtn) colsBtn.style.display=_pipViewMode==='kanban'?'':'none';
+
   if(_pipViewMode==='cal'){
     renderPipelineCalendar(cands);
     return;
@@ -4367,11 +4438,31 @@ function renderPipeline(){
   board.className='pipeline';
   if(!Object.keys(stageMap).length){board.innerHTML='<div style="color:var(--text3);padding:20px;font-size:13px">Sin candidatos en el pipeline con los filtros seleccionados.</div>';return;}
 
-  board.innerHTML=Object.entries(stageMap).map(([key,s])=>`
-    <div class="stage-col">
+  const hidden=window._pipHiddenStages;
+  const visibleEntries=Object.entries(stageMap).filter(([key])=>!hidden.has(key));
+  const hiddenEntries=Object.entries(stageMap).filter(([key])=>hidden.has(key));
+
+  const hiddenBar=hiddenEntries.length?`
+    <div style="display:flex;align-items:center;gap:6px;padding:4px 0 10px;flex-wrap:wrap">
+      <span style="font-size:11px;color:var(--text3)">Ocultas:</span>
+      ${hiddenEntries.map(([key,s])=>`
+        <button onclick="_pipToggleCol('${key.replace(/'/g,"\\'")}',true)" title="Mostrar columna"
+          style="display:flex;align-items:center;gap:5px;padding:2px 10px;border:1px solid ${s.color}44;border-radius:20px;background:${s.color}11;cursor:pointer;font-size:11px;color:${s.color};white-space:nowrap">
+          <span style="width:6px;height:6px;border-radius:50%;background:${s.color};flex-shrink:0"></span>
+          ${s.label} <span style="opacity:.7">(${s.cands.length})</span>
+          <i class="fa fa-eye" style="font-size:9px;opacity:.6"></i>
+        </button>`).join('')}
+    </div>`:''  ;
+
+  board.innerHTML=hiddenBar+(visibleEntries.length?visibleEntries.map(([key,s])=>`
+    <div class="stage-col" data-stage-key="${key.replace(/"/g,'&quot;')}" data-stage-label="${s.label.replace(/"/g,'&quot;')}">
       <div class="stage-header">
         <span class="stage-lbl" style="color:${s.color}">${s.label}</span>
         <span class="stage-n">${s.cands.length}</span>
+        <button onclick="_pipToggleCol('${key.replace(/'/g,"\\'")}',false)" title="Ocultar columna"
+          style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text3);padding:2px 4px;border-radius:4px;font-size:11px;opacity:.5" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.5'">
+          <i class="fa fa-eye-slash"></i>
+        </button>
       </div>
       ${s.cands.map(c=>{
         const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
@@ -4387,7 +4478,9 @@ function renderPipeline(){
         </div>`;
       }).join('')||`<div style="font-size:11px;color:var(--text3);padding:12px;text-align:center">Sin candidatos</div>`}
     </div>
-  `).join('');
+  `).join(''):'<div style="color:var(--text3);padding:20px;font-size:13px">Todas las columnas están ocultas. <button class="btn btn-ghost btn-sm" onclick="_pipToggleAllCols({checked:true})">Mostrar todo</button></div>');
+
+  _pipUpdateColBtn();
 }
 
 /* ============================================================

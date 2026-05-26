@@ -8121,9 +8121,32 @@ function renderDesercion(){
     </div>
     <div id="des-panel-historial" style="display:none">
       <div class="table-wrap"><table><thead><tr><th style="width:36px;text-align:center">#</th><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Tipo</th><th>Motivo</th><th>Días</th><th>Fecha</th></tr></thead><tbody>${rows||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin deserciones</td></tr>'}</tbody></table></div>
-      <div style="font-size:12px;color:var(--text3);padding:8px 0;">Mostrando <strong>${des.length}</strong> registros</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;">
+        <span style="font-size:12px;color:var(--text3)">Mostrando <strong>${des.length}</strong> registros</span>
+        <button class="btn btn-green btn-sm" onclick="exportDesercionExcel()"><i class="fa fa-file-excel"></i> Exportar Excel</button>
+      </div>
     </div>`;
   _renderDesResumen();
+}
+
+function exportDesercionExcel(){
+  const des = DB.candidatos.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
+  if(!des.length){ showToast('Sin datos para exportar','err'); return; }
+  const header = ['#','Candidato','Vacante','Empresa','Reclutador','Etapa','Motivo','Días en proceso','Fecha salida'];
+  const filas = des.map((c,i)=>{
+    const v = DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+    const emp = DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const r = DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
+    const d = processTotal(c);
+    return [i+1, c.nombre||'', v.nombre||'', emp.nombre||'', r.nombre||'', c.etapa||'', c.motivo_desercion||'', d!==null?d:'', c.fecha_salida||''];
+  });
+  const csv = [header, ...filas].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `desercion_${today()}.csv`;
+  a.click();
+  showToast('Excel descargado ✓');
 }
 
 function _renderDesResumen(){

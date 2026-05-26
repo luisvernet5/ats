@@ -5090,6 +5090,8 @@ function _etapaUpdateBtn(){
   if(!lbl) return;
   if(window._etapaFiltroSet === null){
     lbl.textContent = 'Todas las etapas';
+  } else if(window._etapaFiltroSet.size === 0){
+    lbl.textContent = 'Sin etapas';
   } else {
     const n = window._etapaFiltroSet.size;
     lbl.textContent = n === 1 ? [...window._etapaFiltroSet][0] : `${n} etapas`;
@@ -5123,8 +5125,13 @@ function _etapaPopulatePanel(list){
 }
 
 function etapaToggleAll(cb){
-  window._etapaFiltroSet = null;
-  document.querySelectorAll('#flt-etapa-list input[type=checkbox]').forEach(x=>x.checked=true);
+  if(cb.checked){
+    window._etapaFiltroSet = null;
+    document.querySelectorAll('#flt-etapa-list input[type=checkbox]').forEach(x=>x.checked=true);
+  } else {
+    window._etapaFiltroSet = new Set();
+    document.querySelectorAll('#flt-etapa-list input[type=checkbox]').forEach(x=>x.checked=false);
+  }
   _etapaUpdateBtn();
   renderCandidatosTable();
 }

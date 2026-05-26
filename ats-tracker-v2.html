@@ -9283,19 +9283,6 @@ async function exportEntrevistaPDF() {
   r1('Áreas de oportunidad',val('ei-areas-oportunidad'));
   r2('Recomendación',val('ei-recomendacion'),'Firma entrevistador',val('ei-firma-entrevistador'));
 
-  // Bloque de firma del reclutador
-  if(recNombre) {
-    chkPg(28);
-    y += 8;
-    doc.setDrawColor(80); doc.setLineWidth(0.4); doc.line(M, y, M+70, y);
-    y += 4;
-    doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(30);
-    doc.text(recNombre, M, y);
-    y += 4;
-    doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(120);
-    doc.text('Reclutador responsable del informe', M, y);
-  }
-
   const fname=candNombre.replace(/[^a-zA-Z0-9]/g,'_');
   doc.save(`Entrevista_${fname}_${fechaEnt}.pdf`);
   showToast('PDF generado ✓');

@@ -8104,7 +8104,7 @@ let _desEmpId=null;
 let _desDF={anio:'',mes:'',proyecto:''};
 
 function renderDesercion(){
-  const des=DB.candidatos.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
+  const des=DB.candidatos.filter(c=>c.etapa==='No aceptó');
   const rows=des.map((c,i)=>{
     const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
@@ -8138,7 +8138,7 @@ function renderDesercion(){
 }
 
 function exportDesercionExcel(){
-  const des = DB.candidatos.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
+  const des = DB.candidatos.filter(c=>c.etapa==='No aceptó');
   if(!des.length){ showToast('Sin datos para exportar','err'); return; }
   const header = ['#','Candidato','Vacante','Empresa','Reclutador','Etapa','Motivo','Días en proceso','Fecha salida'];
   const filas = des.map((c,i)=>{
@@ -8160,7 +8160,7 @@ function exportDesercionExcel(){
 function exportDesercionEmpresaExcel(empId){
   const emp = DB.empresas.find(e=>e.id===empId)||{};
   const des = DB.candidatos.filter(c=>{
-    if(!ETAPAS_SALIDA.includes(c.etapa)) return false;
+    if(c.etapa!=='No aceptó') return false;
     const v = DB.vacantes.find(x=>x.id===c.vacante_id)||{};
     if(v.empresa_id!==empId) return false;
     const f = c.fecha_salida||'';
@@ -8191,7 +8191,7 @@ function _renderDesResumen(){
   if(!panel)return;
   if(_desEmpId){_renderDesEmpresaDetalle(panel);return;}
 
-  const desAll=DB.candidatos.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
+  const desAll=DB.candidatos.filter(c=>c.etapa==='No aceptó');
   const des=desAll.filter(c=>{
     const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
     const f=c.fecha_salida||'';
@@ -8270,7 +8270,7 @@ function _renderDesResumen(){
 
 function _renderDesEmpresaDetalle(panel){
   const emp=DB.empresas.find(e=>e.id===_desEmpId)||{};
-  const desAll=DB.candidatos.filter(c=>ETAPAS_SALIDA.includes(c.etapa)&&(()=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};return v.empresa_id===_desEmpId;})());
+  const desAll=DB.candidatos.filter(c=>c.etapa==='No aceptó'&&(()=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};return v.empresa_id===_desEmpId;})());
   const des=desAll.filter(c=>{
     const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
     const f=c.fecha_salida||'';
@@ -8392,7 +8392,7 @@ function desercionTab(tab){
   if(tab==='graficas')_renderDesercionCharts();
 }
 function _renderDesercionCharts(){
-  const des=DB.candidatos.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
+  const des=DB.candidatos.filter(c=>c.etapa==='No aceptó');
   const motC={};MOTIVOS.forEach(m=>{const n=des.filter(c=>c.motivo_desercion===m).length;if(n)motC[m]=n;});
   const topM=Object.entries(motC).sort((a,b)=>b[1]-a[1]);
   destroyChart('chMotivos');

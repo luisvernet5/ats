@@ -471,9 +471,9 @@ input[type=date]{color:var(--text)}
   <!-- PIPELINE -->
   <div class="page" id="page-pipeline">
     <div class="fbar" style="flex-wrap:wrap;gap:6px">
-      <select id="flt-pip-emp" onchange="renderPipeline()"><option value="">Todas las empresas</option></select>
-      <select id="flt-pip-rec" onchange="renderPipeline()"><option value="">Todos los reclutadores</option></select>
-      <select id="flt-pip-vac" onchange="renderPipeline()"><option value="">Todas las vacantes</option></select>
+      <div id="wrap-flt-pip-emp" style="flex:none"><button id="btn-flt-pip-emp" onclick="_mfOpen('flt-pip-emp',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between"><span id="lbl-flt-pip-emp">Todas las empresas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div id="wrap-flt-pip-rec" style="flex:none"><button id="btn-flt-pip-rec" onclick="_mfOpen('flt-pip-rec',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:155px;justify-content:space-between"><span id="lbl-flt-pip-rec">Todos los reclutadores</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div id="wrap-flt-pip-vac" style="flex:none"><button id="btn-flt-pip-vac" onclick="_mfOpen('flt-pip-vac',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between"><span id="lbl-flt-pip-vac">Todas las vacantes</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <span class="sp"></span>
       <div style="display:flex;gap:4px">
         <button id="pip-btn-cal" class="btn btn-primary btn-sm" onclick="setPipView('cal')"><i class="fa fa-calendar-week"></i> Calendario</button>
@@ -4329,25 +4329,20 @@ function renderPipelineCalendar(cands){
 }
 
 function renderPipeline(){
-  const fEmp=(document.getElementById('flt-pip-emp')||{}).value||'';
-  const fRec=(document.getElementById('flt-pip-rec')||{}).value||'';
-  const fVac=(document.getElementById('flt-pip-vac')||{}).value||'';
-  // populate selects
-  ['flt-pip-emp','flt-pip-rec','flt-pip-vac'].forEach(id=>{
-    const sel=document.getElementById(id);if(!sel)return;
-    const cur=sel.value;
-    const _empIdPip = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
-    if(id==='flt-pip-emp'){sel.innerHTML='<option value="">Todas las empresas</option>';(_empIdPip?DB.empresas.filter(e=>e.id===_empIdPip):DB.empresas).forEach(e=>sel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
-    if(id==='flt-pip-rec'){sel.innerHTML='<option value="">Todos los reclutadores</option>';DB.reclutadores.forEach(r=>sel.innerHTML+=`<option value="${r.id}" ${cur===r.id?'selected':''}>${r.nombre}</option>`);}
-    if(id==='flt-pip-vac'){sel.innerHTML='<option value="">Todas las vacantes</option>';(_empIdPip?DB.vacantes.filter(v=>v.empresa_id===_empIdPip):DB.vacantes).forEach(v=>sel.innerHTML+=`<option value="${v.id}" ${cur===v.id?'selected':''}>${v.nombre}</option>`);}
-  });
+  const _empIdPip = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
+  // populate multi-select filters
+  const pipEmpOpts=(_empIdPip?DB.empresas.filter(e=>e.id===_empIdPip):DB.empresas).map(e=>({value:e.id,label:e.nombre}));
+  _mfPopulate('flt-pip-emp',pipEmpOpts,'Todas las empresas');
+  _mfPopulate('flt-pip-rec',DB.reclutadores.map(r=>({value:r.id,label:r.nombre})),'Todos los reclutadores');
+  const pipVacOpts=(_empIdPip?DB.vacantes.filter(v=>v.empresa_id===_empIdPip):DB.vacantes).map(v=>({value:v.id,label:v.nombre}));
+  _mfPopulate('flt-pip-vac',pipVacOpts,'Todas las vacantes');
   const _recIdP = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   const _empIdP = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
   const _vacsP = _recIdP ? DB.vacantes.filter(v=>v.reclutador_id===_recIdP) : _empIdP ? DB.vacantes.filter(v=>v.empresa_id===_empIdP) : DB.vacantes;
   let cands = (_recIdP||_empIdP) ? DB.candidatos.filter(c=>_vacsP.find(v=>v.id===c.vacante_id)) : DB.candidatos;
-  if(fEmp){const vids=_vacsP.filter(v=>v.empresa_id===fEmp).map(v=>v.id);cands=cands.filter(c=>vids.includes(c.vacante_id));}
-  if(fRec)cands=cands.filter(c=>c.reclutador_id===fRec);
-  if(fVac)cands=cands.filter(c=>c.vacante_id===fVac);
+  const mfPipEmp=_mfGet('flt-pip-emp');if(mfPipEmp){const vids=_vacsP.filter(v=>mfPipEmp.has(v.empresa_id||'')).map(v=>v.id);cands=cands.filter(c=>vids.includes(c.vacante_id));}
+  const mfPipRec=_mfGet('flt-pip-rec');if(mfPipRec)cands=cands.filter(c=>mfPipRec.has(c.reclutador_id||''));
+  const mfPipVac=_mfGet('flt-pip-vac');if(mfPipVac)cands=cands.filter(c=>mfPipVac.has(c.vacante_id||''));
 
   if(_pipViewMode==='cal'){
     renderPipelineCalendar(cands);
@@ -4957,72 +4952,67 @@ let _descFiltros={q:'',empId:'',recId:'',proyecto:'',departamento:'',desde:'',ha
 
 function renderCandidatosDescartados(){
   const pg=document.getElementById('page-candidatos-descartados');if(!pg)return;
+  if(!document.getElementById('desc-fbar')){
+    pg.innerHTML=`
+      <div class="fbar" id="desc-fbar" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+        <input type="text" id="desc-q" placeholder="Buscar..." style="display:inline-block;width:auto;min-width:140px;height:36px;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" oninput="_filtrarDescartados()">
+        <div style="flex:none"><button id="btn-desc-emp" onclick="_mfOpen('desc-emp',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:130px;justify-content:space-between"><span id="lbl-desc-emp">Empresa</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+        <div style="flex:none"><button id="btn-desc-rec" onclick="_mfOpen('desc-rec',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:120px;justify-content:space-between"><span id="lbl-desc-rec">Reclutador</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+        <div style="flex:none"><button id="btn-desc-proy" onclick="_mfOpen('desc-proy',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:110px;justify-content:space-between"><span id="lbl-desc-proy">Proyecto</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+        <div style="flex:none"><button id="btn-desc-dep" onclick="_mfOpen('desc-dep',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:120px;justify-content:space-between"><span id="lbl-desc-dep">Departamento</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+        <input type="date" id="desc-desde" style="display:inline-block;width:auto;height:36px;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" onchange="_filtrarDescartados()">
+        <input type="date" id="desc-hasta" style="display:inline-block;width:auto;height:36px;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" onchange="_filtrarDescartados()">
+        <button onclick="_limpiarFiltrosDesc()" class="btn btn-ghost btn-sm" style="white-space:nowrap">× Limpiar</button>
+        <span style="flex:1"></span>
+        <button class="btn btn-green btn-sm" onclick="exportDescartadosExcel()"><i class="fa fa-file-excel"></i> Exportar Excel</button>
+      </div>
+      <div id="desc-table-wrap" class="table-wrap"></div>
+      <div id="desc-count" style="font-size:12px;color:var(--text3);padding:8px 0;"></div>`;
+  }
   const lista=DB.candidatos.filter(_esCandDescartado)
     .sort((a,b)=>((b.fecha_descarte||b.fecha_salida||'')).localeCompare((a.fecha_descarte||a.fecha_salida||'')));
-  const empresasOpts=DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
-  const recsOpts=DB.reclutadores.map(r=>`<option value="${r.id}">${r.nombre}</option>`).join('');
-  const proyectos=[...new Set(lista.map(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return v?.proyecto||'';}).filter(Boolean))];
-  const deptos=[...new Set(lista.map(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return v?.departamento||'';}).filter(Boolean))];
-  const proyOpts=proyectos.map(p=>`<option value="${p}">${p}</option>`).join('');
-  const depOpts=deptos.map(d=>`<option value="${d}">${d}</option>`).join('');
-  pg.innerHTML=`
-    <div class="fbar" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:14px">
-      <input type="text" id="desc-q" placeholder="Buscar..." style="display:inline-block;width:auto;min-width:140px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" oninput="_filtrarDescartados()">
-      <select id="desc-emp" style="display:inline-block;width:auto;min-width:130px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" onchange="_filtrarDescartados()"><option value="">Empresa</option>${empresasOpts}</select>
-      <select id="desc-rec" style="display:inline-block;width:auto;min-width:120px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" onchange="_filtrarDescartados()"><option value="">Reclutador</option>${recsOpts}</select>
-      <select id="desc-proy" style="display:inline-block;width:auto;min-width:110px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" onchange="_filtrarDescartados()"><option value="">Proyecto</option>${proyOpts}</select>
-      <select id="desc-dep" style="display:inline-block;width:auto;min-width:120px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" onchange="_filtrarDescartados()"><option value="">Departamento</option>${depOpts}</select>
-      <input type="date" id="desc-desde" style="display:inline-block;width:auto;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" onchange="_filtrarDescartados()">
-      <input type="date" id="desc-hasta" style="display:inline-block;width:auto;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px" onchange="_filtrarDescartados()">
-      <button onclick="_limpiarFiltrosDesc()" style="display:inline-block;height:30px;font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#666">× Limpiar</button>
-      <span style="flex:1"></span>
-      <button class="btn btn-green btn-sm" onclick="exportDescartadosExcel()" style="height:30px"><i class="fa fa-file-excel"></i> Exportar Excel</button>
-    </div>
-    <div id="desc-table-wrap" class="table-wrap"></div>
-    <div id="desc-count" style="font-size:12px;color:var(--text3);padding:8px 0;"></div>`;
-  _renderTablaDescartados(lista);
+  _mfPopulate('desc-emp',DB.empresas.map(e=>({value:e.id,label:e.nombre})),'Empresa');
+  _mfPopulate('desc-rec',DB.reclutadores.map(r=>({value:r.id,label:r.nombre})),'Reclutador');
+  const dProy=[...new Set(lista.map(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return v?.proyecto||'';}).filter(Boolean))];
+  _mfPopulate('desc-proy',dProy.map(p=>({value:p,label:p})),'Proyecto');
+  const dDep=[...new Set(lista.map(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return v?.departamento||'';}).filter(Boolean))];
+  _mfPopulate('desc-dep',dDep.map(d=>({value:d,label:d})),'Departamento');
+  _filtrarDescartados();
 }
 
 function _filtrarDescartados(){
   const q=(document.getElementById('desc-q')||{}).value||'';
-  const empId=(document.getElementById('desc-emp')||{}).value||'';
-  const recId=(document.getElementById('desc-rec')||{}).value||'';
-  const proy=(document.getElementById('desc-proy')||{}).value||'';
-  const dep=(document.getElementById('desc-dep')||{}).value||'';
   const desde=(document.getElementById('desc-desde')||{}).value||'';
   const hasta=(document.getElementById('desc-hasta')||{}).value||'';
   let lista=DB.candidatos.filter(_esCandDescartado)
     .sort((a,b)=>((b.fecha_descarte||b.fecha_salida||'')).localeCompare((a.fecha_descarte||a.fecha_salida||'')));
   if(q)lista=lista.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
-  if(empId){const vids=DB.vacantes.filter(v=>v.empresa_id===empId).map(v=>v.id);lista=lista.filter(c=>vids.includes(c.vacante_id));}
-  if(recId)lista=lista.filter(c=>c.reclutador_id===recId);
-  if(proy)lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return v?.proyecto===proy;});
-  if(dep)lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return v?.departamento===dep;});
+  const mfDescEmp=_mfGet('desc-emp');if(mfDescEmp){const vids=DB.vacantes.filter(v=>mfDescEmp.has(v.empresa_id||'')).map(v=>v.id);lista=lista.filter(c=>vids.includes(c.vacante_id));}
+  const mfDescRec=_mfGet('desc-rec');if(mfDescRec)lista=lista.filter(c=>mfDescRec.has(c.reclutador_id||''));
+  const mfDescProy=_mfGet('desc-proy');if(mfDescProy)lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return mfDescProy.has(v?.proyecto||'');});
+  const mfDescDep=_mfGet('desc-dep');if(mfDescDep)lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return mfDescDep.has(v?.departamento||'');});
   if(desde)lista=lista.filter(c=>(c.fecha_descarte||'')>=desde);
   if(hasta)lista=lista.filter(c=>(c.fecha_descarte||'')<=hasta);
   _renderTablaDescartados(lista);
 }
 
 function _limpiarFiltrosDesc(){
-  ['desc-q','desc-emp','desc-rec','desc-proy','desc-dep','desc-desde','desc-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['desc-q','desc-desde','desc-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  _mfReset('desc-emp','desc-rec','desc-proy','desc-dep');
   _filtrarDescartados();
 }
 
 function exportDescartadosExcel(){
   const q=(document.getElementById('desc-q')||{}).value||'';
-  const empId=(document.getElementById('desc-emp')||{}).value||'';
-  const recId=(document.getElementById('desc-rec')||{}).value||'';
-  const proy=(document.getElementById('desc-proy')||{}).value||'';
-  const dep=(document.getElementById('desc-dep')||{}).value||'';
   const desde=(document.getElementById('desc-desde')||{}).value||'';
   const hasta=(document.getElementById('desc-hasta')||{}).value||'';
   let lista=DB.candidatos.filter(_esCandDescartado)
     .sort((a,b)=>((b.fecha_descarte||b.fecha_salida||'')).localeCompare((a.fecha_descarte||a.fecha_salida||'')));
   if(q)lista=lista.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
-  if(empId){const vids=DB.vacantes.filter(v=>v.empresa_id===empId).map(v=>v.id);lista=lista.filter(c=>vids.includes(c.vacante_id));}
-  if(recId)lista=lista.filter(c=>c.reclutador_id===recId);
-  if(proy)lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return v?.proyecto===proy;});
-  if(dep)lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return v?.departamento===dep;});
+  const mfDescEmp=_mfGet('desc-emp');if(mfDescEmp){const vids=DB.vacantes.filter(v=>mfDescEmp.has(v.empresa_id||'')).map(v=>v.id);lista=lista.filter(c=>vids.includes(c.vacante_id));}
+  const mfDescRec=_mfGet('desc-rec');if(mfDescRec)lista=lista.filter(c=>mfDescRec.has(c.reclutador_id||''));
+  const mfDescProy=_mfGet('desc-proy');if(mfDescProy)lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return mfDescProy.has(v?.proyecto||'');});
+  const mfDescDep=_mfGet('desc-dep');if(mfDescDep)lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return mfDescDep.has(v?.departamento||'');});
   if(desde)lista=lista.filter(c=>(c.fecha_descarte||c.fecha_salida||'')>=desde);
   if(hasta)lista=lista.filter(c=>(c.fecha_descarte||c.fecha_salida||'')<=hasta);
   if(!lista.length){showToast('Sin datos para exportar','err');return;}
@@ -5187,6 +5177,9 @@ function _mfCbChange(id,value,checked){
 function _mfOnChange(id){
   if(id.startsWith('flt-vac-')) renderVacantesTable();
   else if(id.startsWith('flt-cand-')) renderCandidatosTable();
+  else if(id.startsWith('flt-pip-')) renderPipeline();
+  else if(id.startsWith('desc-')) _filtrarDescartados();
+  else if(id.startsWith('des-')||id.startsWith('desdf-')) _renderDesResumen();
 }
 
 function _mfReset(...ids){
@@ -8254,7 +8247,7 @@ function renderDesercion(){
     const d=processTotal(c);
     return`<tr><td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td>${emp.nombre||'—'}</td><td>${r.nombre||'—'}</td><td>${badgeEtapa(c.etapa,v.empresa_id)}</td><td style="color:var(--red)">${c.motivo_desercion||'—'}</td><td>${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:'—'}</td><td>${fmt(c.fecha_salida)}</td></tr>`;
   }).join('');
-  _desEmpId=null; _desF={anio:'',mes:'',empresa:'',proyecto:''}; _desDF={anio:'',mes:'',proyecto:''};
+  _desEmpId=null; _mfReset('des-anio','des-mes','des-emp','des-proy','desdf-anio','desdf-mes','desdf-proy');
   document.getElementById('page-desercion').innerHTML=`
     <div style="display:flex;gap:6px;margin-bottom:20px;align-items:center">
       <button id="dtab-resumen" class="btn btn-primary" onclick="desercionTab('resumen')">Resumen</button>
@@ -8306,9 +8299,10 @@ function exportDesercionEmpresaExcel(empId){
     const v = DB.vacantes.find(x=>x.id===c.vacante_id)||{};
     if(v.empresa_id!==empId) return false;
     const f = c.fecha_salida||'';
-    if(_desDF.anio && f.slice(0,4)!==_desDF.anio) return false;
-    if(_desDF.mes  && f.slice(5,7)!==_desDF.mes)  return false;
-    if(_desDF.proyecto){const vp=DB.vacantes.find(x=>x.id===c.vacante_id)||{};if((vp.proyecto||'')!==_desDF.proyecto)return false;}
+    const _dfA=_mfGet('desdf-anio'),_dfM=_mfGet('desdf-mes'),_dfP=_mfGet('desdf-proy');
+    if(_dfA&&!_dfA.has(f.slice(0,4))) return false;
+    if(_dfM&&!_dfM.has(f.slice(5,7))) return false;
+    if(_dfP&&!_dfP.has(v.proyecto||'')) return false;
     return true;
   });
   if(!des.length){ showToast('Sin datos para exportar','err'); return; }
@@ -8333,14 +8327,15 @@ function _renderDesResumen(){
   if(!panel)return;
   if(_desEmpId){_renderDesEmpresaDetalle(panel);return;}
 
+  const mfDesAnio=_mfGet('des-anio'),mfDesMes=_mfGet('des-mes'),mfDesEmp=_mfGet('des-emp'),mfDesProy=_mfGet('des-proy');
   const desAll=DB.candidatos.filter(_esCandDesercion);
   const des=desAll.filter(c=>{
     const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
     const f=c.fecha_salida||'';
-    if(_desF.anio&&f.slice(0,4)!==_desF.anio)return false;
-    if(_desF.mes&&f.slice(5,7)!==_desF.mes)return false;
-    if(_desF.empresa&&v.empresa_id!==_desF.empresa)return false;
-    if(_desF.proyecto&&(v.proyecto||'')!==_desF.proyecto)return false;
+    if(mfDesAnio&&!mfDesAnio.has(f.slice(0,4)))return false;
+    if(mfDesMes&&!mfDesMes.has(f.slice(5,7)))return false;
+    if(mfDesEmp&&!mfDesEmp.has(v.empresa_id||''))return false;
+    if(mfDesProy&&!mfDesProy.has(v.proyecto||''))return false;
     return true;
   });
 
@@ -8350,7 +8345,11 @@ function _renderDesResumen(){
   const pct=DB.candidatos.length?Math.round(des.length/DB.candidatos.length*100):0;
   const motC={};des.forEach(c=>{if(c.motivo_desercion)motC[c.motivo_desercion]=(motC[c.motivo_desercion]||0)+1;});
   const topM=Object.entries(motC).sort((a,b)=>b[1]-a[1]);
-  const hasFilters=_desF.anio||_desF.mes||_desF.empresa||_desF.proyecto;
+  const hasFilters=mfDesAnio||mfDesMes||mfDesEmp||mfDesProy;
+  _mfPopulate('des-anio',years.map(y=>({value:y,label:y})),'Año');
+  _mfPopulate('des-mes',['01','02','03','04','05','06','07','08','09','10','11','12'].map((m,mi)=>({value:m,label:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][mi]})),'Mes');
+  _mfPopulate('des-emp',empConDes.map(e=>({value:e.id,label:e.nombre})),'Empresa');
+  _mfPopulate('des-proy',proyectos.map(p=>({value:p,label:p})),'Proyecto');
 
   const empCards=empConDes.map(emp=>{
     const empDes=des.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};return v.empresa_id===emp.id;});
@@ -8359,7 +8358,7 @@ function _renderDesResumen(){
     const empTopM=Object.entries(empMotC).sort((a,b)=>b[1]-a[1]);
     const empTotal=DB.candidatos.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};return v.empresa_id===emp.id;}).length;
     const tasa=empTotal?Math.round(empDes.length/empTotal*100):0;
-    return`<div class="card" style="cursor:pointer" onclick="_desEmpId='${emp.id}';_desDF={anio:'',mes:'',proyecto:''};_renderDesResumen()">
+    return`<div class="card" style="cursor:pointer" onclick="_desEmpId='${emp.id}';_mfReset('desdf-anio','desdf-mes','desdf-proy');_renderDesResumen()">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
         ${emp.color?`<span style="width:10px;height:10px;border-radius:50%;background:${emp.color};flex-shrink:0"></span>`:''}
         <span style="font-size:13px;font-weight:600;color:var(--text)">${emp.nombre}</span>
@@ -8387,38 +8386,28 @@ function _renderDesResumen(){
       <div class="card"><div class="card-title">Con motivo registrado</div><div class="card-value">${des.filter(c=>c.motivo_desercion).length}</div><div class="card-sub">de ${des.length}</div></div>
     </div>
     <div class="fbar" style="margin-bottom:20px">
-      <select onchange="_desF.anio=this.value;_renderDesResumen()" style="width:auto;min-width:130px">
-        <option value="">Todos los años</option>
-        ${years.map(y=>`<option value="${y}" ${_desF.anio===y?'selected':''}>${y}</option>`).join('')}
-      </select>
-      <select onchange="_desF.mes=this.value;_renderDesResumen()" style="width:auto;min-width:130px">
-        <option value="">Todos los meses</option>
-        ${['01','02','03','04','05','06','07','08','09','10','11','12'].map((m,mi)=>`<option value="${m}" ${_desF.mes===m?'selected':''}>${['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][mi]}</option>`).join('')}
-      </select>
-      <select onchange="_desF.empresa=this.value;_renderDesResumen()" style="width:auto;min-width:160px">
-        <option value="">Todas las empresas</option>
-        ${empConDes.map(e=>`<option value="${e.id}" ${_desF.empresa===e.id?'selected':''}>${e.nombre}</option>`).join('')}
-      </select>
-      <select onchange="_desF.proyecto=this.value;_renderDesResumen()" style="width:auto;min-width:150px">
-        <option value="">Todos los proyectos</option>
-        ${proyectos.map(p=>`<option value="${p}" ${_desF.proyecto===p?'selected':''}>${p}</option>`).join('')}
-      </select>
-      ${hasFilters?`<button class="btn btn-ghost btn-sm" onclick="_desF={anio:'',mes:'',empresa:'',proyecto:''};_renderDesResumen()"><i class="fa fa-times"></i> Limpiar</button>`:''}
+      <div style="flex:none"><button id="btn-des-anio" onclick="_mfOpen('des-anio',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:90px;justify-content:space-between"><span id="lbl-des-anio">Año</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div style="flex:none"><button id="btn-des-mes" onclick="_mfOpen('des-mes',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:90px;justify-content:space-between"><span id="lbl-des-mes">Mes</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div style="flex:none"><button id="btn-des-emp" onclick="_mfOpen('des-emp',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:130px;justify-content:space-between"><span id="lbl-des-emp">Empresa</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div style="flex:none"><button id="btn-des-proy" onclick="_mfOpen('des-proy',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:110px;justify-content:space-between"><span id="lbl-des-proy">Proyecto</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      ${hasFilters?`<button class="btn btn-ghost btn-sm" onclick="_mfReset('des-anio','des-mes','des-emp','des-proy');_renderDesResumen()"><i class="fa fa-times"></i> Limpiar</button>`:''}
     </div>
     ${empCards?`<div class="sec-title">Por empresa</div><div class="g3" style="margin-top:8px">${empCards}</div>`
     :`<div style="text-align:center;padding:32px 0;color:var(--text3);font-size:13px"><i class="fa fa-check-circle" style="color:var(--green);margin-right:6px"></i>Sin deserciones en el período seleccionado</div>`}
   `;
+  _mfUpdateBtn('des-anio');_mfUpdateBtn('des-mes');_mfUpdateBtn('des-emp');_mfUpdateBtn('des-proy');
 }
 
 function _renderDesEmpresaDetalle(panel){
   const emp=DB.empresas.find(e=>e.id===_desEmpId)||{};
   const desAll=DB.candidatos.filter(c=>_esCandDesercion(c)&&(()=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};return v.empresa_id===_desEmpId;})());
+  const mfDfAnio=_mfGet('desdf-anio'),mfDfMes=_mfGet('desdf-mes'),mfDfProy=_mfGet('desdf-proy');
   const des=desAll.filter(c=>{
     const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
     const f=c.fecha_salida||'';
-    if(_desDF.anio&&f.slice(0,4)!==_desDF.anio)return false;
-    if(_desDF.mes&&f.slice(5,7)!==_desDF.mes)return false;
-    if(_desDF.proyecto&&(v.proyecto||'')!==_desDF.proyecto)return false;
+    if(mfDfAnio&&!mfDfAnio.has(f.slice(0,4)))return false;
+    if(mfDfMes&&!mfDfMes.has(f.slice(5,7)))return false;
+    if(mfDfProy&&!mfDfProy.has(v.proyecto||''))return false;
     return true;
   });
 
@@ -8430,7 +8419,10 @@ function _renderDesEmpresaDetalle(panel){
   const avgDias=dias.length?Math.round(dias.reduce((a,b)=>a+b,0)/dias.length):null;
   const empTotal=DB.candidatos.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};return v.empresa_id===_desEmpId;}).length;
   const tasa=empTotal?Math.round(des.length/empTotal*100):0;
-  const hasFilters=_desDF.anio||_desDF.mes||_desDF.proyecto;
+  const hasFilters=mfDfAnio||mfDfMes||mfDfProy;
+  _mfPopulate('desdf-anio',years.map(y=>({value:y,label:y})),'Año');
+  _mfPopulate('desdf-mes',['01','02','03','04','05','06','07','08','09','10','11','12'].map((m,mi)=>({value:m,label:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][mi]})),'Mes');
+  _mfPopulate('desdf-proy',proyectos.map(p=>({value:p,label:p})),'Proyecto');
 
   const motiList=topM.slice(0,6).map(([motivo,cnt])=>{
     const pct=des.length?Math.round(cnt/des.length*100):0;
@@ -8469,19 +8461,10 @@ function _renderDesEmpresaDetalle(panel){
       <span style="font-size:15px;font-weight:600;color:var(--text)">${emp.nombre}</span>
     </div>
     <div class="fbar" style="margin-bottom:20px">
-      <select onchange="_desDF.anio=this.value;_renderDesResumen()" style="width:auto;min-width:130px">
-        <option value="">Todos los años</option>
-        ${years.map(y=>`<option value="${y}" ${_desDF.anio===y?'selected':''}>${y}</option>`).join('')}
-      </select>
-      <select onchange="_desDF.mes=this.value;_renderDesResumen()" style="width:auto;min-width:130px">
-        <option value="">Todos los meses</option>
-        ${['01','02','03','04','05','06','07','08','09','10','11','12'].map((m,mi)=>`<option value="${m}" ${_desDF.mes===m?'selected':''}>${['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][mi]}</option>`).join('')}
-      </select>
-      <select onchange="_desDF.proyecto=this.value;_renderDesResumen()" style="width:auto;min-width:150px">
-        <option value="">Todos los proyectos</option>
-        ${proyectos.map(p=>`<option value="${p}" ${_desDF.proyecto===p?'selected':''}>${p}</option>`).join('')}
-      </select>
-      ${hasFilters?`<button class="btn btn-ghost btn-sm" onclick="_desDF={anio:'',mes:'',proyecto:''};_renderDesResumen()"><i class="fa fa-times"></i> Limpiar</button>`:''}
+      <div style="flex:none"><button id="btn-desdf-anio" onclick="_mfOpen('desdf-anio',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:90px;justify-content:space-between"><span id="lbl-desdf-anio">Año</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div style="flex:none"><button id="btn-desdf-mes" onclick="_mfOpen('desdf-mes',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:90px;justify-content:space-between"><span id="lbl-desdf-mes">Mes</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div style="flex:none"><button id="btn-desdf-proy" onclick="_mfOpen('desdf-proy',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:110px;justify-content:space-between"><span id="lbl-desdf-proy">Proyecto</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      ${hasFilters?`<button class="btn btn-ghost btn-sm" onclick="_mfReset('desdf-anio','desdf-mes','desdf-proy');_renderDesResumen()"><i class="fa fa-times"></i> Limpiar</button>`:''}
     </div>
     <div class="g4" style="margin-bottom:24px">
       <div class="card"><div class="card-title">Deserciones</div><div class="card-value" style="color:var(--red)">${des.length}</div></div>
@@ -8521,6 +8504,7 @@ function _renderDesEmpresaDetalle(panel){
     </div>
     <div style="font-size:12px;color:var(--text3);padding:8px 0;">Mostrando <strong>${des.length}</strong> registros</div>
   `;
+  _mfUpdateBtn('desdf-anio');_mfUpdateBtn('desdf-mes');_mfUpdateBtn('desdf-proy');
 }
 
 function desercionTab(tab){

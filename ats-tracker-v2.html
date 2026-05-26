@@ -4907,6 +4907,11 @@ async function confirmarSalidaCand(){
   DB.candidatos[ci].obs_des=document.getElementById('salida-obs').value;
   DB.candidatos[ci].fecha_salida=document.getElementById('salida-fecha').value||today();
   DB.candidatos[ci].activo=false;
+  if(tipo==='descarte'){
+    DB.candidatos[ci].descartado=true;
+    DB.candidatos[ci].fecha_descarte=DB.candidatos[ci].fecha_salida;
+    DB.candidatos[ci].motivo_descarte=motivo;
+  }
   await saveRecord('candidatos',DB.candidatos[ci]);
   closeModal('modal-salida-cand');
   showToast('Candidato actualizado ✓');
@@ -4943,8 +4948,9 @@ let _descFiltros={q:'',empId:'',recId:'',proyecto:'',departamento:'',desde:'',ha
 
 function renderCandidatosDescartados(){
   const pg=document.getElementById('page-candidatos-descartados');if(!pg)return;
-  const lista=DB.candidatos.filter(c=>c.descartado===true)
-    .sort((a,b)=>(b.fecha_descarte||'').localeCompare(a.fecha_descarte||''));
+  const _esDescartado=c=>c.descartado===true||(c.etapa==='Desertó'&&c.activo===false);
+  const lista=DB.candidatos.filter(_esDescartado)
+    .sort((a,b)=>((b.fecha_descarte||b.fecha_salida||'')).localeCompare((a.fecha_descarte||a.fecha_salida||'')));
   const empresasOpts=DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
   const recsOpts=DB.reclutadores.map(r=>`<option value="${r.id}">${r.nombre}</option>`).join('');
   const proyectos=[...new Set(lista.map(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return v?.proyecto||'';}).filter(Boolean))];
@@ -4975,8 +4981,9 @@ function _filtrarDescartados(){
   const dep=(document.getElementById('desc-dep')||{}).value||'';
   const desde=(document.getElementById('desc-desde')||{}).value||'';
   const hasta=(document.getElementById('desc-hasta')||{}).value||'';
-  let lista=DB.candidatos.filter(c=>c.descartado===true)
-    .sort((a,b)=>(b.fecha_descarte||'').localeCompare(a.fecha_descarte||''));
+  const _esDesc=c=>c.descartado===true||(c.etapa==='Desertó'&&c.activo===false);
+  let lista=DB.candidatos.filter(_esDesc)
+    .sort((a,b)=>((b.fecha_descarte||b.fecha_salida||'')).localeCompare((a.fecha_descarte||a.fecha_salida||'')));
   if(q)lista=lista.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
   if(empId){const vids=DB.vacantes.filter(v=>v.empresa_id===empId).map(v=>v.id);lista=lista.filter(c=>vids.includes(c.vacante_id));}
   if(recId)lista=lista.filter(c=>c.reclutador_id===recId);
@@ -5007,8 +5014,8 @@ function _renderTablaDescartados(lista){
       <td style="font-size:12px;color:var(--text2)">${v.proyecto||''}</td>
       <td style="font-size:12px;color:var(--text2)">${v.departamento||''}</td>
       <td>${badgeEtapa(c.etapa,v.empresa_id)}</td>
-      <td style="font-size:12px;color:var(--text3)">${fmt(c.fecha_descarte)||'—'}</td>
-      <td style="font-size:12px;color:var(--text3)">${c.motivo_descarte||'—'}</td>
+      <td style="font-size:12px;color:var(--text3)">${fmt(c.fecha_descarte||c.fecha_salida)||'—'}</td>
+      <td style="font-size:12px;color:var(--text3)">${c.motivo_descarte||c.motivo_desercion||'—'}</td>
       <td>
         <div style="display:flex;gap:6px">
           <button class="btn btn-primary btn-sm" onclick="reactivarCandidato('${c.id}')" title="Reactivar candidato"><i class="fa fa-undo"></i> Reactivar</button>

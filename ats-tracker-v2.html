@@ -2078,7 +2078,7 @@ async function loadDB(){
           : sbClient.from('vacantes').select('*')),
         sbClient.from('candidatos').select('*'),
         sbClient.from('reclutadores').select('*'),
-        sbClient.from('referencias').select('candidato_id,nombre_contacto,empresa,telefono,data'),
+        sbClient.from('referencias').select('*'),
         sbClient.from('ese').select('*'),
         sbClient.from('doc_plantillas').select('*'),
         sbClient.from('doc_candidato').select('*'),

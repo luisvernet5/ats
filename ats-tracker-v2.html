@@ -578,6 +578,7 @@ input[type=date]{color:var(--text)}
   <div class="page" id="page-contratados"></div>
   <div class="page" id="page-headcount"></div>
   <div class="page" id="page-ese"></div>
+  <div class="page" id="page-documentacion"></div>
 
   <!-- DESERCION -->
   <div class="page" id="page-desercion"></div>
@@ -1507,6 +1508,22 @@ function adaptUIToRole() {
       document.querySelector('.main').appendChild(pg);
     }
   }
+  // Documentación — solo admin y reclutador
+  if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-documentacion')){
+    const navEl = document.querySelector('.sb-nav');
+    const configItem = document.getElementById('nav-config');
+    if(navEl){
+      const docItem = document.createElement('div');
+      docItem.className = 'nav-item';
+      docItem.id = 'nav-documentacion';
+      docItem.dataset.tooltip = 'Documentación';
+      docItem.innerHTML = '<i class="fa fa-folder-open"></i><span class="nav-item-text"> Documentación</span>';
+      docItem.setAttribute('onclick', "showPage('documentacion')");
+      if(configItem) configItem.parentNode.insertBefore(docItem, configItem);
+      else navEl.appendChild(docItem);
+    }
+  }
+
   // ESE — visible para admin, reclutador y facturacion
   if(['admin','reclutador','facturacion'].includes(rol) && !document.getElementById('nav-ese')){
     const navEl = document.querySelector('.sb-nav');
@@ -2049,7 +2066,7 @@ async function loadDB(){
       const _rhEmpId = currentUserData?.empresa_id||null;
       console.log('[loadDB] ROL ACTUAL:', currentUserData?.rol, '| es rh_cliente:', _isRhC, '| EMPRESA ID:', _rhEmpId);
       console.log('[loadDB] currentUserData completo:', JSON.stringify(currentUserData));
-      const [emp,vac,cand,rec,refs,eseRes]=await Promise.all([
+      const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand]=await Promise.all([
         sbClient.from('empresas').select('*'),
         (_isRhC && _rhEmpId
           ? sbClient.from('vacantes').select('*').filter('data->>empresa_id','eq',_rhEmpId)
@@ -2058,6 +2075,8 @@ async function loadDB(){
         sbClient.from('reclutadores').select('*'),
         sbClient.from('referencias').select('candidato_id,nombre_contacto,empresa,telefono,data'),
         sbClient.from('ese').select('*'),
+        sbClient.from('doc_plantillas').select('*'),
+        sbClient.from('doc_candidato').select('*'),
       ]);
       console.log('[loadDB] vacantes cargadas:', vac.data?.length, '| error:', vac.error?.message||null);
       DB.empresas=emp.data?.map(r=>r.data)||[];
@@ -2065,6 +2084,8 @@ async function loadDB(){
       DB.candidatos=cand.data?.map(r=>r.data)||[];
       DB.reclutadores=rec.data?.map(r=>r.data)||[];
       DB.ese=eseRes.data||[];
+      DB.docPlantillas=docPlt.data||[];
+      DB.docCandidato=docCand.data||[];
       _candConRefs=new Set((refs.data||[]).flatMap(r=>{
         const ids=[];
         // formato nuevo: columnas planas
@@ -2114,6 +2135,8 @@ const DB={
   vacantes:[],
   candidatos:[],
   ese:[],
+  docPlantillas:[],
+  docCandidato:[],
   reclutadores:[
     {id:'r1',nombre:'Ana López',email:'ana@empresa.com'},
     {id:'r2',nombre:'Carlos Méndez',email:'carlos@empresa.com'},
@@ -2269,6 +2292,7 @@ function renderPage(p){
   if(p==='config')renderConfig();
   if(p==='vacantes-eliminadas')renderVacantesEliminadas();
   if(p==='ese')renderESE();
+  if(p==='documentacion')renderDocumentacion();
 }
 
 /* ============================================================
@@ -8506,6 +8530,9 @@ function renderConfig(){
         <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-modo" onclick="switchConfigTab('modo')">
           <i class="fa fa-database"></i> Modo de datos
         </button>
+        <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-documentacion" onclick="switchConfigTab('documentacion')">
+          <i class="fa fa-folder-open"></i> Documentación
+        </button>
         ${currentUser?.email==='lukaarrever@gmail.com'?`
         <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-usuarios" onclick="switchConfigTab('usuarios')">
           <i class="fa fa-users-cog"></i> Usuarios
@@ -8597,6 +8624,10 @@ function switchConfigTab(tab){
           <button class="btn btn-danger btn-sm" onclick="clearAllData()">Borrar todos los datos locales</button>
         </div>`:''}
       </div>`;
+  }
+
+  else if(tab==='documentacion'){
+    renderDocConfig();
   }
 
   else if(tab==='usuarios'){
@@ -9529,6 +9560,255 @@ async function exportRefNuimCamPDF(){
 
   doc.save(`RefVerificacion_NuimCam_${candNombre.replace(/[^a-zA-Z0-9]/g,'_')}_${today()}.pdf`);
   showToast('PDF NuimCam generado ✓');
+}
+
+/* ============================================================
+   DOCUMENTACIÓN
+   ============================================================ */
+let _docQ = '';
+
+/* ── Config: plantilla por empresa ── */
+function renderDocConfig(){
+  const content = document.getElementById('cfg-content');
+  if(!content) return;
+  const empOpts = DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+  content.innerHTML = `
+    <div style="max-width:700px">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">
+        Define los documentos requeridos para el proceso de ingreso de cada empresa.
+      </p>
+      <div class="fg" style="max-width:360px;margin-bottom:20px">
+        <label>Selecciona una empresa</label>
+        <select id="doc-cfg-emp" onchange="renderDocPlantilla()">
+          <option value="">Selecciona una empresa...</option>${empOpts}
+        </select>
+      </div>
+      <div id="doc-cfg-content"></div>
+    </div>`;
+}
+
+function renderDocPlantilla(){
+  const empId = document.getElementById('doc-cfg-emp')?.value;
+  const wrap = document.getElementById('doc-cfg-content');
+  if(!wrap) return;
+  if(!empId){ wrap.innerHTML=''; return; }
+  const plt = DB.docPlantillas.find(p=>p.empresa_id===empId)||{empresa_id:empId,documentos:[]};
+  const docs = plt.documentos||[];
+  wrap.innerHTML = `
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Documentos configurados</div>
+      <div id="doc-cfg-list">
+        ${docs.length===0
+          ? `<div style="font-size:13px;color:var(--text3);padding:12px 0">Sin documentos. Agrega el primero.</div>`
+          : docs.map((d,i)=>`
+            <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border-radius:7px;margin-bottom:6px">
+              <i class="fa fa-grip-lines" style="color:var(--text3);font-size:12px"></i>
+              <span style="flex:1;font-size:13px">${d.nombre}</span>
+              <button class="btn btn-sm" style="color:var(--red);background:none;border:none;cursor:pointer" onclick="docCfgRemove('${empId}',${i})">
+                <i class="fa fa-times"></i>
+              </button>
+            </div>`).join('')}
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <input type="text" id="doc-cfg-new" placeholder="Nombre del documento..." style="flex:1"
+        onkeydown="if(event.key==='Enter')docCfgAdd('${empId}')">
+      <button class="btn btn-primary btn-sm" onclick="docCfgAdd('${empId}')">
+        <i class="fa fa-plus"></i> Agregar
+      </button>
+    </div>
+    <div style="margin-top:16px">
+      <button class="btn btn-primary" onclick="docCfgSave('${empId}')">
+        <i class="fa fa-save"></i> Guardar plantilla
+      </button>
+    </div>`;
+}
+
+function docCfgAdd(empId){
+  const inp = document.getElementById('doc-cfg-new');
+  const nombre = inp?.value.trim();
+  if(!nombre){ inp?.focus(); return; }
+  let plt = DB.docPlantillas.find(p=>p.empresa_id===empId);
+  if(!plt){ plt={empresa_id:empId,documentos:[]}; DB.docPlantillas.push(plt); }
+  plt.documentos.push({id: crypto.randomUUID(), nombre});
+  inp.value='';
+  renderDocPlantilla();
+  inp?.focus();
+}
+
+function docCfgRemove(empId, idx){
+  const plt = DB.docPlantillas.find(p=>p.empresa_id===empId);
+  if(!plt) return;
+  plt.documentos.splice(idx,1);
+  renderDocPlantilla();
+}
+
+async function docCfgSave(empId){
+  const plt = DB.docPlantillas.find(p=>p.empresa_id===empId)||{empresa_id:empId,documentos:[]};
+  if(!SANDBOX_MODE){
+    const {error} = await sbClient.from('doc_plantillas').upsert({empresa_id:empId, documentos:plt.documentos});
+    if(error){ showToast('Error: '+error.message,'err'); return; }
+  }
+  showToast('Plantilla guardada ✓');
+}
+
+/* ── Página Documentación ── */
+function renderDocumentacion(){
+  const page = document.getElementById('page-documentacion');
+  if(!page) return;
+  const lista = _docCandidatosFiltrados();
+  page.innerHTML = `
+    <div class="topbar">
+      <div><h2 style="margin:0;font-size:18px;font-weight:700">Documentación <span style="font-size:13px;font-weight:400;color:var(--text3)">Control de entrega</span></h2></div>
+    </div>
+    <div style="padding:20px">
+      <div class="fbar">
+        <div style="position:relative;flex:1;max-width:340px">
+          <i class="fa fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px"></i>
+          <input type="text" id="doc-q" placeholder="Buscar candidato..." value="${_docQ.replace(/"/g,'&quot;')}"
+            oninput="_docQ=this.value;renderDocumentacion()"
+            style="padding-left:32px;width:100%">
+        </div>
+        <span class="sp"></span>
+        <span style="font-size:13px;color:var(--text3)">${lista.length} candidato${lista.length!==1?'s':''}</span>
+      </div>
+      ${lista.length===0
+        ? `<div style="text-align:center;padding:60px 0;color:var(--text3)">
+            <i class="fa fa-folder-open" style="font-size:40px;margin-bottom:12px;display:block"></i>
+            ${_docQ ? 'No se encontraron candidatos' : 'Escribe el nombre de un candidato para buscar'}
+           </div>`
+        : `<div class="table-wrap"><table id="doc-table">
+            <thead><tr>
+              <th>#</th><th>Candidato</th><th>Empresa</th><th>Vacante</th>
+              <th>Documentos</th><th></th>
+            </tr></thead>
+            <tbody>${lista.map((c,i)=>_docRow(c,i+1)).join('')}</tbody>
+          </table></div>`}
+    </div>`;
+}
+
+function _docCandidatosFiltrados(){
+  if(!_docQ.trim()) return [];
+  const q = _docQ.toLowerCase();
+  return DB.candidatos
+    .filter(c=>!c.descartado && (c.nombre||'').toLowerCase().includes(q))
+    .sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''))
+    .slice(0,30);
+}
+
+function _docGetPlantilla(empId){
+  return (DB.docPlantillas.find(p=>p.empresa_id===empId)||{}).documentos||[];
+}
+
+function _docGetStatus(candidatoId){
+  return (DB.docCandidato.find(d=>d.candidato_id===candidatoId)||{}).items||[];
+}
+
+function _docRow(c, n){
+  const vac = DB.vacantes.find(v=>v.id===c.vacante_id)||{};
+  const emp = DB.empresas.find(e=>e.id===vac.empresa_id)||{};
+  const docs = _docGetPlantilla(vac.empresa_id);
+  const status = _docGetStatus(c.id);
+  const entregados = docs.filter(d=>{ const s=status.find(x=>x.doc_id===d.id); return s?.entregado; }).length;
+  const pct = docs.length ? Math.round(entregados/docs.length*100) : 0;
+  const badgeColor = pct===100 ? '#22c55e' : pct>0 ? '#f59e0b' : '#94a3b8';
+  return `
+  <tr style="cursor:pointer" onclick="toggleDocRow('${c.id}')">
+    <td style="color:var(--text3);font-size:12px">${n}</td>
+    <td><strong>${c.nombre||'—'}</strong></td>
+    <td style="font-size:12px;color:var(--text2)">${emp.nombre||'—'}</td>
+    <td style="font-size:12px;color:var(--text2)">${vac.titulo||vac.folio||'—'}</td>
+    <td>
+      ${docs.length===0
+        ? `<span style="font-size:12px;color:var(--text3)">Sin plantilla configurada</span>`
+        : `<span style="font-size:12px;font-weight:600;color:${badgeColor}">${entregados}/${docs.length}</span>
+           <div style="margin-top:4px;height:4px;width:100px;background:var(--surface3);border-radius:2px;overflow:hidden">
+             <div style="height:100%;width:${pct}%;background:${badgeColor};transition:width .3s"></div>
+           </div>`}
+    </td>
+    <td><i class="fa fa-chevron-down" style="color:var(--text3);font-size:11px" id="doc-chev-${c.id}"></i></td>
+  </tr>
+  <tr id="drow-${c.id}" style="display:none">
+    <td colspan="100" style="padding:0;background:var(--surface2)">
+      <div style="padding:16px 24px">
+        ${docs.length===0
+          ? `<div style="color:var(--text3);font-size:13px">Esta empresa no tiene documentos configurados. Ve a <strong>Configuración → Documentación</strong>.</div>`
+          : `<div style="display:grid;gap:8px" id="doc-items-${c.id}">
+              ${docs.map(d=>{
+                const s = status.find(x=>x.doc_id===d.id)||{};
+                return `<div style="background:var(--surface);border-radius:8px;padding:12px 14px;border:1px solid var(--border)">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:${s.entregado||true?'8px':'0'}">
+                    <input type="checkbox" id="doc-cb-${c.id}-${d.id}"
+                      style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer;flex-shrink:0"
+                      ${s.entregado?'checked':''}
+                      onchange="docToggle('${c.id}','${d.id}',this.checked)">
+                    <label for="doc-cb-${c.id}-${d.id}" style="margin:0;cursor:pointer;font-size:13px;font-weight:${s.entregado?'600':'400'};color:${s.entregado?'var(--text)':'var(--text2)'}">${d.nombre}</label>
+                    ${s.entregado?`<i class="fa fa-check-circle" style="color:#22c55e;font-size:13px;margin-left:auto"></i>`:''}
+                  </div>
+                  <div style="padding-left:26px">
+                    <input type="text" id="doc-obs-${c.id}-${d.id}"
+                      placeholder="Observaciones..."
+                      value="${(s.observacion||'').replace(/"/g,'&quot;')}"
+                      style="width:100%;font-size:12px;padding:5px 8px;border-radius:5px"
+                      onchange="docObsChange('${c.id}','${d.id}',this.value)">
+                  </div>
+                </div>`;
+              }).join('')}
+              <div style="display:flex;justify-content:flex-end;margin-top:8px">
+                <button class="btn btn-primary btn-sm" onclick="saveDocCandidato('${c.id}','${vac.empresa_id}')">
+                  <i class="fa fa-save"></i> Guardar
+                </button>
+              </div>
+            </div>`}
+      </div>
+    </td>
+  </tr>`;
+}
+
+function toggleDocRow(id){
+  const row = document.getElementById('drow-'+id);
+  const chev = document.getElementById('doc-chev-'+id);
+  if(!row) return;
+  const open = row.style.display==='none';
+  row.style.display = open ? 'table-row' : 'none';
+  if(chev) chev.className = open ? 'fa fa-chevron-up' : 'fa fa-chevron-down';
+  chev.style.color = open ? 'var(--accent)' : 'var(--text3)';
+}
+
+function _docEnsureStatus(candidatoId, empId){
+  let rec = DB.docCandidato.find(d=>d.candidato_id===candidatoId);
+  if(!rec){ rec={candidato_id:candidatoId,empresa_id:empId,items:[]}; DB.docCandidato.push(rec); }
+  const docs = _docGetPlantilla(empId);
+  docs.forEach(d=>{ if(!rec.items.find(x=>x.doc_id===d.id)) rec.items.push({doc_id:d.id,entregado:false,observacion:''}); });
+  return rec;
+}
+
+function docToggle(candidatoId, docId, checked){
+  const vac = DB.vacantes.find(v=>v.id===(DB.candidatos.find(c=>c.id===candidatoId)||{}).vacante_id)||{};
+  const rec = _docEnsureStatus(candidatoId, vac.empresa_id);
+  const item = rec.items.find(x=>x.doc_id===docId);
+  if(item) item.entregado = checked;
+}
+
+function docObsChange(candidatoId, docId, valor){
+  const vac = DB.vacantes.find(v=>v.id===(DB.candidatos.find(c=>c.id===candidatoId)||{}).vacante_id)||{};
+  const rec = _docEnsureStatus(candidatoId, vac.empresa_id);
+  const item = rec.items.find(x=>x.doc_id===docId);
+  if(item) item.observacion = valor;
+}
+
+async function saveDocCandidato(candidatoId, empId){
+  const rec = _docEnsureStatus(candidatoId, empId);
+  if(!SANDBOX_MODE){
+    const {error} = await sbClient.from('doc_candidato').upsert({
+      candidato_id: candidatoId,
+      empresa_id: empId,
+      items: rec.items
+    });
+    if(error){ showToast('Error: '+error.message,'err'); return; }
+  }
+  showToast('Documentación guardada ✓');
+  renderDocumentacion();
 }
 
 /* ============================================================

@@ -814,6 +814,14 @@ input[type=date]{color:var(--text)}
         <!-- I. Datos personales -->
         <div class="sep">I — Datos personales</div>
         <div class="fr">
+          <div class="fg"><label>Nombre completo</label>
+            <input type="text" id="ei-nombre" readonly style="background:var(--surface2);color:var(--text2)">
+          </div>
+          <div class="fg"><label>Teléfono / Email</label>
+            <input type="text" id="ei-contacto" readonly style="background:var(--surface2);color:var(--text2)">
+          </div>
+        </div>
+        <div class="fr">
           <div class="fg"><label>Fecha de nacimiento</label>
             <input type="date" id="ei-fecha-nac" onchange="calcEdad()">
           </div>
@@ -3928,6 +3936,7 @@ function _loadEntrevistaData(c){
   const s=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val||'';};
   const sc=(id,val)=>{const el=document.getElementById(id);if(el)el.checked=!!val;};
   const sr=(name,val)=>{const el=document.querySelector(`input[name="${name}"][value="${val}"]`);if(el){el.checked=true;el.dispatchEvent(new Event('change'));}};
+  s('ei-nombre',c.nombre);s('ei-contacto',c.contacto);
   s('ei-fecha-nac',c.fecha_nacimiento);s('ei-estado-civil',c.estado_civil);s('ei-direccion',c.direccion);
   s('ei-nivel-estudios',c.nivel_estudios);s('ei-institucion',c.institucion_educativa);s('ei-certificados',c.certificados);
   s('ei-emp-rec-puesto',c.emp_rec_puesto);s('ei-emp-rec-empresa',c.emp_rec_empresa);s('ei-emp-rec-inicio',c.emp_rec_inicio);s('ei-emp-rec-termino',c.emp_rec_termino);s('ei-emp-rec-resp',c.emp_rec_resp);s('ei-emp-rec-logros',c.emp_rec_logros);
@@ -9206,6 +9215,7 @@ async function exportEntrevistaPDF() {
   };
 
   sec('I — Datos Personales');
+  r2('Nombre completo',val('ei-nombre'),'Teléfono / Email',val('ei-contacto'));
   r2('Fecha de nacimiento',val('ei-fecha-nac'),'Edad',val('ei-edad'));
   r2('Estado civil',val('ei-estado-civil'),'Domicilio',val('ei-direccion'));
 

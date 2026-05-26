@@ -9203,17 +9203,19 @@ async function exportEntrevistaPDF() {
     ['Departamento', vac.departamento||'—'],
   ];
   const cw4 = CW/4;
+  let metaMaxLines = 1;
   metaCols.forEach(([l,v],i)=>{
     const x = M + i*cw4;
     doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(120);
     doc.text(l+':', x, y);
     doc.setFont('helvetica','normal'); doc.setTextColor(30); doc.setFontSize(8.5);
-    const wrapped = doc.splitTextToSize(v, cw4-3);
-    doc.text(wrapped, x, y+4);
+    const wrapped = doc.splitTextToSize(v, cw4-4);
+    doc.text(wrapped, x, y+5);
+    if(wrapped.length > metaMaxLines) metaMaxLines = wrapped.length;
   });
-  y += 14;
+  y += 7 + metaMaxLines * 4.5 + 6;
   doc.setDrawColor(200); doc.setLineWidth(0.3); doc.line(M, y, W-M, y);
-  y += 6;
+  y += 7;
 
   const chkPg = (n=10) => { if(y+n>258){doc.addPage();y=M;} };
   const sec = t => {
@@ -9286,8 +9288,8 @@ async function exportEntrevistaPDF() {
   r1('Áreas de oportunidad',val('ei-areas-oportunidad'));
   r2('Recomendación',val('ei-recomendacion'),'Firma entrevistador',val('ei-firma-entrevistador'));
 
-  const fname=candNombre.replace(/[^a-zA-Z0-9]/g,'_');
-  doc.save(`Entrevista_${fname}_${fechaEnt}.pdf`);
+  const nombreArchivo = (candDB.nombre || candNombre).replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_áéíóúÁÉÍÓÚñÑ]/g,'');
+  doc.save(`Entrevista_${nombreArchivo}_${fechaEnt}.pdf`);
   showToast('PDF generado ✓');
 }
 

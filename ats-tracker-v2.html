@@ -1519,7 +1519,8 @@ function adaptUIToRole() {
       docItem.dataset.tooltip = 'Documentación';
       docItem.innerHTML = '<i class="fa fa-folder-open"></i><span class="nav-item-text"> Documentación</span>';
       docItem.setAttribute('onclick', "showPage('documentacion')");
-      if(configItem) configItem.parentNode.insertBefore(docItem, configItem);
+      const candItem = document.getElementById('nav-candidatos');
+      if(candItem) candItem.parentNode.insertBefore(docItem, candItem.nextSibling);
       else navEl.appendChild(docItem);
     }
   }

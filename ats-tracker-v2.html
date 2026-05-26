@@ -9696,6 +9696,8 @@ async function docCfgSave(empId){
 function renderDocumentacion(){
   const page = document.getElementById('page-documentacion');
   if(!page) return;
+  // Restaurar candidatos con registros guardados en DB
+  (DB.docCandidato||[]).forEach(r=>{ if(r.candidato_id) _docPinned.add(r.candidato_id); });
   // Solo construye la estructura si no existe aún
   if(!document.getElementById('doc-results')){
     page.innerHTML = `

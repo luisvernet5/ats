@@ -9567,6 +9567,7 @@ async function exportRefNuimCamPDF(){
    DOCUMENTACIÓN
    ============================================================ */
 let _docQ = '';
+let _docPinned = new Set(); // candidatos guardados en esta sesión, siempre visibles
 
 /* ── Config: plantilla por empresa ── */
 function renderDocConfig(){
@@ -9689,8 +9690,8 @@ function _docRenderResultados(){
   const counter = document.getElementById('doc-count');
   if(!results) return;
   const lista = _docCandidatosFiltrados();
-  if(counter) counter.textContent = _docQ.trim() ? `${lista.length} candidato${lista.length!==1?'s':''}` : '';
-  if(!_docQ.trim()){
+  if(counter) counter.textContent = lista.length ? `${lista.length} candidato${lista.length!==1?'s':''}` : '';
+  if(!_docQ.trim() && !_docPinned.size){
     results.innerHTML = `<div style="text-align:center;padding:60px 0;color:var(--text3)">
       <i class="fa fa-folder-open" style="font-size:40px;margin-bottom:12px;display:block"></i>
       Escribe el nombre de un candidato para buscar</div>`;
@@ -9712,12 +9713,18 @@ function _docRenderResultados(){
 }
 
 function _docCandidatosFiltrados(){
-  if(!_docQ.trim()) return [];
-  const q = _docQ.toLowerCase();
-  return DB.candidatos
-    .filter(c=>!c.descartado && (c.nombre||'').toLowerCase().includes(q))
+  const q = _docQ.toLowerCase().trim();
+  const porBusqueda = q
+    ? DB.candidatos.filter(c=>!c.descartado && (c.nombre||'').toLowerCase().includes(q))
+    : [];
+  // Unir con anclados (siempre visibles), sin duplicados
+  const ids = new Set(porBusqueda.map(c=>c.id));
+  const anclados = _docPinned.size
+    ? DB.candidatos.filter(c=>_docPinned.has(c.id) && !ids.has(c.id))
+    : [];
+  return [...anclados, ...porBusqueda]
     .sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''))
-    .slice(0,30);
+    .slice(0,40);
 }
 
 function _docGetPlantilla(empId){
@@ -9831,8 +9838,9 @@ async function saveDocCandidato(candidatoId, empId){
     });
     if(error){ showToast('Error: '+error.message,'err'); return; }
   }
+  _docPinned.add(candidatoId); // anclar: permanece visible aunque cambie la búsqueda
   showToast('Documentación guardada ✓');
-  renderDocumentacion();
+  _docRenderResultados(); // solo actualiza resultados, no toca el input
 }
 
 /* ============================================================

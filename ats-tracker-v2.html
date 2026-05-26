@@ -577,6 +577,7 @@ input[type=date]{color:var(--text)}
   <!-- CONTRATADOS -->
   <div class="page" id="page-contratados"></div>
   <div class="page" id="page-headcount"></div>
+  <div class="page" id="page-ese"></div>
 
   <!-- DESERCION -->
   <div class="page" id="page-desercion"></div>
@@ -1520,12 +1521,6 @@ function adaptUIToRole() {
       if(configItem) configItem.parentNode.insertBefore(eseItem, configItem);
       else navEl.appendChild(eseItem);
     }
-    if(!document.getElementById('page-ese')){
-      const pg = document.createElement('div');
-      pg.className = 'page';
-      pg.id = 'page-ese';
-      document.querySelector('.main').appendChild(pg);
-    }
   }
   if(currentUserData?.rol==='admin' && !document.getElementById('nav-descartados')){
     const candItem = document.getElementById('nav-candidatos');
@@ -2240,7 +2235,7 @@ function nav(p){showPage(p)}
 function showPage(p){
   const _noRestore=['empresa-detail','vacante-detail','reclutador-detail'];
   if(!_noRestore.includes(p)) sessionStorage.setItem('lastPage', p);
-  if(currentUserData?.rol==='facturacion' && p!=='garantias') { showPage('garantias'); return; }
+  if(currentUserData?.rol==='facturacion' && p!=='garantias' && p!=='ese') { showPage('garantias'); return; }
   if(window.innerWidth<=768) closeMobileMenu();
   console.log('showPage llamado con:', p);
   console.log('USUARIO ACTUAL (auth):', JSON.stringify({id:currentUser?.id,email:currentUser?.email}));

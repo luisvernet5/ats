@@ -5094,7 +5094,7 @@ function _mfPopulate(id, opts, allLabel){
   const key=opts.map(o=>o.value).join('|');
   const prev=(window._mfOpts[id]||{}).key||'';
   window._mfOpts[id]={opts,allLabel,key};
-  if(key!==prev) window._mf[id]=null;
+  if(key!==prev || opts.length===0) window._mf[id]=null;
   _mfUpdateBtn(id);
   const panel=document.getElementById('_mfpanel-'+id);
   if(panel) _mfFillPanel(panel,id);

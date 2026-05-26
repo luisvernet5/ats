@@ -10083,44 +10083,60 @@ async function saveESERow(id){
     if(error){showToast('Error: '+error.message,'err');return;}
   }
   showToast('ESE guardado ✓');
-  renderESE();
+  _eseRenderTable();
 }
 
 function renderESE(){
   const page = document.getElementById('page-ese');
   if(!page) return;
+  if(!document.getElementById('ese-results')){
+    _eseQ = ''; _eseEstado = '';
+    page.innerHTML = `
+      <div class="topbar">
+        <div><h2 style="margin:0;font-size:18px;font-weight:700">ESE <span style="font-size:13px;font-weight:400;color:var(--text3)">Estudios Socioeconómicos</span></h2></div>
+        <div class="topbar-actions">
+          <button class="btn btn-primary" onclick="openESEModal()"><i class="fa fa-plus"></i> Agregar ESE</button>
+        </div>
+      </div>
+      <div style="padding:20px">
+        <div class="fbar">
+          <input type="text" id="ese-q" placeholder="Buscar candidato..."
+            oninput="_eseQ=this.value;_eseRenderTable()" style="min-width:200px">
+          <select id="ese-estado" onchange="_eseEstado=this.value;_eseRenderTable()">
+            <option value="">Todos los estados</option>
+            <option value="cobrado">Cobrados</option>
+            <option value="pendiente">Pendientes</option>
+            <option value="no_cobro">No se cobró</option>
+          </select>
+          <span class="sp"></span>
+          <span id="ese-count" style="font-size:13px;color:var(--text3)"></span>
+        </div>
+        <div id="ese-results"></div>
+      </div>
+      ${_eseModalHTML()}`;
+  } else {
+    _eseQ = ''; _eseEstado = '';
+    const q = document.getElementById('ese-q'); if(q) q.value = '';
+    const est = document.getElementById('ese-estado'); if(est) est.value = '';
+  }
+  _eseRenderTable();
+}
+
+function _eseRenderTable(){
+  const res = document.getElementById('ese-results');
+  const cnt = document.getElementById('ese-count');
+  if(!res) return;
   const lista = _eseFiltered();
-  page.innerHTML = `
-    <div class="topbar">
-      <div><h2 style="margin:0;font-size:18px;font-weight:700">ESE <span style="font-size:13px;font-weight:400;color:var(--text3)">Estudios Socioeconómicos</span></h2></div>
-      <div class="topbar-actions">
-        <button class="btn btn-primary" onclick="openESEModal()"><i class="fa fa-plus"></i> Agregar ESE</button>
-      </div>
-    </div>
-    <div style="padding:20px">
-      <div class="fbar">
-        <input type="text" id="ese-q" placeholder="Buscar candidato..." value="${_eseQ.replace(/"/g,'&quot;')}"
-          oninput="_eseQ=this.value;renderESE()" style="min-width:200px">
-        <select id="ese-estado" onchange="_eseEstado=this.value;renderESE()">
-          <option value="">Todos los estados</option>
-          <option value="cobrado" ${_eseEstado==='cobrado'?'selected':''}>Cobrados</option>
-          <option value="pendiente" ${_eseEstado==='pendiente'?'selected':''}>Pendientes</option>
-          <option value="no_cobro" ${_eseEstado==='no_cobro'?'selected':''}>No se cobró</option>
-        </select>
-        <span class="sp"></span>
-        <span style="font-size:13px;color:var(--text3)">${lista.length} registro${lista.length!==1?'s':''}</span>
-      </div>
-      ${lista.length===0
-        ? `<div style="text-align:center;padding:60px 0;color:var(--text3)"><i class="fa fa-file-alt" style="font-size:40px;margin-bottom:12px;display:block"></i>No hay registros ESE</div>`
-        : `<div class="table-wrap"><table id="ese-table">
-            <thead><tr>
-              <th>#</th><th>Candidato</th><th>Empresa</th><th>Vacante</th>
-              <th>Fecha realizado</th><th>Estado</th><th>Motivo no cobro</th><th></th>
-            </tr></thead>
-            <tbody>${lista.map((e,i)=>_eseRow(e,i+1)).join('')}</tbody>
-          </table></div>`}
-    </div>
-    ${_eseModalHTML()}`;
+  if(cnt) cnt.textContent = `${lista.length} registro${lista.length!==1?'s':''}`;
+  res.innerHTML = lista.length === 0
+    ? `<div style="text-align:center;padding:60px 0;color:var(--text3)"><i class="fa fa-file-alt" style="font-size:40px;margin-bottom:12px;display:block"></i>No hay registros ESE</div>`
+    : `<div class="table-wrap"><table id="ese-table">
+        <thead><tr>
+          <th>#</th><th>Candidato</th><th>Empresa</th><th>Vacante</th>
+          <th>Fecha realizado</th><th>Estado</th><th>Motivo no cobro</th><th></th>
+        </tr></thead>
+        <tbody>${lista.map((e,i)=>_eseRow(e,i+1)).join('')}</tbody>
+      </table></div>`;
 }
 
 function _eseModalHTML(){
@@ -10193,7 +10209,7 @@ async function saveESE(){
   DB.ese.push(rec);
   closeESEModal();
   showToast('ESE agregado ✓');
-  renderESE();
+  _eseRenderTable();
 }
 
 async function deleteESE(id){
@@ -10204,7 +10220,7 @@ async function deleteESE(id){
   }
   DB.ese=DB.ese.filter(e=>e.id!==id);
   showToast('ESE eliminado');
-  renderESE();
+  _eseRenderTable();
 }
 </script>
 </body>

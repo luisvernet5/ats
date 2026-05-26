@@ -494,13 +494,11 @@ input[type=date]{color:var(--text)}
   <div class="page" id="page-vacantes">
     <div class="fbar" style="flex-wrap:nowrap;overflow-x:auto;gap:6px">
       <input type="text" id="flt-vac-q" placeholder="Buscar..." oninput="renderVacantesTable()" style="min-width:100px;max-width:120px">
-      <select id="flt-vac-emp" onchange="renderVacantesTable()" style="min-width:120px;max-width:150px"><option value="">Todas las empresas</option></select>
-      <select id="flt-vac-est" onchange="renderVacantesTable()" style="min-width:130px;max-width:150px">
-        <option value="">Todos los estados</option><option>Abierta</option><option>Cubierta</option><option>Cancelada</option>
-      </select>
-      <select id="flt-vac-rec" onchange="renderVacantesTable()" style="min-width:110px;max-width:140px"><option value="">Reclutador</option></select>
-      <select id="flt-vac-proy" onchange="renderVacantesTable()" style="min-width:100px;max-width:160px"><option value="">Proyecto</option></select>
-      <select id="flt-vac-dep" onchange="renderVacantesTable()" style="min-width:110px;max-width:130px"><option value="">Departamento</option></select>
+      <div id="wrap-flt-vac-emp" style="flex:none"><button id="btn-flt-vac-emp" onclick="_mfOpen('flt-vac-emp',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:145px;justify-content:space-between"><span id="lbl-flt-vac-emp">Todas las empresas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div id="wrap-flt-vac-est" style="flex:none"><button id="btn-flt-vac-est" onclick="_mfOpen('flt-vac-est',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:135px;justify-content:space-between"><span id="lbl-flt-vac-est">Todos los estados</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div id="wrap-flt-vac-rec" style="flex:none"><button id="btn-flt-vac-rec" onclick="_mfOpen('flt-vac-rec',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:120px;justify-content:space-between"><span id="lbl-flt-vac-rec">Reclutador</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div id="wrap-flt-vac-proy" style="flex:none"><button id="btn-flt-vac-proy" onclick="_mfOpen('flt-vac-proy',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:110px;justify-content:space-between"><span id="lbl-flt-vac-proy">Proyecto</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div id="wrap-flt-vac-dep" style="flex:none"><button id="btn-flt-vac-dep" onclick="_mfOpen('flt-vac-dep',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:120px;justify-content:space-between"><span id="lbl-flt-vac-dep">Departamento</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <input type="date" id="flt-vac-desde" onchange="renderVacantesTable()" title="Apertura desde" style="min-width:120px;max-width:130px">
       <input type="date" id="flt-vac-hasta" onchange="renderVacantesTable()" title="Apertura hasta" style="min-width:120px;max-width:130px">
       <button class="btn btn-ghost btn-sm" onclick="limpiarFiltrosVacantes()" style="white-space:nowrap">× Limpiar</button>
@@ -521,8 +519,8 @@ input[type=date]{color:var(--text)}
   <div class="page" id="page-candidatos">
     <div class="fbar">
       <input type="text" id="flt-cand-q" placeholder="Buscar candidato..." oninput="renderCandidatosTable()">
-      <select id="flt-cand-emp" onchange="renderCandidatosTable()"><option value="">Todas las empresas</option></select>
-      <select id="flt-cand-rec" onchange="renderCandidatosTable()"><option value="">Todos los reclutadores</option></select>
+      <div id="wrap-flt-cand-emp" style="flex:none"><button id="btn-flt-cand-emp" onclick="_mfOpen('flt-cand-emp',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between"><span id="lbl-flt-cand-emp">Todas las empresas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div id="wrap-flt-cand-rec" style="flex:none"><button id="btn-flt-cand-rec" onclick="_mfOpen('flt-cand-rec',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:155px;justify-content:space-between"><span id="lbl-flt-cand-rec">Todos los reclutadores</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <div id="flt-cand-etapa-wrap" style="flex:none">
         <button id="flt-cand-etapa-btn" onclick="toggleEtapaDropdown(event)"
           style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between">
@@ -4621,40 +4619,34 @@ function setVacVista(v){
 }
 
 function limpiarFiltrosVacantes(){
-  ['flt-vac-q','flt-vac-emp','flt-vac-est','flt-vac-rec','flt-vac-proy','flt-vac-dep','flt-vac-desde','flt-vac-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['flt-vac-q','flt-vac-desde','flt-vac-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  _mfReset('flt-vac-emp','flt-vac-est','flt-vac-rec','flt-vac-proy','flt-vac-dep');
   renderVacantesTable();
 }
 function renderVacantesTable(){
   const q=(document.getElementById('flt-vac-q')||{}).value||'';
-  const empId=(document.getElementById('flt-vac-emp')||{}).value||'';
-  const est=(document.getElementById('flt-vac-est')||{}).value||'';
-  const recFlt=(document.getElementById('flt-vac-rec')||{}).value||'';
-  const proyFlt=(document.getElementById('flt-vac-proy')||{}).value||'';
-  const depFlt=(document.getElementById('flt-vac-dep')||{}).value||'';
   const desdeFlt=(document.getElementById('flt-vac-desde')||{}).value||'';
   const hastaFlt=(document.getElementById('flt-vac-hasta')||{}).value||'';
-  // populate emp filter
-  const empSel=document.getElementById('flt-vac-emp');
-  if(empSel){const cur=empSel.value;empSel.innerHTML='<option value="">Todas las empresas</option>';(currentUserData?.rol==='rh_cliente'?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).forEach(e=>empSel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
   const _recIdV = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   const _empIdV = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
   const base = _recIdV ? DB.vacantes.filter(v=>v.reclutador_id===_recIdV) : _empIdV ? DB.vacantes.filter(v=>v.empresa_id===_empIdV) : DB.vacantes;
-  // populate reclutador select (scoped to visible vacantes)
-  const recSel=document.getElementById('flt-vac-rec');
-  if(recSel){const cur=recSel.value;const rIds=[...new Set(base.map(v=>v.reclutador_id).filter(Boolean))];recSel.innerHTML='<option value="">Reclutador</option>'+rIds.map(id=>{const r=DB.reclutadores.find(x=>x.id===id)||{};return`<option value="${id}" ${cur===id?'selected':''}>${r.nombre||id}</option>`;}).join('');}
-  // populate proyecto select
-  const proySel=document.getElementById('flt-vac-proy');
-  if(proySel){const cur=proySel.value;const proyectos=[...new Set(base.map(v=>v.proyecto).filter(Boolean))].sort();proySel.innerHTML='<option value="">Proyecto</option>'+proyectos.map(p=>`<option value="${p}" ${cur===p?'selected':''}>${p}</option>`).join('');}
-  // populate departamento select
-  const depSel=document.getElementById('flt-vac-dep');
-  if(depSel){const cur=depSel.value;const deptos=[...new Set(base.map(v=>v.departamento).filter(Boolean))].sort();depSel.innerHTML='<option value="">Departamento</option>'+deptos.map(d=>`<option value="${d}" ${cur===d?'selected':''}>${d}</option>`).join('');}
+  // populate multi-select filters
+  const empOpts=(currentUserData?.rol==='rh_cliente'?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).map(e=>({value:e.id,label:e.nombre}));
+  _mfPopulate('flt-vac-emp',empOpts,'Todas las empresas');
+  _mfPopulate('flt-vac-est',['Abierta','Cubierta','Cancelada'].map(s=>({value:s,label:s})),'Todos los estados');
+  const rIdsV=[...new Set(base.map(v=>v.reclutador_id).filter(Boolean))];
+  _mfPopulate('flt-vac-rec',rIdsV.map(id=>{const r=DB.reclutadores.find(x=>x.id===id)||{};return{value:id,label:r.nombre||id};}),'Reclutador');
+  const proyectos=[...new Set(base.map(v=>v.proyecto).filter(Boolean))].sort();
+  _mfPopulate('flt-vac-proy',proyectos.map(p=>({value:p,label:p})),'Proyecto');
+  const deptos=[...new Set(base.map(v=>v.departamento).filter(Boolean))].sort();
+  _mfPopulate('flt-vac-dep',deptos.map(d=>({value:d,label:d})),'Departamento');
   let list=base;
   if(q)list=list.filter(v=>v.nombre.toLowerCase().includes(q.toLowerCase()));
-  if(empId)list=list.filter(v=>v.empresa_id===empId);
-  if(est)list=list.filter(v=>v.estado===est);
-  if(recFlt)list=list.filter(v=>v.reclutador_id===recFlt);
-  if(proyFlt)list=list.filter(v=>v.proyecto===proyFlt);
-  if(depFlt)list=list.filter(v=>v.departamento===depFlt);
+  const mfVacEmp=_mfGet('flt-vac-emp');if(mfVacEmp)list=list.filter(v=>mfVacEmp.has(v.empresa_id||''));
+  const mfVacEst=_mfGet('flt-vac-est');if(mfVacEst)list=list.filter(v=>mfVacEst.has(v.estado||''));
+  const mfVacRec=_mfGet('flt-vac-rec');if(mfVacRec)list=list.filter(v=>mfVacRec.has(v.reclutador_id||''));
+  const mfVacProy=_mfGet('flt-vac-proy');if(mfVacProy)list=list.filter(v=>mfVacProy.has(v.proyecto||''));
+  const mfVacDep=_mfGet('flt-vac-dep');if(mfVacDep)list=list.filter(v=>mfVacDep.has(v.departamento||''));
   if(desdeFlt)list=list.filter(v=>(v.fecha_apertura||'')>=desdeFlt);
   if(hastaFlt)list=list.filter(v=>(v.fecha_apertura||'')<=hastaFlt);
   // Ordenar de más vieja a más reciente como base
@@ -5103,6 +5095,105 @@ async function eliminarCandidatoPermanente(candId){
 }
 
 /* ============================================================
+   GENERIC MULTI-SELECT FILTER SYSTEM
+   ============================================================ */
+window._mf     = {}; // { [id]: null (=all) | Set<string> }
+window._mfOpts = {}; // { [id]: {opts:[{value,label}], allLabel, key} }
+
+function _mfGet(id){ return window._mf[id] ?? null; }
+
+function _mfPopulate(id, opts, allLabel){
+  const key=opts.map(o=>o.value).join('|');
+  const prev=(window._mfOpts[id]||{}).key||'';
+  window._mfOpts[id]={opts,allLabel,key};
+  if(key!==prev) window._mf[id]=null;
+  _mfUpdateBtn(id);
+  const panel=document.getElementById('_mfpanel-'+id);
+  if(panel) _mfFillPanel(panel,id);
+}
+
+function _mfUpdateBtn(id){
+  const lbl=document.getElementById('lbl-'+id);
+  if(!lbl) return;
+  const meta=window._mfOpts[id]||{};
+  const state=window._mf[id];
+  if(state===null){ lbl.textContent=meta.allLabel||'Todos'; }
+  else if(state.size===0){ lbl.textContent='Sin selección'; }
+  else {
+    const n=state.size;
+    if(n===1){ const v=[...state][0]; const o=(meta.opts||[]).find(x=>x.value===v); lbl.textContent=o?.label||v; }
+    else lbl.textContent=`${n} seleccionados`;
+  }
+}
+
+function _mfOpen(id,e){
+  e.stopPropagation();
+  const existing=document.getElementById('_mfpanel-'+id);
+  if(existing){ existing.remove(); return; }
+  const btn=document.getElementById('btn-'+id);
+  if(!btn) return;
+  const rect=btn.getBoundingClientRect();
+  const panel=document.createElement('div');
+  panel.id='_mfpanel-'+id;
+  panel.style.cssText=`position:fixed;top:${rect.bottom+4}px;left:${rect.left}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:6px 4px;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,.15);min-width:${Math.max(rect.width,180)}px;max-height:300px;overflow-y:auto`;
+  _mfFillPanel(panel,id);
+  document.body.appendChild(panel);
+  const close=ev=>{ if(!panel.contains(ev.target)&&ev.target.id!=='btn-'+id){ panel.remove(); document.removeEventListener('mousedown',close); }};
+  setTimeout(()=>document.addEventListener('mousedown',close),0);
+}
+
+function _mfFillPanel(panel,id){
+  const meta=window._mfOpts[id]||{};
+  const opts=meta.opts||[];
+  const state=window._mf[id];
+  panel.innerHTML=`<div style="font-size:11px;font-weight:600;color:var(--text3);padding:4px 12px 6px;text-transform:uppercase;letter-spacing:.04em">${meta.allLabel||''}</div>
+    <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;border-radius:6px;font-size:13px;user-select:none;border-bottom:1px solid var(--border2);margin-bottom:2px"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <input type="checkbox" id="_mfall-${id}" style="accent-color:var(--accent);width:14px;height:14px" onchange="_mfToggleAll('${id}',this)" ${state===null?'checked':''}> <strong>Seleccionar todo</strong>
+    </label>
+    <div id="_mflist-${id}">${opts.map(o=>{
+      const checked=state===null||state.has(o.value);
+      const escV=o.value.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return `<label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;border-radius:6px;font-size:13px;user-select:none"
+        onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        <input type="checkbox" style="accent-color:var(--accent);width:14px;height:14px" ${checked?'checked':''}
+          onchange="_mfCbChange('${id}','${escV}',this.checked)"> ${o.label}</label>`;
+    }).join('')}</div>`;
+}
+
+function _mfToggleAll(id,cb){
+  if(cb.checked){
+    window._mf[id]=null;
+    document.querySelectorAll('#_mflist-'+id+' input[type=checkbox]').forEach(x=>x.checked=true);
+  } else {
+    window._mf[id]=new Set();
+    document.querySelectorAll('#_mflist-'+id+' input[type=checkbox]').forEach(x=>x.checked=false);
+  }
+  _mfUpdateBtn(id);
+  _mfOnChange(id);
+}
+
+function _mfCbChange(id,value,checked){
+  const opts=(window._mfOpts[id]||{}).opts||[];
+  if(window._mf[id]===null) window._mf[id]=new Set(opts.map(o=>o.value));
+  if(checked) window._mf[id].add(value); else window._mf[id].delete(value);
+  if(window._mf[id].size===opts.length) window._mf[id]=null;
+  const allCb=document.getElementById('_mfall-'+id);
+  if(allCb) allCb.checked=window._mf[id]===null;
+  _mfUpdateBtn(id);
+  _mfOnChange(id);
+}
+
+function _mfOnChange(id){
+  if(id.startsWith('flt-vac-')) renderVacantesTable();
+  else if(id.startsWith('flt-cand-')) renderCandidatosTable();
+}
+
+function _mfReset(...ids){
+  ids.forEach(id=>{ window._mf[id]=null; _mfUpdateBtn(id); });
+}
+
+/* ============================================================
    ETAPA FILTER DROPDOWN
    ============================================================ */
 let _etapaOpciones = []; // [{label, color}] disponibles en lista actual
@@ -5212,15 +5303,15 @@ function etapaCbChange(label, checked){
    ============================================================ */
 function renderCandidatosTable(){
   const q=(document.getElementById('flt-cand-q')||{}).value||'';
-  const empId=(document.getElementById('flt-cand-emp')||{}).value||'';
-  const recFlt=(document.getElementById('flt-cand-rec')||{}).value||'';
   if(!window._etapaFiltroSet) window._etapaFiltroSet = null; // null = todas
-  // populate empresa select
-  const empSel=document.getElementById('flt-cand-emp');
-  if(empSel){const cur=empSel.value;empSel.innerHTML='<option value="">Todas las empresas</option>';(currentUserData?.rol==='rh_cliente'?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).forEach(e=>empSel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
-  // populate reclutador select (scoped for rh_cliente)
-  const recSel=document.getElementById('flt-cand-rec');
-  if(recSel){const cur=recSel.value;const _empIdCRec=currentUserData?.rol==='rh_cliente'?currentUserData?.empresa_id:null;const vacsBase=_empIdCRec?DB.vacantes.filter(v=>v.empresa_id===_empIdCRec):DB.vacantes;const rIds=[...new Set(vacsBase.map(v=>v.reclutador_id).filter(Boolean))];recSel.innerHTML='<option value="">Todos los reclutadores</option>'+rIds.map(id=>{const r=DB.reclutadores.find(x=>x.id===id)||{};return`<option value="${id}" ${cur===id?'selected':''}>${r.nombre||id}</option>`;}).join('');}
+  // populate empresa multi-select filter
+  const cEmpOpts=(currentUserData?.rol==='rh_cliente'?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).map(e=>({value:e.id,label:e.nombre}));
+  _mfPopulate('flt-cand-emp',cEmpOpts,'Todas las empresas');
+  // populate reclutador multi-select filter (scoped for rh_cliente)
+  const _empIdCRec=currentUserData?.rol==='rh_cliente'?currentUserData?.empresa_id:null;
+  const vacsForRec=_empIdCRec?DB.vacantes.filter(v=>v.empresa_id===_empIdCRec):DB.vacantes;
+  const cRIds=[...new Set(vacsForRec.map(v=>v.reclutador_id).filter(Boolean))];
+  _mfPopulate('flt-cand-rec',cRIds.map(id=>{const r=DB.reclutadores.find(x=>x.id===id)||{};return{value:id,label:r.nombre||id};}),'Todos los reclutadores');
 
   const _recIdC = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   const _empIdC = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
@@ -5228,8 +5319,8 @@ function renderCandidatosTable(){
   let list = (_recIdC||_empIdC) ? DB.candidatos.filter(c=>_vacsC.find(v=>v.id===c.vacante_id)) : DB.candidatos;
   list = list.filter(c=>!c.descartado);
   if(q)list=list.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
-  if(empId){const vids=_vacsC.filter(v=>v.empresa_id===empId).map(v=>v.id);list=list.filter(c=>vids.includes(c.vacante_id));}
-  if(recFlt)list=list.filter(c=>c.reclutador_id===recFlt);
+  const mfCandEmp=_mfGet('flt-cand-emp');if(mfCandEmp){const vids=_vacsC.filter(v=>mfCandEmp.has(v.empresa_id||'')).map(v=>v.id);list=list.filter(c=>vids.includes(c.vacante_id));}
+  const mfCandRec=_mfGet('flt-cand-rec');if(mfCandRec)list=list.filter(c=>mfCandRec.has(c.reclutador_id||''));
   // populate etapa checkbox dropdown
   _etapaPopulatePanel(list);
   if(window._etapaFiltroSet) list=list.filter(c=>window._etapaFiltroSet.has(c.etapa||''));

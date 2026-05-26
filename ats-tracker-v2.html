@@ -523,6 +523,7 @@ input[type=date]{color:var(--text)}
       <input type="text" id="flt-cand-q" placeholder="Buscar candidato..." oninput="renderCandidatosTable()">
       <select id="flt-cand-emp" onchange="renderCandidatosTable()"><option value="">Todas las empresas</option></select>
       <select id="flt-cand-rec" onchange="renderCandidatosTable()"><option value="">Todos los reclutadores</option></select>
+      <select id="flt-cand-etapa" onchange="renderCandidatosTable()"><option value="">Todas las etapas</option></select>
       <span class="sp"></span>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">
@@ -4990,6 +4991,7 @@ function renderCandidatosTable(){
   const q=(document.getElementById('flt-cand-q')||{}).value||'';
   const empId=(document.getElementById('flt-cand-emp')||{}).value||'';
   const recFlt=(document.getElementById('flt-cand-rec')||{}).value||'';
+  const etapaFlt=(document.getElementById('flt-cand-etapa')||{}).value||'';
   // populate empresa select
   const empSel=document.getElementById('flt-cand-emp');
   if(empSel){const cur=empSel.value;empSel.innerHTML='<option value="">Todas las empresas</option>';(currentUserData?.rol==='rh_cliente'?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).forEach(e=>empSel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
@@ -5005,6 +5007,13 @@ function renderCandidatosTable(){
   if(q)list=list.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
   if(empId){const vids=_vacsC.filter(v=>v.empresa_id===empId).map(v=>v.id);list=list.filter(c=>vids.includes(c.vacante_id));}
   if(recFlt)list=list.filter(c=>c.reclutador_id===recFlt);
+  // populate etapa select with values present in current filtered list
+  const etapaSel=document.getElementById('flt-cand-etapa');
+  if(etapaSel){
+    const etapasUsadas=[...new Set(list.map(c=>c.etapa).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    etapaSel.innerHTML='<option value="">Todas las etapas</option>'+etapasUsadas.map(e=>`<option value="${e}"${etapaFlt===e?' selected':''}>${e}</option>`).join('');
+  }
+  if(etapaFlt)list=list.filter(c=>c.etapa===etapaFlt);
 
   // Sort based on current vista
   if(_candVistaActual==='folio'){

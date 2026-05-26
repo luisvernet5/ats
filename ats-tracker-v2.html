@@ -9762,10 +9762,18 @@ function renderDocPlantilla(){
         ${docs.length===0
           ? `<div style="font-size:13px;color:var(--text3);padding:12px 0">Sin documentos. Agrega el primero.</div>`
           : docs.map((d,i)=>`
-            <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border-radius:7px;margin-bottom:6px">
+            <div id="doc-cfg-row-${i}" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border-radius:7px;margin-bottom:6px">
               <i class="fa fa-grip-lines" style="color:var(--text3);font-size:12px"></i>
-              <span style="flex:1;font-size:13px">${d.nombre}</span>
-              <button class="btn btn-sm" style="color:var(--red);background:none;border:none;cursor:pointer" onclick="docCfgRemove('${empId}',${i})">
+              <span id="doc-cfg-label-${i}" style="flex:1;font-size:13px">${d.nombre}</span>
+              <input id="doc-cfg-edit-inp-${i}" type="text" value="${d.nombre.replace(/"/g,'&quot;')}" style="display:none;flex:1;font-size:13px;padding:2px 6px"
+                onkeydown="if(event.key==='Enter')docCfgEditSave('${empId}',${i});if(event.key==='Escape')docCfgEditCancel(${i})">
+              <button class="btn btn-sm" style="color:var(--accent);background:none;border:none;cursor:pointer" title="Editar" onclick="docCfgEditStart(${i})">
+                <i class="fa fa-pencil-alt"></i>
+              </button>
+              <button id="doc-cfg-save-btn-${i}" class="btn btn-sm btn-primary" style="display:none" onclick="docCfgEditSave('${empId}',${i})">
+                <i class="fa fa-check"></i>
+              </button>
+              <button class="btn btn-sm" style="color:var(--red);background:none;border:none;cursor:pointer" title="Eliminar" onclick="docCfgRemove('${empId}',${i})">
                 <i class="fa fa-times"></i>
               </button>
             </div>`).join('')}
@@ -9802,6 +9810,28 @@ function docCfgRemove(empId, idx){
   if(!plt) return;
   plt.documentos.splice(idx,1);
   renderDocPlantilla();
+}
+
+function docCfgEditStart(i){
+  document.getElementById('doc-cfg-label-'+i).style.display='none';
+  const inp=document.getElementById('doc-cfg-edit-inp-'+i);
+  inp.style.display='block'; inp.focus(); inp.select();
+  document.getElementById('doc-cfg-save-btn-'+i).style.display='inline-flex';
+}
+function docCfgEditCancel(i){
+  document.getElementById('doc-cfg-label-'+i).style.display='block';
+  document.getElementById('doc-cfg-edit-inp-'+i).style.display='none';
+  document.getElementById('doc-cfg-save-btn-'+i).style.display='none';
+}
+function docCfgEditSave(empId,i){
+  const inp=document.getElementById('doc-cfg-edit-inp-'+i);
+  const nombre=(inp?.value||'').trim();
+  if(!nombre){inp?.focus();return;}
+  const plt=DB.docPlantillas.find(p=>p.empresa_id===empId);
+  if(!plt) return;
+  plt.documentos[i].nombre=nombre;
+  document.getElementById('doc-cfg-label-'+i).textContent=nombre;
+  docCfgEditCancel(i);
 }
 
 async function docCfgSave(empId){

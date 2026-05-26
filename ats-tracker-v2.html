@@ -167,9 +167,6 @@ input[type=date]{color:var(--text)}
 .chart-box{position:relative;height:220px}
 .fbar{display:flex;gap:10px;margin-bottom:18px;align-items:center;flex-wrap:wrap}
 .fbar input,.fbar select{flex:none;width:auto;min-width:150px}
-.etapa-cb-row{display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:13px;transition:background .1s}
-.etapa-cb-row:hover{background:var(--surface3)}
-.etapa-cb-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 .sp{flex:1}
 .alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .alert-i{background:rgba(42,170,222,.1);border:1px solid rgba(42,170,222,.2);color:var(--accent)}
@@ -526,18 +523,12 @@ input[type=date]{color:var(--text)}
       <input type="text" id="flt-cand-q" placeholder="Buscar candidato..." oninput="renderCandidatosTable()">
       <select id="flt-cand-emp" onchange="renderCandidatosTable()"><option value="">Todas las empresas</option></select>
       <select id="flt-cand-rec" onchange="renderCandidatosTable()"><option value="">Todos los reclutadores</option></select>
-      <div id="flt-cand-etapa-wrap" style="position:relative;flex:none">
+      <div id="flt-cand-etapa-wrap" style="flex:none">
         <button id="flt-cand-etapa-btn" onclick="toggleEtapaDropdown(event)"
           style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between">
           <span id="flt-cand-etapa-label">Todas las etapas</span>
           <i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i>
         </button>
-        <div id="flt-cand-etapa-panel" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:200px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.2);z-index:1000;padding:6px 0;max-height:280px;overflow-y:auto">
-          <label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);margin-bottom:2px">
-            <input type="checkbox" id="flt-etapa-all" onchange="etapaToggleAll(this)"> <strong>Seleccionar todo</strong>
-          </label>
-          <div id="flt-etapa-list"></div>
-        </div>
       </div>
       <span class="sp"></span>
     </div>
@@ -5006,19 +4997,52 @@ let _etapaOpciones = []; // [{label, color}] disponibles en lista actual
 
 function toggleEtapaDropdown(e){
   e.stopPropagation();
-  const panel = document.getElementById('flt-cand-etapa-panel');
-  if(!panel) return;
-  const isOpen = panel.style.display !== 'none';
-  panel.style.display = isOpen ? 'none' : 'block';
+  const existing = document.getElementById('flt-cand-etapa-panel');
+  if(existing){ existing.remove(); return; }
+  const btn = document.getElementById('flt-cand-etapa-btn');
+  if(!btn) return;
+  const rect = btn.getBoundingClientRect();
+  const panel = document.createElement('div');
+  panel.id = 'flt-cand-etapa-panel';
+  panel.style.cssText = `position:fixed;top:${rect.bottom+4}px;left:${rect.left}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:6px 4px;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,.15);min-width:190px;max-height:300px;overflow-y:auto`;
+  panel.innerHTML = `<div style="font-size:11px;font-weight:600;color:var(--text3);padding:4px 12px 6px;text-transform:uppercase;letter-spacing:.04em">Etapa</div>
+    <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;border-radius:6px;font-size:13px;user-select:none;border-bottom:1px solid var(--border2);margin-bottom:2px"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <input type="checkbox" id="flt-etapa-all" style="accent-color:var(--accent);width:14px;height:14px" onchange="etapaToggleAll(this)" ${window._etapaFiltroSet===null?'checked':''}> <strong>Seleccionar todo</strong>
+    </label>
+    <div id="flt-etapa-list">${_etapaRenderRows()}</div>`;
+  document.body.appendChild(panel);
+  const close = ev => { if(!panel.contains(ev.target) && ev.target.id!=='flt-cand-etapa-btn'){ panel.remove(); document.removeEventListener('mousedown',close); }};
+  setTimeout(()=>document.addEventListener('mousedown',close),0);
+}
+
+function _etapaRenderRows(){
+  const todas = window._etapaFiltroSet === null;
+  return _etapaOpciones.map(({label,color})=>{
+    const checked = todas || window._etapaFiltroSet.has(label);
+    const esc = label.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;border-radius:6px;font-size:13px;user-select:none"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <input type="checkbox" style="accent-color:var(--accent);width:14px;height:14px" ${checked?'checked':''}
+        onchange="etapaCbChange('${esc}',this.checked)">
+      <span style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0"></span>
+      ${label}
+    </label>`;
+  }).join('');
+}
+
+function _etapaUpdateBtn(){
+  const lbl = document.getElementById('flt-cand-etapa-label');
+  if(!lbl) return;
+  if(window._etapaFiltroSet === null){
+    lbl.textContent = 'Todas las etapas';
+  } else {
+    const n = window._etapaFiltroSet.size;
+    lbl.textContent = n === 1 ? [...window._etapaFiltroSet][0] : `${n} etapas`;
+  }
 }
 
 function _etapaPopulatePanel(list){
-  const panel = document.getElementById('flt-cand-etapa-panel');
-  const listDiv = document.getElementById('flt-etapa-list');
-  const allCb = document.getElementById('flt-etapa-all');
-  const btn = document.getElementById('flt-cand-etapa-label');
-  if(!panel || !listDiv) return;
-
   // Recopilar etapas únicas con su color
   const empEtapasCache = {};
   const etapaMap = {};
@@ -5035,64 +5059,34 @@ function _etapaPopulatePanel(list){
     }
   });
   const nuevas = Object.entries(etapaMap).sort((a,b)=>a[0].localeCompare(b[0]));
-
-  // Si las opciones cambiaron (nueva empresa/filtro), resetear selección
   const nuevasKeys = nuevas.map(x=>x[0]).join('|');
   const actualesKeys = _etapaOpciones.map(x=>x.label).join('|');
   if(nuevasKeys !== actualesKeys){
     _etapaOpciones = nuevas.map(([label,color])=>({label,color}));
-    window._etapaFiltroSet = null; // reset a "todas"
+    window._etapaFiltroSet = null;
   }
-
-  const todas = window._etapaFiltroSet === null;
-  if(allCb) allCb.checked = todas;
-
-  listDiv.innerHTML = _etapaOpciones.map(({label,color})=>{
-    const checked = todas || window._etapaFiltroSet.has(label);
-    return `<label class="etapa-cb-row">
-      <input type="checkbox" onchange="etapaCbChange('${label.replace(/'/g,"\\'")}',this.checked)" ${checked?'checked':''}>
-      <span class="etapa-cb-dot" style="background:${color}"></span>
-      <span>${label}</span>
-    </label>`;
-  }).join('');
-
-  // Actualizar label del botón
-  if(btn){
-    if(todas || !window._etapaFiltroSet){
-      btn.textContent = 'Todas las etapas';
-    } else {
-      const n = window._etapaFiltroSet.size;
-      btn.textContent = n === 1 ? [...window._etapaFiltroSet][0] : `${n} etapas`;
-    }
-  }
+  _etapaUpdateBtn();
 }
 
 function etapaToggleAll(cb){
   window._etapaFiltroSet = null;
   document.querySelectorAll('#flt-etapa-list input[type=checkbox]').forEach(x=>x.checked=true);
+  _etapaUpdateBtn();
   renderCandidatosTable();
 }
 
 function etapaCbChange(label, checked){
   if(window._etapaFiltroSet === null){
-    // Primera deselección: crear Set con todas menos esta
     window._etapaFiltroSet = new Set(_etapaOpciones.map(x=>x.label));
   }
   if(checked) window._etapaFiltroSet.add(label);
   else window._etapaFiltroSet.delete(label);
-  // Si quedan todas seleccionadas, volver a null
   if(window._etapaFiltroSet.size === _etapaOpciones.length) window._etapaFiltroSet = null;
+  const allCb = document.getElementById('flt-etapa-all');
+  if(allCb) allCb.checked = window._etapaFiltroSet === null;
+  _etapaUpdateBtn();
   renderCandidatosTable();
 }
-
-// Cerrar panel al hacer clic fuera
-document.addEventListener('click', function(e){
-  const wrap = document.getElementById('flt-cand-etapa-wrap');
-  if(wrap && !wrap.contains(e.target)){
-    const panel = document.getElementById('flt-cand-etapa-panel');
-    if(panel) panel.style.display = 'none';
-  }
-});
 
 /* ============================================================
    CANDIDATOS TABLE

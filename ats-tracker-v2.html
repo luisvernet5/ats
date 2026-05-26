@@ -4243,7 +4243,7 @@ function _pipOpenColPanel(e){
   const rect=btn.getBoundingClientRect();
   const panel=document.createElement('div');
   panel.id='_pip-col-panel';
-  panel.style.cssText=`position:fixed;top:${rect.bottom+4}px;right:${window.innerWidth-rect.right}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:6px 4px;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,.15);min-width:220px;max-height:380px;overflow-y:auto`;
+  panel.style.cssText=`position:fixed;top:${rect.bottom+4}px;left:${rect.left}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:6px 0;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,.18);min-width:200px;max-height:400px;overflow-y:auto`;
   _pipFillColPanel(panel);
   document.body.appendChild(panel);
   const close=ev=>{if(!panel.contains(ev.target)&&ev.target.id!=='pip-btn-cols'){panel.remove();document.removeEventListener('mousedown',close);}};
@@ -4251,23 +4251,28 @@ function _pipOpenColPanel(e){
 }
 
 function _pipFillColPanel(panel){
-  const board=document.getElementById('pipeline-board');
-  const allKeys=[...board.querySelectorAll('.stage-col')].map(el=>el.dataset.stageKey).filter(Boolean);
-  const allLabels={};
-  board.querySelectorAll('.stage-col').forEach(el=>{allLabels[el.dataset.stageKey]=el.dataset.stageLabel||el.dataset.stageKey;});
-  if(!allKeys.length){panel.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--text3)">Activa la vista Kanban primero</div>';return;}
+  const stages=window._pipAllStages||[];
+  if(!stages.length){panel.innerHTML='<div style="padding:10px 14px;font-size:12px;color:var(--text3)">Sin etapas disponibles</div>';return;}
   const hidden=window._pipHiddenStages;
+  const allVisible=hidden.size===0;
+  const row=(content)=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 14px;cursor:pointer;border-radius:6px;margin:0 4px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">${content}</div>`;
   panel.innerHTML=`
-    <div style="padding:4px 10px 6px;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Columnas visibles</div>
-    <label style="display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-      <input type="checkbox" ${hidden.size===0?'checked':''} onchange="_pipToggleAllCols(this)"> <strong>Mostrar todo</strong>
+    <div style="padding:4px 14px 6px;font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase">Columnas visibles</div>
+    <label style="display:flex;align-items:center;gap:10px;padding:6px 14px;cursor:pointer;border-radius:6px;margin:0 4px;font-size:13px;font-weight:600" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <input type="checkbox" style="width:15px;height:15px;flex-shrink:0;cursor:pointer" ${allVisible?'checked':''} onchange="_pipToggleAllCols(this)">
+      <span style="white-space:nowrap">Mostrar todo</span>
     </label>
-    <div style="height:1px;background:var(--border2);margin:4px 8px"></div>
-    ${allKeys.map(k=>`
-      <label style="display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-        <input type="checkbox" ${!hidden.has(k)?'checked':''} onchange="_pipToggleCol('${k.replace(/'/g,"\\'")}',this.checked)">
-        ${allLabels[k]||k}
-      </label>`).join('')}`;
+    <div style="height:1px;background:var(--border2);margin:4px 0"></div>
+    ${stages.map(s=>{
+      const escKey=s.key.replace(/'/g,"\\'");
+      const checked=!hidden.has(s.key);
+      return`<label style="display:flex;align-items:center;gap:10px;padding:6px 14px;cursor:pointer;border-radius:6px;margin:0 4px;font-size:13px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        <input type="checkbox" style="width:15px;height:15px;flex-shrink:0;cursor:pointer" ${checked?'checked':''} onchange="_pipToggleCol('${escKey}',this.checked)">
+        <span style="width:8px;height:8px;border-radius:50%;background:${s.color};flex-shrink:0"></span>
+        <span style="white-space:nowrap;flex:1">${s.label}</span>
+        <span style="font-size:11px;color:var(--text3);margin-left:4px">${s.count}</span>
+      </label>`;
+    }).join('')}`;
 }
 
 function _pipToggleAllCols(cb){
@@ -4439,6 +4444,7 @@ function renderPipeline(){
   if(!Object.keys(stageMap).length){board.innerHTML='<div style="color:var(--text3);padding:20px;font-size:13px">Sin candidatos en el pipeline con los filtros seleccionados.</div>';return;}
 
   const hidden=window._pipHiddenStages;
+  window._pipAllStages=Object.entries(stageMap).map(([key,s])=>({key,label:s.label,color:s.color,count:s.cands.length}));
   const visibleEntries=Object.entries(stageMap).filter(([key])=>!hidden.has(key));
   const hiddenEntries=Object.entries(stageMap).filter(([key])=>hidden.has(key));
 

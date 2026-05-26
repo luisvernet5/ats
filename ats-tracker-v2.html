@@ -9657,35 +9657,58 @@ async function docCfgSave(empId){
 function renderDocumentacion(){
   const page = document.getElementById('page-documentacion');
   if(!page) return;
-  const lista = _docCandidatosFiltrados();
-  page.innerHTML = `
-    <div class="topbar">
-      <div><h2 style="margin:0;font-size:18px;font-weight:700">Documentación <span style="font-size:13px;font-weight:400;color:var(--text3)">Control de entrega</span></h2></div>
-    </div>
-    <div style="padding:20px">
-      <div class="fbar">
-        <div style="position:relative;flex:1;max-width:340px">
-          <i class="fa fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px"></i>
-          <input type="text" id="doc-q" placeholder="Buscar candidato..." value="${_docQ.replace(/"/g,'&quot;')}"
-            oninput="_docQ=this.value;renderDocumentacion()"
-            style="padding-left:32px;width:100%">
-        </div>
-        <span class="sp"></span>
-        <span style="font-size:13px;color:var(--text3)">${lista.length} candidato${lista.length!==1?'s':''}</span>
+  // Solo construye la estructura si no existe aún
+  if(!document.getElementById('doc-results')){
+    page.innerHTML = `
+      <div class="topbar">
+        <div><h2 style="margin:0;font-size:18px;font-weight:700">Documentación <span style="font-size:13px;font-weight:400;color:var(--text3)">Control de entrega</span></h2></div>
       </div>
-      ${lista.length===0
-        ? `<div style="text-align:center;padding:60px 0;color:var(--text3)">
-            <i class="fa fa-folder-open" style="font-size:40px;margin-bottom:12px;display:block"></i>
-            ${_docQ ? 'No se encontraron candidatos' : 'Escribe el nombre de un candidato para buscar'}
-           </div>`
-        : `<div class="table-wrap"><table id="doc-table">
-            <thead><tr>
-              <th>#</th><th>Candidato</th><th>Empresa</th><th>Vacante</th>
-              <th>Documentos</th><th></th>
-            </tr></thead>
-            <tbody>${lista.map((c,i)=>_docRow(c,i+1)).join('')}</tbody>
-          </table></div>`}
-    </div>`;
+      <div style="padding:20px">
+        <div class="fbar">
+          <div style="position:relative;flex:1;max-width:340px">
+            <i class="fa fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px"></i>
+            <input type="text" id="doc-q" placeholder="Buscar candidato..."
+              oninput="_docQ=this.value;_docRenderResultados()"
+              style="padding-left:32px;width:100%">
+          </div>
+          <span class="sp"></span>
+          <span id="doc-count" style="font-size:13px;color:var(--text3)"></span>
+        </div>
+        <div id="doc-results"></div>
+      </div>`;
+    // Restaurar valor del input sin disparar re-render completo
+    const inp = document.getElementById('doc-q');
+    if(inp && _docQ){ inp.value = _docQ; }
+    setTimeout(()=>document.getElementById('doc-q')?.focus(), 50);
+  }
+  _docRenderResultados();
+}
+
+function _docRenderResultados(){
+  const results = document.getElementById('doc-results');
+  const counter = document.getElementById('doc-count');
+  if(!results) return;
+  const lista = _docCandidatosFiltrados();
+  if(counter) counter.textContent = _docQ.trim() ? `${lista.length} candidato${lista.length!==1?'s':''}` : '';
+  if(!_docQ.trim()){
+    results.innerHTML = `<div style="text-align:center;padding:60px 0;color:var(--text3)">
+      <i class="fa fa-folder-open" style="font-size:40px;margin-bottom:12px;display:block"></i>
+      Escribe el nombre de un candidato para buscar</div>`;
+    return;
+  }
+  if(lista.length===0){
+    results.innerHTML = `<div style="text-align:center;padding:60px 0;color:var(--text3)">
+      <i class="fa fa-search" style="font-size:40px;margin-bottom:12px;display:block"></i>
+      No se encontraron candidatos</div>`;
+    return;
+  }
+  results.innerHTML = `<div class="table-wrap"><table id="doc-table">
+    <thead><tr>
+      <th>#</th><th>Candidato</th><th>Empresa</th><th>Vacante</th>
+      <th>Documentos</th><th></th>
+    </tr></thead>
+    <tbody>${lista.map((c,i)=>_docRow(c,i+1)).join('')}</tbody>
+  </table></div>`;
 }
 
 function _docCandidatosFiltrados(){

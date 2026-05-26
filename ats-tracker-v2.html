@@ -8107,10 +8107,12 @@ function renderDesercion(){
   }).join('');
   _desEmpId=null; _desF={anio:'',mes:'',empresa:'',proyecto:''}; _desDF={anio:'',mes:'',proyecto:''};
   document.getElementById('page-desercion').innerHTML=`
-    <div style="display:flex;gap:6px;margin-bottom:20px">
+    <div style="display:flex;gap:6px;margin-bottom:20px;align-items:center">
       <button id="dtab-resumen" class="btn btn-primary" onclick="desercionTab('resumen')">Resumen</button>
       <button id="dtab-graficas" class="btn btn-ghost" onclick="desercionTab('graficas')">Gráficas</button>
       <button id="dtab-historial" class="btn btn-ghost" onclick="desercionTab('historial')">Historial</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-green btn-sm" onclick="exportDesercionExcel()"><i class="fa fa-file-excel"></i> Exportar Excel</button>
     </div>
     <div id="des-panel-resumen"></div>
     <div id="des-panel-graficas" style="display:none">
@@ -8121,9 +8123,8 @@ function renderDesercion(){
     </div>
     <div id="des-panel-historial" style="display:none">
       <div class="table-wrap"><table><thead><tr><th style="width:36px;text-align:center">#</th><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Tipo</th><th>Motivo</th><th>Días</th><th>Fecha</th></tr></thead><tbody>${rows||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin deserciones</td></tr>'}</tbody></table></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;">
+      <div style="padding:8px 0;">
         <span style="font-size:12px;color:var(--text3)">Mostrando <strong>${des.length}</strong> registros</span>
-        <button class="btn btn-green btn-sm" onclick="exportDesercionExcel()"><i class="fa fa-file-excel"></i> Exportar Excel</button>
       </div>
     </div>`;
   _renderDesResumen();

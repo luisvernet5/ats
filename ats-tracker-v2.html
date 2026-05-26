@@ -492,21 +492,21 @@ input[type=date]{color:var(--text)}
 
   <!-- VACANTES -->
   <div class="page" id="page-vacantes">
-    <div class="fbar">
-      <input type="text" id="flt-vac-q" placeholder="Buscar..." oninput="renderVacantesTable()">
-      <select id="flt-vac-emp" onchange="renderVacantesTable()"><option value="">Todas las empresas</option></select>
-      <select id="flt-vac-est" onchange="renderVacantesTable()">
+    <div class="fbar" style="flex-wrap:nowrap;overflow-x:auto;gap:6px">
+      <input type="text" id="flt-vac-q" placeholder="Buscar..." oninput="renderVacantesTable()" style="min-width:100px;max-width:120px">
+      <select id="flt-vac-emp" onchange="renderVacantesTable()" style="min-width:120px;max-width:150px"><option value="">Todas las empresas</option></select>
+      <select id="flt-vac-est" onchange="renderVacantesTable()" style="min-width:110px;max-width:130px">
         <option value="">Todos los estados</option><option>Abierta</option><option>Cubierta</option><option>Cancelada</option>
       </select>
-      <select id="flt-vac-rec" onchange="renderVacantesTable()"><option value="">Reclutador</option></select>
-      <select id="flt-vac-proy" onchange="renderVacantesTable()"><option value="">Proyecto</option></select>
-      <select id="flt-vac-dep" onchange="renderVacantesTable()"><option value="">Departamento</option></select>
-      <input type="date" id="flt-vac-desde" onchange="renderVacantesTable()" title="Apertura desde" style="min-width:130px">
-      <input type="date" id="flt-vac-hasta" onchange="renderVacantesTable()" title="Apertura hasta" style="min-width:130px">
-      <button class="btn btn-ghost btn-sm" onclick="limpiarFiltrosVacantes()">× Limpiar</button>
+      <select id="flt-vac-rec" onchange="renderVacantesTable()" style="min-width:110px;max-width:140px"><option value="">Reclutador</option></select>
+      <select id="flt-vac-proy" onchange="renderVacantesTable()" style="min-width:100px;max-width:160px"><option value="">Proyecto</option></select>
+      <select id="flt-vac-dep" onchange="renderVacantesTable()" style="min-width:110px;max-width:130px"><option value="">Departamento</option></select>
+      <input type="date" id="flt-vac-desde" onchange="renderVacantesTable()" title="Apertura desde" style="min-width:120px;max-width:130px">
+      <input type="date" id="flt-vac-hasta" onchange="renderVacantesTable()" title="Apertura hasta" style="min-width:120px;max-width:130px">
+      <button class="btn btn-ghost btn-sm" onclick="limpiarFiltrosVacantes()" style="white-space:nowrap">× Limpiar</button>
       <span class="sp"></span>
-      <button class="btn btn-green btn-sm" onclick="exportarCSV()"><i class="fa fa-file-csv"></i> Exportar</button>
-      <button class="btn btn-primary" onclick="openVacanteModal()"><i class="fa fa-plus"></i> Nueva</button>
+      <button class="btn btn-green btn-sm" onclick="exportarCSV()" style="white-space:nowrap"><i class="fa fa-file-csv"></i> Exportar</button>
+      <button class="btn btn-primary btn-sm" onclick="openVacanteModal()" style="white-space:nowrap"><i class="fa fa-plus"></i> Nueva</button>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">
       <button id="vac-vista-folio" class="btn btn-primary btn-sm" onclick="setVacVista('folio')"><i class="fa fa-list-ol"></i> Por folio</button>

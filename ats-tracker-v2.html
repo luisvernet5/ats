@@ -167,6 +167,9 @@ input[type=date]{color:var(--text)}
 .chart-box{position:relative;height:220px}
 .fbar{display:flex;gap:10px;margin-bottom:18px;align-items:center;flex-wrap:wrap}
 .fbar input,.fbar select{flex:none;width:auto;min-width:150px}
+.etapa-cb-row{display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:13px;transition:background .1s}
+.etapa-cb-row:hover{background:var(--surface3)}
+.etapa-cb-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 .sp{flex:1}
 .alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .alert-i{background:rgba(42,170,222,.1);border:1px solid rgba(42,170,222,.2);color:var(--accent)}
@@ -523,7 +526,19 @@ input[type=date]{color:var(--text)}
       <input type="text" id="flt-cand-q" placeholder="Buscar candidato..." oninput="renderCandidatosTable()">
       <select id="flt-cand-emp" onchange="renderCandidatosTable()"><option value="">Todas las empresas</option></select>
       <select id="flt-cand-rec" onchange="renderCandidatosTable()"><option value="">Todos los reclutadores</option></select>
-      <select id="flt-cand-etapa" onchange="renderCandidatosTable()"><option value="">Todas las etapas</option></select>
+      <div id="flt-cand-etapa-wrap" style="position:relative;flex:none">
+        <button id="flt-cand-etapa-btn" onclick="toggleEtapaDropdown(event)"
+          style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between">
+          <span id="flt-cand-etapa-label">Todas las etapas</span>
+          <i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i>
+        </button>
+        <div id="flt-cand-etapa-panel" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:200px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.2);z-index:1000;padding:6px 0;max-height:280px;overflow-y:auto">
+          <label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);margin-bottom:2px">
+            <input type="checkbox" id="flt-etapa-all" onchange="etapaToggleAll(this)"> <strong>Seleccionar todo</strong>
+          </label>
+          <div id="flt-etapa-list"></div>
+        </div>
+      </div>
       <span class="sp"></span>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">
@@ -4985,13 +5000,108 @@ async function eliminarCandidatoPermanente(candId){
 }
 
 /* ============================================================
+   ETAPA FILTER DROPDOWN
+   ============================================================ */
+let _etapaOpciones = []; // [{label, color}] disponibles en lista actual
+
+function toggleEtapaDropdown(e){
+  e.stopPropagation();
+  const panel = document.getElementById('flt-cand-etapa-panel');
+  if(!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+}
+
+function _etapaPopulatePanel(list){
+  const panel = document.getElementById('flt-cand-etapa-panel');
+  const listDiv = document.getElementById('flt-etapa-list');
+  const allCb = document.getElementById('flt-etapa-all');
+  const btn = document.getElementById('flt-cand-etapa-label');
+  if(!panel || !listDiv) return;
+
+  // Recopilar etapas únicas con su color
+  const empEtapasCache = {};
+  const etapaMap = {};
+  list.forEach(c => {
+    const etapa = c.etapa || '';
+    if(!etapa) return;
+    if(!etapaMap[etapa]){
+      if(!empEtapasCache[c.vacante_id]){
+        const v = DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+        empEtapasCache[c.vacante_id] = getEmpresaEtapas(v.empresa_id);
+      }
+      const def = empEtapasCache[c.vacante_id].find(e=>e.label===etapa);
+      etapaMap[etapa] = def?.color || (ETAPAS_SALIDA.includes(etapa) ? '#ef4444' : '#6b7280');
+    }
+  });
+  const nuevas = Object.entries(etapaMap).sort((a,b)=>a[0].localeCompare(b[0]));
+
+  // Si las opciones cambiaron (nueva empresa/filtro), resetear selección
+  const nuevasKeys = nuevas.map(x=>x[0]).join('|');
+  const actualesKeys = _etapaOpciones.map(x=>x.label).join('|');
+  if(nuevasKeys !== actualesKeys){
+    _etapaOpciones = nuevas.map(([label,color])=>({label,color}));
+    window._etapaFiltroSet = null; // reset a "todas"
+  }
+
+  const todas = window._etapaFiltroSet === null;
+  if(allCb) allCb.checked = todas;
+
+  listDiv.innerHTML = _etapaOpciones.map(({label,color})=>{
+    const checked = todas || window._etapaFiltroSet.has(label);
+    return `<label class="etapa-cb-row">
+      <input type="checkbox" onchange="etapaCbChange('${label.replace(/'/g,"\\'")}',this.checked)" ${checked?'checked':''}>
+      <span class="etapa-cb-dot" style="background:${color}"></span>
+      <span>${label}</span>
+    </label>`;
+  }).join('');
+
+  // Actualizar label del botón
+  if(btn){
+    if(todas || !window._etapaFiltroSet){
+      btn.textContent = 'Todas las etapas';
+    } else {
+      const n = window._etapaFiltroSet.size;
+      btn.textContent = n === 1 ? [...window._etapaFiltroSet][0] : `${n} etapas`;
+    }
+  }
+}
+
+function etapaToggleAll(cb){
+  window._etapaFiltroSet = null;
+  document.querySelectorAll('#flt-etapa-list input[type=checkbox]').forEach(x=>x.checked=true);
+  renderCandidatosTable();
+}
+
+function etapaCbChange(label, checked){
+  if(window._etapaFiltroSet === null){
+    // Primera deselección: crear Set con todas menos esta
+    window._etapaFiltroSet = new Set(_etapaOpciones.map(x=>x.label));
+  }
+  if(checked) window._etapaFiltroSet.add(label);
+  else window._etapaFiltroSet.delete(label);
+  // Si quedan todas seleccionadas, volver a null
+  if(window._etapaFiltroSet.size === _etapaOpciones.length) window._etapaFiltroSet = null;
+  renderCandidatosTable();
+}
+
+// Cerrar panel al hacer clic fuera
+document.addEventListener('click', function(e){
+  const wrap = document.getElementById('flt-cand-etapa-wrap');
+  if(wrap && !wrap.contains(e.target)){
+    const panel = document.getElementById('flt-cand-etapa-panel');
+    if(panel) panel.style.display = 'none';
+  }
+});
+
+/* ============================================================
    CANDIDATOS TABLE
    ============================================================ */
 function renderCandidatosTable(){
   const q=(document.getElementById('flt-cand-q')||{}).value||'';
   const empId=(document.getElementById('flt-cand-emp')||{}).value||'';
   const recFlt=(document.getElementById('flt-cand-rec')||{}).value||'';
-  const etapaFlt=(document.getElementById('flt-cand-etapa')||{}).value||'';
+  if(!window._etapaFiltroSet) window._etapaFiltroSet = null; // null = todas
   // populate empresa select
   const empSel=document.getElementById('flt-cand-emp');
   if(empSel){const cur=empSel.value;empSel.innerHTML='<option value="">Todas las empresas</option>';(currentUserData?.rol==='rh_cliente'?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).forEach(e=>empSel.innerHTML+=`<option value="${e.id}" ${cur===e.id?'selected':''}>${e.nombre}</option>`);}
@@ -5007,13 +5117,9 @@ function renderCandidatosTable(){
   if(q)list=list.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
   if(empId){const vids=_vacsC.filter(v=>v.empresa_id===empId).map(v=>v.id);list=list.filter(c=>vids.includes(c.vacante_id));}
   if(recFlt)list=list.filter(c=>c.reclutador_id===recFlt);
-  // populate etapa select with values present in current filtered list
-  const etapaSel=document.getElementById('flt-cand-etapa');
-  if(etapaSel){
-    const etapasUsadas=[...new Set(list.map(c=>c.etapa).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-    etapaSel.innerHTML='<option value="">Todas las etapas</option>'+etapasUsadas.map(e=>`<option value="${e}"${etapaFlt===e?' selected':''}>${e}</option>`).join('');
-  }
-  if(etapaFlt)list=list.filter(c=>c.etapa===etapaFlt);
+  // populate etapa checkbox dropdown
+  _etapaPopulatePanel(list);
+  if(window._etapaFiltroSet) list=list.filter(c=>window._etapaFiltroSet.has(c.etapa||''));
 
   // Sort based on current vista
   if(_candVistaActual==='folio'){

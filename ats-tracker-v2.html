@@ -1768,19 +1768,15 @@ async function renderActivityLog(){
   window._logData = data;
   logPaginaActual = 1;
 
-  const usuariosOpts = [...new Map(data.map(d=>[d.usuario_email, d.usuario_nombre])).entries()]
-    .map(([email, nombre])=>`<option value="${email}">${nombre||email}</option>`).join('');
-  const accionesOpts = [...new Set(data.map(d=>d.accion))]
-    .map(a=>`<option value="${a}">${a}</option>`).join('');
+  const logUserOptsList = [...new Map(data.map(d=>[d.usuario_email, d.usuario_nombre])).entries()]
+    .map(([email, nombre])=>({value:email,label:nombre||email}));
+  const logAccionOptsList = [...new Set(data.map(d=>d.accion))]
+    .map(a=>({value:a,label:a}));
 
   page.innerHTML=`<div style="padding:24px 28px">
     <div class="fbar" style="margin-bottom:18px;flex-wrap:wrap;gap:8px">
-      <select id="log-flt-user" onchange="logPaginaActual=1;filtrarLog()" style="min-width:180px">
-        <option value="">Todos los usuarios</option>${usuariosOpts}
-      </select>
-      <select id="log-flt-accion" onchange="logPaginaActual=1;filtrarLog()" style="min-width:180px">
-        <option value="">Todas las acciones</option>${accionesOpts}
-      </select>
+      <div id="wrap-log-flt-user" style="flex:none"><button id="btn-log-flt-user" onclick="_mfOpen('log-flt-user',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:160px;justify-content:space-between"><span id="lbl-log-flt-user">Todos los usuarios</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div id="wrap-log-flt-accion" style="flex:none"><button id="btn-log-flt-accion" onclick="_mfOpen('log-flt-accion',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:160px;justify-content:space-between"><span id="lbl-log-flt-accion">Todas las acciones</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <input type="date" id="log-flt-f1" onchange="logPaginaActual=1;filtrarLog()" title="Desde">
       <input type="date" id="log-flt-f2" onchange="logPaginaActual=1;filtrarLog()" title="Hasta">
       <select id="log-page-size" onchange="logPaginaActual=1;filtrarLog()" style="min-width:140px">
@@ -1810,21 +1806,23 @@ async function renderActivityLog(){
     <div id="log-footer" style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap;gap:8px"></div>
   </div>`;
 
+  _mfPopulate('log-flt-user', logUserOptsList, 'Todos los usuarios');
+  _mfPopulate('log-flt-accion', logAccionOptsList, 'Todas las acciones');
   filtrarLog();
 }
 
 function exportarLog(){
   if(!window._logData?.length){ showToast('Sin datos para exportar','err'); return; }
-  const user   = document.getElementById('log-flt-user')?.value||'';
-  const accion = document.getElementById('log-flt-accion')?.value||'';
-  const f1     = document.getElementById('log-flt-f1')?.value||'';
-  const f2     = document.getElementById('log-flt-f2')?.value||'';
+  const mfUser  = _mfGet('log-flt-user');
+  const mfAcc   = _mfGet('log-flt-accion');
+  const f1      = document.getElementById('log-flt-f1')?.value||'';
+  const f2      = document.getElementById('log-flt-f2')?.value||'';
   const filtrados = window._logData.filter(d=>{
     const rowDate = d.created_at ? d.created_at.split('T')[0] : '';
-    return (!user   || (d.usuario_email||'').includes(user) || (d.usuario_nombre||'').includes(user))
-        && (!accion || d.accion===accion)
-        && (!f1     || rowDate >= f1)
-        && (!f2     || rowDate <= f2);
+    return (!mfUser  || mfUser.has(d.usuario_email||''))
+        && (!mfAcc   || mfAcc.has(d.accion||''))
+        && (!f1      || rowDate >= f1)
+        && (!f2      || rowDate <= f2);
   });
   const header = ['Fecha y hora','Usuario','Email','Acción','Módulo','Detalle'];
   const filas = [header, ...filtrados.map(d=>[
@@ -1868,18 +1866,18 @@ function filtrarLog(){
   const footer = document.getElementById('log-footer');
   if(!tbody || !window._logData) return;
 
-  const user   = document.getElementById('log-flt-user')?.value||'';
-  const accion = document.getElementById('log-flt-accion')?.value||'';
-  const f1     = document.getElementById('log-flt-f1')?.value||'';
-  const f2     = document.getElementById('log-flt-f2')?.value||'';
-  const size   = parseInt(document.getElementById('log-page-size')?.value||30);
+  const mfUser  = _mfGet('log-flt-user');
+  const mfAcc   = _mfGet('log-flt-accion');
+  const f1      = document.getElementById('log-flt-f1')?.value||'';
+  const f2      = document.getElementById('log-flt-f2')?.value||'';
+  const size    = parseInt(document.getElementById('log-page-size')?.value||30);
 
   const filtrados = window._logData.filter(d=>{
     const rowDate = d.created_at ? d.created_at.split('T')[0] : '';
-    return (!user   || (d.usuario_email||'').includes(user) || (d.usuario_nombre||'').includes(user))
-        && (!accion || d.accion===accion)
-        && (!f1     || rowDate >= f1)
-        && (!f2     || rowDate <= f2);
+    return (!mfUser  || mfUser.has(d.usuario_email||''))
+        && (!mfAcc   || mfAcc.has(d.accion||''))
+        && (!f1      || rowDate >= f1)
+        && (!f2      || rowDate <= f2);
   });
 
   const total = filtrados.length;
@@ -2643,6 +2641,9 @@ function openEmpresaDetail(empId){
   _edCurrentEmpId = empId;
   empresaVistaActual = 'folio';
   const vacsRows = _buildEDVacsRows([..._edVacsAll].sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true})), empId, etapas);
+  const edProyOptsList = [...new Set(_edVacsAll.map(v=>v.proyecto).filter(Boolean))].sort().map(p=>({value:p,label:p}));
+  const edDepOptsList  = [...new Set(_edVacsAll.map(v=>v.departamento).filter(Boolean))].sort().map(d=>({value:d,label:d}));
+  const edRecOptsList  = [...new Set(_edVacsAll.map(v=>v.reclutador_id).filter(Boolean))].map(rid=>{const r=DB.reclutadores.find(x=>x.id===rid)||{};return{value:rid,label:r.nombre||rid};});
 
   // Process flow for this company
   const processHtml=etapas.map((et,i)=>{
@@ -2693,21 +2694,12 @@ function openEmpresaDetail(empId){
         <strong style="white-space:nowrap;font-size:13px;flex-shrink:0">Vacantes</strong>
         <button id="btn-vista-folio" class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="cambiarVistaEmpresa('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
         <button id="btn-vista-proyecto" class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="cambiarVistaEmpresa('proyecto')"><i class="fa fa-layer-group"></i> Por proyecto</button>
-        <select id="filtroProyecto" onchange="filtrarVacantesEmpresa()" style="height:28px;font-size:11px;padding:2px 6px;border:1px solid var(--border2);border-radius:6px;max-width:150px;min-width:90px">
-          <option value="">Proyecto</option>
-          ${[...new Set(vacs.map(v=>v.proyecto).filter(Boolean))].map(p=>`<option value="${p}">${p}</option>`).join('')}
-        </select>
-        <select id="filtroDepartamento" onchange="filtrarVacantesEmpresa()" style="height:28px;font-size:11px;padding:2px 6px;border:1px solid var(--border2);border-radius:6px;max-width:130px;min-width:90px">
-          <option value="">Departamento</option>
-          ${[...new Set(vacs.map(v=>v.departamento).filter(Boolean))].map(d=>`<option value="${d}">${d}</option>`).join('')}
-        </select>
-        <select id="filtroReclutador" onchange="filtrarVacantesEmpresa()" style="height:28px;font-size:11px;padding:2px 6px;border:1px solid var(--border2);border-radius:6px;max-width:130px;min-width:90px">
-          <option value="">Reclutador</option>
-          ${[...new Set(vacs.map(v=>v.reclutador_id).filter(Boolean))].map(rid=>{const r=DB.reclutadores.find(x=>x.id===rid)||{};return`<option value="${rid}">${r.nombre||rid}</option>`;}).join('')}
-        </select>
+        <div id="wrap-ed-flt-proy" style="flex:none"><button id="btn-ed-flt-proy" onclick="_mfOpen('ed-flt-proy',event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:28px;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:11px;white-space:nowrap;min-width:90px;max-width:150px;justify-content:space-between"><span id="lbl-ed-flt-proy">Proyecto</span><i class="fa fa-chevron-down" style="font-size:9px;color:var(--text3)"></i></button></div>
+        <div id="wrap-ed-flt-dep" style="flex:none"><button id="btn-ed-flt-dep" onclick="_mfOpen('ed-flt-dep',event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:28px;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:11px;white-space:nowrap;min-width:90px;max-width:130px;justify-content:space-between"><span id="lbl-ed-flt-dep">Departamento</span><i class="fa fa-chevron-down" style="font-size:9px;color:var(--text3)"></i></button></div>
+        <div id="wrap-ed-flt-rec" style="flex:none"><button id="btn-ed-flt-rec" onclick="_mfOpen('ed-flt-rec',event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:28px;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:11px;white-space:nowrap;min-width:90px;max-width:130px;justify-content:space-between"><span id="lbl-ed-flt-rec">Reclutador</span><i class="fa fa-chevron-down" style="font-size:9px;color:var(--text3)"></i></button></div>
         <input type="date" id="filtroFechaDesde" onchange="filtrarVacantesEmpresa()" style="height:28px;font-size:11px;padding:2px 6px;border:1px solid var(--border2);border-radius:6px;width:130px;flex-shrink:0">
         <input type="date" id="filtroFechaHasta" onchange="filtrarVacantesEmpresa()" style="height:28px;font-size:11px;padding:2px 6px;border:1px solid var(--border2);border-radius:6px;width:130px;flex-shrink:0">
-        <button onclick="limpiarFiltrosEmpresa()" class="btn btn-ghost btn-sm" style="flex-shrink:0">× Limpiar</button>
+        <button onclick="limpiarFiltrosEmpresa()" class="btn btn-ghost btn-sm" style="flex-shrink:0;height:28px;font-size:11px">× Limpiar</button>
         <div style="flex:1;min-width:8px"></div>
         <button id="btn-ed-col-vis" class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="openEDColPanel()"><i class="fa fa-columns"></i> Columnas</button>
         <button class="btn btn-green btn-sm" style="flex-shrink:0" onclick="exportarCSVEmpresa('${empId}')"><i class="fa fa-download"></i> Exportar</button>
@@ -2737,6 +2729,11 @@ function openEmpresaDetail(empId){
   document.getElementById('page-title').textContent=e.nombre;
   showPage('empresa-detail');
   _applyEDColVis();
+  _mfReset('ed-flt-proy','ed-flt-dep','ed-flt-rec');
+  _mfPopulate('ed-flt-proy', edProyOptsList, 'Proyecto');
+  _mfPopulate('ed-flt-dep', edDepOptsList, 'Departamento');
+  _mfPopulate('ed-flt-rec', edRecOptsList, 'Reclutador');
+  filtrarVacantesEmpresa();
   setTimeout(() => renderAnalyticsTab(empId, 'general'), 100);
 }
 
@@ -2980,15 +2977,15 @@ function _buildEDVacsRowsPorProyecto(vacs, empId, etapas){
 
 function filtrarVacantesEmpresa(){
   const empId = _edCurrentEmpId; if(!empId) return;
-  const proy  = document.getElementById('filtroProyecto')?.value||'';
-  const depto = document.getElementById('filtroDepartamento')?.value||'';
-  const recId = document.getElementById('filtroReclutador')?.value||'';
-  const desde = document.getElementById('filtroFechaDesde')?.value||'';
-  const hasta = document.getElementById('filtroFechaHasta')?.value||'';
+  const mfProy = _mfGet('ed-flt-proy');
+  const mfDep  = _mfGet('ed-flt-dep');
+  const mfRec  = _mfGet('ed-flt-rec');
+  const desde  = document.getElementById('filtroFechaDesde')?.value||'';
+  const hasta  = document.getElementById('filtroFechaHasta')?.value||'';
   let filtered = _edVacsAll;
-  if(proy)  filtered = filtered.filter(v=>v.proyecto===proy);
-  if(depto) filtered = filtered.filter(v=>v.departamento===depto);
-  if(recId) filtered = filtered.filter(v=>v.reclutador_id===recId);
+  if(mfProy) filtered = filtered.filter(v=>mfProy.has(v.proyecto||''));
+  if(mfDep)  filtered = filtered.filter(v=>mfDep.has(v.departamento||''));
+  if(mfRec)  filtered = filtered.filter(v=>mfRec.has(v.reclutador_id||''));
   if(desde) filtered = filtered.filter(v=>v.fecha_apertura>=desde);
   if(hasta) filtered = filtered.filter(v=>v.fecha_apertura<=hasta);
   const etapas = getEmpresaEtapas(empId);
@@ -3018,7 +3015,8 @@ function filtrarVacantesEmpresa(){
 }
 
 function limpiarFiltrosEmpresa(){
-  ['filtroProyecto','filtroDepartamento','filtroReclutador','filtroFechaDesde','filtroFechaHasta'].forEach(id=>{
+  _mfReset('ed-flt-proy','ed-flt-dep','ed-flt-rec');
+  ['filtroFechaDesde','filtroFechaHasta'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
   filtrarVacantesEmpresa();
@@ -5180,6 +5178,13 @@ function _mfOnChange(id){
   else if(id.startsWith('flt-pip-')) renderPipeline();
   else if(id.startsWith('desc-')) _filtrarDescartados();
   else if(id.startsWith('des-')||id.startsWith('desdf-')) _renderDesResumen();
+  else if(id.startsWith('rd-flt-')) filtrarVacsReclutador();
+  else if(id==='rk-empresa'||id==='rk-reclutador'){_rkVacPage=1;filterRankingVacs();}
+  else if(id.startsWith('g-flt-')) filtrarGarantias();
+  else if(id==='ct-emp-filter'||id==='ct-rec-filter'||id==='ct-semana-filter') filtrarContratados();
+  else if(id==='ese-estado') _eseRenderTable();
+  else if(id.startsWith('log-flt-')){logPaginaActual=1;filtrarLog();}
+  else if(id==='ed-flt-proy'||id==='ed-flt-dep'||id==='ed-flt-rec') filtrarVacantesEmpresa();
 }
 
 function _mfReset(...ids){
@@ -5562,25 +5567,19 @@ function openReclutadorDetail(recId) {
   _rdVacsAll = vacs;
   _rdRecId = recId;
 
-  const empOpts = [...new Set(vacs.map(v=>v.empresa_id).filter(Boolean))]
-    .map(eid=>{const e=DB.empresas.find(x=>x.id===eid)||{};return`<option value="${eid}">${e.nombre||eid}</option>`;}).join('');
-  const proyOpts = [...new Set(vacs.map(v=>v.proyecto).filter(Boolean))].sort()
-    .map(p=>`<option value="${p}">${p}</option>`).join('');
-  const depOpts = [...new Set(vacs.map(v=>v.departamento).filter(Boolean))].sort()
-    .map(d=>`<option value="${d}">${d}</option>`).join('');
+  const rdEmpOptsList = [...new Set(vacs.map(v=>v.empresa_id).filter(Boolean))]
+    .map(eid=>{const e=DB.empresas.find(x=>x.id===eid)||{};return{value:eid,label:e.nombre||eid};});
+  const rdProyOptsList = [...new Set(vacs.map(v=>v.proyecto).filter(Boolean))].sort()
+    .map(p=>({value:p,label:p}));
+  const rdDepOptsList = [...new Set(vacs.map(v=>v.departamento).filter(Boolean))].sort()
+    .map(d=>({value:d,label:d}));
 
   const filtrosHtml = `
     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:12px">
-      <select id="rd-flt-emp" onchange="filtrarVacsReclutador()" style="width:auto;min-width:160px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
-        <option value="">Todas las empresas</option>${empOpts}
-      </select>
-      <select id="rd-flt-proy" onchange="filtrarVacsReclutador()" style="width:auto;min-width:130px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
-        <option value="">Proyecto</option>${proyOpts}
-      </select>
-      <select id="rd-flt-dep" onchange="filtrarVacsReclutador()" style="width:auto;min-width:130px;height:30px;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px">
-        <option value="">Departamento</option>${depOpts}
-      </select>
-      <button onclick="document.getElementById('rd-flt-emp').value='';document.getElementById('rd-flt-proy').value='';document.getElementById('rd-flt-dep').value='';filtrarVacsReclutador()" style="height:30px;font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#666">× Limpiar</button>
+      <div id="wrap-rd-flt-emp" style="flex:none"><button id="btn-rd-flt-emp" onclick="_mfOpen('rd-flt-emp',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:30px;border:1px solid #ddd;border-radius:6px;background:white;color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:140px;justify-content:space-between"><span id="lbl-rd-flt-emp">Todas las empresas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div id="wrap-rd-flt-proy" style="flex:none"><button id="btn-rd-flt-proy" onclick="_mfOpen('rd-flt-proy',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:30px;border:1px solid #ddd;border-radius:6px;background:white;color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:110px;justify-content:space-between"><span id="lbl-rd-flt-proy">Proyecto</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div id="wrap-rd-flt-dep" style="flex:none"><button id="btn-rd-flt-dep" onclick="_mfOpen('rd-flt-dep',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:30px;border:1px solid #ddd;border-radius:6px;background:white;color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:110px;justify-content:space-between"><span id="lbl-rd-flt-dep">Departamento</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <button onclick="_mfReset('rd-flt-emp','rd-flt-proy','rd-flt-dep');filtrarVacsReclutador()" style="height:30px;font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#666">× Limpiar</button>
     </div>`;
 
   const tablaHtml = `
@@ -5597,6 +5596,9 @@ function openReclutadorDetail(recId) {
     <div id="rd-vacs-count" style="font-size:12px;color:#9ca3af;padding:8px 0;text-align:right"></div>`;
 
   document.getElementById('reclutador-detail-content').innerHTML = headerHtml + kpisHtml + tablaHtml;
+  _mfPopulate('rd-flt-emp', rdEmpOptsList, 'Todas las empresas');
+  _mfPopulate('rd-flt-proy', rdProyOptsList, 'Proyecto');
+  _mfPopulate('rd-flt-dep', rdDepOptsList, 'Departamento');
   filtrarVacsReclutador();
   document.getElementById('page-title').textContent = r.nombre;
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
@@ -5605,13 +5607,13 @@ function openReclutadorDetail(recId) {
 }
 
 function filtrarVacsReclutador(){
-  const empF=document.getElementById('rd-flt-emp')?.value||'';
-  const proyF=document.getElementById('rd-flt-proy')?.value||'';
-  const depF=document.getElementById('rd-flt-dep')?.value||'';
+  const mfEmp=_mfGet('rd-flt-emp');
+  const mfProy=_mfGet('rd-flt-proy');
+  const mfDep=_mfGet('rd-flt-dep');
   let list=_rdVacsAll;
-  if(empF)list=list.filter(v=>v.empresa_id===empF);
-  if(proyF)list=list.filter(v=>v.proyecto===proyF);
-  if(depF)list=list.filter(v=>v.departamento===depF);
+  if(mfEmp)list=list.filter(v=>mfEmp.has(v.empresa_id||''));
+  if(mfProy)list=list.filter(v=>mfProy.has(v.proyecto||''));
+  if(mfDep)list=list.filter(v=>mfDep.has(v.departamento||''));
   const recId=_rdRecId;
   const rows=list.map((v,i)=>{
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
@@ -6149,11 +6151,11 @@ function renderRanking(){
     <div class="card"><div class="card-title">Más contratados</div><div class="card-value" style="font-size:14px;color:var(--accent)">${masColocados&&masColocados.val?masColocados.r.nombre:'—'}</div><div class="card-sub">${masColocados&&masColocados.val?masColocados.val+' contratados':''}</div></div>
   `;
   // Filtros
-  const empOptsR=DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
-  const recOptsR=DB.reclutadores.map(r=>`<option value="${r.id}">${r.nombre}</option>`).join('');
+  const rkEmpOptsList=DB.empresas.map(e=>({value:e.id,label:e.nombre}));
+  const rkRecOptsList=DB.reclutadores.map(r=>({value:r.id,label:r.nombre}));
   document.getElementById('ranking-filters').innerHTML=`
-    <select id="rk-empresa" onchange="_rkVacPage=1;filterRankingVacs()" style="width:auto;min-width:160px"><option value="">Todas las empresas</option>${empOptsR}</select>
-    <select id="rk-reclutador" onchange="_rkVacPage=1;filterRankingVacs()" style="width:auto;min-width:160px"><option value="">Todos los reclutadores</option>${recOptsR}</select>
+    <div id="wrap-rk-empresa" style="flex:none"><button id="btn-rk-empresa" onclick="_mfOpen('rk-empresa',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between"><span id="lbl-rk-empresa">Todas las empresas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+    <div id="wrap-rk-reclutador" style="flex:none"><button id="btn-rk-reclutador" onclick="_mfOpen('rk-reclutador',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between"><span id="lbl-rk-reclutador">Todos los reclutadores</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
     <input id="rk-posicion" placeholder="Buscar posición..." oninput="_rkVacPage=1;filterRankingVacs()" style="width:auto;min-width:160px">
     <select id="rk-page-size" onchange="_rkVacPage=1;filterRankingVacs()" style="width:auto;min-width:130px">
       <option value="30">30 por página</option>
@@ -6161,6 +6163,8 @@ function renderRanking(){
       <option value="0">Todos</option>
     </select>
   `;
+  _mfPopulate('rk-empresa', rkEmpOptsList, 'Todas las empresas');
+  _mfPopulate('rk-reclutador', rkRecOptsList, 'Todos los reclutadores');
   filterRankingVacs();
   // Ranking table con tabs
   document.getElementById('ranking-rec-wrap').innerHTML=`
@@ -6323,12 +6327,12 @@ function renderRankingTable(tipo) {
   <div style="font-size:12px;color:var(--text3);padding:8px 0;">Mostrando <strong>${sorted.length}</strong> reclutadores</div>`;
 }
 function filterRankingVacs(){
-  const empId=document.getElementById('rk-empresa')?.value||'';
-  const recId=document.getElementById('rk-reclutador')?.value||'';
+  const mfEmp=_mfGet('rk-empresa');
+  const mfRec=_mfGet('rk-reclutador');
   const q=(document.getElementById('rk-posicion')?.value||'').toLowerCase().trim();
   let vacs=DB.vacantes.filter(v=>v.estado==='Abierta');
-  if(empId)vacs=vacs.filter(v=>v.empresa_id===empId);
-  if(recId)vacs=vacs.filter(v=>v.reclutador_id===recId);
+  if(mfEmp)vacs=vacs.filter(v=>mfEmp.has(v.empresa_id||''));
+  if(mfRec)vacs=vacs.filter(v=>mfRec.has(v.reclutador_id||''));
   if(q)vacs=vacs.filter(v=>v.nombre.toLowerCase().includes(q));
   _rkVacData=vacs.map(v=>{
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
@@ -6388,11 +6392,11 @@ async function saveGarantiaData(obj){
 }
 
 function filtrarGarantias(){
-  const emp = document.getElementById('g-flt-emp')?.value||'';
-  const rec = document.getElementById('g-flt-rec')?.value||'';
+  const mfEmp = _mfGet('g-flt-emp');
+  const mfRec = _mfGet('g-flt-rec');
   document.querySelectorAll('.garantia-row').forEach(tr=>{
-    const empMatch = !emp || tr.dataset.emp===emp;
-    const recMatch = !rec || tr.dataset.rec===rec;
+    const empMatch = !mfEmp || mfEmp.has(tr.dataset.emp||'');
+    const recMatch = !mfRec || mfRec.has(tr.dataset.rec||'');
     const expandRow = document.getElementById('grow-'+tr.id.replace('garantia-row-',''));
     const show = empMatch && recMatch;
     tr.style.display = show ? '' : 'none';
@@ -6612,19 +6616,15 @@ async function renderGarantias(){
       </tr>`;
   }).join('');
 
-  const empOpts = [...new Set(vacsConGarantia.map(v=>v.empresa_id))]
-    .map(eid=>{ const e=DB.empresas.find(x=>x.id===eid)||{}; return `<option value="${eid}">${e.nombre||eid}</option>`; }).join('');
-  const recOpts = [...new Set(vacsConGarantia.map(v=>v.reclutador_id).filter(Boolean))]
-    .map(rid=>{ const r=DB.reclutadores.find(x=>x.id===rid)||{}; return `<option value="${rid}">${r.nombre||rid}</option>`; }).join('');
+  const gEmpOptsList = [...new Set(vacsConGarantia.map(v=>v.empresa_id))]
+    .map(eid=>{ const e=DB.empresas.find(x=>x.id===eid)||{}; return {value:eid,label:e.nombre||eid}; });
+  const gRecOptsList = [...new Set(vacsConGarantia.map(v=>v.reclutador_id).filter(Boolean))]
+    .map(rid=>{ const r=DB.reclutadores.find(x=>x.id===rid)||{}; return {value:rid,label:r.nombre||rid}; });
 
   page.innerHTML=`<div style="padding:24px 28px">
     <div class="fbar" style="margin-bottom:18px">
-      <select id="g-flt-emp" onchange="filtrarGarantias()" style="min-width:180px">
-        <option value="">Todas las empresas</option>${empOpts}
-      </select>
-      <select id="g-flt-rec" onchange="filtrarGarantias()" style="min-width:180px">
-        <option value="">Todos los reclutadores</option>${recOpts}
-      </select>
+      <div id="wrap-g-flt-emp" style="flex:none"><button id="btn-g-flt-emp" onclick="_mfOpen('g-flt-emp',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:160px;justify-content:space-between"><span id="lbl-g-flt-emp">Todas las empresas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div id="wrap-g-flt-rec" style="flex:none"><button id="btn-g-flt-rec" onclick="_mfOpen('g-flt-rec',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:160px;justify-content:space-between"><span id="lbl-g-flt-rec">Todos los reclutadores</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <div class="sp"></div>
       <button class="btn btn-green btn-sm" onclick="exportarGarantias()">
         <i class="fa fa-file-excel"></i> Exportar Excel
@@ -6644,6 +6644,8 @@ async function renderGarantias(){
     <div style="font-size:12px;color:var(--text3);padding:8px 0;">Mostrando <strong>${vacsConGarantia.length}</strong> registros</div>
     </div>
   </div>`;
+  _mfPopulate('g-flt-emp', gEmpOptsList, 'Todas las empresas');
+  _mfPopulate('g-flt-rec', gRecOptsList, 'Todos los reclutadores');
 }
 
 function recalcVenc(vacId, diasG){
@@ -8012,10 +8014,10 @@ function renderContratados(){
   if(recIdRole) candsColocados = candsColocados.filter(c=>{ const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{}; return v.reclutador_id===recIdRole; });
   if(empIdC) candsColocados = candsColocados.filter(c=>{ const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{}; return v.empresa_id===empIdC; });
 
-  const empOpts = [...new Set(candsColocados.map(c=>{ const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{}; return v.empresa_id; }).filter(Boolean))]
-    .map(eid=>{ const e=DB.empresas.find(x=>x.id===eid)||{}; return `<option value="${eid}">${e.nombre||eid}</option>`; }).join('');
-  const recOpts = [...new Set(candsColocados.map(c=>{ const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{}; return v.reclutador_id; }).filter(Boolean))]
-    .map(rid=>{ const r=DB.reclutadores.find(x=>x.id===rid)||{}; return `<option value="${rid}">${r.nombre||rid}</option>`; }).join('');
+  const ctEmpOptsList = [...new Set(candsColocados.map(c=>{ const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{}; return v.empresa_id; }).filter(Boolean))]
+    .map(eid=>{ const e=DB.empresas.find(x=>x.id===eid)||{}; return {value:eid,label:e.nombre||eid}; });
+  const ctRecOptsList = [...new Set(candsColocados.map(c=>{ const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{}; return v.reclutador_id; }).filter(Boolean))]
+    .map(rid=>{ const r=DB.reclutadores.find(x=>x.id===rid)||{}; return {value:rid,label:r.nombre||rid}; });
 
   // Calcular semanas disponibles
   const semanasSet = new Map();
@@ -8025,8 +8027,8 @@ function renderContratados(){
     const wn=getWeekNumber(fechaCont);
     if(wn){const key=`${wn.year}-W${String(wn.week).padStart(2,'0')}`;if(!semanasSet.has(key))semanasSet.set(key,wn);}
   });
-  const semanaOpts=[...semanasSet.entries()].sort((a,b)=>a[0].localeCompare(b[0]))
-    .map(([key,wn])=>`<option value="${key}">Semana ${wn.week} – ${wn.year}</option>`).join('');
+  const ctSemOptsList=[...semanasSet.entries()].sort((a,b)=>a[0].localeCompare(b[0]))
+    .map(([key,wn])=>({value:key,label:`Semana ${wn.week} – ${wn.year}`}));
 
   page._ctCandsVis = candsColocados;
   page._ctPage = 1;
@@ -8034,18 +8036,9 @@ function renderContratados(){
 
   page.innerHTML=`<div style="padding:24px 28px">
     <div class="fbar" style="margin-bottom:18px">
-      <select id="ct-emp-filter" onchange="filtrarContratados()" style="width:auto;min-width:180px">
-        <option value="">Todas las empresas</option>
-        ${empOpts}
-      </select>
-      <select id="ct-rec-filter" onchange="filtrarContratados()" style="width:auto;min-width:170px">
-        <option value="">Todos los reclutadores</option>
-        ${recOpts}
-      </select>
-      <select id="ct-semana-filter" onchange="filtrarContratados()" style="width:auto;min-width:160px">
-        <option value="">Todas las semanas</option>
-        ${semanaOpts}
-      </select>
+      <div id="wrap-ct-emp-filter" style="flex:none"><button id="btn-ct-emp-filter" onclick="_mfOpen('ct-emp-filter',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:160px;justify-content:space-between"><span id="lbl-ct-emp-filter">Todas las empresas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div id="wrap-ct-rec-filter" style="flex:none"><button id="btn-ct-rec-filter" onclick="_mfOpen('ct-rec-filter',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between"><span id="lbl-ct-rec-filter">Todos los reclutadores</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div id="wrap-ct-semana-filter" style="flex:none"><button id="btn-ct-semana-filter" onclick="_mfOpen('ct-semana-filter',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between"><span id="lbl-ct-semana-filter">Todas las semanas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <select id="ct-page-size-top" onchange="ctSetPageSize(parseInt(this.value))" style="width:auto;min-width:130px">
         <option value="30" selected>30 registros</option>
         <option value="100">100 registros</option>
@@ -8063,24 +8056,27 @@ function renderContratados(){
     <div id="ct-pager" style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:12px;color:#9ca3af;gap:10px;flex-wrap:wrap"></div>
   </div>`;
 
+  _mfPopulate('ct-emp-filter', ctEmpOptsList, 'Todas las empresas');
+  _mfPopulate('ct-rec-filter', ctRecOptsList, 'Todos los reclutadores');
+  _mfPopulate('ct-semana-filter', ctSemOptsList, 'Todas las semanas');
   filtrarContratados();
 }
 
 function filtrarContratados(){
   const page = document.getElementById('page-contratados');
   if(!page) return;
-  const empFiltro = document.getElementById('ct-emp-filter')?.value||'';
-  const recFiltro = document.getElementById('ct-rec-filter')?.value||'';
-  const semanaFiltro = document.getElementById('ct-semana-filter')?.value||'';
+  const mfEmp = _mfGet('ct-emp-filter');
+  const mfRec = _mfGet('ct-rec-filter');
+  const mfSem = _mfGet('ct-semana-filter');
   let list = page._ctCandsVis||[];
-  if(empFiltro) list = list.filter(c=>{ const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{}; return v.empresa_id===empFiltro; });
-  if(recFiltro) list = list.filter(c=>{ const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{}; return v.reclutador_id===recFiltro; });
-  if(semanaFiltro) list = list.filter(c=>{
+  if(mfEmp) list = list.filter(c=>{ const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{}; return mfEmp.has(v.empresa_id||''); });
+  if(mfRec) list = list.filter(c=>{ const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{}; return mfRec.has(v.reclutador_id||''); });
+  if(mfSem) list = list.filter(c=>{
     const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
     const fechaCont=getFechaContratacion(v,c);
     const wn=getWeekNumber(fechaCont);
     if(!wn)return false;
-    return `${wn.year}-W${String(wn.week).padStart(2,'0')}`===semanaFiltro;
+    return mfSem.has(`${wn.year}-W${String(wn.week).padStart(2,'0')}`);
   });
   page._ctFiltered = list;
   page._ctPage = 1;
@@ -10153,7 +10149,7 @@ function eseSelectCandidato(id, nombre){
   if(sugg) sugg.style.display='none';
 }
 
-let _eseQ = '', _eseEstado = '';
+let _eseQ = '';
 
 function _eseFmt(d){ return d ? new Date(d+'T12:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
 
@@ -10166,9 +10162,15 @@ function _eseFiltered(){
       return (cand?.nombre||'').toLowerCase().includes(q);
     });
   }
-  if(_eseEstado==='cobrado') list=list.filter(e=>e.fecha_cobrado);
-  else if(_eseEstado==='pendiente') list=list.filter(e=>!e.fecha_cobrado&&!e.motivo_no_cobro);
-  else if(_eseEstado==='no_cobro') list=list.filter(e=>e.motivo_no_cobro);
+  const mfEst = _mfGet('ese-estado');
+  if(mfEst){
+    list = list.filter(e=>{
+      if(mfEst.has('cobrado') && e.fecha_cobrado) return true;
+      if(mfEst.has('pendiente') && !e.fecha_cobrado && !e.motivo_no_cobro) return true;
+      if(mfEst.has('no_cobro') && e.motivo_no_cobro) return true;
+      return false;
+    });
+  }
   return list.sort((a,b)=>(b.fecha_realizado||'').localeCompare(a.fecha_realizado||''));
 }
 
@@ -10308,8 +10310,13 @@ async function saveESERow(id){
 function renderESE(){
   const page = document.getElementById('page-ese');
   if(!page) return;
+  const eseEstOpts = [
+    {value:'cobrado',label:'Cobrados'},
+    {value:'pendiente',label:'Pendientes'},
+    {value:'no_cobro',label:'No se cobró'}
+  ];
   if(!document.getElementById('ese-results')){
-    _eseQ = ''; _eseEstado = '';
+    _eseQ = '';
     page.innerHTML = `
       <div class="topbar">
         <div><h2 style="margin:0;font-size:18px;font-weight:700">ESE <span style="font-size:13px;font-weight:400;color:var(--text3)">Estudios Socioeconómicos</span></h2></div>
@@ -10321,22 +10328,20 @@ function renderESE(){
         <div class="fbar">
           <input type="text" id="ese-q" placeholder="Buscar candidato..."
             oninput="_eseQ=this.value;_eseRenderTable()" style="min-width:200px">
-          <select id="ese-estado" onchange="_eseEstado=this.value;_eseRenderTable()">
-            <option value="">Todos los estados</option>
-            <option value="cobrado">Cobrados</option>
-            <option value="pendiente">Pendientes</option>
-            <option value="no_cobro">No se cobró</option>
-          </select>
+          <div id="wrap-ese-estado" style="flex:none"><button id="btn-ese-estado" onclick="_mfOpen('ese-estado',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between"><span id="lbl-ese-estado">Todos los estados</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
           <span class="sp"></span>
           <span id="ese-count" style="font-size:13px;color:var(--text3)"></span>
         </div>
         <div id="ese-results"></div>
       </div>
       ${_eseModalHTML()}`;
+    _mfReset('ese-estado');
+    _mfPopulate('ese-estado', eseEstOpts, 'Todos los estados');
   } else {
-    _eseQ = ''; _eseEstado = '';
+    _eseQ = '';
     const q = document.getElementById('ese-q'); if(q) q.value = '';
-    const est = document.getElementById('ese-estado'); if(est) est.value = '';
+    _mfReset('ese-estado');
+    _mfUpdateBtn('ese-estado');
   }
   _eseRenderTable();
 }

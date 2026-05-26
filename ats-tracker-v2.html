@@ -8150,6 +8150,35 @@ function exportDesercionExcel(){
   showToast('Excel descargado ✓');
 }
 
+function exportDesercionEmpresaExcel(empId){
+  const emp = DB.empresas.find(e=>e.id===empId)||{};
+  const des = DB.candidatos.filter(c=>{
+    if(!ETAPAS_SALIDA.includes(c.etapa)) return false;
+    const v = DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+    if(v.empresa_id!==empId) return false;
+    const f = c.fecha_salida||'';
+    if(_desDF.anio && f.slice(0,4)!==_desDF.anio) return false;
+    if(_desDF.mes  && f.slice(5,7)!==_desDF.mes)  return false;
+    if(_desDF.proyecto){const vp=DB.vacantes.find(x=>x.id===c.vacante_id)||{};if((vp.proyecto||'')!==_desDF.proyecto)return false;}
+    return true;
+  });
+  if(!des.length){ showToast('Sin datos para exportar','err'); return; }
+  const header = ['#','Candidato','Vacante','Proyecto','Reclutador','Etapa','Motivo','Días en proceso','Fecha salida'];
+  const filas = des.map((c,i)=>{
+    const v = DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+    const r = DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
+    const d = processTotal(c);
+    return [i+1, c.nombre||'', v.nombre||'', v.proyecto||'', r.nombre||'', c.etapa||'', c.motivo_desercion||'', d!==null?d:'', c.fecha_salida||''];
+  });
+  const csv = [header, ...filas].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `desercion_${(emp.nombre||'empresa').replace(/\s+/g,'_')}_${today()}.csv`;
+  a.click();
+  showToast('Excel descargado ✓');
+}
+
 function _renderDesResumen(){
   const panel=document.getElementById('des-panel-resumen');
   if(!panel)return;
@@ -8327,7 +8356,10 @@ function _renderDesEmpresaDetalle(panel){
         </div>
       </div>
     </div>` : ''}
-    <div class="sec-title">Historial de deserciones</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div class="sec-title" style="margin:0">Historial de deserciones</div>
+      <button class="btn btn-green btn-sm" onclick="exportDesercionEmpresaExcel('${_desEmpId}')"><i class="fa fa-file-excel"></i> Exportar Excel</button>
+    </div>
     <div class="table-wrap">
       <table>
         <thead><tr>

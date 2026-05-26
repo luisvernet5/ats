@@ -9183,11 +9183,34 @@ async function exportEntrevistaPDF() {
   const vacId = document.getElementById('cand-vacante')?.value;
   const emp = (empId ? DB.empresas.find(e=>e.id===empId) : null) || _refResolveEmp();
   const vac = DB.vacantes.find(v=>v.id===vacId)||{};
+  const recId = document.getElementById('cand-reclutador')?.value;
+  const recObj = DB.reclutadores.find(r=>r.id===recId)||{};
+  const recNombre = recObj.nombre || currentUserData?.nombre || '';
   const fechaEnt = val('ei-fecha-entrevista')||today();
   const extra = `Fecha: ${fechaEnt}${val('ei-firma-entrevistador')?'  |  '+val('ei-firma-entrevistador'):''}`;
-  const subT = vac.nombre?(vac.nombre+(emp.nombre?' — '+emp.nombre:'')):(emp.nombre||'');
+  const subT = emp.nombre||'';
 
   let y = await _pdfHeader(doc, 'GUÍA DE ENTREVISTA LABORAL', candNombre+(subT?'\n'+subT:''), emp, extra);
+
+  // Bloque de metadatos: Vacante, Folio, Proyecto, Departamento
+  const metaCols = [
+    ['Vacante', vac.nombre||'—'],
+    ['Folio', vac.folio||'—'],
+    ['Proyecto', vac.proyecto||'—'],
+    ['Departamento', vac.departamento||'—'],
+  ];
+  const cw4 = CW/4;
+  metaCols.forEach(([l,v],i)=>{
+    const x = M + i*cw4;
+    doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(120);
+    doc.text(l+':', x, y);
+    doc.setFont('helvetica','normal'); doc.setTextColor(30); doc.setFontSize(8.5);
+    const wrapped = doc.splitTextToSize(v, cw4-3);
+    doc.text(wrapped, x, y+4);
+  });
+  y += 14;
+  doc.setDrawColor(200); doc.setLineWidth(0.3); doc.line(M, y, W-M, y);
+  y += 6;
 
   const chkPg = (n=10) => { if(y+n>258){doc.addPage();y=M;} };
   const sec = t => {
@@ -9259,6 +9282,19 @@ async function exportEntrevistaPDF() {
   r1('Impresión general',val('ei-impresion-general'));
   r1('Áreas de oportunidad',val('ei-areas-oportunidad'));
   r2('Recomendación',val('ei-recomendacion'),'Firma entrevistador',val('ei-firma-entrevistador'));
+
+  // Bloque de firma del reclutador
+  if(recNombre) {
+    chkPg(28);
+    y += 8;
+    doc.setDrawColor(80); doc.setLineWidth(0.4); doc.line(M, y, M+70, y);
+    y += 4;
+    doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(30);
+    doc.text(recNombre, M, y);
+    y += 4;
+    doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(120);
+    doc.text('Reclutador responsable del informe', M, y);
+  }
 
   const fname=candNombre.replace(/[^a-zA-Z0-9]/g,'_');
   doc.save(`Entrevista_${fname}_${fechaEnt}.pdf`);

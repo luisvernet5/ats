@@ -4243,7 +4243,7 @@ function _pipOpenColPanel(e){
   const rect=btn.getBoundingClientRect();
   const panel=document.createElement('div');
   panel.id='_pip-col-panel';
-  panel.style.cssText=`position:fixed;top:${rect.bottom+4}px;left:${rect.left}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:6px 0;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,.18);min-width:200px;max-height:400px;overflow-y:auto`;
+  panel.style.cssText=`position:fixed;top:${rect.bottom+4}px;right:${window.innerWidth-rect.right}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:6px 0;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,.18);min-width:220px;max-height:400px;overflow-y:auto`;
   _pipFillColPanel(panel);
   document.body.appendChild(panel);
   const close=ev=>{if(!panel.contains(ev.target)&&ev.target.id!=='pip-btn-cols'){panel.remove();document.removeEventListener('mousedown',close);}};

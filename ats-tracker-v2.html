@@ -9179,11 +9179,14 @@ async function exportEntrevistaPDF() {
   const radio = n => document.querySelector(`input[name="${n}"]:checked`)?.value||'';
   const chks = (ids,labels) => ids.map((id,i)=>document.getElementById(id)?.checked?labels[i]:null).filter(Boolean).join(', ')||'—';
   const candNombre = val('cand-nombre')||'Candidato';
-  const empId = document.getElementById('cand-empresa')?.value;
-  const vacId = document.getElementById('cand-vacante')?.value;
-  const emp = (empId ? DB.empresas.find(e=>e.id===empId) : null) || _refResolveEmp();
+  const candId = document.getElementById('cand-id')?.value;
+  const candDB = DB.candidatos.find(c=>c.id===candId)||{};
+  const empId = document.getElementById('cand-empresa')?.value || '';
+  const vacId = document.getElementById('cand-vacante')?.value || candDB.vacante_id || '';
   const vac = DB.vacantes.find(v=>v.id===vacId)||{};
-  const recId = document.getElementById('cand-reclutador')?.value;
+  const resolvedEmpId = empId || vac.empresa_id || '';
+  const emp = (resolvedEmpId ? DB.empresas.find(e=>e.id===resolvedEmpId) : null) || _refResolveEmp();
+  const recId = document.getElementById('cand-reclutador')?.value || candDB.reclutador_id || '';
   const recObj = DB.reclutadores.find(r=>r.id===recId)||{};
   const recNombre = recObj.nombre || currentUserData?.nombre || '';
   const fechaEnt = val('ei-fecha-entrevista')||today();

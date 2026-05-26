@@ -1506,6 +1506,27 @@ function adaptUIToRole() {
       document.querySelector('.main').appendChild(pg);
     }
   }
+  // ESE — visible para admin, reclutador y facturacion
+  if(['admin','reclutador','facturacion'].includes(rol) && !document.getElementById('nav-ese')){
+    const navEl = document.querySelector('.sb-nav');
+    const configItem = document.getElementById('nav-config');
+    if(navEl){
+      const eseItem = document.createElement('div');
+      eseItem.className = 'nav-item';
+      eseItem.id = 'nav-ese';
+      eseItem.dataset.tooltip = 'ESE';
+      eseItem.innerHTML = '<i class="fa fa-file-alt"></i><span class="nav-item-text"> ESE</span>';
+      eseItem.setAttribute('onclick', "showPage('ese')");
+      if(configItem) configItem.parentNode.insertBefore(eseItem, configItem);
+      else navEl.appendChild(eseItem);
+    }
+    if(!document.getElementById('page-ese')){
+      const pg = document.createElement('div');
+      pg.className = 'page';
+      pg.id = 'page-ese';
+      document.querySelector('.main').appendChild(pg);
+    }
+  }
   if(currentUserData?.rol==='admin' && !document.getElementById('nav-descartados')){
     const candItem = document.getElementById('nav-candidatos');
     if(candItem){
@@ -2033,7 +2054,7 @@ async function loadDB(){
       const _rhEmpId = currentUserData?.empresa_id||null;
       console.log('[loadDB] ROL ACTUAL:', currentUserData?.rol, '| es rh_cliente:', _isRhC, '| EMPRESA ID:', _rhEmpId);
       console.log('[loadDB] currentUserData completo:', JSON.stringify(currentUserData));
-      const [emp,vac,cand,rec,refs]=await Promise.all([
+      const [emp,vac,cand,rec,refs,eseRes]=await Promise.all([
         sbClient.from('empresas').select('*'),
         (_isRhC && _rhEmpId
           ? sbClient.from('vacantes').select('*').filter('data->>empresa_id','eq',_rhEmpId)
@@ -2041,12 +2062,14 @@ async function loadDB(){
         sbClient.from('candidatos').select('*'),
         sbClient.from('reclutadores').select('*'),
         sbClient.from('referencias').select('candidato_id,nombre_contacto,empresa,telefono,data'),
+        sbClient.from('ese').select('*'),
       ]);
       console.log('[loadDB] vacantes cargadas:', vac.data?.length, '| error:', vac.error?.message||null);
       DB.empresas=emp.data?.map(r=>r.data)||[];
       DB.vacantes=vac.data?.map(r=>r.data)||[];
       DB.candidatos=cand.data?.map(r=>r.data)||[];
       DB.reclutadores=rec.data?.map(r=>r.data)||[];
+      DB.ese=eseRes.data||[];
       _candConRefs=new Set((refs.data||[]).flatMap(r=>{
         const ids=[];
         // formato nuevo: columnas planas
@@ -2095,6 +2118,7 @@ const DB={
   empresas:[],
   vacantes:[],
   candidatos:[],
+  ese:[],
   reclutadores:[
     {id:'r1',nombre:'Ana López',email:'ana@empresa.com'},
     {id:'r2',nombre:'Carlos Méndez',email:'carlos@empresa.com'},
@@ -2249,6 +2273,7 @@ function renderPage(p){
   if(p==='activity-log')renderActivityLog();
   if(p==='config')renderConfig();
   if(p==='vacantes-eliminadas')renderVacantesEliminadas();
+  if(p==='ese')renderESE();
 }
 
 /* ============================================================
@@ -9509,6 +9534,255 @@ async function exportRefNuimCamPDF(){
 
   doc.save(`RefVerificacion_NuimCam_${candNombre.replace(/[^a-zA-Z0-9]/g,'_')}_${today()}.pdf`);
   showToast('PDF NuimCam generado ✓');
+}
+
+/* ============================================================
+   ESE — Estudios Socioeconómicos
+   ============================================================ */
+const ESE_MOTIVOS_NO_COBRO = [
+  'Candidato no siguió el proceso',
+  'Candidato desertó',
+  'Candidato rechazado',
+  'Vacante cancelada',
+  'Proceso congelado',
+  'Duplicado',
+  'Otro',
+];
+
+let _eseQ = '', _eseEstado = '';
+
+function renderESE(){
+  const page = document.getElementById('page-ese');
+  if(!page) return;
+
+  const lista = _eseFiltered();
+
+  page.innerHTML = `
+    <div class="topbar">
+      <div><h2 style="margin:0;font-size:18px;font-weight:700">ESE <span style="font-size:13px;font-weight:400;color:var(--text3)">Estudios Socioeconómicos</span></h2></div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary" onclick="openESEModal()"><i class="fa fa-plus"></i> Agregar ESE</button>
+      </div>
+    </div>
+    <div style="padding:20px">
+      <div class="fbar">
+        <input type="text" id="ese-q" placeholder="Buscar candidato..." value="${_eseQ}" oninput="_eseQ=this.value;renderESE()" style="min-width:200px">
+        <select id="ese-estado" onchange="_eseEstado=this.value;renderESE()">
+          <option value="">Todos los estados</option>
+          <option value="cobrado" ${_eseEstado==='cobrado'?'selected':''}>Cobrados</option>
+          <option value="pendiente" ${_eseEstado==='pendiente'?'selected':''}>Pendientes de cobro</option>
+          <option value="no_cobro" ${_eseEstado==='no_cobro'?'selected':''}>No se cobró</option>
+        </select>
+        <span class="sp"></span>
+        <span style="font-size:13px;color:var(--text3)">${lista.length} registro${lista.length!==1?'s':''}</span>
+      </div>
+      ${lista.length === 0
+        ? `<div style="text-align:center;padding:60px 0;color:var(--text3)"><i class="fa fa-file-alt" style="font-size:40px;margin-bottom:12px;display:block"></i>No hay registros ESE</div>`
+        : `<div class="table-wrap">
+        <table id="ese-table">
+          <thead><tr>
+            <th>#</th>
+            <th>Candidato</th>
+            <th>Empresa</th>
+            <th>Vacante</th>
+            <th>Fecha realizado</th>
+            <th>Fecha pagado</th>
+            <th>Fecha cobrado</th>
+            <th>Estado</th>
+            <th>Motivo no cobro</th>
+            <th></th>
+          </tr></thead>
+          <tbody>${lista.map((e,i)=>_eseRow(e,i+1)).join('')}</tbody>
+        </table>
+      </div>`}
+    </div>
+    ${_eseModalHTML()}`;
+}
+
+function _eseFiltered(){
+  let list = [...DB.ese];
+  if(_eseQ){
+    const q = _eseQ.toLowerCase();
+    list = list.filter(e=>{
+      const cand = DB.candidatos.find(c=>c.id===e.candidato_id);
+      return (cand?.nombre||'').toLowerCase().includes(q);
+    });
+  }
+  if(_eseEstado === 'cobrado') list = list.filter(e=>e.fecha_cobrado);
+  else if(_eseEstado === 'pendiente') list = list.filter(e=>e.fecha_pagado && !e.fecha_cobrado && !e.motivo_no_cobro);
+  else if(_eseEstado === 'no_cobro') list = list.filter(e=>e.motivo_no_cobro);
+  return list.sort((a,b)=>(b.fecha_realizado||'').localeCompare(a.fecha_realizado||''));
+}
+
+function _eseRow(e, n){
+  const cand = DB.candidatos.find(c=>c.id===e.candidato_id)||{};
+  const vac  = DB.vacantes.find(v=>v.id===cand.vacante_id)||{};
+  const emp  = DB.empresas.find(x=>x.id===vac.empresa_id)||{};
+  let estado, estadoStyle;
+  if(e.fecha_cobrado){
+    estado='Cobrado'; estadoStyle='background:#dcfce7;color:#166534';
+  } else if(e.motivo_no_cobro){
+    estado='No se cobró'; estadoStyle='background:#fee2e2;color:#991b1b';
+  } else if(e.fecha_pagado){
+    estado='Pagado'; estadoStyle='background:#fef9c3;color:#854d0e';
+  } else {
+    estado='Pendiente'; estadoStyle='background:#f1f5f9;color:#475569';
+  }
+  return `<tr>
+    <td style="color:var(--text3);font-size:12px">${n}</td>
+    <td><strong>${cand.nombre||'—'}</strong></td>
+    <td style="font-size:12px;color:var(--text2)">${emp.nombre||'—'}</td>
+    <td style="font-size:12px;color:var(--text2)">${vac.titulo||vac.folio||'—'}</td>
+    <td>${_eseFmt(e.fecha_realizado)}</td>
+    <td>${_eseFmt(e.fecha_pagado)}</td>
+    <td>${_eseFmt(e.fecha_cobrado)}</td>
+    <td><span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;${estadoStyle}">${estado}</span></td>
+    <td style="font-size:12px;color:var(--text3);max-width:180px">${e.motivo_no_cobro||'—'}</td>
+    <td style="white-space:nowrap">
+      <button class="btn btn-ghost btn-sm" onclick="openESEModal('${e.id}')" title="Editar"><i class="fa fa-pencil-alt"></i></button>
+      <button class="btn btn-sm" style="color:var(--red);background:none;border:none;cursor:pointer" onclick="deleteESE('${e.id}')" title="Eliminar"><i class="fa fa-trash"></i></button>
+    </td>
+  </tr>`;
+}
+
+function _eseFmt(d){ return d ? new Date(d+'T12:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
+
+function _eseModalHTML(){
+  return `<div id="ese-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center">
+    <div style="background:var(--surface);border-radius:14px;padding:28px;width:min(520px,94vw);box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <h3 id="ese-modal-title" style="margin:0;font-size:16px">Agregar ESE</h3>
+        <button onclick="closeESEModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3)">×</button>
+      </div>
+      <input type="hidden" id="ese-id">
+      <div style="display:grid;gap:14px">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Candidato *</label>
+          <select id="ese-candidato" style="width:100%">
+            <option value="">Seleccionar candidato...</option>
+            ${[...DB.candidatos].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'')).map(c=>{
+              const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+              const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
+              return `<option value="${c.id}">${c.nombre}${emp.nombre?' — '+emp.nombre:''}`;
+            }).join('')}
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Fecha realizado *</label>
+            <input type="date" id="ese-fecha-realizado" style="width:100%">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Fecha pagado</label>
+            <input type="date" id="ese-fecha-pagado" style="width:100%">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Fecha cobrado</label>
+          <input type="date" id="ese-fecha-cobrado" style="width:100%">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Motivo no cobro</label>
+          <select id="ese-motivo" style="width:100%" onchange="document.getElementById('ese-motivo-otro').style.display=this.value==='Otro'?'block':'none'">
+            <option value="">— No aplica / Sí se cobró —</option>
+            ${ESE_MOTIVOS_NO_COBRO.map(m=>`<option value="${m}">${m}</option>`).join('')}
+          </select>
+        </div>
+        <div id="ese-motivo-otro" style="display:none">
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Especificar motivo</label>
+          <input type="text" id="ese-motivo-texto" placeholder="Escribir motivo..." style="width:100%">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Notas</label>
+          <textarea id="ese-notas" rows="2" placeholder="Notas adicionales..." style="width:100%;resize:vertical"></textarea>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+        <button class="btn btn-ghost" onclick="closeESEModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveESE()">Guardar</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function openESEModal(id){
+  const page = document.getElementById('page-ese');
+  if(!page) return;
+  const modal = document.getElementById('ese-modal');
+  if(!modal) return;
+  modal.style.display = 'flex';
+  document.getElementById('ese-modal-title').textContent = id ? 'Editar ESE' : 'Agregar ESE';
+  document.getElementById('ese-id').value = id||'';
+  if(id){
+    const rec = DB.ese.find(e=>e.id===id)||{};
+    document.getElementById('ese-candidato').value = rec.candidato_id||'';
+    document.getElementById('ese-fecha-realizado').value = rec.fecha_realizado||'';
+    document.getElementById('ese-fecha-pagado').value = rec.fecha_pagado||'';
+    document.getElementById('ese-fecha-cobrado').value = rec.fecha_cobrado||'';
+    const esOtro = rec.motivo_no_cobro && !ESE_MOTIVOS_NO_COBRO.slice(0,-1).includes(rec.motivo_no_cobro);
+    document.getElementById('ese-motivo').value = esOtro ? 'Otro' : (rec.motivo_no_cobro||'');
+    document.getElementById('ese-motivo-texto').value = esOtro ? rec.motivo_no_cobro : '';
+    document.getElementById('ese-motivo-otro').style.display = esOtro ? 'block' : 'none';
+    document.getElementById('ese-notas').value = rec.notas||'';
+  } else {
+    document.getElementById('ese-candidato').value = '';
+    document.getElementById('ese-fecha-realizado').value = '';
+    document.getElementById('ese-fecha-pagado').value = '';
+    document.getElementById('ese-fecha-cobrado').value = '';
+    document.getElementById('ese-motivo').value = '';
+    document.getElementById('ese-motivo-texto').value = '';
+    document.getElementById('ese-motivo-otro').style.display = 'none';
+    document.getElementById('ese-notas').value = '';
+  }
+}
+
+function closeESEModal(){
+  const modal = document.getElementById('ese-modal');
+  if(modal) modal.style.display = 'none';
+}
+
+async function saveESE(){
+  const candidato_id = document.getElementById('ese-candidato').value;
+  const fecha_realizado = document.getElementById('ese-fecha-realizado').value;
+  if(!candidato_id){ showToast('Selecciona un candidato','err'); return; }
+  if(!fecha_realizado){ showToast('Ingresa la fecha de realización','err'); return; }
+
+  const motivoSel = document.getElementById('ese-motivo').value;
+  const motivoTexto = document.getElementById('ese-motivo-texto').value.trim();
+  const motivo_no_cobro = motivoSel === 'Otro' ? (motivoTexto||'Otro') : (motivoSel||null);
+
+  const id = document.getElementById('ese-id').value || crypto.randomUUID();
+  const rec = {
+    id,
+    candidato_id,
+    fecha_realizado,
+    fecha_pagado: document.getElementById('ese-fecha-pagado').value || null,
+    fecha_cobrado: document.getElementById('ese-fecha-cobrado').value || null,
+    motivo_no_cobro,
+    notas: document.getElementById('ese-notas').value.trim() || null,
+  };
+
+  if(!SANDBOX_MODE){
+    const { error } = await sbClient.from('ese').upsert(rec);
+    if(error){ showToast('Error al guardar: '+error.message,'err'); return; }
+  }
+  const idx = DB.ese.findIndex(e=>e.id===id);
+  if(idx>=0) DB.ese[idx]=rec; else DB.ese.push(rec);
+
+  closeESEModal();
+  showToast('ESE guardado ✓');
+  renderESE();
+}
+
+async function deleteESE(id){
+  if(!confirm('¿Eliminar este registro ESE?')) return;
+  if(!SANDBOX_MODE){
+    const { error } = await sbClient.from('ese').delete().eq('id',id);
+    if(error){ showToast('Error al eliminar','err'); return; }
+  }
+  DB.ese = DB.ese.filter(e=>e.id!==id);
+  showToast('ESE eliminado');
+  renderESE();
 }
 </script>
 </body>

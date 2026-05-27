@@ -3347,7 +3347,7 @@ function openVacanteModal(id=null,preEmpId=null){
   } else {
     populateRecSel('vac-reclutador','');
   }
-  if(preEmpId)autofillVacRec();
+  if(document.getElementById('vac-empresa').value) autofillVacRec();
   if(id){
     const v=DB.vacantes.find(x=>x.id===id);
     if(v){

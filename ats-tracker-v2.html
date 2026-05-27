@@ -4488,11 +4488,11 @@ function abrirCierreVacante(vacId){
   const list=document.getElementById('cierre-candidatos-list');
   if(cands.length){
     list.innerHTML=cands.map(c=>`
-      <label style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border2);border-radius:8px;cursor:pointer">
-        <input type="radio" name="cierre-cand" value="${c.id}">
-        <div>
-          <div style="font-weight:500">${c.nombre}</div>
-          <div style="font-size:11px;color:var(--text3)">${c.etapa} · ${processTotal(c)||0} días en proceso</div>
+      <label style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--border2);border-radius:8px;cursor:pointer;transition:background .12s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        <input type="radio" name="cierre-cand" value="${c.id}" style="width:16px;height:16px;flex-shrink:0;cursor:pointer;accent-color:var(--accent)">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nombre}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${c.etapa} · ${processTotal(c)||0} días en proceso</div>
         </div>
       </label>
     `).join('');

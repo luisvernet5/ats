@@ -10928,16 +10928,17 @@ async function generarPDFPerfil(id){
     const txt=String(val||'').trim();
     if(!txt) return;
     doc.setFontSize(8);
-    const allLines=txt.split('\n').flatMap(l=>doc.splitTextToSize(l,mr-ml-38));
+    const lines=[];
+    txt.split('\n').forEach(raw=>{doc.splitTextToSize(raw||' ',mr-ml-38).forEach(l=>lines.push(l));});
+    if(!lines.length) return;
     chkNewPage();
-    const rowStart=y;
+    const startY=y;
     doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
-    doc.text(label,ml,rowStart+4);
-    doc.setFont('helvetica','normal');doc.setTextColor(...black);
-    allLines.forEach((l,i)=>doc.text(l,ml+38,rowStart+4+i*4.5));
-    const h=Math.max(lh,allLines.length*4.5+2);
-    doc.setDrawColor(220,220,220);doc.line(ml,rowStart+h,mr,rowStart+h);
-    y=rowStart+h;
+    doc.text(label,ml,startY+4);
+    doc.setTextColor(...black);
+    lines.forEach(l=>{doc.text(l,ml+38,y+4);y+=5;});
+    y=Math.max(y,startY+lh);
+    doc.setDrawColor(220,220,220);doc.line(ml,y,mr,y);
   };
   const rowSide=(label,val)=>{
     const txt=String(val||'').trim();
@@ -10994,14 +10995,17 @@ async function generarPDFPerfil(id){
   chkNewPage();rowTA('Conocimientos técnicos',_rtToText(p.conocimientos_tecnicos||''));
   chkNewPage();
   if(p.habilidades_modo==='diccionario'&&p.habilidades_dic?.length){
-    doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
-    doc.text('Habilidades',ml,y+4);
-    const habLines=doc.splitTextToSize((p.habilidades_dic||[]).map(h=>`• ${h}`).join('\n'),mr-ml-38);
+    chkNewPage();
+    doc.setFontSize(8);
+    const startY=y;
+    doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
+    doc.text('Habilidades',ml,startY+4);
     doc.setTextColor(...black);
-    habLines.forEach((l,i)=>doc.text(l,ml+38,y+4+i*4.5));
-    const h=Math.max(lh,habLines.length*4.5+2);
-    doc.setDrawColor(220,220,220);doc.line(ml,y+h,mr,y+h);
-    y+=h;
+    (p.habilidades_dic||[]).forEach(item=>{
+      doc.splitTextToSize(`• ${item}`,mr-ml-38).forEach(l=>{doc.text(l,ml+38,y+4);y+=5;});
+    });
+    y=Math.max(y,startY+lh);
+    doc.setDrawColor(220,220,220);doc.line(ml,y,mr,y);
   } else {
     rowTA('Habilidades',_rtToText(p.habilidades||''));
   }

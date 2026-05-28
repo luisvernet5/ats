@@ -10403,7 +10403,7 @@ function openPerfilModal(empId, perfilId){
 
       <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:10px;border-top:1px solid var(--border)">
         <button class="btn btn-ghost" onclick="document.getElementById('modal-perfil-puesto').remove()">Cancelar</button>
-        ${_perfilId?`<button class="btn btn-ghost" onclick="generarPDFPerfil('${_perfilId}')"><i class="fa fa-file-pdf"></i> Exportar PDF</button>`:''}
+        <button class="btn btn-ghost" onclick="exportPerfilPDFBtn()"><i class="fa fa-file-pdf"></i> Exportar PDF</button>
         <button class="btn btn-primary" onclick="savePerfilPuesto()"><i class="fa fa-save"></i> Guardar perfil</button>
       </div>
     </div>
@@ -10455,6 +10455,47 @@ async function savePerfilPuesto(){
   document.getElementById('modal-perfil-puesto')?.remove();
   showToast('Perfil guardado ✓');
   renderPerfilesEmpresa(_perfilEmpId);
+}
+
+async function exportPerfilPDFBtn(){
+  const g=id=>document.getElementById(id)?.value||'';
+  const gr=name=>{const el=document.querySelector(`input[name="${name}"]:checked`);return el?el.value:'No aplica';};
+  if(!g('pf-nombre-puesto')){showToast('Ingresa el nombre del puesto primero','err');return;}
+  const newId=_perfilId||uid();
+  const obj={
+    id:newId, empresa_id:_perfilEmpId,
+    nombre_puesto:g('pf-nombre-puesto'), lugar_trabajo:g('pf-lugar-trabajo'),
+    ubicacion_geografica:g('pf-ubicacion'), proyecto:g('pf-proyecto'), departamento:g('pf-departamento'),
+    fecha_elaboracion:g('pf-fecha-elab'), fecha_revision:g('pf-fecha-rev'), no_revision:g('pf-no-revision'),
+    actividades_esenciales:g('pf-actividades'),
+    sexo:g('pf-sexo'), edad:g('pf-edad'), escolaridad:g('pf-escolaridad'),
+    experiencia_previa:g('pf-experiencia'), idiomas:g('pf-idiomas'),
+    conocimientos_tecnicos:g('pf-conocimientos'), habilidades:g('pf-habilidades'), actitudes:g('pf-actitudes'),
+    plan_inicial_puesto:g('pf-plan-inicial-puesto'), plan_inicial_salario:g('pf-plan-inicial-salario'),
+    plan_inicial_extras:g('pf-plan-inicial-extras'), plan_inicial_tiempo:g('pf-plan-inicial-tiempo'),
+    plan_intermedio_puesto:g('pf-plan-intermedio-puesto'), plan_intermedio_salario:g('pf-plan-intermedio-salario'),
+    plan_intermedio_extras:g('pf-plan-intermedio-extras'), plan_intermedio_tiempo:g('pf-plan-intermedio-tiempo'),
+    plan_final_puesto:g('pf-plan-final-puesto'), plan_final_salario:g('pf-plan-final-salario'),
+    plan_final_extras:g('pf-plan-final-extras'), plan_final_tiempo:g('pf-plan-final-tiempo'),
+    disponibilidad_viajar:g('pf-viajar'), tipo_trabajo:g('pf-tipo-trabajo'),
+    horario_trabajo:g('pf-horario'), tipo_contratacion:g('pf-contratacion'), prestaciones:g('pf-prestaciones'),
+    acompanamiento_capacitacion:g('pf-acompanamiento'),
+    resp_efectivo:gr('resp_efectivo'), resp_cheques:gr('resp_cheques'), resp_formas_valoradas:gr('resp_formas_valoradas'),
+    resp_mobiliario:gr('resp_mobiliario'), resp_equipo_computo:gr('resp_equipo_computo'),
+    resp_automovil:gr('resp_automovil'), resp_telefonia:gr('resp_telefonia'),
+    resp_documentos:gr('resp_documentos'), resp_otros:gr('resp_otros'), resp_uniforme:gr('resp_uniforme'),
+    entregables:g('pf-entregables'), elaboro:g('pf-elaboro'),
+    updated_at:new Date().toISOString()
+  };
+  if(!SANDBOX_MODE){
+    const{error}=await sbClient.from('perfiles_puesto').upsert({id:obj.id,empresa_id:obj.empresa_id,data:obj,updated_at:obj.updated_at});
+    if(error){showToast('Error al guardar: '+error.message,'err');return;}
+  }
+  const idx=DB.perfilesPuesto.findIndex(x=>x.id===obj.id);
+  if(idx>=0) DB.perfilesPuesto[idx]=obj; else DB.perfilesPuesto.push(obj);
+  _perfilId=newId;
+  showToast('Perfil guardado ✓');
+  generarPDFPerfil(newId);
 }
 
 async function deletePerfilPuesto(id){

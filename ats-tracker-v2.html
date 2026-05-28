@@ -7089,17 +7089,34 @@ async function crearSemanaHC(empId, semana, anio){
     showToast('No hay proyectos en la plantilla. Configura proyectos primero.','err');
     return;
   }
-  const rows=plantilla.map(p=>({
-    id:empId+'-'+p.proyecto.replace(/\s+/g,'')+'-'+semana+'-'+anio,
-    empresa_id:empId,proyecto:p.proyecto,semana,anio,
-    actual:0,cartera:0,entrevista:0,validacion:0,
-    proceso_contratacion:0,contratados:0,bajas:0,detenidas:0,
-    vacantes:p.plantilla_autorizada||0,
-    updated_at:new Date().toISOString()
-  }));
+  // Buscar la semana anterior más reciente disponible
+  const prevSemana = semana > 1 ? semana - 1 : 52;
+  const prevAnio   = semana > 1 ? anio : anio - 1;
+  const{data:prevData}=await sbClient.from('hc_resumen').select('*')
+    .eq('empresa_id',empId).eq('semana',prevSemana).eq('anio',prevAnio);
+  const prevMap={};
+  (prevData||[]).forEach(r=>{ prevMap[r.proyecto]=r; });
+  const rows=plantilla.map(p=>{
+    const prev=prevMap[p.proyecto]||{};
+    return{
+      id:empId+'-'+p.proyecto.replace(/\s+/g,'')+'-'+semana+'-'+anio,
+      empresa_id:empId, proyecto:p.proyecto, semana, anio,
+      actual:             prev.actual              ??0,
+      cartera:            prev.cartera             ??0,
+      entrevista:         prev.entrevista          ??0,
+      validacion:         prev.validacion          ??0,
+      proceso_contratacion:prev.proceso_contratacion??0,
+      detenidas:          prev.detenidas           ??0,
+      contratados: 0,  // eventos de esta semana — siempre inician en 0
+      bajas:       0,  // eventos de esta semana — siempre inician en 0
+      vacantes:    p.plantilla_autorizada||0,
+      updated_at:  new Date().toISOString()
+    };
+  });
   const{error}=await sbClient.from('hc_resumen').upsert(rows);
   if(error){showToast('Error: '+error.message,'err');return;}
-  showToast(`Semana ${semana} creada ✓`);
+  const tienePrev=prevData?.length>0;
+  showToast(`Semana ${semana} creada${tienePrev?' (base: semana '+prevSemana+')':''} ✓`);
   await abrirTablaHC(empId,semana,anio);
 }
 

@@ -10594,7 +10594,7 @@ function generarPDFPerfil(id){
     } else {
       doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...black);
       doc.text(`• ${label}`,ml+4,y+4);
-      doc.setTextColor(val==='Aplica'?[34,197,94]:[180,180,180] as any);
+      if(val==='Aplica') doc.setTextColor(34,197,94); else doc.setTextColor(180,180,180);
       doc.text(val,mr-20,y+4,{align:'right'});
     }
     doc.setDrawColor(220,220,220);doc.line(ml,y+lh,mr,y+lh);

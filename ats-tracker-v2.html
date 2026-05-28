@@ -10765,9 +10765,6 @@ function renderDocumentacion(){
   // Solo construye la estructura si no existe aún
   if(!document.getElementById('doc-results')){
     page.innerHTML = `
-      <div class="topbar">
-        <div><h2 style="margin:0;font-size:18px;font-weight:700">Documentación <span style="font-size:13px;font-weight:400;color:var(--text3)">Control de entrega</span></h2></div>
-      </div>
       <div style="padding:20px">
         <div class="fbar">
           <div style="position:relative;flex:1;max-width:340px">
@@ -11164,11 +11161,8 @@ function renderESE(){
   if(!document.getElementById('ese-results')){
     _eseQ = '';
     page.innerHTML = `
-      <div class="topbar">
-        <div><h2 style="margin:0;font-size:18px;font-weight:700">ESE <span style="font-size:13px;font-weight:400;color:var(--text3)">Estudios Socioeconómicos</span></h2></div>
-        <div class="topbar-actions">
-          <button class="btn btn-primary" onclick="openESEModal()"><i class="fa fa-plus"></i> Agregar ESE</button>
-        </div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+        <button class="btn btn-primary" onclick="openESEModal()"><i class="fa fa-plus"></i> Agregar ESE</button>
       </div>
       <div style="padding:20px">
         <div class="fbar">

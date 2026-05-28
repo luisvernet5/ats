@@ -10955,15 +10955,17 @@ async function generarPDFPerfil(id){
     if(!txt) return;
     doc.setFontSize(8);
     const lines=[];
-    txt.split('\n').forEach(raw=>{doc.splitTextToSize(raw||' ',mr-ml-38).forEach(l=>lines.push(l));});
+    for(const raw of txt.split('\n')){
+      for(const l of doc.splitTextToSize(raw||' ',mr-ml-38)) lines.push(l);
+    }
     if(!lines.length) return;
     chkNewPage();
     const startY=y;
     doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
     doc.text(label,ml,startY+4);
-    doc.setTextColor(...black);
-    lines.forEach(l=>{doc.text(l,ml+38,y+4);y+=5;});
-    y=Math.max(y,startY+lh);
+    doc.setFont('helvetica','normal');doc.setTextColor(...black);
+    for(const l of lines){chkNewPage();doc.text(l,ml+38,y+4);y+=5;}
+    if(y<startY+lh) y=startY+lh;
     doc.setDrawColor(220,220,220);doc.line(ml,y,mr,y);
   };
   const rowSide=(label,val)=>{

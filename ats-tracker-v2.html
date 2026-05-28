@@ -7104,14 +7104,14 @@ async function crearSemanaHC(empId, semana, anio){
     return{
       id:empId+'-'+p.proyecto.replace(/\s+/g,'')+'-'+semana+'-'+anio,
       empresa_id:empId, proyecto:p.proyecto, semana, anio,
-      actual:             prev.actual              ??0,
-      cartera:            prev.cartera             ??0,
-      entrevista:         prev.entrevista          ??0,
-      validacion:         prev.validacion          ??0,
+      actual:              prev.actual              ??0,
+      cartera:             prev.cartera             ??0,
+      entrevista:          prev.entrevista          ??0,
+      validacion:          prev.validacion          ??0,
       proceso_contratacion:prev.proceso_contratacion??0,
-      detenidas:          prev.detenidas           ??0,
-      contratados: 0,  // eventos de esta semana — siempre inician en 0
-      bajas:       0,  // eventos de esta semana — siempre inician en 0
+      contratados:         prev.contratados         ??0,
+      bajas:               prev.bajas               ??0,
+      detenidas:           prev.detenidas           ??0,
       vacantes:    p.plantilla_autorizada||0,
       updated_at:  new Date().toISOString()
     };

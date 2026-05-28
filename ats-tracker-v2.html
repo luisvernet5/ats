@@ -10927,14 +10927,17 @@ async function generarPDFPerfil(id){
   const rowTA=(label,val)=>{
     const txt=String(val||'').trim();
     if(!txt) return;
-    doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
-    doc.text(label,ml,y+4);
+    doc.setFontSize(8);
     const allLines=txt.split('\n').flatMap(l=>doc.splitTextToSize(l,mr-ml-38));
+    chkNewPage();
+    const rowStart=y;
+    doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
+    doc.text(label,ml,rowStart+4);
     doc.setFont('helvetica','normal');doc.setTextColor(...black);
-    allLines.forEach((l,i)=>{chkNewPage();doc.text(l,ml+38,y+4+i*4.5);});
+    allLines.forEach((l,i)=>doc.text(l,ml+38,rowStart+4+i*4.5));
     const h=Math.max(lh,allLines.length*4.5+2);
-    doc.setDrawColor(220,220,220);doc.line(ml,y+h,mr,y+h);
-    y+=h;
+    doc.setDrawColor(220,220,220);doc.line(ml,rowStart+h,mr,rowStart+h);
+    y=rowStart+h;
   };
   const rowSide=(label,val)=>{
     const txt=String(val||'').trim();
@@ -11011,53 +11014,35 @@ async function generarPDFPerfil(id){
     {nivel:'Intermedio',puesto:p.plan_intermedio_puesto||'',salario:p.plan_intermedio_salario||'',extras:p.plan_intermedio_extras||'',tiempo:p.plan_intermedio_tiempo||''},
     {nivel:'Final',puesto:p.plan_final_puesto||'',salario:p.plan_final_salario||'',extras:p.plan_final_extras||'',tiempo:p.plan_final_tiempo||''},
   ]:[]);
-  doc.setFillColor(...gray);doc.rect(ml,y,mr-ml,6,'F');
-  doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...black);
-  ['Nivel','Puesto','Salario','Extras','Tiempo'].forEach((h,xi)=>{
-    const pxs=[ml+2,ml+26,ml+100,ml+148,ml+172];
-    doc.text(h,pxs[xi],y+4);
-  });
-  y+=7;
-  const _drawChk=(cx,cy,checked)=>{
-    const sz=2.5;
-    doc.setLineWidth(0.25);doc.setDrawColor(100,100,100);doc.setFillColor(255,255,255);
-    doc.rect(cx,cy-sz+0.3,sz,sz,'FD');
-    if(checked){
-      doc.setLineWidth(0.5);doc.setDrawColor(0,130,0);
-      doc.line(cx+0.2,cy-0.7,cx+0.8,cy-0.1);
-      doc.line(cx+0.8,cy-0.1,cx+sz-0.1,cy-sz+0.7);
-      doc.setLineWidth(0.25);doc.setDrawColor(100,100,100);
-    }
-  };
-  (planRows||[]).forEach(r=>{
-    chkNewPage();
-    doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
-    const nivelW=22,puestoW=70,extrasW=44,tiempoW=20,lnH=4;
-    const nivelLns=doc.splitTextToSize(r.nivel||'',nivelW);
-    const puestoLns=doc.splitTextToSize(r.puesto||'',puestoW);
-    const extrasLns=doc.splitTextToSize(r.extras||'',extrasW);
-    const tiempoLns=doc.splitTextToSize(r.tiempo||'',tiempoW);
-    const maxTxtLines=Math.max(nivelLns.length,puestoLns.length,extrasLns.length,tiempoLns.length);
-    const rowH=Math.max(lh+maxTxtLines*lnH,16);
-    nivelLns.forEach((l,i)=>doc.text(l,ml+2,y+4+i*lnH));
-    puestoLns.forEach((l,i)=>doc.text(l,ml+26,y+4+i*lnH));
-    extrasLns.forEach((l,i)=>doc.text(l,ml+148,y+4+i*lnH));
-    tiempoLns.forEach((l,i)=>doc.text(l,ml+172,y+4+i*lnH));
-    const sx=ml+100;
-    if(r.salario) doc.text('$'+r.salario,sx,y+4);
-    const tipoNeto=r.tipo_sueldo==='Neto';
-    const tipoBruto=(r.tipo_sueldo||'Bruto')==='Bruto';
-    _drawChk(sx,y+4+lnH,tipoNeto);doc.text('Neto',sx+3.5,y+4+lnH);
-    _drawChk(sx+14,y+4+lnH,tipoBruto);doc.text('Bruto',sx+17.5,y+4+lnH);
-    const frecSemanal=r.frecuencia==='Semanal';
-    const frecQuincenal=r.frecuencia==='Quincenal';
-    const frecMensual=(r.frecuencia||'Mensual')==='Mensual';
-    _drawChk(sx,y+4+lnH*2,frecSemanal);doc.text('Sem',sx+3.5,y+4+lnH*2);
-    _drawChk(sx+13,y+4+lnH*2,frecQuincenal);doc.text('Quin',sx+16.5,y+4+lnH*2);
-    _drawChk(sx+27,y+4+lnH*2,frecMensual);doc.text('Men',sx+30.5,y+4+lnH*2);
-    doc.setDrawColor(220,220,220);doc.line(ml,y+rowH,mr,y+rowH);
-    y+=rowH;
-  });
+  const activeRows=(planRows||[]).filter(r=>r.nivel||r.puesto||r.salario||r.extras||r.tiempo);
+  if(activeRows.length){
+    doc.setFillColor(...gray);doc.rect(ml,y,mr-ml,6,'F');
+    doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...black);
+    ['Nivel','Puesto','Salario','Extras','Tiempo'].forEach((h,xi)=>{
+      doc.text(h,[ml+2,ml+26,ml+100,ml+148,ml+172][xi],y+4);
+    });
+    y+=7;
+    activeRows.forEach(r=>{
+      chkNewPage();
+      doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
+      const lnH=4;
+      const salParts=[r.salario?`$${r.salario}`:'',r.tipo_sueldo||'',r.frecuencia||''].filter(Boolean);
+      const nivelLns=doc.splitTextToSize(r.nivel||'',22);
+      const puestoLns=doc.splitTextToSize(r.puesto||'',70);
+      const salLns=doc.splitTextToSize(salParts.join('  '),46);
+      const extrasLns=doc.splitTextToSize(r.extras||'',22);
+      const tiempoLns=doc.splitTextToSize(r.tiempo||'',18);
+      const maxLines=Math.max(nivelLns.length,puestoLns.length,salLns.length,extrasLns.length,tiempoLns.length);
+      const rowH=lh+maxLines*lnH;
+      nivelLns.forEach((l,i)=>doc.text(l,ml+2,y+4+i*lnH));
+      puestoLns.forEach((l,i)=>doc.text(l,ml+26,y+4+i*lnH));
+      salLns.forEach((l,i)=>doc.text(l,ml+100,y+4+i*lnH));
+      extrasLns.forEach((l,i)=>doc.text(l,ml+148,y+4+i*lnH));
+      tiempoLns.forEach((l,i)=>doc.text(l,ml+172,y+4+i*lnH));
+      doc.setDrawColor(220,220,220);doc.line(ml,y+rowH,mr,y+rowH);
+      y+=rowH;
+    });
+  }
   y+=2;
 
   chkNewPage();

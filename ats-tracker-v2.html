@@ -10287,12 +10287,12 @@ function openPerfilModal(empId, perfilId){
   <div class="modal modal-lg" style="max-width:740px;width:95vw;max-height:90vh;overflow-y:auto">
     <div class="mh">
       <h3>${perfilId?'Editar perfil':'Nuevo perfil de puesto'}</h3>
-      <button class="modal-close" onclick="document.getElementById('modal-perfil-puesto').remove()">×</button>
+      <button class="xbtn" onclick="document.getElementById('modal-perfil-puesto').remove()"><i class="fa fa-times"></i></button>
     </div>
     <div style="padding:20px;display:flex;flex-direction:column;gap:0">
 
       <!-- INFORMACIÓN DEL PUESTO -->
-      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Información del puesto</div>
+      <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Información del puesto</div>
       <div class="g2" style="margin-bottom:10px">
         <div class="fg"><label>Fecha de elaboración</label><input type="date" id="pf-fecha-elab" value="${v('fecha_elaboracion')}"></div>
         <div class="fg"><label>Fecha de revisión</label><input type="date" id="pf-fecha-rev" value="${v('fecha_revision')}"></div>
@@ -10307,11 +10307,11 @@ function openPerfilModal(empId, perfilId){
       </div>
 
       <!-- ACTIVIDADES ESENCIALES -->
-      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Actividades Esenciales</div>
+      <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Actividades Esenciales</div>
       <div class="fg" style="margin-bottom:14px"><textarea id="pf-actividades" rows="4" placeholder="• Actividad 1&#10;• Actividad 2" style="width:100%">${v('actividades_esenciales')}</textarea></div>
 
       <!-- PERFIL DE PUESTO -->
-      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Perfil de puesto</div>
+      <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Perfil de puesto</div>
       <div class="g2" style="margin-bottom:8px">
         <div class="fg"><label>Sexo</label><input type="text" id="pf-sexo" value="${v('sexo')}"></div>
         <div class="fg"><label>Edad</label><input type="text" id="pf-edad" value="${v('edad')}" placeholder="Ej. 25-45 años"></div>
@@ -10326,7 +10326,7 @@ function openPerfilModal(empId, perfilId){
       <div class="fg" style="margin-bottom:14px"><label>Actitudes</label><textarea id="pf-actitudes" rows="3" placeholder="• Proactividad" style="width:100%">${v('actitudes')}</textarea></div>
 
       <!-- PLAN DE CARRERA -->
-      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Plan de carrera y propuesta salarial</div>
+      <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Plan de carrera y propuesta salarial</div>
       <div style="margin-bottom:14px;overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:12px">
           <thead><tr style="background:var(--surface2)">
@@ -10349,7 +10349,7 @@ function openPerfilModal(empId, perfilId){
       </div>
 
       <!-- CONDICIONES DE TRABAJO -->
-      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Condiciones de trabajo</div>
+      <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Condiciones de trabajo</div>
       <div class="g2" style="margin-bottom:8px">
         <div class="fg"><label>Disponibilidad para viajar</label><input type="text" id="pf-viajar" value="${v('disponibilidad_viajar')}"></div>
         <div class="fg"><label>Tipo de trabajo</label><input type="text" id="pf-tipo-trabajo" value="${v('tipo_trabajo')}"></div>
@@ -10361,11 +10361,11 @@ function openPerfilModal(empId, perfilId){
       <div class="fg" style="margin-bottom:14px"><label>Prestaciones</label><input type="text" id="pf-prestaciones" value="${v('prestaciones')}"></div>
 
       <!-- ACOMPAÑAMIENTO -->
-      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Acompañamiento - Capacitación</div>
+      <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Acompañamiento - Capacitación</div>
       <div class="fg" style="margin-bottom:14px"><textarea id="pf-acompanamiento" rows="3" placeholder="• Capacitación 1" style="width:100%">${v('acompanamiento_capacitacion')}</textarea></div>
 
       <!-- RESPONSABILIDADES -->
-      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Responsabilidades</div>
+      <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Responsabilidades</div>
       <div style="margin-bottom:6px;font-size:12px;font-weight:600;color:var(--text2)">Responsabilidad en valores (Dinero)</div>
       <div style="margin-bottom:10px;background:var(--surface2);border-radius:8px;padding:0 12px">
         ${resp('resp_efectivo','En efectivo o token institucional')}
@@ -10386,11 +10386,11 @@ function openPerfilModal(empId, perfilId){
       </div>
 
       <!-- ENTREGABLES -->
-      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Entregables</div>
+      <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Entregables</div>
       <div class="fg" style="margin-bottom:14px"><textarea id="pf-entregables" rows="3" placeholder="• Entregable 1" style="width:100%">${v('entregables')}</textarea></div>
 
       <!-- AUTORIZACIONES -->
-      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Autorizaciones</div>
+      <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Autorizaciones</div>
       <div class="g2" style="margin-bottom:8px">
         <div class="fg"><label>Elaboró</label><input type="text" id="pf-elaboro" value="${v('elaboro')||'Mtro. Luis Beltran Arredondo Vernet'}"></div>
         <div class="fg"><label>Revisó</label><input type="text" id="pf-reviso" value="${v('reviso')}"></div>

@@ -407,6 +407,7 @@ input[type=date]{color:var(--text)}
     <div class="nav-item" onclick="showPage('pipeline')" id="nav-pipeline" data-tooltip="Pipeline"><i class="fa fa-stream"></i><span class="nav-item-text"> Pipeline</span></div>
     <div class="nav-item" onclick="showPage('vacantes')" id="nav-vacantes" data-tooltip="Vacantes"><i class="fa fa-briefcase"></i><span class="nav-item-text"> Vacantes</span></div>
     <div class="nav-item" onclick="showPage('candidatos')" id="nav-candidatos" data-tooltip="Candidatos"><i class="fa fa-users"></i><span class="nav-item-text"> Candidatos</span></div>
+    <div class="nav-item" onclick="showPage('perfiles')" id="nav-perfiles" data-tooltip="Perfiles de puesto"><i class="fa fa-id-card"></i><span class="nav-item-text"> Perfiles de puesto</span></div>
     <div class="nav-section">Reportes</div>
     <div class="nav-item" onclick="showPage('reclutadores')" id="nav-reclutadores" data-tooltip="Reclutadores"><i class="fa fa-user-tie"></i><span class="nav-item-text"> Reclutadores</span></div>
     <div class="nav-item" onclick="nav('tiempos')" id="nav-tiempos" data-tooltip="Análisis de tiempos"><i class="fa fa-clock"></i><span class="nav-item-text"> Análisis de tiempos</span></div>
@@ -578,6 +579,7 @@ input[type=date]{color:var(--text)}
   <div class="page" id="page-headcount"></div>
   <div class="page" id="page-ese"></div>
   <div class="page" id="page-documentacion"></div>
+  <div class="page" id="page-perfiles"></div>
 
   <!-- DESERCION -->
   <div class="page" id="page-desercion"></div>
@@ -1451,7 +1453,7 @@ function adaptUIToRole() {
     // Ocultar todos los ítems y secciones del menú
     ['nav-dashboard','nav-empresas','nav-pipeline','nav-vacantes','nav-candidatos',
      'nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-headcount',
-     'nav-contratados','nav-config'].forEach(id => {
+     'nav-contratados','nav-config','nav-perfiles'].forEach(id => {
       const el = document.getElementById(id); if(el) el.style.display='none';
     });
     document.querySelectorAll('.nav-section').forEach(el => el.style.display='none');
@@ -2076,7 +2078,7 @@ async function loadDB(){
       const _rhEmpId = currentUserData?.empresa_id||null;
       console.log('[loadDB] ROL ACTUAL:', currentUserData?.rol, '| es rh_cliente:', _isRhC, '| EMPRESA ID:', _rhEmpId);
       console.log('[loadDB] currentUserData completo:', JSON.stringify(currentUserData));
-      const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand]=await Promise.all([
+      const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand,perfiles]=await Promise.all([
         sbClient.from('empresas').select('*'),
         (_isRhC && _rhEmpId
           ? sbClient.from('vacantes').select('*').filter('data->>empresa_id','eq',_rhEmpId)
@@ -2087,6 +2089,7 @@ async function loadDB(){
         sbClient.from('ese').select('*'),
         sbClient.from('doc_plantillas').select('*'),
         sbClient.from('doc_candidato').select('*'),
+        sbClient.from('perfiles_puesto').select('*'),
       ]);
       console.log('[loadDB] vacantes cargadas:', vac.data?.length, '| error:', vac.error?.message||null);
       DB.empresas=emp.data?.map(r=>r.data)||[];
@@ -2096,6 +2099,7 @@ async function loadDB(){
       DB.ese=eseRes.data||[];
       DB.docPlantillas=docPlt.data||[];
       DB.docCandidato=docCand.data||[];
+      DB.perfilesPuesto=(perfiles.data||[]).map(r=>({id:r.id,empresa_id:r.empresa_id,...(r.data||{})}));
       _candConRefs=new Set((refs.data||[]).flatMap(r=>{
         const ids=[];
         // formato nuevo: columnas planas
@@ -2164,6 +2168,7 @@ const DB={
   vacantes:[],
   candidatos:[],
   ese:[],
+  perfilesPuesto:[],
   docPlantillas:[],
   docCandidato:[],
   reclutadores:[
@@ -2315,7 +2320,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount',perfiles:'Perfiles de puesto'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);
@@ -2339,6 +2344,7 @@ function renderPage(p){
   if(p==='vacantes-eliminadas')renderVacantesEliminadas();
   if(p==='ese')renderESE();
   if(p==='documentacion')renderDocumentacion();
+  if(p==='perfiles')renderPerfiles();
 }
 
 /* ============================================================
@@ -10191,6 +10197,427 @@ async function docCfgSave(empId){
     if(error){ showToast('Error: '+error.message,'err'); return; }
   }
   showToast('Plantilla guardada ✓');
+}
+
+/* ============================================================
+   PERFILES DE PUESTO
+   ============================================================ */
+function renderPerfiles(){
+  const page = document.getElementById('page-perfiles');
+  if(!page) return;
+  const rol = currentUserData?.rol||'admin';
+  let empresas = DB.empresas;
+  if(rol==='rh_cliente'){
+    const empId = currentUserData?.empresa_id;
+    empresas = DB.empresas.filter(e=>e.id===empId);
+    if(empresas.length===1){ renderPerfilesEmpresa(empresas[0].id); return; }
+  }
+  const cards = empresas.map(emp=>{
+    const count = DB.perfilesPuesto.filter(p=>p.empresa_id===emp.id).length;
+    return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px" onclick="renderPerfilesEmpresa('${emp.id}')">
+      <div style="display:flex;align-items:center;gap:10px">
+        ${emp.logo?`<img src="${emp.logo}" style="width:36px;height:36px;object-fit:contain;border-radius:6px">`:`<div style="width:36px;height:36px;border-radius:6px;background:${emp.color||'#2AAADE'}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${emp.color||'#2AAADE'}"></i></div>`}
+        <div>
+          <div style="font-weight:600;font-size:14px">${emp.nombre}</div>
+          <div style="font-size:12px;color:var(--text3)">${count} perfil${count!==1?'es':''}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  page.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">
+      ${cards||'<div style="color:var(--text3);font-size:13px">Sin empresas registradas</div>'}
+    </div>`;
+}
+
+function renderPerfilesEmpresa(empId){
+  const page = document.getElementById('page-perfiles');
+  if(!page) return;
+  const emp = DB.empresas.find(e=>e.id===empId)||{};
+  const perfiles = DB.perfilesPuesto.filter(p=>p.empresa_id===empId);
+  const rows = perfiles.map(p=>`
+    <tr>
+      <td class="td-p" style="font-weight:500">${p.nombre_puesto||'—'}</td>
+      <td style="font-size:12px;color:var(--text3)">${p.lugar_trabajo||'—'}</td>
+      <td style="font-size:12px;color:var(--text3)">${p.fecha_elaboracion?fmt(p.fecha_elaboracion):'—'}</td>
+      <td style="text-align:right">
+        <button class="btn btn-ghost btn-sm" onclick="openPerfilModal('${empId}','${p.id}')"><i class="fa fa-edit"></i></button>
+        <button class="btn btn-ghost btn-sm" onclick="generarPDFPerfil('${p.id}')"><i class="fa fa-file-pdf"></i></button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deletePerfilPuesto('${p.id}')"><i class="fa fa-trash"></i></button>
+      </td>
+    </tr>`).join('');
+  page.innerHTML=`
+    <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px">
+      <button class="btn btn-ghost btn-sm" onclick="renderPerfiles()"><i class="fa fa-arrow-left"></i> Empresas</button>
+      <span style="font-size:15px;font-weight:600">${emp.nombre||''}</span>
+      <span style="flex:1"></span>
+      <button class="btn btn-primary btn-sm" onclick="openPerfilModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo perfil</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Nombre del puesto</th><th>Lugar de trabajo</th><th>Fecha elaboración</th><th></th>
+        </tr></thead>
+        <tbody>${rows||'<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px">Sin perfiles registrados — agrega el primero</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+
+let _perfilEmpId=null, _perfilId=null;
+function openPerfilModal(empId, perfilId){
+  _perfilEmpId=empId; _perfilId=perfilId;
+  const p = perfilId ? DB.perfilesPuesto.find(x=>x.id===perfilId)||{} : {};
+  const v=(id)=>p[id]||'';
+  const chk=(field,val)=>p[field]===val?' checked':'';
+  const resp=(field,label)=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px;color:var(--text2)">${label}</span>
+      <div style="display:flex;gap:12px">
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="radio" name="${field}" value="Aplica"${chk(field,'Aplica')}> Aplica</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="radio" name="${field}" value="No aplica"${chk(field,'No aplica')||(!p[field]?' checked':'')}> No aplica</label>
+      </div>
+    </div>`;
+  const existing = document.getElementById('modal-perfil-puesto');
+  if(existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.className='modal open';
+  modal.id='modal-perfil-puesto';
+  modal.innerHTML=`
+  <div class="modal-box" style="max-width:740px;width:95vw;max-height:90vh;overflow-y:auto">
+    <div class="modal-header">
+      <span class="modal-title">${perfilId?'Editar perfil':'Nuevo perfil de puesto'}</span>
+      <button class="modal-close" onclick="document.getElementById('modal-perfil-puesto').remove()">×</button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:0">
+
+      <!-- INFORMACIÓN DEL PUESTO -->
+      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Información del puesto</div>
+      <div class="g2" style="margin-bottom:10px">
+        <div class="fg"><label>Fecha de elaboración</label><input type="date" id="pf-fecha-elab" value="${v('fecha_elaboracion')}"></div>
+        <div class="fg"><label>Fecha de revisión</label><input type="date" id="pf-fecha-rev" value="${v('fecha_revision')}"></div>
+      </div>
+      <div class="g2" style="margin-bottom:10px">
+        <div class="fg"><label>Nombre del puesto</label><input type="text" id="pf-nombre-puesto" value="${v('nombre_puesto')}" placeholder="Ej. Técnico de mantenimiento"></div>
+        <div class="fg"><label>No. de revisión</label><input type="number" id="pf-no-revision" value="${v('no_revision')||1}" min="1"></div>
+      </div>
+      <div class="g2" style="margin-bottom:14px">
+        <div class="fg"><label>Lugar de trabajo</label><input type="text" id="pf-lugar-trabajo" value="${v('lugar_trabajo')}"></div>
+        <div class="fg"><label>Ubicación geográfica</label><input type="text" id="pf-ubicacion" value="${v('ubicacion_geografica')}"></div>
+      </div>
+
+      <!-- ACTIVIDADES ESENCIALES -->
+      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Actividades Esenciales</div>
+      <div class="fg" style="margin-bottom:14px"><textarea id="pf-actividades" rows="4" placeholder="• Actividad 1&#10;• Actividad 2" style="width:100%">${v('actividades_esenciales')}</textarea></div>
+
+      <!-- PERFIL DE PUESTO -->
+      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Perfil de puesto</div>
+      <div class="g2" style="margin-bottom:8px">
+        <div class="fg"><label>Sexo</label><input type="text" id="pf-sexo" value="${v('sexo')}"></div>
+        <div class="fg"><label>Edad</label><input type="text" id="pf-edad" value="${v('edad')}" placeholder="Ej. 25-45 años"></div>
+      </div>
+      <div class="g2" style="margin-bottom:8px">
+        <div class="fg"><label>Escolaridad</label><input type="text" id="pf-escolaridad" value="${v('escolaridad')}"></div>
+        <div class="fg"><label>Experiencia previa</label><input type="text" id="pf-experiencia" value="${v('experiencia_previa')}"></div>
+      </div>
+      <div class="fg" style="margin-bottom:8px"><label>Idiomas</label><input type="text" id="pf-idiomas" value="${v('idiomas')}"></div>
+      <div class="fg" style="margin-bottom:8px"><label>Conocimientos técnicos</label><textarea id="pf-conocimientos" rows="3" style="width:100%">${v('conocimientos_tecnicos')}</textarea></div>
+      <div class="fg" style="margin-bottom:8px"><label>Habilidades</label><textarea id="pf-habilidades" rows="3" style="width:100%">${v('habilidades')}</textarea></div>
+      <div class="fg" style="margin-bottom:14px"><label>Actitudes</label><textarea id="pf-actitudes" rows="3" placeholder="• Proactividad" style="width:100%">${v('actitudes')}</textarea></div>
+
+      <!-- PLAN DE CARRERA -->
+      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Plan de carrera y propuesta salarial</div>
+      <div style="margin-bottom:14px;overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--surface2)">
+            <th style="padding:6px 8px;text-align:left;font-weight:600">Nivel</th>
+            <th style="padding:6px 8px;font-weight:600">Puesto</th>
+            <th style="padding:6px 8px;font-weight:600">Salario inicial</th>
+            <th style="padding:6px 8px;font-weight:600">Extras</th>
+            <th style="padding:6px 8px;font-weight:600">Tiempo</th>
+          </tr></thead>
+          <tbody>
+            ${['inicial','intermedio','final'].map(n=>`<tr>
+              <td style="padding:4px 8px;font-weight:500;white-space:nowrap">${n.charAt(0).toUpperCase()+n.slice(1)}</td>
+              <td style="padding:3px 4px"><input type="text" id="pf-plan-${n}-puesto" value="${v('plan_'+n+'_puesto')}" style="width:100%;min-width:100px"></td>
+              <td style="padding:3px 4px"><input type="text" id="pf-plan-${n}-salario" value="${v('plan_'+n+'_salario')}" placeholder="$" style="width:90px"></td>
+              <td style="padding:3px 4px"><input type="text" id="pf-plan-${n}-extras" value="${v('plan_'+n+'_extras')}" style="width:90px"></td>
+              <td style="padding:3px 4px"><input type="text" id="pf-plan-${n}-tiempo" value="${v('plan_'+n+'_tiempo')}" style="width:80px"></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- CONDICIONES DE TRABAJO -->
+      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Condiciones de trabajo</div>
+      <div class="g2" style="margin-bottom:8px">
+        <div class="fg"><label>Disponibilidad para viajar</label><input type="text" id="pf-viajar" value="${v('disponibilidad_viajar')}"></div>
+        <div class="fg"><label>Tipo de trabajo</label><input type="text" id="pf-tipo-trabajo" value="${v('tipo_trabajo')}"></div>
+      </div>
+      <div class="g2" style="margin-bottom:8px">
+        <div class="fg"><label>Horario de trabajo</label><input type="text" id="pf-horario" value="${v('horario_trabajo')}"></div>
+        <div class="fg"><label>Tipo de contratación</label><input type="text" id="pf-contratacion" value="${v('tipo_contratacion')}"></div>
+      </div>
+      <div class="fg" style="margin-bottom:14px"><label>Prestaciones</label><input type="text" id="pf-prestaciones" value="${v('prestaciones')}"></div>
+
+      <!-- ACOMPAÑAMIENTO -->
+      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Acompañamiento - Capacitación</div>
+      <div class="fg" style="margin-bottom:14px"><textarea id="pf-acompanamiento" rows="3" placeholder="• Capacitación 1" style="width:100%">${v('acompanamiento_capacitacion')}</textarea></div>
+
+      <!-- RESPONSABILIDADES -->
+      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Responsabilidades</div>
+      <div style="margin-bottom:6px;font-size:12px;font-weight:600;color:var(--text2)">Responsabilidad en valores (Dinero)</div>
+      <div style="margin-bottom:10px;background:var(--surface2);border-radius:8px;padding:0 12px">
+        ${resp('resp_efectivo','En efectivo o token institucional')}
+        ${resp('resp_cheques','Cheques al portador')}
+        ${resp('resp_formas_valoradas','Formas valoradas (vales de despensa, gasolina, etc.)')}
+      </div>
+      <div style="margin-bottom:6px;font-size:12px;font-weight:600;color:var(--text2)">Responsabilidades en bienes</div>
+      <div style="margin-bottom:10px;background:var(--surface2);border-radius:8px;padding:0 12px">
+        ${resp('resp_mobiliario','Mobiliario')}
+        ${resp('resp_equipo_computo','Equipo de cómputo')}
+        ${resp('resp_automovil','Automóvil utilitario')}
+        ${resp('resp_telefonia','Telefonía (Radio, Celular, teléfono fijo)')}
+        ${resp('resp_documentos','Documentos e información')}
+        ${resp('resp_otros','Otros')}
+      </div>
+      <div style="margin-bottom:14px;background:var(--surface2);border-radius:8px;padding:0 12px">
+        ${resp('resp_uniforme','EPP / Uniforme')}
+      </div>
+
+      <!-- ENTREGABLES -->
+      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Entregables</div>
+      <div class="fg" style="margin-bottom:14px"><textarea id="pf-entregables" rows="3" placeholder="• Entregable 1" style="width:100%">${v('entregables')}</textarea></div>
+
+      <!-- AUTORIZACIONES -->
+      <div style="background:#F59E0B;color:#000;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Autorizaciones</div>
+      <div class="g2" style="margin-bottom:8px">
+        <div class="fg"><label>Elaboró</label><input type="text" id="pf-elaboro" value="${v('elaboro')||'Mtro. Luis Beltran Arredondo Vernet'}"></div>
+        <div class="fg"><label>Revisó</label><input type="text" id="pf-reviso" value="${v('reviso')}"></div>
+      </div>
+      <div class="fg" style="margin-bottom:14px"><label>Fecha de entrega</label><input type="date" id="pf-fecha-entrega" value="${v('fecha_entrega')}"></div>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:10px;border-top:1px solid var(--border)">
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-perfil-puesto').remove()">Cancelar</button>
+        <button class="btn btn-primary" onclick="savePerfilPuesto()"><i class="fa fa-save"></i> Guardar perfil</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+}
+
+async function savePerfilPuesto(){
+  const g=id=>document.getElementById(id)?.value||'';
+  const gr=name=>{const el=document.querySelector(`input[name="${name}"]:checked`);return el?el.value:'No aplica';};
+  const obj={
+    id: _perfilId||uid(),
+    empresa_id: _perfilEmpId,
+    nombre_puesto:g('pf-nombre-puesto'), lugar_trabajo:g('pf-lugar-trabajo'),
+    ubicacion_geografica:g('pf-ubicacion'), fecha_elaboracion:g('pf-fecha-elab'),
+    fecha_revision:g('pf-fecha-rev'), no_revision:g('pf-no-revision'),
+    actividades_esenciales:g('pf-actividades'),
+    sexo:g('pf-sexo'), edad:g('pf-edad'), escolaridad:g('pf-escolaridad'),
+    experiencia_previa:g('pf-experiencia'), idiomas:g('pf-idiomas'),
+    conocimientos_tecnicos:g('pf-conocimientos'), habilidades:g('pf-habilidades'),
+    actitudes:g('pf-actitudes'),
+    plan_inicial_puesto:g('pf-plan-inicial-puesto'), plan_inicial_salario:g('pf-plan-inicial-salario'),
+    plan_inicial_extras:g('pf-plan-inicial-extras'), plan_inicial_tiempo:g('pf-plan-inicial-tiempo'),
+    plan_intermedio_puesto:g('pf-plan-intermedio-puesto'), plan_intermedio_salario:g('pf-plan-intermedio-salario'),
+    plan_intermedio_extras:g('pf-plan-intermedio-extras'), plan_intermedio_tiempo:g('pf-plan-intermedio-tiempo'),
+    plan_final_puesto:g('pf-plan-final-puesto'), plan_final_salario:g('pf-plan-final-salario'),
+    plan_final_extras:g('pf-plan-final-extras'), plan_final_tiempo:g('pf-plan-final-tiempo'),
+    disponibilidad_viajar:g('pf-viajar'), tipo_trabajo:g('pf-tipo-trabajo'),
+    horario_trabajo:g('pf-horario'), tipo_contratacion:g('pf-contratacion'),
+    prestaciones:g('pf-prestaciones'), acompanamiento_capacitacion:g('pf-acompanamiento'),
+    resp_efectivo:gr('resp_efectivo'), resp_cheques:gr('resp_cheques'),
+    resp_formas_valoradas:gr('resp_formas_valoradas'), resp_mobiliario:gr('resp_mobiliario'),
+    resp_equipo_computo:gr('resp_equipo_computo'), resp_automovil:gr('resp_automovil'),
+    resp_telefonia:gr('resp_telefonia'), resp_documentos:gr('resp_documentos'),
+    resp_otros:gr('resp_otros'), resp_uniforme:gr('resp_uniforme'),
+    entregables:g('pf-entregables'), elaboro:g('pf-elaboro'),
+    reviso:g('pf-reviso'), fecha_entrega:g('pf-fecha-entrega'),
+    updated_at:new Date().toISOString()
+  };
+  if(!obj.nombre_puesto){showToast('Ingresa el nombre del puesto','err');return;}
+  if(!SANDBOX_MODE){
+    const {error}=await sbClient.from('perfiles_puesto').upsert({
+      id:obj.id, empresa_id:obj.empresa_id, data:obj, updated_at:obj.updated_at
+    });
+    if(error){showToast('Error: '+error.message,'err');return;}
+  }
+  const idx=DB.perfilesPuesto.findIndex(x=>x.id===obj.id);
+  if(idx>=0) DB.perfilesPuesto[idx]=obj; else DB.perfilesPuesto.push(obj);
+  document.getElementById('modal-perfil-puesto')?.remove();
+  showToast('Perfil guardado ✓');
+  renderPerfilesEmpresa(_perfilEmpId);
+}
+
+async function deletePerfilPuesto(id){
+  if(!confirm('¿Eliminar este perfil de puesto?')) return;
+  const p=DB.perfilesPuesto.find(x=>x.id===id);
+  if(!SANDBOX_MODE){
+    await sbClient.from('perfiles_puesto').delete().eq('id',id);
+  }
+  DB.perfilesPuesto=DB.perfilesPuesto.filter(x=>x.id!==id);
+  showToast('Perfil eliminado');
+  if(p) renderPerfilesEmpresa(p.empresa_id);
+}
+
+function generarPDFPerfil(id){
+  const p=DB.perfilesPuesto.find(x=>x.id===id);
+  if(!p){showToast('Perfil no encontrado','err');return;}
+  const emp=DB.empresas.find(e=>e.id===p.empresa_id)||{};
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210, ml=14, mr=196, lh=6;
+  let y=14;
+  const yellow=[245,158,11];
+  const black=[0,0,0];
+  const gray=[245,245,245];
+  const section=(title)=>{
+    doc.setFillColor(...yellow);
+    doc.rect(ml,y,mr-ml,7,'F');
+    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...black);
+    doc.text(title.toUpperCase(),W/2,y+5,{align:'center'});
+    y+=9;
+  };
+  const row2=(label,val,label2,val2)=>{
+    doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
+    doc.text(label,ml,y+4);
+    doc.setFont('helvetica','bold');doc.setTextColor(...black);
+    doc.text(String(val||''),ml+38,y+4);
+    if(label2){
+      doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
+      doc.text(label2,W/2+2,y+4);
+      doc.setFont('helvetica','bold');doc.setTextColor(...black);
+      doc.text(String(val2||''),W/2+36,y+4);
+    }
+    doc.setDrawColor(220,220,220);doc.line(ml,y+lh,mr,y+lh);
+    y+=lh;
+  };
+  const rowTA=(label,val)=>{
+    doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
+    doc.text(label,ml,y+4);
+    const lines=doc.splitTextToSize(String(val||''),mr-ml-38);
+    doc.setFont('helvetica','normal');doc.setTextColor(...black);
+    lines.forEach((l,i)=>doc.text(l,ml+38,y+4+i*4.5));
+    const h=Math.max(lh,lines.length*4.5+2);
+    doc.setDrawColor(220,220,220);doc.line(ml,y+h,mr,y+h);
+    y+=h;
+  };
+  const chkNewPage=()=>{ if(y>275){doc.addPage();y=14;} };
+
+  // Header
+  doc.setFillColor(255,255,255);
+  doc.setDrawColor(180,180,180);
+  doc.rect(ml,y,mr-ml,14);
+  doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(...black);
+  doc.text('FICHA DE PUESTO',W/2,y+9,{align:'center'});
+  doc.text(emp.nombre||'',ml+2,y+5,{});
+  y+=16;
+
+  row2('Fecha de elaboración',p.fecha_elaboracion?fmt(p.fecha_elaboracion):'','Fecha de revisión',p.fecha_revision?fmt(p.fecha_revision):'');
+  row2('No. de revisión',p.no_revision||'','','');
+
+  section('Información del puesto');
+  row2('Nombre del puesto',p.nombre_puesto,'','');
+  row2('Lugar de trabajo',p.lugar_trabajo,'Ubicación geográfica',p.ubicacion_geografica);
+
+  section('Actividades Esenciales');
+  const actLines=doc.splitTextToSize(p.actividades_esenciales||'',mr-ml-4);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
+  actLines.forEach(l=>{chkNewPage();doc.text(l,ml+2,y+4);y+=lh;});
+  y+=2;
+
+  section('Perfil de puesto');
+  row2('Sexo',p.sexo,'Edad',p.edad);
+  row2('Escolaridad',p.escolaridad,'','');
+  row2('Experiencia previa',p.experiencia_previa,'','');
+  row2('Idiomas',p.idiomas,'','');
+  chkNewPage();rowTA('Conocimientos técnicos',p.conocimientos_tecnicos);
+  chkNewPage();rowTA('Habilidades',p.habilidades);
+  chkNewPage();rowTA('Actitudes',p.actitudes);
+
+  chkNewPage();
+  section('Plan de carrera y propuesta salarial');
+  // table header
+  doc.setFillColor(...gray);doc.rect(ml,y,mr-ml,6,'F');
+  doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...black);
+  ['Nivel','Puesto','Salario inicial','Extras','Tiempo'].forEach((h,i)=>{
+    const xs=[ml+2,ml+28,ml+88,ml+122,ml+152];
+    doc.text(h,xs[i],y+4);
+  });
+  y+=7;
+  ['inicial','intermedio','final'].forEach(n=>{
+    doc.setFont('helvetica','normal');
+    const xs=[ml+2,ml+28,ml+88,ml+122,ml+152];
+    [n.charAt(0).toUpperCase()+n.slice(1),p[`plan_${n}_puesto`]||'',p[`plan_${n}_salario`]||'',p[`plan_${n}_extras`]||'',p[`plan_${n}_tiempo`]||''].forEach((v,i)=>doc.text(v,xs[i],y+4));
+    doc.setDrawColor(220,220,220);doc.line(ml,y+lh,mr,y+lh);
+    y+=lh;
+  });
+  y+=2;
+
+  chkNewPage();
+  section('Condiciones de trabajo');
+  row2('Disponibilidad para viajar',p.disponibilidad_viajar,'Tipo de trabajo',p.tipo_trabajo);
+  row2('Horario de trabajo',p.horario_trabajo,'Tipo de contratación',p.tipo_contratacion);
+  row2('Prestaciones',p.prestaciones,'','');
+
+  chkNewPage();
+  section('Acompañamiento - Capacitación');
+  const acLines=doc.splitTextToSize(p.acompanamiento_capacitacion||'',mr-ml-4);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
+  acLines.forEach(l=>{chkNewPage();doc.text(l,ml+2,y+4);y+=lh;});
+  y+=2;
+
+  chkNewPage();
+  section('Responsabilidades');
+  const respFields=[
+    ['Responsabilidad en valores',''],
+    ['En efectivo o token institucional',p.resp_efectivo],
+    ['Cheques al portador',p.resp_cheques],
+    ['Formas valoradas',p.resp_formas_valoradas],
+    ['Responsabilidades en bienes',''],
+    ['Mobiliario',p.resp_mobiliario],
+    ['Equipo de cómputo',p.resp_equipo_computo],
+    ['Automóvil utilitario',p.resp_automovil],
+    ['Telefonía',p.resp_telefonia],
+    ['Documentos e información',p.resp_documentos],
+    ['Otros',p.resp_otros],
+    ['EPP/Uniforme',p.resp_uniforme],
+  ];
+  respFields.forEach(([label,val])=>{
+    chkNewPage();
+    if(!val){
+      doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(60,60,60);
+      doc.text(label,ml+2,y+4);
+    } else {
+      doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...black);
+      doc.text(`• ${label}`,ml+4,y+4);
+      doc.setTextColor(val==='Aplica'?[34,197,94]:[180,180,180] as any);
+      doc.text(val,mr-20,y+4,{align:'right'});
+    }
+    doc.setDrawColor(220,220,220);doc.line(ml,y+lh,mr,y+lh);
+    y+=lh;
+  });
+  y+=2;
+
+  chkNewPage();
+  section('Entregables');
+  const entLines=doc.splitTextToSize(p.entregables||'',mr-ml-4);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
+  entLines.forEach(l=>{chkNewPage();doc.text(l,ml+2,y+4);y+=lh;});
+  y+=4;
+
+  chkNewPage();
+  section('Autorizaciones');
+  row2('Elaboró',p.elaboro,'','');
+  row2('Revisó',p.reviso,'','');
+  row2('Fecha de entrega',p.fecha_entrega?fmt(p.fecha_entrega):'','','');
+
+  const fname=(p.nombre_puesto||'perfil').replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'')+'.pdf';
+  doc.save(fname);
+  showToast('PDF generado ✓');
 }
 
 /* ── Página Documentación ── */

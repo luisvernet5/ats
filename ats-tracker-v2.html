@@ -7141,10 +7141,18 @@ async function abrirTablaHC(empId, semana, anio){
   currentHCEmpId=empId; currentHCSemana=semana; currentHCAnio=anio;
   window.hcCurrentEmpId=empId; window.hcCurrentSemana=semana; window.hcCurrentAnio=anio;
   const{data:plantilla}=await sbClient.from('hc_plantilla').select('*').eq('empresa_id',empId).eq('activo',true).order('orden',{ascending:true});
-  const{data:resumen}=await sbClient.from('hc_resumen').select('*')
-    .eq('empresa_id',empId).eq('semana',semana).eq('anio',anio);
+  const[{data:resumen},{data:todasSemanas}]=await Promise.all([
+    sbClient.from('hc_resumen').select('*').eq('empresa_id',empId).eq('semana',semana).eq('anio',anio),
+    sbClient.from('hc_resumen').select('semana,anio').eq('empresa_id',empId)
+  ]);
   const resumenMap={};
   (resumen||[]).forEach(r=>resumenMap[r.proyecto]=r);
+  // semanas creadas ordenadas: [{semana,anio}]
+  const semanasOrdenadas=[...new Map((todasSemanas||[]).map(r=>[`${r.anio}-${r.semana}`,r])).values()]
+    .sort((a,b)=>a.anio!==b.anio?a.anio-b.anio:a.semana-b.semana);
+  const idxActual=semanasOrdenadas.findIndex(r=>r.semana===semana&&r.anio===anio);
+  const semAnterior=idxActual>0?semanasOrdenadas[idxActual-1]:null;
+  const semSiguiente=idxActual>=0&&idxActual<semanasOrdenadas.length-1?semanasOrdenadas[idxActual+1]:null;
   const{label,lunes,viernes}=getWeekDates(semana,anio);
   const semanaEl=document.getElementById('hc-semana');
   if(semanaEl) semanaEl.value=semana;
@@ -7191,7 +7199,19 @@ async function abrirTablaHC(empId, semana, anio){
   content.innerHTML=`
     <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${empId}')"><i class="fa fa-arrow-left"></i> Semanas</button>
-      <div style="font-size:14px;font-weight:600">${emp.nombre||''} — Semana ${semana} — ${anio} (${label})</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button ${semAnterior?`onclick="abrirTablaHC('${empId}',${semAnterior.semana},${semAnterior.anio})"`:'disabled'}
+          style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border2);background:var(--surface2);cursor:${semAnterior?'pointer':'default'};opacity:${semAnterior?1:.35};display:flex;align-items:center;justify-content:center"
+          title="${semAnterior?'Semana '+semAnterior.semana+' ('+semAnterior.anio+')':'Sin semana anterior'}">
+          <i class="fa fa-chevron-left" style="font-size:11px;color:var(--text)"></i>
+        </button>
+        <div style="font-size:14px;font-weight:600;white-space:nowrap">${emp.nombre||''} — Semana ${semana} — ${anio} (${label})</div>
+        <button ${semSiguiente?`onclick="abrirTablaHC('${empId}',${semSiguiente.semana},${semSiguiente.anio})"`:'disabled'}
+          style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border2);background:var(--surface2);cursor:${semSiguiente?'pointer':'default'};opacity:${semSiguiente?1:.35};display:flex;align-items:center;justify-content:center"
+          title="${semSiguiente?'Semana '+semSiguiente.semana+' ('+semSiguiente.anio+')':'Sin semana siguiente'}">
+          <i class="fa fa-chevron-right" style="font-size:11px;color:var(--text)"></i>
+        </button>
+      </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="hcAgregarFila('${empId}',${semana},${anio})"><i class="fa fa-plus"></i> Agregar fila</button>
         <button class="btn btn-ghost btn-sm" onclick="openHCProyectoModal('${empId}')"><i class="fa fa-cog"></i> Plantilla</button>

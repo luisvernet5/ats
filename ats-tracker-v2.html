@@ -2338,7 +2338,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount',perfiles:'Perfiles de puesto'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount',perfiles:'Perfiles de puesto',ese:'ESE',documentacion:'Documentación'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);

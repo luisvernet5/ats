@@ -10534,7 +10534,7 @@ function renderPerfilesEmpresa(empId){
       <button class="btn btn-ghost btn-sm" onclick="renderPerfiles()"><i class="fa fa-arrow-left"></i> Empresas</button>
       <span style="font-size:15px;font-weight:600">${emp.nombre||''}</span>
       <span style="flex:1"></span>
-      <button class="btn btn-green btn-sm" onclick="exportarPerfilesExcel()"><i class="fa fa-file-excel"></i> Exportar Excel</button>
+      <button class="btn btn-ghost btn-sm" onclick="openExportPerfilesModal()"><i class="fa fa-download"></i> Exportar</button>
       <button class="btn btn-primary btn-sm" onclick="openPerfilModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo perfil</button>
     </div>
     <div class="fbar" style="margin-bottom:14px">
@@ -10585,7 +10585,38 @@ function _pfRenderTabla(){
   </table></div>`;
 }
 
-function exportarPerfilesExcel(){
+function openExportPerfilesModal(){
+  document.getElementById('modal-export-perfiles')?.remove();
+  const m=document.createElement('div');
+  m.className='modal-overlay open';
+  m.id='modal-export-perfiles';
+  m.innerHTML=`
+  <div class="modal" style="width:460px">
+    <div class="mh">
+      <h3>Exportar perfiles</h3>
+      <button class="xbtn" onclick="document.getElementById('modal-export-perfiles').remove()"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="mb">
+      <div class="fr full">
+        <div class="fg">
+          <label>¿Qué exportar?</label>
+          <select id="pf-export-tipo">
+            <option value="sencilla">Exportación sencilla (tabla de listado)</option>
+            <option value="completa">Exportación completa (todos los campos del formulario)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-export-perfiles').remove()">Cancelar</button>
+      <button class="btn btn-green" onclick="exportarPerfilesExcel(document.getElementById('pf-export-tipo').value)"><i class="fa fa-download"></i> Descargar Excel</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+}
+
+function exportarPerfilesExcel(modo='sencilla'){
+  document.getElementById('modal-export-perfiles')?.remove();
   const empId=_pfCurrentEmpId;
   if(!empId){showToast('Sin empresa seleccionada','err');return;}
   const emp=DB.empresas.find(e=>e.id===empId)||{};
@@ -10597,13 +10628,51 @@ function exportarPerfilesExcel(){
     return true;
   });
   if(!perfiles.length){showToast('No hay perfiles para exportar','err');return;}
-  const headers=['#','Nombre del puesto','Proyecto','Departamento','Últ. modificación'];
-  const filas=perfiles.map((p,i)=>{
-    const mod=p.updated_at?new Date(p.updated_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
-    return[i+1,p.nombre_puesto||'',p.proyecto||'',p.departamento||'',mod];
-  });
+  const fmt=d=>{try{return new Date(d).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'});}catch(e){return d||'';}};
+  const rt=html=>_rtToText(html||'').trim().replace(/\n+/g,' | ');
+  let headers,filas,cols;
+  if(modo==='sencilla'){
+    headers=['#','Nombre del puesto','Proyecto','Departamento','Últ. modificación'];
+    filas=perfiles.map((p,i)=>[i+1,p.nombre_puesto||'',p.proyecto||'',p.departamento||'',fmt(p.updated_at)]);
+    cols=[{wch:5},{wch:38},{wch:22},{wch:22},{wch:22}];
+  } else {
+    headers=[
+      '#','Nombre del puesto','Lugar de trabajo','Ubicación geográfica','Proyecto','Departamento',
+      'Fecha elaboración','Fecha revisión','No. revisión',
+      'Actividades esenciales',
+      'Sexo','Edad mín','Edad máx','Escolaridad','Experiencia previa','Idiomas',
+      'Conocimientos técnicos','Habilidades','Actitudes',
+      'Plan 1 - Nivel','Plan 1 - Puesto','Plan 1 - Salario','Plan 1 - Tipo','Plan 1 - Frecuencia','Plan 1 - Extras','Plan 1 - Tiempo',
+      'Plan 2 - Nivel','Plan 2 - Puesto','Plan 2 - Salario','Plan 2 - Tipo','Plan 2 - Frecuencia','Plan 2 - Extras','Plan 2 - Tiempo',
+      'Plan 3 - Nivel','Plan 3 - Puesto','Plan 3 - Salario','Plan 3 - Tipo','Plan 3 - Frecuencia','Plan 3 - Extras','Plan 3 - Tiempo',
+      'Disponibilidad viajar','Tipo de trabajo','Horario de trabajo','Tipo de contratación','Prestaciones',
+      'Acompañamiento / Capacitación',
+      'Resp. efectivo','Resp. cheques','Resp. formas valoradas','Resp. mobiliario',
+      'Resp. equipo cómputo','Resp. automóvil','Resp. telefonía','Resp. documentos','Resp. otros',
+      'Entregables','Elaboró','Últ. modificación'
+    ];
+    const planCols=r=>r?[r.nivel||'',r.puesto||'',r.salario||'',r.tipo_sueldo||'',r.frecuencia||'',r.extras||'',r.tiempo||'']:Array(7).fill('');
+    filas=perfiles.map((p,i)=>{
+      const plan=p.plan_carrera||[];
+      const habs=p.habilidades_modo==='diccionario'?(p.habilidades_dic||[]).join(' | '):rt(p.habilidades);
+      return[
+        i+1,p.nombre_puesto||'',p.lugar_trabajo||'',p.ubicacion_geografica||'',p.proyecto||'',p.departamento||'',
+        fmt(p.fecha_elaboracion),fmt(p.fecha_revision),p.no_revision||'',
+        rt(p.actividades_esenciales),
+        p.sexo||'',p.edad_ini||'',p.edad_fin||'',p.escolaridad||'',p.experiencia_previa||'',p.idiomas||'',
+        rt(p.conocimientos_tecnicos),habs,rt(p.actitudes),
+        ...planCols(plan[0]),...planCols(plan[1]),...planCols(plan[2]),
+        p.disponibilidad_viajar||'',p.tipo_trabajo||'',p.horario_trabajo||'',p.tipo_contratacion||'',p.prestaciones||'',
+        rt(p.acompanamiento_capacitacion),
+        p.resp_efectivo||'',p.resp_cheques||'',p.resp_formas_valoradas||'',p.resp_mobiliario||'',
+        p.resp_equipo_computo||'',p.resp_automovil||'',p.resp_telefonia||'',p.resp_documentos||'',p.resp_otros||'',
+        rt(p.entregables),p.elaboro||'',fmt(p.updated_at)
+      ];
+    });
+    cols=headers.map((_,i)=>({wch:i===0?5:i<3?36:22}));
+  }
   const ws=XLSX.utils.aoa_to_sheet([headers,...filas]);
-  ws['!cols']=[{wch:5},{wch:38},{wch:22},{wch:22},{wch:24}];
+  ws['!cols']=cols;
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Perfiles de puesto');
   XLSX.writeFile(wb,`Perfiles_${(emp.nombre||'empresa').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);

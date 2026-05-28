@@ -10562,9 +10562,10 @@ function _pfRenderTabla(){
   });
   const count=document.getElementById('pf-flt-count');
   if(count) count.textContent=`${perfiles.length} perfil${perfiles.length!==1?'es':''}`;
-  const rows=perfiles.map(p=>{
+  const rows=perfiles.map((p,i)=>{
     const mod=p.updated_at?new Date(p.updated_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
     return`<tr>
+      <td style="font-size:12px;color:var(--text3);text-align:center;width:36px">${i+1}</td>
       <td class="td-p" style="font-weight:500">${p.nombre_puesto||'—'}</td>
       <td style="font-size:12px;color:var(--text3)">${p.proyecto||'—'}</td>
       <td style="font-size:12px;color:var(--text3)">${p.departamento||'—'}</td>
@@ -10578,9 +10579,9 @@ function _pfRenderTabla(){
   }).join('');
   wrap.innerHTML=`<div class="table-wrap"><table>
     <thead><tr>
-      <th>Nombre del puesto</th><th>Proyecto</th><th>Departamento</th><th style="white-space:nowrap">Últ. modificación</th><th></th>
+      <th style="width:36px;text-align:center">#</th><th>Nombre del puesto</th><th>Proyecto</th><th>Departamento</th><th style="white-space:nowrap">Últ. modificación</th><th></th>
     </tr></thead>
-    <tbody>${rows||`<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin perfiles${(mfP||mfD)?' que coincidan con los filtros':' registrados — agrega el primero'}</td></tr>`}</tbody>
+    <tbody>${rows||`<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin perfiles${(mfP||mfD)?' que coincidan con los filtros':' registrados — agrega el primero'}</td></tr>`}</tbody>
   </table></div>`;
 }
 
@@ -10596,13 +10597,13 @@ function exportarPerfilesExcel(){
     return true;
   });
   if(!perfiles.length){showToast('No hay perfiles para exportar','err');return;}
-  const headers=['Nombre del puesto','Proyecto','Departamento','Últ. modificación'];
-  const filas=perfiles.map(p=>{
+  const headers=['#','Nombre del puesto','Proyecto','Departamento','Últ. modificación'];
+  const filas=perfiles.map((p,i)=>{
     const mod=p.updated_at?new Date(p.updated_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
-    return[p.nombre_puesto||'',p.proyecto||'',p.departamento||'',mod];
+    return[i+1,p.nombre_puesto||'',p.proyecto||'',p.departamento||'',mod];
   });
   const ws=XLSX.utils.aoa_to_sheet([headers,...filas]);
-  ws['!cols']=[{wch:38},{wch:22},{wch:22},{wch:24}];
+  ws['!cols']=[{wch:5},{wch:38},{wch:22},{wch:22},{wch:24}];
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Perfiles de puesto');
   XLSX.writeFile(wb,`Perfiles_${(emp.nombre||'empresa').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);

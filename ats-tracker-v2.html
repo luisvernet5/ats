@@ -10355,6 +10355,34 @@ function _pfGetHabilidades(){
   return {habilidades:_rtGet('pf-habilidades'), habilidades_modo:'texto', habilidades_dic:[]};
 }
 
+function _pfTipoRowHTML(r={}){
+  return `<div class="pf-tipo-row" style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+    <div style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:4px 8px;min-width:90px">
+      <input type="number" placeholder="%" min="0" max="100" value="${r.pct||''}" style="width:50px;border:none;background:transparent;font-size:13px;text-align:right;padding:0">
+      <span style="font-size:13px;color:var(--text3)">%</span>
+    </div>
+    <input type="text" placeholder="Tipo de trabajo (ej. Oficina, Campo...)" value="${r.tipo||''}" style="flex:1;font-size:13px">
+    <button type="button" onclick="this.closest('.pf-tipo-row').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;padding:0 4px;flex-shrink:0">×</button>
+  </div>`;
+}
+function _pfTipoAddRow(){
+  const c=document.getElementById('pf-tipo-rows');
+  if(!c) return;
+  const d=document.createElement('div');
+  d.innerHTML=_pfTipoRowHTML();
+  c.appendChild(d.firstElementChild);
+}
+function _pfGetTipoRows(){
+  return [...document.querySelectorAll('#pf-tipo-rows .pf-tipo-row')].map(row=>{
+    const inputs=[...row.querySelectorAll('input')];
+    return{pct:inputs[0]?.value||'',tipo:inputs[1]?.value||''};
+  }).filter(r=>r.tipo);
+}
+function _pfTipoToStr(rows){
+  if(!rows||!rows.length) return '';
+  return rows.map(r=>`${r.pct?r.pct+'% ':''}${r.tipo}`).join(' y ');
+}
+
 function _pfIdiomaAdd(){
   const sel=document.getElementById('pf-idioma-sel');
   const otro=document.getElementById('pf-idioma-otro');
@@ -10671,9 +10699,27 @@ function openPerfilModal(empId, perfilId){
 
       <!-- CONDICIONES DE TRABAJO -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Condiciones de trabajo</div>
-      <div class="g2" style="margin-bottom:8px">
-        <div class="fg"><label>Disponibilidad para viajar</label><input type="text" id="pf-viajar" value="${v('disponibilidad_viajar')}"></div>
-        <div class="fg"><label>Tipo de trabajo</label><input type="text" id="pf-tipo-trabajo" value="${v('tipo_trabajo')}"></div>
+      <div class="g2" style="margin-bottom:10px">
+        <div class="fg"><label>Disponibilidad para viajar</label>
+          <select id="pf-viajar">
+            <option value="">— Seleccionar —</option>
+            <option value="Sí"${v('disponibilidad_viajar')==='Sí'?' selected':''}>Sí</option>
+            <option value="No"${v('disponibilidad_viajar')==='No'?' selected':''}>No</option>
+          </select>
+        </div>
+        <div></div>
+      </div>
+      <div class="fg" style="margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <label style="margin:0">Tipo de trabajo</label>
+        </div>
+        <div id="pf-tipo-rows">
+          ${(()=>{
+            const rows=p.tipo_trabajo_rows||(p.tipo_trabajo?[{pct:'',tipo:p.tipo_trabajo}]:[{pct:'',tipo:''}]);
+            return rows.map(r=>_pfTipoRowHTML(r)).join('');
+          })()}
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="_pfTipoAddRow()"><i class="fa fa-plus"></i> Agregar tipo</button>
       </div>
       <div class="g2" style="margin-bottom:8px">
         <div class="fg"><label>Horario de trabajo</label><input type="text" id="pf-horario" value="${v('horario_trabajo')}"></div>
@@ -10740,7 +10786,7 @@ async function savePerfilPuesto(){
     conocimientos_tecnicos:g('pf-conocimientos'), habilidades:g('pf-habilidades'),
     actitudes:g('pf-actitudes'),
     plan_carrera:_pfGetPlanRows(),
-    disponibilidad_viajar:g('pf-viajar'), tipo_trabajo:g('pf-tipo-trabajo'),
+    disponibilidad_viajar:g('pf-viajar'), tipo_trabajo_rows:_pfGetTipoRows(), tipo_trabajo:_pfTipoToStr(_pfGetTipoRows()),
     horario_trabajo:g('pf-horario'), tipo_contratacion:g('pf-contratacion'),
     prestaciones:g('pf-prestaciones'), acompanamiento_capacitacion:g('pf-acompanamiento'),
     resp_efectivo:gr('resp_efectivo'), resp_cheques:gr('resp_cheques'),
@@ -10781,7 +10827,7 @@ async function exportPerfilPDFBtn(){
     experiencia_previa:g('pf-experiencia'), idiomas:g('pf-idiomas'),
     conocimientos_tecnicos:_rtGet('pf-conocimientos'), ..._pfGetHabilidades(), actitudes:_rtGet('pf-actitudes'),
     plan_carrera:_pfGetPlanRows(),
-    disponibilidad_viajar:g('pf-viajar'), tipo_trabajo:g('pf-tipo-trabajo'),
+    disponibilidad_viajar:g('pf-viajar'), tipo_trabajo_rows:_pfGetTipoRows(), tipo_trabajo:_pfTipoToStr(_pfGetTipoRows()),
     horario_trabajo:g('pf-horario'), tipo_contratacion:g('pf-contratacion'), prestaciones:g('pf-prestaciones'),
     acompanamiento_capacitacion:_rtGet('pf-acompanamiento'),
     resp_efectivo:gr('resp_efectivo'), resp_cheques:gr('resp_cheques'), resp_formas_valoradas:gr('resp_formas_valoradas'),
@@ -10931,7 +10977,8 @@ async function generarPDFPerfil(id){
 
   chkNewPage();
   section('Condiciones de trabajo');
-  row2('Disponibilidad para viajar',p.disponibilidad_viajar,'Tipo de trabajo',p.tipo_trabajo);
+  const tipoStr=p.tipo_trabajo_rows?.length?_pfTipoToStr(p.tipo_trabajo_rows):(p.tipo_trabajo||'');
+  row2('Disponibilidad para viajar',p.disponibilidad_viajar,'Tipo de trabajo',tipoStr);
   row2('Horario de trabajo',p.horario_trabajo,'Tipo de contratación',p.tipo_contratacion);
   row2('Prestaciones',p.prestaciones,'','');
 

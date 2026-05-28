@@ -162,6 +162,7 @@ input[type=date]{color:var(--text)}
 .xbtn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:2px}.xbtn:hover{color:var(--text)}
 .dpill{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:5px}
 [data-tip]{position:relative}[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);background:var(--surface3,#1e1e2e);color:#fff;padding:4px 8px;border-radius:5px;font-size:11px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:200}[data-tip]:hover::after{opacity:1}
+.rt-wrap{border:1px solid var(--border2);border-radius:8px;overflow:hidden;background:var(--surface)}.rt-bar{display:flex;gap:2px;padding:4px 8px;border-bottom:1px solid var(--border);background:var(--surface2);flex-wrap:wrap;align-items:center}.rt-btn{background:none;border:1px solid transparent;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:13px;color:var(--text2);line-height:1.4}.rt-btn:hover{background:var(--surface3,#e5e7eb);color:var(--text)}.rt-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}.rt-sep{width:1px;background:var(--border);height:18px;margin:0 4px}.rt-body{min-height:80px;padding:10px 12px;font-size:13px;color:var(--text);outline:none;line-height:1.6}.rt-body:empty::before{content:attr(data-placeholder);color:var(--text3)}.rt-body ul{padding-left:20px;list-style:disc}.rt-body ol{padding-left:20px;list-style:decimal}
 .dok{background:rgba(34,197,94,.1);color:var(--green)}
 .dwarn{background:rgba(245,158,11,.1);color:var(--amber)}
 .dover{background:rgba(239,68,68,.1);color:var(--red)}
@@ -10220,6 +10221,37 @@ async function docCfgSave(empId){
 /* ============================================================
    PERFILES DE PUESTO
    ============================================================ */
+function _rtBox(id, html='', placeholder=''){
+  return `<div class="rt-wrap">
+    <div class="rt-bar">
+      <button type="button" class="rt-btn" onclick="_rtCmd('${id}','bold')" title="Negrita"><b>B</b></button>
+      <button type="button" class="rt-btn" onclick="_rtCmd('${id}','italic')" title="Cursiva"><i>I</i></button>
+      <button type="button" class="rt-btn" onclick="_rtCmd('${id}','underline')" title="Subrayado"><u>U</u></button>
+      <div class="rt-sep"></div>
+      <button type="button" class="rt-btn" onclick="_rtCmd('${id}','insertUnorderedList')" title="Viñetas"><i class="fa fa-list-ul"></i></button>
+      <button type="button" class="rt-btn" onclick="_rtCmd('${id}','insertOrderedList')" title="Lista numerada"><i class="fa fa-list-ol"></i></button>
+    </div>
+    <div id="${id}" class="rt-body" contenteditable="true" data-placeholder="${placeholder}">${html}</div>
+  </div>`;
+}
+function _rtCmd(id,cmd){
+  const el=document.getElementById(id);
+  if(el){el.focus();document.execCommand(cmd,false,null);}
+}
+function _rtGet(id){
+  return document.getElementById(id)?.innerHTML||'';
+}
+function _rtToText(html){
+  return html
+    .replace(/<br\s*\/?>/gi,'\n')
+    .replace(/<\/p>/gi,'\n').replace(/<p[^>]*>/gi,'')
+    .replace(/<li[^>]*>/gi,'• ').replace(/<\/li>/gi,'\n')
+    .replace(/<\/ul>|<\/ol>/gi,'\n').replace(/<ul[^>]*>|<ol[^>]*>/gi,'')
+    .replace(/<[^>]+>/g,'')
+    .replace(/&nbsp;/g,' ').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
+    .replace(/\n{3,}/g,'\n\n').trim();
+}
+
 function renderPerfiles(){
   const page = document.getElementById('page-perfiles');
   if(!page) return;
@@ -10363,7 +10395,7 @@ function openPerfilModal(empId, perfilId){
 
       <!-- ACTIVIDADES ESENCIALES -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Actividades Esenciales</div>
-      <div class="fg" style="margin-bottom:14px"><textarea id="pf-actividades" rows="4" placeholder="• Actividad 1&#10;• Actividad 2" style="width:100%">${v('actividades_esenciales')}</textarea></div>
+      <div class="fg" style="margin-bottom:14px">${_rtBox('pf-actividades',v('actividades_esenciales'),'Describe las actividades esenciales del puesto...')}</div>
 
       <!-- PERFIL DE PUESTO -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Perfil de puesto</div>
@@ -10376,9 +10408,9 @@ function openPerfilModal(empId, perfilId){
         <div class="fg"><label>Experiencia previa</label><input type="text" id="pf-experiencia" value="${v('experiencia_previa')}"></div>
       </div>
       <div class="fg" style="margin-bottom:8px"><label>Idiomas</label><input type="text" id="pf-idiomas" value="${v('idiomas')}"></div>
-      <div class="fg" style="margin-bottom:8px"><label>Conocimientos técnicos</label><textarea id="pf-conocimientos" rows="3" style="width:100%">${v('conocimientos_tecnicos')}</textarea></div>
-      <div class="fg" style="margin-bottom:8px"><label>Habilidades</label><textarea id="pf-habilidades" rows="3" style="width:100%">${v('habilidades')}</textarea></div>
-      <div class="fg" style="margin-bottom:14px"><label>Actitudes</label><textarea id="pf-actitudes" rows="3" placeholder="• Proactividad" style="width:100%">${v('actitudes')}</textarea></div>
+      <div class="fg" style="margin-bottom:8px"><label>Conocimientos técnicos</label>${_rtBox('pf-conocimientos',v('conocimientos_tecnicos'))}</div>
+      <div class="fg" style="margin-bottom:8px"><label>Habilidades</label>${_rtBox('pf-habilidades',v('habilidades'))}</div>
+      <div class="fg" style="margin-bottom:14px"><label>Actitudes</label>${_rtBox('pf-actitudes',v('actitudes'),'• Proactividad')}</div>
 
       <!-- PLAN DE CARRERA -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Plan de carrera y propuesta salarial</div>
@@ -10417,7 +10449,7 @@ function openPerfilModal(empId, perfilId){
 
       <!-- ACOMPAÑAMIENTO -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Acompañamiento - Capacitación</div>
-      <div class="fg" style="margin-bottom:14px"><textarea id="pf-acompanamiento" rows="3" placeholder="• Capacitación 1" style="width:100%">${v('acompanamiento_capacitacion')}</textarea></div>
+      <div class="fg" style="margin-bottom:14px">${_rtBox('pf-acompanamiento',v('acompanamiento_capacitacion'),'• Capacitación 1')}</div>
 
       <!-- RESPONSABILIDADES -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Responsabilidades</div>
@@ -10442,7 +10474,7 @@ function openPerfilModal(empId, perfilId){
 
       <!-- ENTREGABLES -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Entregables</div>
-      <div class="fg" style="margin-bottom:14px"><textarea id="pf-entregables" rows="3" placeholder="• Entregable 1" style="width:100%">${v('entregables')}</textarea></div>
+      <div class="fg" style="margin-bottom:14px">${_rtBox('pf-entregables',v('entregables'),'• Entregable 1')}</div>
 
       <!-- AUTORIZACIONES -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Autorizaciones</div>
@@ -10468,7 +10500,7 @@ async function savePerfilPuesto(){
     ubicacion_geografica:g('pf-ubicacion'), proyecto:g('pf-proyecto'), departamento:g('pf-departamento'),
     fecha_elaboracion:g('pf-fecha-elab'),
     fecha_revision:g('pf-fecha-rev'), no_revision:g('pf-no-revision'),
-    actividades_esenciales:g('pf-actividades'),
+    actividades_esenciales:_rtGet('pf-actividades'),
     sexo:g('pf-sexo'), edad:g('pf-edad'), escolaridad:g('pf-escolaridad'),
     experiencia_previa:g('pf-experiencia'), idiomas:g('pf-idiomas'),
     conocimientos_tecnicos:g('pf-conocimientos'), habilidades:g('pf-habilidades'),
@@ -10487,7 +10519,7 @@ async function savePerfilPuesto(){
     resp_equipo_computo:gr('resp_equipo_computo'), resp_automovil:gr('resp_automovil'),
     resp_telefonia:gr('resp_telefonia'), resp_documentos:gr('resp_documentos'),
     resp_otros:gr('resp_otros'), resp_uniforme:gr('resp_uniforme'),
-    entregables:g('pf-entregables'), elaboro:g('pf-elaboro'),
+    entregables:_rtGet('pf-entregables'), elaboro:g('pf-elaboro'),
     updated_at:new Date().toISOString()
   };
   if(!obj.nombre_puesto){showToast('Ingresa el nombre del puesto','err');return;}
@@ -10514,10 +10546,10 @@ async function exportPerfilPDFBtn(){
     nombre_puesto:g('pf-nombre-puesto'), lugar_trabajo:g('pf-lugar-trabajo'),
     ubicacion_geografica:g('pf-ubicacion'), proyecto:g('pf-proyecto'), departamento:g('pf-departamento'),
     fecha_elaboracion:g('pf-fecha-elab'), fecha_revision:g('pf-fecha-rev'), no_revision:g('pf-no-revision'),
-    actividades_esenciales:g('pf-actividades'),
+    actividades_esenciales:_rtGet('pf-actividades'),
     sexo:g('pf-sexo'), edad:g('pf-edad'), escolaridad:g('pf-escolaridad'),
     experiencia_previa:g('pf-experiencia'), idiomas:g('pf-idiomas'),
-    conocimientos_tecnicos:g('pf-conocimientos'), habilidades:g('pf-habilidades'), actitudes:g('pf-actitudes'),
+    conocimientos_tecnicos:_rtGet('pf-conocimientos'), habilidades:_rtGet('pf-habilidades'), actitudes:_rtGet('pf-actitudes'),
     plan_inicial_puesto:g('pf-plan-inicial-puesto'), plan_inicial_salario:g('pf-plan-inicial-salario'),
     plan_inicial_extras:g('pf-plan-inicial-extras'), plan_inicial_tiempo:g('pf-plan-inicial-tiempo'),
     plan_intermedio_puesto:g('pf-plan-intermedio-puesto'), plan_intermedio_salario:g('pf-plan-intermedio-salario'),
@@ -10526,12 +10558,12 @@ async function exportPerfilPDFBtn(){
     plan_final_extras:g('pf-plan-final-extras'), plan_final_tiempo:g('pf-plan-final-tiempo'),
     disponibilidad_viajar:g('pf-viajar'), tipo_trabajo:g('pf-tipo-trabajo'),
     horario_trabajo:g('pf-horario'), tipo_contratacion:g('pf-contratacion'), prestaciones:g('pf-prestaciones'),
-    acompanamiento_capacitacion:g('pf-acompanamiento'),
+    acompanamiento_capacitacion:_rtGet('pf-acompanamiento'),
     resp_efectivo:gr('resp_efectivo'), resp_cheques:gr('resp_cheques'), resp_formas_valoradas:gr('resp_formas_valoradas'),
     resp_mobiliario:gr('resp_mobiliario'), resp_equipo_computo:gr('resp_equipo_computo'),
     resp_automovil:gr('resp_automovil'), resp_telefonia:gr('resp_telefonia'),
     resp_documentos:gr('resp_documentos'), resp_otros:gr('resp_otros'), resp_uniforme:gr('resp_uniforme'),
-    entregables:g('pf-entregables'), elaboro:g('pf-elaboro'),
+    entregables:_rtGet('pf-entregables'), elaboro:g('pf-elaboro'),
     updated_at:new Date().toISOString()
   };
   if(!SANDBOX_MODE){
@@ -10623,7 +10655,7 @@ async function generarPDFPerfil(id){
   row2('Lugar de trabajo',p.lugar_trabajo,'Ubicación geográfica',p.ubicacion_geografica);
 
   section('Actividades Esenciales');
-  const actLines=doc.splitTextToSize(p.actividades_esenciales||'',mr-ml-4);
+  const actLines=doc.splitTextToSize(_rtToText(p.actividades_esenciales||''),mr-ml-4);
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
   actLines.forEach(l=>{chkNewPage();doc.text(l,ml+2,y+4);y+=lh;});
   y+=2;
@@ -10633,9 +10665,9 @@ async function generarPDFPerfil(id){
   row2('Escolaridad',p.escolaridad,'','');
   row2('Experiencia previa',p.experiencia_previa,'','');
   row2('Idiomas',p.idiomas,'','');
-  chkNewPage();rowTA('Conocimientos técnicos',p.conocimientos_tecnicos);
-  chkNewPage();rowTA('Habilidades',p.habilidades);
-  chkNewPage();rowTA('Actitudes',p.actitudes);
+  chkNewPage();rowTA('Conocimientos técnicos',_rtToText(p.conocimientos_tecnicos||''));
+  chkNewPage();rowTA('Habilidades',_rtToText(p.habilidades||''));
+  chkNewPage();rowTA('Actitudes',_rtToText(p.actitudes||''));
 
   chkNewPage();
   section('Plan de carrera y propuesta salarial');
@@ -10664,7 +10696,7 @@ async function generarPDFPerfil(id){
 
   chkNewPage();
   section('Acompañamiento - Capacitación');
-  const acLines=doc.splitTextToSize(p.acompanamiento_capacitacion||'',mr-ml-4);
+  const acLines=doc.splitTextToSize(_rtToText(p.acompanamiento_capacitacion||''),mr-ml-4);
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
   acLines.forEach(l=>{chkNewPage();doc.text(l,ml+2,y+4);y+=lh;});
   y+=2;
@@ -10703,7 +10735,7 @@ async function generarPDFPerfil(id){
 
   chkNewPage();
   section('Entregables');
-  const entLines=doc.splitTextToSize(p.entregables||'',mr-ml-4);
+  const entLines=doc.splitTextToSize(_rtToText(p.entregables||''),mr-ml-4);
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
   entLines.forEach(l=>{chkNewPage();doc.text(l,ml+2,y+4);y+=lh;});
   y+=4;

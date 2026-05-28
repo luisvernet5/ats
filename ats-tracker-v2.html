@@ -1466,7 +1466,7 @@ function adaptUIToRole() {
       garantiaItem.dataset.tooltip = 'Garantías';
       garantiaItem.innerHTML = '<i class="fa fa-shield-alt"></i><span class="nav-item-text"> Garantías</span>';
       garantiaItem.setAttribute('onclick', "showPage('garantias')");
-      const anchor = document.getElementById('nav-contratados');
+      const anchor = document.getElementById('nav-candidatos');
       const navEl = document.querySelector('.sb-nav');
       if(anchor) anchor.parentNode.insertBefore(garantiaItem, anchor.nextSibling);
       else if(navEl) navEl.appendChild(garantiaItem);
@@ -1507,7 +1507,7 @@ function adaptUIToRole() {
       garantiaItem.dataset.tooltip = 'Garantías';
       garantiaItem.innerHTML = '<i class="fa fa-shield-alt"></i><span class="nav-item-text"> Garantías</span>';
       garantiaItem.setAttribute('onclick', "showPage('garantias')");
-      const anchor = document.getElementById('nav-ese') || document.getElementById('nav-contratados');
+      const anchor = document.getElementById('nav-ese') || document.getElementById('nav-candidatos');
       const navEl = document.querySelector('.sb-nav');
       if(anchor) anchor.parentNode.insertBefore(garantiaItem, anchor.nextSibling);
       else if(navEl) navEl.appendChild(garantiaItem);
@@ -1546,7 +1546,7 @@ function adaptUIToRole() {
       eseItem.dataset.tooltip = 'ESE';
       eseItem.innerHTML = '<i class="fa fa-file-alt"></i><span class="nav-item-text"> ESE</span>';
       eseItem.setAttribute('onclick', "showPage('ese')");
-      const anchor = document.getElementById('nav-contratados');
+      const anchor = document.getElementById('nav-candidatos');
       if(anchor) anchor.parentNode.insertBefore(eseItem, anchor.nextSibling);
       else navEl.appendChild(eseItem);
     }

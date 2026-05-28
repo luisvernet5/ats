@@ -10418,7 +10418,14 @@ function openPerfilModal(empId, perfilId){
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Perfil de puesto</div>
       <div class="g2" style="margin-bottom:8px">
         <div class="fg"><label>Sexo</label><input type="text" id="pf-sexo" value="${v('sexo')}"></div>
-        <div class="fg"><label>Edad</label><input type="text" id="pf-edad" value="${v('edad')}" placeholder="Ej. 25-45 años"></div>
+        <div class="fg"><label>Edad</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="number" id="pf-edad-ini" value="${v('edad_ini')}" placeholder="Mín" style="width:80px;text-align:center" min="16" max="99">
+            <span style="font-size:13px;color:var(--text3);white-space:nowrap">a</span>
+            <input type="number" id="pf-edad-fin" value="${v('edad_fin')}" placeholder="Máx" style="width:80px;text-align:center" min="16" max="99">
+            <span style="font-size:13px;color:var(--text3);white-space:nowrap">años</span>
+          </div>
+        </div>
       </div>
       <div class="g2" style="margin-bottom:8px">
         <div class="fg"><label>Escolaridad</label><input type="text" id="pf-escolaridad" value="${v('escolaridad')}"></div>
@@ -10518,7 +10525,7 @@ async function savePerfilPuesto(){
     fecha_elaboracion:g('pf-fecha-elab'),
     fecha_revision:g('pf-fecha-rev'), no_revision:g('pf-no-revision'),
     actividades_esenciales:_rtGet('pf-actividades'),
-    sexo:g('pf-sexo'), edad:g('pf-edad'), escolaridad:g('pf-escolaridad'),
+    sexo:g('pf-sexo'), edad_ini:g('pf-edad-ini'), edad_fin:g('pf-edad-fin'), escolaridad:g('pf-escolaridad'),
     experiencia_previa:g('pf-experiencia'), idiomas:g('pf-idiomas'),
     conocimientos_tecnicos:g('pf-conocimientos'), habilidades:g('pf-habilidades'),
     actitudes:g('pf-actitudes'),
@@ -10565,7 +10572,7 @@ async function exportPerfilPDFBtn(){
     ubicacion_geografica:g('pf-ubicacion'), proyecto:g('pf-proyecto'), departamento:g('pf-departamento'),
     fecha_elaboracion:g('pf-fecha-elab'), fecha_revision:g('pf-fecha-rev'), no_revision:g('pf-no-revision'),
     actividades_esenciales:_rtGet('pf-actividades'),
-    sexo:g('pf-sexo'), edad:g('pf-edad'), escolaridad:g('pf-escolaridad'),
+    sexo:g('pf-sexo'), edad_ini:g('pf-edad-ini'), edad_fin:g('pf-edad-fin'), escolaridad:g('pf-escolaridad'),
     experiencia_previa:g('pf-experiencia'), idiomas:g('pf-idiomas'),
     conocimientos_tecnicos:_rtGet('pf-conocimientos'), habilidades:_rtGet('pf-habilidades'), actitudes:_rtGet('pf-actitudes'),
     plan_inicial_puesto:g('pf-plan-inicial-puesto'), plan_inicial_salario:g('pf-plan-inicial-salario'),
@@ -10680,7 +10687,8 @@ async function generarPDFPerfil(id){
   y+=2;
 
   section('Perfil de puesto');
-  row2('Sexo',p.sexo,'Edad',p.edad);
+  const edadStr=(p.edad_ini||p.edad_fin)?(p.edad_ini&&p.edad_fin?`${p.edad_ini} hasta ${p.edad_fin} años`:p.edad_ini?`Desde ${p.edad_ini} años`:`Hasta ${p.edad_fin} años`):(p.edad||'');
+  row2('Sexo',p.sexo,'Edad',edadStr);
   row2('Escolaridad',p.escolaridad,'','');
   row2('Experiencia previa',p.experiencia_previa,'','');
   row2('Idiomas',p.idiomas,'','');

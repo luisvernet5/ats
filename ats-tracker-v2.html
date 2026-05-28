@@ -10396,14 +10396,11 @@ function openPerfilModal(empId, perfilId){
 
       <!-- AUTORIZACIONES -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Autorizaciones</div>
-      <div class="g2" style="margin-bottom:8px">
-        <div class="fg"><label>Elaboró</label><input type="text" id="pf-elaboro" value="${v('elaboro')||'Mtro. Luis Beltran Arredondo Vernet'}"></div>
-        <div class="fg"><label>Revisó</label><input type="text" id="pf-reviso" value="${v('reviso')}"></div>
-      </div>
-      <div class="fg" style="margin-bottom:14px"><label>Fecha de entrega</label><input type="date" id="pf-fecha-entrega" value="${v('fecha_entrega')}"></div>
+      <div class="fg" style="margin-bottom:14px"><label>Elaboró</label><input type="text" id="pf-elaboro" value="${v('elaboro')}"></div>
 
       <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:10px;border-top:1px solid var(--border)">
         <button class="btn btn-ghost" onclick="document.getElementById('modal-perfil-puesto').remove()">Cancelar</button>
+        ${_perfilId?`<button class="btn btn-ghost" onclick="generarPDFPerfil('${_perfilId}')"><i class="fa fa-file-pdf"></i> Exportar PDF</button>`:''}
         <button class="btn btn-primary" onclick="savePerfilPuesto()"><i class="fa fa-save"></i> Guardar perfil</button>
       </div>
     </div>
@@ -10441,7 +10438,6 @@ async function savePerfilPuesto(){
     resp_telefonia:gr('resp_telefonia'), resp_documentos:gr('resp_documentos'),
     resp_otros:gr('resp_otros'), resp_uniforme:gr('resp_uniforme'),
     entregables:g('pf-entregables'), elaboro:g('pf-elaboro'),
-    reviso:g('pf-reviso'), fecha_entrega:g('pf-fecha-entrega'),
     updated_at:new Date().toISOString()
   };
   if(!obj.nombre_puesto){showToast('Ingresa el nombre del puesto','err');return;}
@@ -10469,21 +10465,22 @@ async function deletePerfilPuesto(id){
   if(p) renderPerfilesEmpresa(p.empresa_id);
 }
 
-function generarPDFPerfil(id){
+async function generarPDFPerfil(id){
   const p=DB.perfilesPuesto.find(x=>x.id===id);
   if(!p){showToast('Perfil no encontrado','err');return;}
   const emp=DB.empresas.find(e=>e.id===p.empresa_id)||{};
+  if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const W=210, ml=14, mr=196, lh=6;
   let y=14;
-  const yellow=[245,158,11];
+  const blue=[42,170,222];
   const black=[0,0,0];
   const gray=[245,245,245];
   const section=(title)=>{
-    doc.setFillColor(...yellow);
+    doc.setFillColor(...blue);
     doc.rect(ml,y,mr-ml,7,'F');
-    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(...black);
+    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(255,255,255);
     doc.text(title.toUpperCase(),W/2,y+5,{align:'center'});
     y+=9;
   };
@@ -10513,14 +10510,19 @@ function generarPDFPerfil(id){
   };
   const chkNewPage=()=>{ if(y>275){doc.addPage();y=14;} };
 
-  // Header
-  doc.setFillColor(255,255,255);
-  doc.setDrawColor(180,180,180);
-  doc.rect(ml,y,mr-ml,14);
-  doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(...black);
+  // Header con logo
+  if(emp.logo){
+    try{
+      const b64=await urlToBase64(emp.logo);
+      if(b64){const {w,h}=await _imgFit(b64,32,14);doc.addImage(b64,'PNG',ml,y,w,h);}
+    }catch(e){}
+  }
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(...blue);
   doc.text('FICHA DE PUESTO',W/2,y+9,{align:'center'});
-  doc.text(emp.nombre||'',ml+2,y+5,{});
-  y+=16;
+  doc.setFontSize(10);doc.setFont('helvetica','normal');doc.setTextColor(80,80,80);
+  doc.text(emp.nombre||'',W/2,y+16,{align:'center'});
+  doc.setDrawColor(...blue);doc.setLineWidth(0.5);doc.line(ml,y+20,mr,y+20);
+  y+=24;
 
   row2('Fecha de elaboración',p.fecha_elaboracion?fmt(p.fecha_elaboracion):'','Fecha de revisión',p.fecha_revision?fmt(p.fecha_revision):'');
   row2('No. de revisión',p.no_revision||'','','');
@@ -10618,8 +10620,6 @@ function generarPDFPerfil(id){
   chkNewPage();
   section('Autorizaciones');
   row2('Elaboró',p.elaboro,'','');
-  row2('Revisó',p.reviso,'','');
-  row2('Fecha de entrega',p.fecha_entrega?fmt(p.fecha_entrega):'','','');
 
   const fname=(p.nombre_puesto||'perfil').replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'')+'.pdf';
   doc.save(fname);

@@ -10226,9 +10226,10 @@ async function docCfgSave(empId){
    PERFILES DE PUESTO
    ============================================================ */
 let _pfRowId=0;
+const _PF_GRID='18px 70px 1fr 88px 76px 108px 58px 50px 18px';
 function _pfPlanRowHTML(r={}){
   const rid='pfr'+(++_pfRowId);
-  const mkR=(name,val,label,checked)=>`<label style="display:flex;align-items:center;gap:3px;cursor:pointer;white-space:nowrap"><input type="radio" name="${rid}_${name}" value="${val}"${checked?' checked':''} style="margin:0;cursor:pointer"><span style="font-size:11px;color:var(--text2)">${label}</span></label>`;
+  const mkR=(name,val,label,checked)=>`<label style="display:flex;align-items:center;gap:2px;cursor:pointer;white-space:nowrap"><input type="radio" name="${rid}_${name}" value="${val}"${checked?' checked':''} style="margin:0;cursor:pointer;width:10px;height:10px"><span style="font-size:10px;color:var(--text2)">${label}</span></label>`;
   const tipoNeto=(r.tipo_sueldo||'Bruto')==='Neto';
   const tipoBruto=(r.tipo_sueldo||'Bruto')==='Bruto';
   const frecSemanal=r.frecuencia==='Semanal';
@@ -10236,28 +10237,26 @@ function _pfPlanRowHTML(r={}){
   const frecMensual=(r.frecuencia||'Mensual')==='Mensual';
   return `<div class="pf-plan-row" draggable="true"
     ondragstart="_pfDragStart(event)" ondragover="_pfDragOver(event)" ondrop="_pfDrop(event)" ondragend="_pfDragEnd()"
-    style="display:grid;grid-template-columns:26px 90px 1fr 185px 90px 70px 28px;align-items:start;gap:6px;padding:8px;background:var(--surface2);border-radius:8px;margin-bottom:8px;border:1px solid var(--border)">
-    <span style="cursor:grab;color:var(--text3);font-size:16px;text-align:center;padding-top:4px">⠿</span>
+    style="display:grid;grid-template-columns:${_PF_GRID};align-items:center;gap:5px;padding:6px 8px;background:var(--surface2);border-radius:8px;margin-bottom:6px;border:1px solid var(--border)">
+    <span style="cursor:grab;color:var(--text3);font-size:14px;text-align:center">⠿</span>
     <input type="text" placeholder="Nivel" value="${r.nivel||''}" style="font-size:12px;width:100%">
-    <input type="text" placeholder="Nombre del puesto" value="${r.puesto||''}" style="font-size:12px;width:100%;min-width:0">
-    <div style="display:flex;flex-direction:column;gap:4px">
-      <div style="display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:2px 6px">
-        <span style="font-size:11px;color:var(--text3)">$</span>
-        <input type="text" placeholder="Salario" value="${r.salario||''}" style="width:100%;border:none;background:transparent;font-size:12px">
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        ${mkR('tipo','Neto','Neto',tipoNeto)}
-        ${mkR('tipo','Bruto','Bruto',tipoBruto)}
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${mkR('frec','Semanal','Semanal',frecSemanal)}
-        ${mkR('frec','Quincenal','Quincenal',frecQuincenal)}
-        ${mkR('frec','Mensual','Mensual',frecMensual)}
-      </div>
+    <input type="text" placeholder="Puesto" value="${r.puesto||''}" style="font-size:12px;width:100%;min-width:0">
+    <div style="display:flex;align-items:center;gap:3px;background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:2px 5px">
+      <span style="font-size:11px;color:var(--text3);flex-shrink:0">$</span>
+      <input type="text" placeholder="Salario" value="${r.salario||''}" style="flex:1;min-width:0;border:none;background:transparent;font-size:12px">
     </div>
-    <input type="text" placeholder="Extras" value="${r.extras||''}" style="font-size:12px;width:100%;min-width:0">
-    <input type="text" placeholder="Tiempo" value="${r.tiempo||''}" style="font-size:12px;width:100%;min-width:0">
-    <button type="button" onclick="this.closest('.pf-plan-row').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;padding:0;text-align:center;padding-top:2px">×</button>
+    <div style="display:flex;gap:5px;align-items:center">
+      ${mkR('tipo','Neto','Neto',tipoNeto)}
+      ${mkR('tipo','Bruto','Bruto',tipoBruto)}
+    </div>
+    <div style="display:flex;gap:4px;align-items:center">
+      ${mkR('frec','Semanal','Sem',frecSemanal)}
+      ${mkR('frec','Quincenal','Quin',frecQuincenal)}
+      ${mkR('frec','Mensual','Men',frecMensual)}
+    </div>
+    <input type="text" placeholder="Extras" value="${r.extras||''}" style="font-size:12px;width:100%">
+    <input type="text" placeholder="Tiempo" value="${r.tiempo||''}" style="font-size:12px;width:100%">
+    <button type="button" onclick="this.closest('.pf-plan-row').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;padding:0;text-align:center">×</button>
   </div>`;
 }
 function _pfPlanAddRow(){
@@ -10703,13 +10702,15 @@ function openPerfilModal(empId, perfilId){
 
       <!-- PLAN DE CARRERA -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Plan de carrera y propuesta salarial</div>
-      <div style="display:grid;grid-template-columns:26px 90px 1fr 185px 90px 70px 28px;gap:6px;padding:2px 8px 4px;margin-bottom:2px">
+      <div style="display:grid;grid-template-columns:${_PF_GRID};gap:5px;padding:2px 8px 4px">
         <div></div>
-        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Nivel</div>
-        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Puesto</div>
-        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Salario</div>
-        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Extras</div>
-        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Tiempo</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Nivel</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Puesto</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Salario</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Tipo</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Frecuencia</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Extras</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Tiempo</div>
         <div></div>
       </div>
       <div id="pf-plan-rows" style="margin-bottom:8px">

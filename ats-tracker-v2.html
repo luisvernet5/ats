@@ -10722,10 +10722,10 @@ function openPerfilModal(empId, perfilId){
         <button type="button" class="btn btn-ghost btn-sm" onclick="_pfTipoAddRow()"><i class="fa fa-plus"></i> Agregar tipo</button>
       </div>
       <div class="g2" style="margin-bottom:8px">
-        <div class="fg"><label>Horario de trabajo</label><input type="text" id="pf-horario" value="${v('horario_trabajo')}"></div>
-        <div class="fg"><label>Tipo de contratación</label><input type="text" id="pf-contratacion" value="${v('tipo_contratacion')}"></div>
+        <div class="fg"><label>Horario de trabajo</label><textarea id="pf-horario" rows="3" style="width:100%;resize:vertical">${v('horario_trabajo')}</textarea></div>
+        <div class="fg"><label>Tipo de contratación</label><textarea id="pf-contratacion" rows="3" style="width:100%;resize:vertical">${v('tipo_contratacion')}</textarea></div>
       </div>
-      <div class="fg" style="margin-bottom:14px"><label>Prestaciones</label><input type="text" id="pf-prestaciones" value="${v('prestaciones')}"></div>
+      <div class="fg" style="margin-bottom:14px"><label>Prestaciones</label><textarea id="pf-prestaciones" rows="3" style="width:100%;resize:vertical">${v('prestaciones')}</textarea></div>
 
       <!-- ACOMPAÑAMIENTO -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Acompañamiento - Capacitación</div>

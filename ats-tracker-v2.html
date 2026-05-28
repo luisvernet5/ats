@@ -11034,7 +11034,7 @@ async function generarPDFPerfil(id){
     doc.text(label,ml,startY+4);
     doc.setFont('helvetica','normal');doc.setTextColor(...black);
     for(const l of lines){chkNewPage();doc.text(l,ml+38,y+4);y+=5;}
-    if(y<startY+lh) y=startY+lh;
+    if(y>startY&&y<startY+lh) y=startY+lh;
     doc.setDrawColor(220,220,220);doc.line(ml,y,mr,y);
   };
   const rowSide=(label,val)=>{
@@ -11100,9 +11100,9 @@ async function generarPDFPerfil(id){
     doc.text('Habilidades',ml,startY+4);
     doc.setTextColor(...black);
     (p.habilidades_dic||[]).forEach(item=>{
-      doc.splitTextToSize(`• ${item}`,mr-ml-38).forEach(l=>{doc.text(l,ml+38,y+4);y+=5;});
+      doc.splitTextToSize(`• ${item}`,mr-ml-38).forEach(l=>{chkNewPage();doc.text(l,ml+38,y+4);y+=5;});
     });
-    y=Math.max(y,startY+lh);
+    if(y>startY&&y<startY+lh) y=startY+lh;
     doc.setDrawColor(220,220,220);doc.line(ml,y,mr,y);
   } else {
     rowTA('Habilidades',_rtToText(p.habilidades||''));
@@ -11203,7 +11203,7 @@ async function generarPDFPerfil(id){
   entLines.forEach(l=>{chkNewPage();doc.text(l,ml+2,y+4);y+=5;});
   y+=4;
 
-  chkNewPage();
+  if(y>220){doc.addPage();y=14;}
   section('Autorizaciones');
   row2('Elaboró',p.elaboro,'','');
   y+=6;

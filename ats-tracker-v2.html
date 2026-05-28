@@ -10628,7 +10628,6 @@ function openPerfilModal(empId, perfilId){
   const modal = document.createElement('div');
   modal.className='modal-overlay open';
   modal.id='modal-perfil-puesto';
-  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
   modal.innerHTML=`
   <div class="modal modal-lg" style="max-width:740px;width:95vw;max-height:90vh;overflow-y:auto">
     <div class="mh">
@@ -11006,6 +11005,7 @@ async function generarPDFPerfil(id){
   section('Información del puesto');
   row2('Nombre del puesto',p.nombre_puesto,'','');
   row2('Lugar de trabajo',p.lugar_trabajo,'Ubicación geográfica',p.ubicacion_geografica);
+  row2('Departamento',p.departamento||'','Proyecto',p.proyecto||'');
 
   section('Actividades Esenciales');
   const actTxt=_rtToText(p.actividades_esenciales||'');

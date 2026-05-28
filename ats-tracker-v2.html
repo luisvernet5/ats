@@ -6833,8 +6833,10 @@ async function saveGarantiaRow(vacId){
     updated_at: new Date().toISOString()
   };
   const { error } = await sbClient.from('garantias').upsert(g);
-  if(error) showToast('Error: '+error.message,'err');
-  else { showToast('Garantía guardada ✓'); renderGarantias(); }
+  if(error){ showToast('Error: '+error.message,'err'); return; }
+  logActivity('Actualizar garantía','garantias',vacId,v.nombre||vacId);
+  showToast('Garantía guardada ✓');
+  renderGarantias();
 }
 
 function toggleGarantiaRow(id){
@@ -10215,6 +10217,8 @@ async function docCfgSave(empId){
     const {error} = await sbClient.from('doc_plantillas').upsert({empresa_id:empId, documentos:plt.documentos});
     if(error){ showToast('Error: '+error.message,'err'); return; }
   }
+  const _docEmp=DB.empresas.find(e=>e.id===empId);
+  logActivity('Configurar plantilla de documentación','documentacion',empId,_docEmp?.nombre||empId);
   showToast('Plantilla guardada ✓');
 }
 
@@ -10529,8 +10533,9 @@ async function savePerfilPuesto(){
     });
     if(error){showToast('Error: '+error.message,'err');return;}
   }
-  const idx=DB.perfilesPuesto.findIndex(x=>x.id===obj.id);
-  if(idx>=0) DB.perfilesPuesto[idx]=obj; else DB.perfilesPuesto.push(obj);
+  const isNew=DB.perfilesPuesto.findIndex(x=>x.id===obj.id)<0;
+  if(isNew) DB.perfilesPuesto.push(obj); else DB.perfilesPuesto[DB.perfilesPuesto.findIndex(x=>x.id===obj.id)]=obj;
+  logActivity(isNew?'Nuevo perfil de puesto':'Editar perfil de puesto','perfiles',obj.id,`${obj.nombre_puesto||''} — ${DB.empresas.find(e=>e.id===obj.empresa_id)?.nombre||''}`);
   document.getElementById('modal-perfil-puesto')?.remove();
   showToast('Perfil guardado ✓');
   renderPerfilesEmpresa(_perfilEmpId);
@@ -10584,6 +10589,7 @@ async function deletePerfilPuesto(id){
     await sbClient.from('perfiles_puesto').delete().eq('id',id);
   }
   DB.perfilesPuesto=DB.perfilesPuesto.filter(x=>x.id!==id);
+  logActivity('Eliminar perfil de puesto','perfiles',id,`${p?.nombre_puesto||''} — ${DB.empresas.find(e=>e.id===p?.empresa_id)?.nombre||''}`);
   showToast('Perfil eliminado');
   if(p) renderPerfilesEmpresa(p.empresa_id);
 }
@@ -10936,7 +10942,9 @@ async function saveDocCandidato(candidatoId, empId){
     });
     if(error){ showToast('Error: '+error.message,'err'); return; }
   }
-  _docPinned.add(candidatoId); // anclar: permanece visible aunque cambie la búsqueda
+  _docPinned.add(candidatoId);
+  const _docCand=DB.candidatos.find(c=>c.id===candidatoId);
+  logActivity('Actualizar documentación','documentacion',candidatoId,_docCand?.nombre||candidatoId);
   showToast('Documentación guardada ✓');
   _docRenderResultados(); // solo actualiza resultados, no toca el input
 }
@@ -11139,6 +11147,8 @@ async function saveESERow(id){
     const {error}=await sbClient.from('ese').upsert(rec);
     if(error){showToast('Error: '+error.message,'err');return;}
   }
+  const _eseCandU=DB.candidatos.find(c=>c.id===rec.candidato_id);
+  logActivity('Actualizar ESE','ese',id,_eseCandU?.nombre||id);
   showToast('ESE guardado ✓');
   _eseRenderTable();
 }
@@ -11267,6 +11277,8 @@ async function saveESE(){
     if(error){showToast('Error: '+error.message,'err');return;}
   }
   DB.ese.push(rec);
+  const _eseCand=DB.candidatos.find(c=>c.id===rec.candidato_id);
+  logActivity('Nuevo ESE','ese',id,_eseCand?.nombre||candidato_id);
   closeESEModal();
   showToast('ESE agregado ✓');
   _eseRenderTable();
@@ -11278,7 +11290,10 @@ async function deleteESE(id){
     const {error}=await sbClient.from('ese').delete().eq('id',id);
     if(error){showToast('Error al eliminar','err');return;}
   }
+  const _eseDelRec=DB.ese.find(e=>e.id===id);
+  const _eseDelCand=DB.candidatos.find(c=>c.id===_eseDelRec?.candidato_id);
   DB.ese=DB.ese.filter(e=>e.id!==id);
+  logActivity('Eliminar ESE','ese',id,_eseDelCand?.nombre||id);
   showToast('ESE eliminado');
   _eseRenderTable();
 }

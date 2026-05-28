@@ -10270,6 +10270,91 @@ function _pfDrop(e){
   _pfDragSrc=null;
 }
 
+const _COMPETENCIAS=[
+  {n:'Confianza en sí mismo',d:'Mostrar confianza en las propias capacidades, decisiones y opiniones, incluso ante las dificultades.'},
+  {n:'Orientación a resultados',d:'Encaminar todos los actos al logro de lo esperado, administrando los procesos establecidos.'},
+  {n:'Planificación y organización',d:'Establecer metas y prioridades, marcando plazos, recursos y acciones para alcanzar los objetivos.'},
+  {n:'Responsabilidad',d:'Ejecutar compromisos adquiridos, asumir las consecuencias de los actos propios.'},
+  {n:'Toma de decisiones',d:'Realizar un análisis lógico y estructurado para definir alternativas y proponer soluciones.'},
+  {n:'Sensibilidad organizacional',d:'Identificarse con los valores y estrategia de la organización, convirtiendo la estrategia en objetivos concretos.'},
+  {n:'Análisis de problemas',d:'Identificar y aportar soluciones eficaces a los problemas del día a día.'},
+  {n:'Asertividad',d:'Expresar pensamientos y sentimientos con firmeza y respeto, incluso al discernir u oponerse.'},
+  {n:'Empatía',d:'Entender las necesidades, sentimientos y problemas de los demás, poniéndose en su lugar.'},
+  {n:'Liderazgo',d:'Orientar la acción de grupos humanos en una dirección determinada, inspirando valores y anticipando escenarios.'},
+  {n:'Comunicación',d:'Transmitir ideas e información de forma clara y convincente, siendo receptivo a las propuestas de los demás.'},
+  {n:'Trabajo en equipo',d:'Participar activamente en una meta común, incluso cuando no está directamente relacionada con el interés personal.'},
+  {n:'Orientación al cliente',d:'Captar y satisfacer las necesidades de los demás, cumpliendo con los pedidos y expectativas de los clientes.'},
+  {n:'Resolución de conflictos',d:'Solventar conflictos y actuar como mediador, promoviendo la comunicación y el respeto mutuo.'},
+  {n:'Desarrollo de personas',d:'Ayudar a que las personas crezcan intelectual y moralmente, mejorando su formación y desarrollo.'},
+  {n:'Iniciativa',d:'Anticiparse y proponer acciones novedosas aunque se carezca de pautas o referencias de actuación.'},
+  {n:'Creatividad',d:'Generar nuevas soluciones para abordar problemas o situaciones relacionadas con el trabajo.'},
+  {n:'Autocontrol',d:'Mantener bajo control las propias emociones, pensamientos y respuestas impulsivas.'},
+  {n:'Tolerancia a la presión',d:'Mostrar resistencia en situaciones tensas, manteniendo el nivel de calidad en el trabajo.'},
+  {n:'Resiliencia',d:'Afrontar y recuperarse de situaciones adversas percibiendo los problemas como retos.'},
+  {n:'Persuasión',d:'Conseguir lo deseado de otras personas, influyendo en ellas para que modifiquen sus actitudes.'},
+  {n:'Determinación',d:'Seguir realizando tareas a lo largo del tiempo a pesar de las dificultades.'},
+  {n:'Pensamiento conceptual',d:'Comprender situaciones o problemas ensamblando sus partes y estableciendo conexiones no obvias.'},
+  {n:'Mentalidad de crecimiento',d:'Desarrollar y mejorar habilidades propias a través del esfuerzo y la creencia en el cambio.'},
+  {n:'Adaptación al cambio',d:'Modificar el comportamiento ante cambios que implican incertidumbre o ambigüedad.'},
+  {n:'Orientación a la calidad',d:'Llevar a cabo las tareas de forma excelente, aplicando rigor y metodología.'},
+  {n:'Relaciones organizacionales',d:'Crear y mantener redes de contactos dentro y fuera de la organización.'},
+  {n:'Flexibilidad',d:'Modificar el comportamiento ante cambios frecuentes que implican estímulos contingentes.'},
+  {n:'Honestidad',d:'Comunicar aspectos que vayan en contra de la organización, dejando a un lado los intereses propios.'},
+  {n:'Autoconocimiento',d:'Identificar emociones propias y en otras personas para regular la propia conducta.'},
+  {n:'Pensamiento crítico',d:'Proponer soluciones en base al cuestionamiento y análisis de datos desde una perspectiva proactiva.'},
+  {n:'Negociación',d:'Generar entornos propicios para la colaboración y obtención de compromisos duraderos.'},
+  {n:'Positividad',d:'Facilitar alternativas con visión optimista al equipo ante dificultades e imprevistos.'},
+  {n:'Gestión de la información',d:'Manejar información de forma segura: acceder, identificar, analizar, codificar y presentar datos.'},
+];
+
+function _pfHabModeSwitch(mode){
+  const txtDiv=document.getElementById('pf-hab-txt');
+  const dicDiv=document.getElementById('pf-hab-dic');
+  const btnTxt=document.getElementById('pf-hab-btn-txt');
+  const btnDic=document.getElementById('pf-hab-btn-dic');
+  document.getElementById('pf-hab-modo').value=mode;
+  if(mode==='texto'){
+    if(txtDiv) txtDiv.style.display='';
+    if(dicDiv) dicDiv.style.display='none';
+    if(btnTxt){btnTxt.className='btn btn-primary btn-sm';}
+    if(btnDic){btnDic.className='btn btn-ghost btn-sm';}
+  } else {
+    if(txtDiv) txtDiv.style.display='none';
+    if(dicDiv) dicDiv.style.display='';
+    if(btnTxt){btnTxt.className='btn btn-ghost btn-sm';}
+    if(btnDic){btnDic.className='btn btn-primary btn-sm';}
+  }
+}
+function _pfHabDicHTML(selected=[]){
+  return `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px">
+    ${_COMPETENCIAS.map(c=>{
+      const sel=selected.includes(c.n);
+      return `<span data-tip="${c.d}" onclick="_pfHabDicToggle(this,'${c.n.replace(/'/g,"&#39;")}')"
+        style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);
+        background:${sel?'var(--accent)':'var(--surface2)'};color:${sel?'#fff':'var(--text)'};transition:all .15s">
+        ${c.n}</span>`;
+    }).join('')}
+  </div>`;
+}
+function _pfHabDicToggle(el, nombre){
+  const isActive=el.style.background.includes('accent')||el.getAttribute('style').includes('var(--accent)');
+  if(isActive){el.style.background='var(--surface2)';el.style.color='var(--text)';}
+  else{el.style.background='var(--accent)';el.style.color='#fff';}
+}
+function _pfHabDicGetSelected(){
+  const dicDiv=document.getElementById('pf-hab-dic');
+  if(!dicDiv) return [];
+  return [...dicDiv.querySelectorAll('span[data-tip]')].filter(s=>s.style.background.includes('var(--accent)')).map(s=>s.textContent.trim());
+}
+function _pfGetHabilidades(){
+  const modo=document.getElementById('pf-hab-modo')?.value||'texto';
+  if(modo==='diccionario'){
+    const sel=_pfHabDicGetSelected();
+    return {habilidades:sel.join(', '), habilidades_modo:'diccionario', habilidades_dic:sel};
+  }
+  return {habilidades:_rtGet('pf-habilidades'), habilidades_modo:'texto', habilidades_dic:[]};
+}
+
 function _pfIdiomaAdd(){
   const sel=document.getElementById('pf-idioma-sel');
   const otro=document.getElementById('pf-idioma-otro');
@@ -10540,7 +10625,22 @@ function openPerfilModal(empId, perfilId){
         <input type="hidden" id="pf-idiomas" value="${v('idiomas')}">
       </div>
       <div class="fg" style="margin-bottom:8px"><label>Conocimientos técnicos</label>${_rtBox('pf-conocimientos',v('conocimientos_tecnicos'))}</div>
-      <div class="fg" style="margin-bottom:8px"><label>Habilidades</label>${_rtBox('pf-habilidades',v('habilidades'))}</div>
+      <div class="fg" style="margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <label style="margin:0">Habilidades</label>
+          <div style="display:flex;gap:4px">
+            <button type="button" id="pf-hab-btn-txt" class="${(p.habilidades_modo||'texto')==='texto'?'btn btn-primary':'btn btn-ghost'} btn-sm" onclick="_pfHabModeSwitch('texto')"><i class="fa fa-pen"></i> Texto libre</button>
+            <button type="button" id="pf-hab-btn-dic" class="${p.habilidades_modo==='diccionario'?'btn btn-primary':'btn btn-ghost'} btn-sm" onclick="_pfHabModeSwitch('diccionario')"><i class="fa fa-book"></i> Diccionario</button>
+          </div>
+        </div>
+        <input type="hidden" id="pf-hab-modo" value="${p.habilidades_modo||'texto'}">
+        <div id="pf-hab-txt" style="${p.habilidades_modo==='diccionario'?'display:none':''}">
+          ${_rtBox('pf-habilidades',v('habilidades'))}
+        </div>
+        <div id="pf-hab-dic" style="border:1px solid var(--border2);border-radius:8px;background:var(--surface);${p.habilidades_modo!=='diccionario'?'display:none':''}">
+          ${_pfHabDicHTML(p.habilidades_dic||[])}
+        </div>
+      </div>
       <div class="fg" style="margin-bottom:14px"><label>Actitudes</label>${_rtBox('pf-actitudes',v('actitudes'))}</div>
 
       <!-- PLAN DE CARRERA -->
@@ -10679,7 +10779,7 @@ async function exportPerfilPDFBtn(){
     actividades_esenciales:_rtGet('pf-actividades'),
     sexo:g('pf-sexo'), edad_ini:g('pf-edad-ini'), edad_fin:g('pf-edad-fin'), escolaridad:g('pf-escolaridad'),
     experiencia_previa:g('pf-experiencia'), idiomas:g('pf-idiomas'),
-    conocimientos_tecnicos:_rtGet('pf-conocimientos'), habilidades:_rtGet('pf-habilidades'), actitudes:_rtGet('pf-actitudes'),
+    conocimientos_tecnicos:_rtGet('pf-conocimientos'), ..._pfGetHabilidades(), actitudes:_rtGet('pf-actitudes'),
     plan_carrera:_pfGetPlanRows(),
     disponibilidad_viajar:g('pf-viajar'), tipo_trabajo:g('pf-tipo-trabajo'),
     horario_trabajo:g('pf-horario'), tipo_contratacion:g('pf-contratacion'), prestaciones:g('pf-prestaciones'),
@@ -10793,7 +10893,19 @@ async function generarPDFPerfil(id){
   row2('Experiencia previa',p.experiencia_previa,'','');
   row2('Idiomas',p.idiomas,'','');
   chkNewPage();rowTA('Conocimientos técnicos',_rtToText(p.conocimientos_tecnicos||''));
-  chkNewPage();rowTA('Habilidades',_rtToText(p.habilidades||''));
+  chkNewPage();
+  if(p.habilidades_modo==='diccionario'&&p.habilidades_dic?.length){
+    doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
+    doc.text('Habilidades',ml,y+4);
+    const habLines=doc.splitTextToSize((p.habilidades_dic||[]).map(h=>`• ${h}`).join('\n'),mr-ml-38);
+    doc.setTextColor(...black);
+    habLines.forEach((l,i)=>doc.text(l,ml+38,y+4+i*4.5));
+    const h=Math.max(lh,habLines.length*4.5+2);
+    doc.setDrawColor(220,220,220);doc.line(ml,y+h,mr,y+h);
+    y+=h;
+  } else {
+    rowTA('Habilidades',_rtToText(p.habilidades||''));
+  }
   chkNewPage();rowTA('Actitudes',_rtToText(p.actitudes||''));
 
   chkNewPage();

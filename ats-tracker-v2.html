@@ -10280,12 +10280,13 @@ function openPerfilModal(empId, perfilId){
   const existing = document.getElementById('modal-perfil-puesto');
   if(existing) existing.remove();
   const modal = document.createElement('div');
-  modal.className='modal open';
+  modal.className='modal-overlay open';
   modal.id='modal-perfil-puesto';
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
   modal.innerHTML=`
-  <div class="modal-box" style="max-width:740px;width:95vw;max-height:90vh;overflow-y:auto">
-    <div class="modal-header">
-      <span class="modal-title">${perfilId?'Editar perfil':'Nuevo perfil de puesto'}</span>
+  <div class="modal modal-lg" style="max-width:740px;width:95vw;max-height:90vh;overflow-y:auto">
+    <div class="mh">
+      <h3>${perfilId?'Editar perfil':'Nuevo perfil de puesto'}</h3>
       <button class="modal-close" onclick="document.getElementById('modal-perfil-puesto').remove()">×</button>
     </div>
     <div style="padding:20px;display:flex;flex-direction:column;gap:0">
@@ -10403,7 +10404,6 @@ function openPerfilModal(empId, perfilId){
     </div>
   </div>`;
   document.body.appendChild(modal);
-  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
 }
 
 async function savePerfilPuesto(){

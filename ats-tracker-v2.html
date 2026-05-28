@@ -408,7 +408,6 @@ input[type=date]{color:var(--text)}
     <div class="nav-item" onclick="showPage('pipeline')" id="nav-pipeline" data-tooltip="Pipeline"><i class="fa fa-stream"></i><span class="nav-item-text"> Pipeline</span></div>
     <div class="nav-item" onclick="showPage('vacantes')" id="nav-vacantes" data-tooltip="Vacantes"><i class="fa fa-briefcase"></i><span class="nav-item-text"> Vacantes</span></div>
     <div class="nav-item" onclick="showPage('candidatos')" id="nav-candidatos" data-tooltip="Candidatos"><i class="fa fa-users"></i><span class="nav-item-text"> Candidatos</span></div>
-    <div class="nav-item" onclick="showPage('perfiles')" id="nav-perfiles" data-tooltip="Perfiles de puesto"><i class="fa fa-id-card"></i><span class="nav-item-text"> Perfiles de puesto</span></div>
     <div class="nav-section">Reportes</div>
     <div class="nav-item" onclick="showPage('reclutadores')" id="nav-reclutadores" data-tooltip="Reclutadores"><i class="fa fa-user-tie"></i><span class="nav-item-text"> Reclutadores</span></div>
     <div class="nav-item" onclick="nav('tiempos')" id="nav-tiempos" data-tooltip="Análisis de tiempos"><i class="fa fa-clock"></i><span class="nav-item-text"> Análisis de tiempos</span></div>
@@ -1536,6 +1535,23 @@ function adaptUIToRole() {
       const candItem = document.getElementById('nav-candidatos');
       if(candItem) candItem.parentNode.insertBefore(docItem, candItem.nextSibling);
       else navEl.appendChild(docItem);
+    }
+  }
+
+  // Perfiles de puesto — visible para admin, reclutador y rh_cliente
+  if(!document.getElementById('nav-perfiles')){
+    const navEl = document.querySelector('.sb-nav');
+    if(navEl){
+      const perfilItem = document.createElement('div');
+      perfilItem.className = 'nav-item';
+      perfilItem.id = 'nav-perfiles';
+      perfilItem.dataset.tooltip = 'Perfiles de puesto';
+      perfilItem.innerHTML = '<i class="fa fa-id-card"></i><span class="nav-item-text"> Perfiles de puesto</span>';
+      perfilItem.setAttribute('onclick', "showPage('perfiles')");
+      const anchor = document.getElementById('nav-documentacion') || document.getElementById('nav-candidatos');
+      if(anchor) anchor.parentNode.insertBefore(perfilItem, anchor.nextSibling);
+      else navEl.appendChild(perfilItem);
+      if(rol==='facturacion') perfilItem.style.display='none';
     }
   }
 

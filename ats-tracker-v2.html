@@ -1018,7 +1018,7 @@ input[type=date]{color:var(--text)}
             </select>
           </div>
           <div class="fg"><label>Firma del entrevistador</label>
-            <input type="text" id="ei-firma-entrevistador" placeholder="Nombre completo">
+            <input type="text" id="ei-firma-entrevistador" readonly style="background:var(--surface2);cursor:default;color:var(--text2)">
           </div>
         </div>
         <div class="fr">
@@ -2107,8 +2107,27 @@ async function loadDB(){
     if(!DB.empresas.length&&!DB.reclutadores.length)seedData();
     updateSandboxUI();
     renderDashboard();
+    _migrarFirmasEntrevistador();
   }
 }
+
+async function _migrarFirmasEntrevistador(){
+  const updates=[];
+  DB.candidatos.forEach(c=>{
+    if(!c.impresion_general&&!c.recomendacion&&!c.firma_entrevistador) return;
+    const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+    const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+    if(!rec.nombre) return;
+    if(c.firma_entrevistador!==rec.nombre){
+      c.firma_entrevistador=rec.nombre;
+      updates.push(c);
+    }
+  });
+  for(const c of updates){
+    try{ await saveRecord('candidatos',c); }catch(e){ console.warn('migrarFirmas:',e); }
+  }
+}
+
 async function saveRecord(tabla,objeto){
   if(SANDBOX_MODE){
     const key='sandbox_'+tabla;
@@ -3522,10 +3541,10 @@ function openEntrevistaModal(id){
   document.getElementById('cand-remp-alert').innerHTML='';
   _loadEntrevistaData(c);
   const _firmaEl=document.getElementById('ei-firma-entrevistador');
-  if(_firmaEl&&!_firmaEl.value){
+  if(_firmaEl){
     const _vac=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
     const _rec=DB.reclutadores.find(x=>x.id===_vac.reclutador_id)||{};
-    if(_rec.nombre) _firmaEl.value=_rec.nombre;
+    _firmaEl.value=_rec.nombre||c.firma_entrevistador||'';
   }
   _candModalMode='entrevista';
   candWizardSetStep(2);

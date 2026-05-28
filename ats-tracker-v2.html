@@ -8329,8 +8329,8 @@ function _ctRender(){
       <td class="td-p">${c.nombre||'—'}</td>
       <td>${v.departamento||'—'}</td>
       <td>${v.proyecto||'—'}</td>
-      <td>${v.fecha_apertura||'—'}</td>
-      <td style="font-family:var(--mono);font-size:12px">${fechaCont?fmt(fechaCont):'—'}</td>
+      <td style="white-space:nowrap;font-size:12px">${v.fecha_apertura||'—'}</td>
+      <td style="white-space:nowrap;font-size:12px">${fechaCont?fmt(fechaCont):'—'}</td>
       <td style="text-align:center">${wn?`<span style="background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:2px 7px;font-size:11px;font-family:var(--mono);font-weight:500">S${wn.week}</span>`:'—'}</td>
       <td>${diasTotal!==null?`<span class="dpill ${dClass(diasTotal)}">${diasTotal}d</span>`:'—'}</td>
       <td>${diasCliente!==null?`<span class="dpill dwarn">${diasCliente}d</span>`:'—'}</td>
@@ -8343,7 +8343,7 @@ function _ctRender(){
       <th style="width:36px;text-align:center">#</th>
       <th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th>
       <th>Contratado</th><th>Departamento</th><th>Proyecto</th>
-      <th>Apertura</th><th>Fecha contratación</th><th style="text-align:center">Semana</th>
+      <th style="white-space:nowrap">Apertura</th><th style="white-space:nowrap">Fecha contratación</th><th style="text-align:center">Semana</th>
       <th>Días proceso</th><th>Días cliente</th>
     </tr></thead>
     <tbody>${rows}</tbody>

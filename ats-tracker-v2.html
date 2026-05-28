@@ -161,6 +161,7 @@ input[type=date]{color:var(--text)}
 .dpb{padding:18px 20px}
 .xbtn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:2px}.xbtn:hover{color:var(--text)}
 .dpill{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:5px}
+[data-tip]{position:relative}[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);background:var(--surface3,#1e1e2e);color:#fff;padding:4px 8px;border-radius:5px;font-size:11px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:200}[data-tip]:hover::after{opacity:1}
 .dok{background:rgba(34,197,94,.1);color:var(--green)}
 .dwarn{background:rgba(245,158,11,.1);color:var(--amber)}
 .dover{background:rgba(239,68,68,.1);color:var(--red)}
@@ -5307,6 +5308,7 @@ function _mfOnChange(id){
   else if(id==='ese-estado') _eseRenderTable();
   else if(id.startsWith('log-flt-')){logPaginaActual=1;filtrarLog();}
   else if(id==='ed-flt-proy'||id==='ed-flt-dep'||id==='ed-flt-rec') filtrarVacantesEmpresa();
+  else if(id==='pf-flt-proy'||id==='pf-flt-dep') _pfRenderTabla();
 }
 
 function _mfReset(...ids){
@@ -10230,12 +10232,50 @@ function renderPerfiles(){
     </div>`;
 }
 
+let _pfCurrentEmpId=null;
 function renderPerfilesEmpresa(empId){
   const page = document.getElementById('page-perfiles');
   if(!page) return;
+  _pfCurrentEmpId=empId;
+  _mfReset('pf-flt-proy','pf-flt-dep');
   const emp = DB.empresas.find(e=>e.id===empId)||{};
-  const perfiles = DB.perfilesPuesto.filter(p=>p.empresa_id===empId);
-  const rows = perfiles.map(p=>{
+  const todosPerfiles = DB.perfilesPuesto.filter(p=>p.empresa_id===empId);
+  const proyOpts=[...new Set(todosPerfiles.map(p=>p.proyecto).filter(Boolean))].sort().map(v=>({value:v,label:v}));
+  const depOpts=[...new Set(todosPerfiles.map(p=>p.departamento).filter(Boolean))].sort().map(v=>({value:v,label:v}));
+
+  page.innerHTML=`
+    <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="renderPerfiles()"><i class="fa fa-arrow-left"></i> Empresas</button>
+      <span style="font-size:15px;font-weight:600">${emp.nombre||''}</span>
+      <span style="flex:1"></span>
+      <button class="btn btn-primary btn-sm" onclick="openPerfilModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo perfil</button>
+    </div>
+    <div class="fbar" style="margin-bottom:14px">
+      <div id="wrap-pf-flt-proy" style="flex:none"><button id="btn-pf-flt-proy" onclick="_mfOpen('pf-flt-proy',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:110px;max-width:220px;justify-content:space-between"><span id="lbl-pf-flt-proy" style="overflow:hidden;text-overflow:ellipsis">Proyecto</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3);flex-shrink:0"></i></button></div>
+      <div id="wrap-pf-flt-dep" style="flex:none"><button id="btn-pf-flt-dep" onclick="_mfOpen('pf-flt-dep',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:130px;max-width:220px;justify-content:space-between"><span id="lbl-pf-flt-dep" style="overflow:hidden;text-overflow:ellipsis">Departamento</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3);flex-shrink:0"></i></button></div>
+      <span id="pf-flt-count" style="font-size:12px;color:var(--text3)"></span>
+    </div>
+    <div id="pf-tabla-wrap"></div>`;
+
+  _mfPopulate('pf-flt-proy', proyOpts, 'Proyecto');
+  _mfPopulate('pf-flt-dep', depOpts, 'Departamento');
+  _pfRenderTabla();
+}
+
+function _pfRenderTabla(){
+  const empId=_pfCurrentEmpId;
+  const wrap=document.getElementById('pf-tabla-wrap');
+  if(!wrap||!empId) return;
+  const mfP=_mfGet('pf-flt-proy'), mfD=_mfGet('pf-flt-dep');
+  const todosPerfiles=DB.perfilesPuesto.filter(p=>p.empresa_id===empId);
+  const perfiles=todosPerfiles.filter(p=>{
+    if(mfP&&!mfP.has(p.proyecto||'')) return false;
+    if(mfD&&!mfD.has(p.departamento||'')) return false;
+    return true;
+  });
+  const count=document.getElementById('pf-flt-count');
+  if(count) count.textContent=`${perfiles.length} perfil${perfiles.length!==1?'es':''}`;
+  const rows=perfiles.map(p=>{
     const mod=p.updated_at?new Date(p.updated_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
     return`<tr>
       <td class="td-p" style="font-weight:500">${p.nombre_puesto||'—'}</td>
@@ -10243,27 +10283,18 @@ function renderPerfilesEmpresa(empId){
       <td style="font-size:12px;color:var(--text3)">${p.departamento||'—'}</td>
       <td style="font-size:11px;color:var(--text3);white-space:nowrap">${mod}</td>
       <td style="text-align:right;white-space:nowrap">
-        <button class="btn btn-ghost btn-sm" onclick="openPerfilModal('${empId}','${p.id}')"><i class="fa fa-edit"></i></button>
-        <button class="btn btn-ghost btn-sm" onclick="generarPDFPerfil('${p.id}')"><i class="fa fa-file-pdf"></i></button>
-        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deletePerfilPuesto('${p.id}')"><i class="fa fa-trash"></i></button>
+        <button class="btn btn-ghost btn-sm" data-tip="Editar" onclick="openPerfilModal('${empId}','${p.id}')"><i class="fa fa-edit"></i></button>
+        <button class="btn btn-ghost btn-sm" data-tip="Exportar PDF" onclick="generarPDFPerfil('${p.id}')"><i class="fa fa-file-pdf"></i></button>
+        <button class="btn btn-ghost btn-sm" data-tip="Eliminar" style="color:var(--red)" onclick="deletePerfilPuesto('${p.id}')"><i class="fa fa-trash"></i></button>
       </td>
     </tr>`;
   }).join('');
-  page.innerHTML=`
-    <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px">
-      <button class="btn btn-ghost btn-sm" onclick="renderPerfiles()"><i class="fa fa-arrow-left"></i> Empresas</button>
-      <span style="font-size:15px;font-weight:600">${emp.nombre||''}</span>
-      <span style="flex:1"></span>
-      <button class="btn btn-primary btn-sm" onclick="openPerfilModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo perfil</button>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>Nombre del puesto</th><th>Proyecto</th><th>Departamento</th><th style="white-space:nowrap">Últ. modificación</th><th></th>
-        </tr></thead>
-        <tbody>${rows||'<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px">Sin perfiles registrados — agrega el primero</td></tr>'}</tbody>
-      </table>
-    </div>`;
+  wrap.innerHTML=`<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Nombre del puesto</th><th>Proyecto</th><th>Departamento</th><th style="white-space:nowrap">Últ. modificación</th><th></th>
+    </tr></thead>
+    <tbody>${rows||`<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin perfiles${(mfP||mfD)?' que coincidan con los filtros':' registrados — agrega el primero'}</td></tr>`}</tbody>
+  </table></div>`;
 }
 
 let _perfilEmpId=null, _perfilId=null;

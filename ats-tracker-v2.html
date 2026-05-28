@@ -3521,6 +3521,12 @@ function openEntrevistaModal(id){
   document.getElementById('cand-id').value=id;
   document.getElementById('cand-remp-alert').innerHTML='';
   _loadEntrevistaData(c);
+  const _firmaEl=document.getElementById('ei-firma-entrevistador');
+  if(_firmaEl&&!_firmaEl.value){
+    const _vac=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+    const _rec=DB.reclutadores.find(x=>x.id===_vac.reclutador_id)||{};
+    if(_rec.nombre) _firmaEl.value=_rec.nombre;
+  }
   _candModalMode='entrevista';
   candWizardSetStep(2);
   _updateCandModalMode();

@@ -10665,7 +10665,8 @@ async function generarPDFPerfil(id){
   section('Autorizaciones');
   row2('Elaboró',p.elaboro,'','');
 
-  const fname=(p.nombre_puesto||'perfil').replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'')+'.pdf';
+  const clean=s=>(s||'').trim().replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s]/g,'').trim();
+  const fname=`Perfil de puesto ${clean(p.nombre_puesto)} ${clean(emp.nombre)}.pdf`;
   doc.save(fname);
   showToast('PDF generado ✓');
 }

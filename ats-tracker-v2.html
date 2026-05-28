@@ -7050,9 +7050,12 @@ async function showHCWeekList(empId){
           :`<span style="color:var(--text3);font-size:12px">Sin crear</span>`}
       </td>
       <td style="text-align:center">
+        <div style="display:flex;gap:6px;justify-content:center;align-items:center">
         ${creada
-          ?`<button class="btn btn-ghost btn-sm" onclick="abrirTablaHC('${empId}',${s},${anio})"><i class="fa fa-table"></i> Abrir</button>`
+          ?`<button class="btn btn-ghost btn-sm" onclick="abrirTablaHC('${empId}',${s},${anio})"><i class="fa fa-table"></i> Abrir</button>
+             <button class="btn btn-danger btn-sm" onclick="eliminarSemanaHC('${empId}',${s},${anio})" title="Eliminar datos de esta semana"><i class="fa fa-trash"></i></button>`
           :`<button class="btn btn-primary btn-sm" onclick="crearSemanaHC('${empId}',${s},${anio})"><i class="fa fa-plus"></i> Crear</button>`}
+        </div>
       </td>
     </tr>`);
   }
@@ -7118,6 +7121,17 @@ async function crearSemanaHC(empId, semana, anio){
   const tienePrev=prevData?.length>0;
   showToast(`Semana ${semana} creada${tienePrev?' (base: semana '+prevSemana+')':''} ✓`);
   await abrirTablaHC(empId,semana,anio);
+}
+
+async function eliminarSemanaHC(empId, semana, anio){
+  const emp=DB.empresas.find(x=>x.id===empId)||{};
+  const confirmar=confirm(`¿Eliminar todos los datos de la semana ${semana} de ${emp.nombre||'esta empresa'}?\nEsta acción no se puede deshacer.`);
+  if(!confirmar) return;
+  const{error}=await sbClient.from('hc_resumen')
+    .delete().eq('empresa_id',empId).eq('semana',semana).eq('anio',anio);
+  if(error){showToast('Error al eliminar: '+error.message,'err');return;}
+  showToast(`Semana ${semana} eliminada`);
+  await showHCWeekList(empId);
 }
 
 async function abrirTablaHC(empId, semana, anio){

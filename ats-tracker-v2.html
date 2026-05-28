@@ -10225,6 +10225,85 @@ async function docCfgSave(empId){
 /* ============================================================
    PERFILES DE PUESTO
    ============================================================ */
+function _pfPlanRowHTML(r={}){
+  const inp=(ph,val='',w='80px')=>`<input type="text" placeholder="${ph}" value="${val}" style="width:${w};min-width:0;font-size:12px">`;
+  return `<div class="pf-plan-row" draggable="true"
+    ondragstart="_pfDragStart(event)" ondragover="_pfDragOver(event)" ondrop="_pfDrop(event)" ondragend="_pfDragEnd()"
+    style="display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--surface2);border-radius:6px;margin-bottom:6px;cursor:default">
+    <span style="cursor:grab;color:var(--text3);font-size:16px;flex-shrink:0;line-height:1;padding:0 2px">⠿</span>
+    ${inp('Nivel',r.nivel||'','90px')}
+    ${inp('Puesto',r.puesto||'','1fr')}
+    ${inp('$ Salario',r.salario||'','90px')}
+    ${inp('Extras',r.extras||'','80px')}
+    ${inp('Tiempo',r.tiempo||'','70px')}
+    <button type="button" onclick="this.closest('.pf-plan-row').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;padding:0 2px;flex-shrink:0">×</button>
+  </div>`;
+}
+function _pfPlanAddRow(){
+  const container=document.getElementById('pf-plan-rows');
+  if(!container) return;
+  const div=document.createElement('div');
+  div.innerHTML=_pfPlanRowHTML();
+  container.appendChild(div.firstElementChild);
+}
+function _pfGetPlanRows(){
+  return [...document.querySelectorAll('#pf-plan-rows .pf-plan-row')].map(row=>{
+    const inputs=[...row.querySelectorAll('input')];
+    return{nivel:inputs[0]?.value||'',puesto:inputs[1]?.value||'',salario:inputs[2]?.value||'',extras:inputs[3]?.value||'',tiempo:inputs[4]?.value||''};
+  });
+}
+let _pfDragSrc=null;
+function _pfDragStart(e){_pfDragSrc=e.currentTarget;e.dataTransfer.effectAllowed='move';}
+function _pfDragOver(e){e.preventDefault();e.dataTransfer.dropEffect='move';const t=e.currentTarget;if(t!==_pfDragSrc)t.style.borderTop='2px solid var(--accent)';}
+function _pfDragEnd(){document.querySelectorAll('.pf-plan-row').forEach(r=>r.style.borderTop='');}
+function _pfDrop(e){
+  e.preventDefault();
+  const t=e.currentTarget;
+  t.style.borderTop='';
+  if(_pfDragSrc&&t!==_pfDragSrc){
+    const container=document.getElementById('pf-plan-rows');
+    const rows=[...container.querySelectorAll('.pf-plan-row')];
+    const fromIdx=rows.indexOf(_pfDragSrc);
+    const toIdx=rows.indexOf(t);
+    if(fromIdx<toIdx) t.after(_pfDragSrc); else t.before(_pfDragSrc);
+  }
+  _pfDragSrc=null;
+}
+
+function _pfIdiomaAdd(){
+  const sel=document.getElementById('pf-idioma-sel');
+  const otro=document.getElementById('pf-idioma-otro');
+  const val=sel?.value==='__otro__'?(otro?.value.trim()||''):(sel?.value||'');
+  if(!val) return;
+  const chips=document.getElementById('pf-idiomas-chips');
+  if(!chips) return;
+  // evitar duplicados
+  const existing=[...chips.querySelectorAll('span')].map(s=>s.textContent.replace('×','').trim());
+  if(existing.includes(val)) return;
+  const chip=document.createElement('span');
+  chip.style.cssText='display:inline-flex;align-items:center;gap:4px;background:var(--accent);color:#fff;border-radius:20px;padding:2px 10px;font-size:12px';
+  chip.innerHTML=`${val}<button type="button" onclick="_pfIdiomaRemove(this)" style="background:none;border:none;color:#fff;cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 2px">×</button>`;
+  chips.appendChild(chip);
+  _pfIdiomaSync();
+  if(sel) sel.value='';
+  if(otro){ otro.value=''; otro.style.display='none'; }
+}
+function _pfIdiomaRemove(btn){
+  btn.closest('span').remove();
+  _pfIdiomaSync();
+}
+function _pfIdiomaSync(){
+  const chips=document.getElementById('pf-idiomas-chips');
+  const hidden=document.getElementById('pf-idiomas');
+  if(!chips||!hidden) return;
+  hidden.value=[...chips.querySelectorAll('span')].map(s=>s.textContent.replace('×','').trim()).join(',');
+}
+function _pfIdiomaSelChange(){
+  const sel=document.getElementById('pf-idioma-sel');
+  const otro=document.getElementById('pf-idioma-otro');
+  if(otro) otro.style.display=sel?.value==='__otro__'?'':'none';
+}
+
 function _rtBox(id, html='', placeholder=''){
   return `<div class="rt-wrap">
     <div class="rt-bar">
@@ -10417,7 +10496,14 @@ function openPerfilModal(empId, perfilId){
       <!-- PERFIL DE PUESTO -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Perfil de puesto</div>
       <div class="g2" style="margin-bottom:8px">
-        <div class="fg"><label>Sexo</label><input type="text" id="pf-sexo" value="${v('sexo')}"></div>
+        <div class="fg"><label>Sexo</label>
+          <select id="pf-sexo">
+            <option value="">— Seleccionar —</option>
+            <option value="Masculino"${v('sexo')==='Masculino'?' selected':''}>Masculino</option>
+            <option value="Femenino"${v('sexo')==='Femenino'?' selected':''}>Femenino</option>
+            <option value="Indistinto"${v('sexo')==='Indistinto'?' selected':''}>Indistinto</option>
+          </select>
+        </div>
         <div class="fg"><label>Edad</label>
           <div style="display:flex;gap:8px;align-items:center">
             <input type="number" id="pf-edad-ini" value="${v('edad_ini')}" placeholder="Mín" style="width:80px;text-align:center" min="16" max="99">
@@ -10428,36 +10514,60 @@ function openPerfilModal(empId, perfilId){
         </div>
       </div>
       <div class="g2" style="margin-bottom:8px">
-        <div class="fg"><label>Escolaridad</label><input type="text" id="pf-escolaridad" value="${v('escolaridad')}"></div>
+        <div class="fg"><label>Escolaridad</label>
+          <select id="pf-escolaridad">
+            <option value="">— Seleccionar —</option>
+            ${['Secundaria','Preparatoria / Bachillerato','Técnico / Tecnólogo','Carrera técnica','Licenciatura','Ingeniería','Maestría','Doctorado','Indistinto'].map(o=>`<option value="${o}"${v('escolaridad')===o?' selected':''}>${o}</option>`).join('')}
+          </select>
+        </div>
         <div class="fg"><label>Experiencia previa</label><input type="text" id="pf-experiencia" value="${v('experiencia_previa')}"></div>
       </div>
-      <div class="fg" style="margin-bottom:8px"><label>Idiomas</label><input type="text" id="pf-idiomas" value="${v('idiomas')}"></div>
+      <div class="fg" style="margin-bottom:8px"><label>Idiomas</label>
+        <div style="border:1px solid var(--border2);border-radius:8px;padding:6px 8px;background:var(--surface2)">
+          <div id="pf-idiomas-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+            ${(()=>{const saved=v('idiomas');if(!saved)return'';return saved.split(',').filter(Boolean).map(l=>`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--accent);color:#fff;border-radius:20px;padding:2px 10px;font-size:12px">${l.trim()}<button type="button" onclick="_pfIdiomaRemove(this)" style="background:none;border:none;color:#fff;cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 2px">×</button></span>`).join('');})()}
+          </div>
+          <div style="display:flex;gap:6px">
+            <select id="pf-idioma-sel" style="flex:1" onchange="_pfIdiomaSelChange()">
+              <option value="">Seleccionar idioma...</option>
+              ${['Español','Inglés','Francés','Alemán','Italiano','Portugués','Mandarín','Japonés','Árabe','Ruso'].map(l=>`<option value="${l}">${l}</option>`).join('')}
+              <option value="__otro__">Otro...</option>
+            </select>
+            <input type="text" id="pf-idioma-otro" placeholder="Escribir idioma" style="display:none;width:120px">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="_pfIdiomaAdd()"><i class="fa fa-plus"></i></button>
+          </div>
+        </div>
+        <input type="hidden" id="pf-idiomas" value="${v('idiomas')}">
+      </div>
       <div class="fg" style="margin-bottom:8px"><label>Conocimientos técnicos</label>${_rtBox('pf-conocimientos',v('conocimientos_tecnicos'))}</div>
       <div class="fg" style="margin-bottom:8px"><label>Habilidades</label>${_rtBox('pf-habilidades',v('habilidades'))}</div>
-      <div class="fg" style="margin-bottom:14px"><label>Actitudes</label>${_rtBox('pf-actitudes',v('actitudes'),'• Proactividad')}</div>
+      <div class="fg" style="margin-bottom:14px"><label>Actitudes</label>${_rtBox('pf-actitudes',v('actitudes'))}</div>
 
       <!-- PLAN DE CARRERA -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Plan de carrera y propuesta salarial</div>
-      <div style="margin-bottom:14px;overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead><tr style="background:var(--surface2)">
-            <th style="padding:6px 8px;text-align:left;font-weight:600">Nivel</th>
-            <th style="padding:6px 8px;font-weight:600">Puesto</th>
-            <th style="padding:6px 8px;font-weight:600">Salario inicial</th>
-            <th style="padding:6px 8px;font-weight:600">Extras</th>
-            <th style="padding:6px 8px;font-weight:600">Tiempo</th>
-          </tr></thead>
-          <tbody>
-            ${['inicial','intermedio','final'].map(n=>`<tr>
-              <td style="padding:4px 8px;font-weight:500;white-space:nowrap">${n.charAt(0).toUpperCase()+n.slice(1)}</td>
-              <td style="padding:3px 4px"><input type="text" id="pf-plan-${n}-puesto" value="${v('plan_'+n+'_puesto')}" style="width:100%;min-width:100px"></td>
-              <td style="padding:3px 4px"><input type="text" id="pf-plan-${n}-salario" value="${v('plan_'+n+'_salario')}" placeholder="$" style="width:90px"></td>
-              <td style="padding:3px 4px"><input type="text" id="pf-plan-${n}-extras" value="${v('plan_'+n+'_extras')}" style="width:90px"></td>
-              <td style="padding:3px 4px"><input type="text" id="pf-plan-${n}-tiempo" value="${v('plan_'+n+'_tiempo')}" style="width:80px"></td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
+      <div style="margin-bottom:4px;display:flex;gap:6px;padding:4px 8px 4px 28px;font-size:11px;font-weight:600;color:var(--text3)">
+        <span style="width:90px">NIVEL</span>
+        <span style="flex:1">PUESTO</span>
+        <span style="width:90px">SALARIO</span>
+        <span style="width:80px">EXTRAS</span>
+        <span style="width:70px">TIEMPO</span>
+        <span style="width:22px"></span>
       </div>
+      <div id="pf-plan-rows" style="margin-bottom:8px">
+        ${(()=>{
+          const rows=p.plan_carrera||(p.plan_inicial_puesto||p.plan_inicial_salario?[
+            {nivel:'Inicial',puesto:p.plan_inicial_puesto||'',salario:p.plan_inicial_salario||'',extras:p.plan_inicial_extras||'',tiempo:p.plan_inicial_tiempo||''},
+            {nivel:'Intermedio',puesto:p.plan_intermedio_puesto||'',salario:p.plan_intermedio_salario||'',extras:p.plan_intermedio_extras||'',tiempo:p.plan_intermedio_tiempo||''},
+            {nivel:'Final',puesto:p.plan_final_puesto||'',salario:p.plan_final_salario||'',extras:p.plan_final_extras||'',tiempo:p.plan_final_tiempo||''},
+          ]:[
+            {nivel:'Inicial',puesto:'',salario:'',extras:'',tiempo:''},
+            {nivel:'Intermedio',puesto:'',salario:'',extras:'',tiempo:''},
+            {nivel:'Final',puesto:'',salario:'',extras:'',tiempo:''},
+          ]);
+          return rows.map(r=>_pfPlanRowHTML(r)).join('');
+        })()}
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="_pfPlanAddRow()" style="margin-bottom:14px"><i class="fa fa-plus"></i> Agregar nivel</button>
 
       <!-- CONDICIONES DE TRABAJO -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Condiciones de trabajo</div>
@@ -10529,12 +10639,7 @@ async function savePerfilPuesto(){
     experiencia_previa:g('pf-experiencia'), idiomas:g('pf-idiomas'),
     conocimientos_tecnicos:g('pf-conocimientos'), habilidades:g('pf-habilidades'),
     actitudes:g('pf-actitudes'),
-    plan_inicial_puesto:g('pf-plan-inicial-puesto'), plan_inicial_salario:g('pf-plan-inicial-salario'),
-    plan_inicial_extras:g('pf-plan-inicial-extras'), plan_inicial_tiempo:g('pf-plan-inicial-tiempo'),
-    plan_intermedio_puesto:g('pf-plan-intermedio-puesto'), plan_intermedio_salario:g('pf-plan-intermedio-salario'),
-    plan_intermedio_extras:g('pf-plan-intermedio-extras'), plan_intermedio_tiempo:g('pf-plan-intermedio-tiempo'),
-    plan_final_puesto:g('pf-plan-final-puesto'), plan_final_salario:g('pf-plan-final-salario'),
-    plan_final_extras:g('pf-plan-final-extras'), plan_final_tiempo:g('pf-plan-final-tiempo'),
+    plan_carrera:_pfGetPlanRows(),
     disponibilidad_viajar:g('pf-viajar'), tipo_trabajo:g('pf-tipo-trabajo'),
     horario_trabajo:g('pf-horario'), tipo_contratacion:g('pf-contratacion'),
     prestaciones:g('pf-prestaciones'), acompanamiento_capacitacion:g('pf-acompanamiento'),
@@ -10575,12 +10680,7 @@ async function exportPerfilPDFBtn(){
     sexo:g('pf-sexo'), edad_ini:g('pf-edad-ini'), edad_fin:g('pf-edad-fin'), escolaridad:g('pf-escolaridad'),
     experiencia_previa:g('pf-experiencia'), idiomas:g('pf-idiomas'),
     conocimientos_tecnicos:_rtGet('pf-conocimientos'), habilidades:_rtGet('pf-habilidades'), actitudes:_rtGet('pf-actitudes'),
-    plan_inicial_puesto:g('pf-plan-inicial-puesto'), plan_inicial_salario:g('pf-plan-inicial-salario'),
-    plan_inicial_extras:g('pf-plan-inicial-extras'), plan_inicial_tiempo:g('pf-plan-inicial-tiempo'),
-    plan_intermedio_puesto:g('pf-plan-intermedio-puesto'), plan_intermedio_salario:g('pf-plan-intermedio-salario'),
-    plan_intermedio_extras:g('pf-plan-intermedio-extras'), plan_intermedio_tiempo:g('pf-plan-intermedio-tiempo'),
-    plan_final_puesto:g('pf-plan-final-puesto'), plan_final_salario:g('pf-plan-final-salario'),
-    plan_final_extras:g('pf-plan-final-extras'), plan_final_tiempo:g('pf-plan-final-tiempo'),
+    plan_carrera:_pfGetPlanRows(),
     disponibilidad_viajar:g('pf-viajar'), tipo_trabajo:g('pf-tipo-trabajo'),
     horario_trabajo:g('pf-horario'), tipo_contratacion:g('pf-contratacion'), prestaciones:g('pf-prestaciones'),
     acompanamiento_capacitacion:_rtGet('pf-acompanamiento'),
@@ -10698,18 +10798,20 @@ async function generarPDFPerfil(id){
 
   chkNewPage();
   section('Plan de carrera y propuesta salarial');
-  // table header
+  const planRows=p.plan_carrera||(p.plan_inicial_puesto?[
+    {nivel:'Inicial',puesto:p.plan_inicial_puesto||'',salario:p.plan_inicial_salario||'',extras:p.plan_inicial_extras||'',tiempo:p.plan_inicial_tiempo||''},
+    {nivel:'Intermedio',puesto:p.plan_intermedio_puesto||'',salario:p.plan_intermedio_salario||'',extras:p.plan_intermedio_extras||'',tiempo:p.plan_intermedio_tiempo||''},
+    {nivel:'Final',puesto:p.plan_final_puesto||'',salario:p.plan_final_salario||'',extras:p.plan_final_extras||'',tiempo:p.plan_final_tiempo||''},
+  ]:[]);
   doc.setFillColor(...gray);doc.rect(ml,y,mr-ml,6,'F');
   doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...black);
-  ['Nivel','Puesto','Salario inicial','Extras','Tiempo'].forEach((h,i)=>{
-    const xs=[ml+2,ml+28,ml+88,ml+122,ml+152];
-    doc.text(h,xs[i],y+4);
-  });
+  const xs=[ml+2,ml+28,ml+88,ml+122,ml+152];
+  ['Nivel','Puesto','Salario inicial','Extras','Tiempo'].forEach((h,i)=>doc.text(h,xs[i],y+4));
   y+=7;
-  ['inicial','intermedio','final'].forEach(n=>{
+  (planRows||[]).forEach(r=>{
+    chkNewPage();
     doc.setFont('helvetica','normal');
-    const xs=[ml+2,ml+28,ml+88,ml+122,ml+152];
-    [n.charAt(0).toUpperCase()+n.slice(1),p[`plan_${n}_puesto`]||'',p[`plan_${n}_salario`]||'',p[`plan_${n}_extras`]||'',p[`plan_${n}_tiempo`]||''].forEach((v,i)=>doc.text(v,xs[i],y+4));
+    [r.nivel||'',r.puesto||'',r.salario||'',r.extras||'',r.tiempo||''].forEach((val,i)=>doc.text(String(val),xs[i],y+4));
     doc.setDrawColor(220,220,220);doc.line(ml,y+lh,mr,y+lh);
     y+=lh;
   });

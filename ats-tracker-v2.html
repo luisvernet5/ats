@@ -10225,36 +10225,39 @@ async function docCfgSave(empId){
 /* ============================================================
    PERFILES DE PUESTO
    ============================================================ */
+let _pfRowId=0;
 function _pfPlanRowHTML(r={}){
-  const inp=(ph,val='',w)=>`<input type="text" placeholder="${ph}" value="${val||''}" style="width:${w||'100%'};min-width:0;font-size:12px">`;
-  const selTipo=`<select style="font-size:11px;padding:2px 4px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);height:28px">
-    <option value="Bruto"${(r.tipo_sueldo||'Bruto')==='Bruto'?' selected':''}>Bruto</option>
-    <option value="Neto"${r.tipo_sueldo==='Neto'?' selected':''}>Neto</option>
-  </select>`;
-  const selFrec=`<select style="font-size:11px;padding:2px 4px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);height:28px">
-    <option value="Mensual"${(r.frecuencia||'Mensual')==='Mensual'?' selected':''}>Mensual</option>
-    <option value="Quincenal"${r.frecuencia==='Quincenal'?' selected':''}>Quincenal</option>
-    <option value="Semanal"${r.frecuencia==='Semanal'?' selected':''}>Semanal</option>
-  </select>`;
+  const rid='pfr'+(++_pfRowId);
+  const mkR=(name,val,label,checked)=>`<label style="display:flex;align-items:center;gap:3px;cursor:pointer;white-space:nowrap"><input type="radio" name="${rid}_${name}" value="${val}"${checked?' checked':''} style="margin:0;cursor:pointer"><span style="font-size:11px;color:var(--text2)">${label}</span></label>`;
+  const tipoNeto=(r.tipo_sueldo||'Bruto')==='Neto';
+  const tipoBruto=(r.tipo_sueldo||'Bruto')==='Bruto';
+  const frecSemanal=r.frecuencia==='Semanal';
+  const frecQuincenal=r.frecuencia==='Quincenal';
+  const frecMensual=(r.frecuencia||'Mensual')==='Mensual';
   return `<div class="pf-plan-row" draggable="true"
     ondragstart="_pfDragStart(event)" ondragover="_pfDragOver(event)" ondrop="_pfDrop(event)" ondragend="_pfDragEnd()"
-    style="padding:8px;background:var(--surface2);border-radius:8px;margin-bottom:8px;border:1px solid var(--border)">
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-      <span style="cursor:grab;color:var(--text3);font-size:16px;flex-shrink:0;line-height:1">⠿</span>
-      <input type="text" placeholder="Nivel" value="${r.nivel||''}" style="width:90px;flex-shrink:0;font-size:12px">
-      <input type="text" placeholder="Nombre del puesto" value="${r.puesto||''}" style="flex:1;min-width:0;font-size:12px">
-      <button type="button" onclick="this.closest('.pf-plan-row').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;padding:0 4px;flex-shrink:0">×</button>
-    </div>
-    <div style="display:flex;align-items:center;gap:6px;padding-left:26px;flex-wrap:wrap">
+    style="display:grid;grid-template-columns:26px 90px 1fr 185px 90px 70px 28px;align-items:start;gap:6px;padding:8px;background:var(--surface2);border-radius:8px;margin-bottom:8px;border:1px solid var(--border)">
+    <span style="cursor:grab;color:var(--text3);font-size:16px;text-align:center;padding-top:4px">⠿</span>
+    <input type="text" placeholder="Nivel" value="${r.nivel||''}" style="font-size:12px;width:100%">
+    <input type="text" placeholder="Nombre del puesto" value="${r.puesto||''}" style="font-size:12px;width:100%;min-width:0">
+    <div style="display:flex;flex-direction:column;gap:4px">
       <div style="display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:2px 6px">
         <span style="font-size:11px;color:var(--text3)">$</span>
-        <input type="text" placeholder="Salario" value="${r.salario||''}" style="width:70px;border:none;background:transparent;font-size:12px">
+        <input type="text" placeholder="Salario" value="${r.salario||''}" style="width:100%;border:none;background:transparent;font-size:12px">
       </div>
-      ${selTipo}
-      ${selFrec}
-      ${inp('Extras',r.extras,'80px')}
-      ${inp('Tiempo',r.tiempo,'70px')}
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${mkR('tipo','Neto','Neto',tipoNeto)}
+        ${mkR('tipo','Bruto','Bruto',tipoBruto)}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${mkR('frec','Semanal','Semanal',frecSemanal)}
+        ${mkR('frec','Quincenal','Quincenal',frecQuincenal)}
+        ${mkR('frec','Mensual','Mensual',frecMensual)}
+      </div>
     </div>
+    <input type="text" placeholder="Extras" value="${r.extras||''}" style="font-size:12px;width:100%;min-width:0">
+    <input type="text" placeholder="Tiempo" value="${r.tiempo||''}" style="font-size:12px;width:100%;min-width:0">
+    <button type="button" onclick="this.closest('.pf-plan-row').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;padding:0;text-align:center;padding-top:2px">×</button>
   </div>`;
 }
 function _pfPlanAddRow(){
@@ -10266,16 +10269,15 @@ function _pfPlanAddRow(){
 }
 function _pfGetPlanRows(){
   return [...document.querySelectorAll('#pf-plan-rows .pf-plan-row')].map(row=>{
-    const inputs=[...row.querySelectorAll('input[type=text]')];
-    const selects=[...row.querySelectorAll('select')];
+    const texts=[...row.querySelectorAll('input[type=text]')];
     return{
-      nivel:inputs[0]?.value||'',
-      puesto:inputs[1]?.value||'',
-      salario:inputs[2]?.value||'',
-      tipo_sueldo:selects[0]?.value||'Bruto',
-      frecuencia:selects[1]?.value||'Mensual',
-      extras:inputs[3]?.value||'',
-      tiempo:inputs[4]?.value||''
+      nivel:texts[0]?.value||'',
+      puesto:texts[1]?.value||'',
+      salario:texts[2]?.value||'',
+      tipo_sueldo:row.querySelector('input[type=radio][name$="_tipo"]:checked')?.value||'Bruto',
+      frecuencia:row.querySelector('input[type=radio][name$="_frec"]:checked')?.value||'Mensual',
+      extras:texts[3]?.value||'',
+      tiempo:texts[4]?.value||''
     };
   });
 }
@@ -10701,6 +10703,15 @@ function openPerfilModal(empId, perfilId){
 
       <!-- PLAN DE CARRERA -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Plan de carrera y propuesta salarial</div>
+      <div style="display:grid;grid-template-columns:26px 90px 1fr 185px 90px 70px 28px;gap:6px;padding:2px 8px 4px;margin-bottom:2px">
+        <div></div>
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Nivel</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Puesto</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Salario</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Extras</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Tiempo</div>
+        <div></div>
+      </div>
       <div id="pf-plan-rows" style="margin-bottom:8px">
         ${(()=>{
           const rows=p.plan_carrera||(p.plan_inicial_puesto||p.plan_inicial_salario?[
@@ -11006,18 +11017,45 @@ async function generarPDFPerfil(id){
     doc.text(h,pxs[xi],y+4);
   });
   y+=7;
+  const _drawChk=(cx,cy,checked)=>{
+    const sz=2.5;
+    doc.setLineWidth(0.25);doc.setDrawColor(100,100,100);doc.setFillColor(255,255,255);
+    doc.rect(cx,cy-sz+0.3,sz,sz,'FD');
+    if(checked){
+      doc.setLineWidth(0.5);doc.setDrawColor(0,130,0);
+      doc.line(cx+0.2,cy-0.7,cx+0.8,cy-0.1);
+      doc.line(cx+0.8,cy-0.1,cx+sz-0.1,cy-sz+0.7);
+      doc.setLineWidth(0.25);doc.setDrawColor(100,100,100);
+    }
+  };
   (planRows||[]).forEach(r=>{
     chkNewPage();
-    doc.setFont('helvetica','normal');
-    const salStr=[r.salario?`$${r.salario}`:'',r.tipo_sueldo||'',r.frecuencia||''].filter(Boolean).join(' ');
-    const pxs=[ml+2,ml+26,ml+100,ml+148,ml+172];
-    [[r.nivel||''],[r.puesto||''],[salStr],[r.extras||''],[r.tiempo||'']].forEach((vals,xi)=>{
-      const wrapped=doc.splitTextToSize(vals[0],xi===1?70:40);
-      wrapped.forEach((wl,wi)=>doc.text(wl,pxs[xi],y+4+wi*4));
-    });
-    const maxLines=Math.max(...[[r.nivel,r.puesto,r.extras,r.tiempo].reduce((m,v)=>Math.max(m,doc.splitTextToSize(v||'',40).length),1),doc.splitTextToSize(r.puesto||'',70).length]);
-    doc.setDrawColor(220,220,220);doc.line(ml,y+lh+maxLines*2,mr,y+lh+maxLines*2);
-    y+=lh+maxLines*2;
+    doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
+    const nivelW=22,puestoW=70,extrasW=44,tiempoW=20,lnH=4;
+    const nivelLns=doc.splitTextToSize(r.nivel||'',nivelW);
+    const puestoLns=doc.splitTextToSize(r.puesto||'',puestoW);
+    const extrasLns=doc.splitTextToSize(r.extras||'',extrasW);
+    const tiempoLns=doc.splitTextToSize(r.tiempo||'',tiempoW);
+    const maxTxtLines=Math.max(nivelLns.length,puestoLns.length,extrasLns.length,tiempoLns.length);
+    const rowH=Math.max(lh+maxTxtLines*lnH,16);
+    nivelLns.forEach((l,i)=>doc.text(l,ml+2,y+4+i*lnH));
+    puestoLns.forEach((l,i)=>doc.text(l,ml+26,y+4+i*lnH));
+    extrasLns.forEach((l,i)=>doc.text(l,ml+148,y+4+i*lnH));
+    tiempoLns.forEach((l,i)=>doc.text(l,ml+172,y+4+i*lnH));
+    const sx=ml+100;
+    if(r.salario) doc.text('$'+r.salario,sx,y+4);
+    const tipoNeto=r.tipo_sueldo==='Neto';
+    const tipoBruto=(r.tipo_sueldo||'Bruto')==='Bruto';
+    _drawChk(sx,y+4+lnH,tipoNeto);doc.text('Neto',sx+3.5,y+4+lnH);
+    _drawChk(sx+14,y+4+lnH,tipoBruto);doc.text('Bruto',sx+17.5,y+4+lnH);
+    const frecSemanal=r.frecuencia==='Semanal';
+    const frecQuincenal=r.frecuencia==='Quincenal';
+    const frecMensual=(r.frecuencia||'Mensual')==='Mensual';
+    _drawChk(sx,y+4+lnH*2,frecSemanal);doc.text('Sem',sx+3.5,y+4+lnH*2);
+    _drawChk(sx+13,y+4+lnH*2,frecQuincenal);doc.text('Quin',sx+16.5,y+4+lnH*2);
+    _drawChk(sx+27,y+4+lnH*2,frecMensual);doc.text('Men',sx+30.5,y+4+lnH*2);
+    doc.setDrawColor(220,220,220);doc.line(ml,y+rowH,mr,y+rowH);
+    y+=rowH;
   });
   y+=2;
 

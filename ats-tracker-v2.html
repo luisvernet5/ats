@@ -1546,7 +1546,7 @@ function adaptUIToRole() {
       eseItem.dataset.tooltip = 'ESE';
       eseItem.innerHTML = '<i class="fa fa-file-alt"></i><span class="nav-item-text"> ESE</span>';
       eseItem.setAttribute('onclick', "showPage('ese')");
-      const anchor = document.getElementById('nav-candidatos');
+      const anchor = document.getElementById('nav-documentacion') || document.getElementById('nav-candidatos');
       if(anchor) anchor.parentNode.insertBefore(eseItem, anchor.nextSibling);
       else navEl.appendChild(eseItem);
     }

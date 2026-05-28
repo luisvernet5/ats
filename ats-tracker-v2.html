@@ -10534,6 +10534,7 @@ function renderPerfilesEmpresa(empId){
       <button class="btn btn-ghost btn-sm" onclick="renderPerfiles()"><i class="fa fa-arrow-left"></i> Empresas</button>
       <span style="font-size:15px;font-weight:600">${emp.nombre||''}</span>
       <span style="flex:1"></span>
+      <button class="btn btn-ghost btn-sm" onclick="exportarPerfilesExcel()" data-tip="Exportar listado a Excel"><i class="fa fa-file-excel"></i> Excel</button>
       <button class="btn btn-primary btn-sm" onclick="openPerfilModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo perfil</button>
     </div>
     <div class="fbar" style="margin-bottom:14px">
@@ -10581,6 +10582,31 @@ function _pfRenderTabla(){
     </tr></thead>
     <tbody>${rows||`<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin perfiles${(mfP||mfD)?' que coincidan con los filtros':' registrados — agrega el primero'}</td></tr>`}</tbody>
   </table></div>`;
+}
+
+function exportarPerfilesExcel(){
+  const empId=_pfCurrentEmpId;
+  if(!empId){showToast('Sin empresa seleccionada','err');return;}
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const mfP=_mfGet('pf-flt-proy'), mfD=_mfGet('pf-flt-dep');
+  const perfiles=DB.perfilesPuesto.filter(p=>{
+    if(p.empresa_id!==empId) return false;
+    if(mfP&&!mfP.has(p.proyecto||'')) return false;
+    if(mfD&&!mfD.has(p.departamento||'')) return false;
+    return true;
+  });
+  if(!perfiles.length){showToast('No hay perfiles para exportar','err');return;}
+  const headers=['Nombre del puesto','Proyecto','Departamento','Últ. modificación'];
+  const filas=perfiles.map(p=>{
+    const mod=p.updated_at?new Date(p.updated_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+    return[p.nombre_puesto||'',p.proyecto||'',p.departamento||'',mod];
+  });
+  const ws=XLSX.utils.aoa_to_sheet([headers,...filas]);
+  ws['!cols']=[{wch:38},{wch:22},{wch:22},{wch:24}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Perfiles de puesto');
+  XLSX.writeFile(wb,`Perfiles_${(emp.nombre||'empresa').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast('Excel exportado ✓');
 }
 
 let _perfilEmpId=null, _perfilId=null;

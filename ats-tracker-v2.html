@@ -1466,8 +1466,10 @@ function adaptUIToRole() {
       garantiaItem.dataset.tooltip = 'Garantías';
       garantiaItem.innerHTML = '<i class="fa fa-shield-alt"></i><span class="nav-item-text"> Garantías</span>';
       garantiaItem.setAttribute('onclick', "showPage('garantias')");
+      const anchor = document.getElementById('nav-contratados');
       const navEl = document.querySelector('.sb-nav');
-      if(navEl) navEl.appendChild(garantiaItem);
+      if(anchor) anchor.parentNode.insertBefore(garantiaItem, anchor.nextSibling);
+      else if(navEl) navEl.appendChild(garantiaItem);
     }
     // Crear page-garantias si no existe
     if(!document.getElementById('page-garantias')) {
@@ -1505,8 +1507,10 @@ function adaptUIToRole() {
       garantiaItem.dataset.tooltip = 'Garantías';
       garantiaItem.innerHTML = '<i class="fa fa-shield-alt"></i><span class="nav-item-text"> Garantías</span>';
       garantiaItem.setAttribute('onclick', "showPage('garantias')");
-      const elimItem = document.getElementById('nav-vacantes-eliminadas');
-      if(elimItem) elimItem.parentNode.insertBefore(garantiaItem, elimItem.nextSibling);
+      const anchor = document.getElementById('nav-ese') || document.getElementById('nav-contratados');
+      const navEl = document.querySelector('.sb-nav');
+      if(anchor) anchor.parentNode.insertBefore(garantiaItem, anchor.nextSibling);
+      else if(navEl) navEl.appendChild(garantiaItem);
     }
     if(!document.getElementById('page-garantias')) {
       const pg = document.createElement('div');
@@ -1535,7 +1539,6 @@ function adaptUIToRole() {
   // ESE — visible para admin, reclutador y facturacion
   if(['admin','reclutador','facturacion'].includes(rol) && !document.getElementById('nav-ese')){
     const navEl = document.querySelector('.sb-nav');
-    const configItem = document.getElementById('nav-config');
     if(navEl){
       const eseItem = document.createElement('div');
       eseItem.className = 'nav-item';
@@ -1543,7 +1546,8 @@ function adaptUIToRole() {
       eseItem.dataset.tooltip = 'ESE';
       eseItem.innerHTML = '<i class="fa fa-file-alt"></i><span class="nav-item-text"> ESE</span>';
       eseItem.setAttribute('onclick', "showPage('ese')");
-      if(configItem) configItem.parentNode.insertBefore(eseItem, configItem);
+      const anchor = document.getElementById('nav-contratados');
+      if(anchor) anchor.parentNode.insertBefore(eseItem, anchor.nextSibling);
       else navEl.appendChild(eseItem);
     }
   }

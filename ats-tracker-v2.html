@@ -10301,9 +10301,14 @@ function openPerfilModal(empId, perfilId){
         <div class="fg"><label>Nombre del puesto</label><input type="text" id="pf-nombre-puesto" value="${v('nombre_puesto')}" placeholder="Ej. Técnico de mantenimiento"></div>
         <div class="fg"><label>No. de revisión</label><input type="number" id="pf-no-revision" value="${v('no_revision')||1}" min="1"></div>
       </div>
-      <div class="g2" style="margin-bottom:14px">
+      <div class="g2" style="margin-bottom:10px">
         <div class="fg"><label>Lugar de trabajo</label><input type="text" id="pf-lugar-trabajo" value="${v('lugar_trabajo')}"></div>
         <div class="fg"><label>Ubicación geográfica</label><input type="text" id="pf-ubicacion" value="${v('ubicacion_geografica')}"></div>
+      </div>
+      <div class="g2" style="margin-bottom:14px">
+        <div class="fg"><label>Proyecto</label>${(()=>{const emp=DB.empresas.find(e=>e.id===empId)||{};const opts=emp.proyectos||[];if(opts.length){return`<select id="pf-proyecto"><option value="">— Seleccionar —</option>${opts.map(o=>`<option value="${o}"${v('proyecto')===o?' selected':''}>${o}</option>`).join('')}</select>`;}return`<input type="text" id="pf-proyecto" value="${v('proyecto')}">`;})()}</div>
+        <div class="fg"><label>Departamento</label>${(()=>{const emp=DB.empresas.find(e=>e.id===empId)||{};const opts=emp.departamentos||[];if(opts.length){return`<select id="pf-departamento"><option value="">— Seleccionar —</option>${opts.map(o=>`<option value="${o}"${v('departamento')===o?' selected':''}>${o}</option>`).join('')}</select>`;}return`<input type="text" id="pf-departamento" value="${v('departamento')}">`;})()}
+        </div>
       </div>
 
       <!-- ACTIVIDADES ESENCIALES -->
@@ -10413,7 +10418,8 @@ async function savePerfilPuesto(){
     id: _perfilId||uid(),
     empresa_id: _perfilEmpId,
     nombre_puesto:g('pf-nombre-puesto'), lugar_trabajo:g('pf-lugar-trabajo'),
-    ubicacion_geografica:g('pf-ubicacion'), fecha_elaboracion:g('pf-fecha-elab'),
+    ubicacion_geografica:g('pf-ubicacion'), proyecto:g('pf-proyecto'), departamento:g('pf-departamento'),
+    fecha_elaboracion:g('pf-fecha-elab'),
     fecha_revision:g('pf-fecha-rev'), no_revision:g('pf-no-revision'),
     actividades_esenciales:g('pf-actividades'),
     sexo:g('pf-sexo'), edad:g('pf-edad'), escolaridad:g('pf-escolaridad'),

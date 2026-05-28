@@ -10226,17 +10226,35 @@ async function docCfgSave(empId){
    PERFILES DE PUESTO
    ============================================================ */
 function _pfPlanRowHTML(r={}){
-  const inp=(ph,val='',w='80px')=>`<input type="text" placeholder="${ph}" value="${val}" style="width:${w};min-width:0;font-size:12px">`;
+  const inp=(ph,val='',w)=>`<input type="text" placeholder="${ph}" value="${val||''}" style="width:${w||'100%'};min-width:0;font-size:12px">`;
+  const selTipo=`<select style="font-size:11px;padding:2px 4px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);height:28px">
+    <option value="Bruto"${(r.tipo_sueldo||'Bruto')==='Bruto'?' selected':''}>Bruto</option>
+    <option value="Neto"${r.tipo_sueldo==='Neto'?' selected':''}>Neto</option>
+  </select>`;
+  const selFrec=`<select style="font-size:11px;padding:2px 4px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);height:28px">
+    <option value="Mensual"${(r.frecuencia||'Mensual')==='Mensual'?' selected':''}>Mensual</option>
+    <option value="Quincenal"${r.frecuencia==='Quincenal'?' selected':''}>Quincenal</option>
+    <option value="Semanal"${r.frecuencia==='Semanal'?' selected':''}>Semanal</option>
+  </select>`;
   return `<div class="pf-plan-row" draggable="true"
     ondragstart="_pfDragStart(event)" ondragover="_pfDragOver(event)" ondrop="_pfDrop(event)" ondragend="_pfDragEnd()"
-    style="display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--surface2);border-radius:6px;margin-bottom:6px;cursor:default">
-    <span style="cursor:grab;color:var(--text3);font-size:16px;flex-shrink:0;line-height:1;padding:0 2px">⠿</span>
-    ${inp('Nivel',r.nivel||'','90px')}
-    ${inp('Puesto',r.puesto||'','1fr')}
-    ${inp('$ Salario',r.salario||'','90px')}
-    ${inp('Extras',r.extras||'','80px')}
-    ${inp('Tiempo',r.tiempo||'','70px')}
-    <button type="button" onclick="this.closest('.pf-plan-row').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;padding:0 2px;flex-shrink:0">×</button>
+    style="padding:8px;background:var(--surface2);border-radius:8px;margin-bottom:8px;border:1px solid var(--border)">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+      <span style="cursor:grab;color:var(--text3);font-size:16px;flex-shrink:0;line-height:1">⠿</span>
+      <input type="text" placeholder="Nivel" value="${r.nivel||''}" style="width:90px;flex-shrink:0;font-size:12px">
+      <input type="text" placeholder="Nombre del puesto" value="${r.puesto||''}" style="flex:1;min-width:0;font-size:12px">
+      <button type="button" onclick="this.closest('.pf-plan-row').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;padding:0 4px;flex-shrink:0">×</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;padding-left:26px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:2px 6px">
+        <span style="font-size:11px;color:var(--text3)">$</span>
+        <input type="text" placeholder="Salario" value="${r.salario||''}" style="width:70px;border:none;background:transparent;font-size:12px">
+      </div>
+      ${selTipo}
+      ${selFrec}
+      ${inp('Extras',r.extras,'80px')}
+      ${inp('Tiempo',r.tiempo,'70px')}
+    </div>
   </div>`;
 }
 function _pfPlanAddRow(){
@@ -10248,8 +10266,17 @@ function _pfPlanAddRow(){
 }
 function _pfGetPlanRows(){
   return [...document.querySelectorAll('#pf-plan-rows .pf-plan-row')].map(row=>{
-    const inputs=[...row.querySelectorAll('input')];
-    return{nivel:inputs[0]?.value||'',puesto:inputs[1]?.value||'',salario:inputs[2]?.value||'',extras:inputs[3]?.value||'',tiempo:inputs[4]?.value||''};
+    const inputs=[...row.querySelectorAll('input[type=text]')];
+    const selects=[...row.querySelectorAll('select')];
+    return{
+      nivel:inputs[0]?.value||'',
+      puesto:inputs[1]?.value||'',
+      salario:inputs[2]?.value||'',
+      tipo_sueldo:selects[0]?.value||'Bruto',
+      frecuencia:selects[1]?.value||'Mensual',
+      extras:inputs[3]?.value||'',
+      tiempo:inputs[4]?.value||''
+    };
   });
 }
 let _pfDragSrc=null;
@@ -10674,14 +10701,6 @@ function openPerfilModal(empId, perfilId){
 
       <!-- PLAN DE CARRERA -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Plan de carrera y propuesta salarial</div>
-      <div style="margin-bottom:4px;display:flex;gap:6px;padding:4px 8px 4px 28px;font-size:11px;font-weight:600;color:var(--text3)">
-        <span style="width:90px">NIVEL</span>
-        <span style="flex:1">PUESTO</span>
-        <span style="width:90px">SALARIO</span>
-        <span style="width:80px">EXTRAS</span>
-        <span style="width:70px">TIEMPO</span>
-        <span style="width:22px"></span>
-      </div>
       <div id="pf-plan-rows" style="margin-bottom:8px">
         ${(()=>{
           const rows=p.plan_carrera||(p.plan_inicial_puesto||p.plan_inicial_salario?[
@@ -10982,15 +11001,23 @@ async function generarPDFPerfil(id){
   ]:[]);
   doc.setFillColor(...gray);doc.rect(ml,y,mr-ml,6,'F');
   doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...black);
-  const xs=[ml+2,ml+28,ml+88,ml+122,ml+152];
-  ['Nivel','Puesto','Salario inicial','Extras','Tiempo'].forEach((h,i)=>doc.text(h,xs[i],y+4));
+  ['Nivel','Puesto','Salario','Extras','Tiempo'].forEach((h,xi)=>{
+    const pxs=[ml+2,ml+26,ml+100,ml+148,ml+172];
+    doc.text(h,pxs[xi],y+4);
+  });
   y+=7;
   (planRows||[]).forEach(r=>{
     chkNewPage();
     doc.setFont('helvetica','normal');
-    [r.nivel||'',r.puesto||'',r.salario||'',r.extras||'',r.tiempo||''].forEach((val,i)=>doc.text(String(val),xs[i],y+4));
-    doc.setDrawColor(220,220,220);doc.line(ml,y+lh,mr,y+lh);
-    y+=lh;
+    const salStr=[r.salario?`$${r.salario}`:'',r.tipo_sueldo||'',r.frecuencia||''].filter(Boolean).join(' ');
+    const pxs=[ml+2,ml+26,ml+100,ml+148,ml+172];
+    [[r.nivel||''],[r.puesto||''],[salStr],[r.extras||''],[r.tiempo||'']].forEach((vals,xi)=>{
+      const wrapped=doc.splitTextToSize(vals[0],xi===1?70:40);
+      wrapped.forEach((wl,wi)=>doc.text(wl,pxs[xi],y+4+wi*4));
+    });
+    const maxLines=Math.max(...[[r.nivel,r.puesto,r.extras,r.tiempo].reduce((m,v)=>Math.max(m,doc.splitTextToSize(v||'',40).length),1),doc.splitTextToSize(r.puesto||'',70).length]);
+    doc.setDrawColor(220,220,220);doc.line(ml,y+lh+maxLines*2,mr,y+lh+maxLines*2);
+    y+=lh+maxLines*2;
   });
   y+=2;
 

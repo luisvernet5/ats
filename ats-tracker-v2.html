@@ -506,6 +506,7 @@ input[type=date]{color:var(--text)}
       <input type="date" id="flt-vac-hasta" onchange="renderVacantesTable()" title="Apertura hasta" style="min-width:120px;max-width:130px">
       <button class="btn btn-ghost btn-sm" onclick="limpiarFiltrosVacantes()" style="white-space:nowrap">× Limpiar</button>
       <span class="sp"></span>
+      <button id="btn-vac-col-vis" class="btn btn-ghost btn-sm" onclick="openVacColPanel()"><i class="fa fa-columns"></i> Columnas</button>
       <button class="btn btn-green btn-sm" onclick="exportarCSV()" style="white-space:nowrap"><i class="fa fa-file-csv"></i> Exportar</button>
       <button class="btn btn-primary btn-sm" onclick="openVacanteModal()" style="white-space:nowrap"><i class="fa fa-plus"></i> Nueva</button>
     </div>
@@ -532,6 +533,7 @@ input[type=date]{color:var(--text)}
         </button>
       </div>
       <span class="sp"></span>
+      <button id="btn-cand-col-vis" class="btn btn-ghost btn-sm" onclick="openCandColPanel()"><i class="fa fa-columns"></i> Columnas</button>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">
       <button id="cand-vista-folio" class="btn btn-primary btn-sm" onclick="setVistaCand('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
@@ -2962,6 +2964,105 @@ function toggleEDCol(key){
   _applyEDColVis();
 }
 
+/* ── Candidatos column visibility ──────────────────────── */
+let _candColVis=JSON.parse(localStorage.getItem('cand_col_vis')||'{}');
+const _candColDefs=[
+  {key:'empresa',      label:'Empresa',      col:4},
+  {key:'reclutador',   label:'Reclutador',   col:5},
+  {key:'proyecto',     label:'Proyecto',     col:6},
+  {key:'departamento', label:'Departamento', col:7},
+  {key:'dias_proc',    label:'Días proceso', col:9},
+  {key:'dias_cli',     label:'Días cliente', col:10},
+];
+function _applyCandColVis(){
+  let css='';
+  _candColDefs.forEach(({key,col})=>{
+    if(_candColVis[key]===false)
+      css+=`#candidatos-table table th:nth-child(${col}),#candidatos-table table td:nth-child(${col}){display:none!important}`;
+  });
+  let s=document.getElementById('cand-col-vis-style');
+  if(!s){s=document.createElement('style');s.id='cand-col-vis-style';document.head.appendChild(s);}
+  s.textContent=css;
+}
+function toggleCandCol(key){
+  _candColVis[key]=(_candColVis[key]===false)?true:false;
+  localStorage.setItem('cand_col_vis',JSON.stringify(_candColVis));
+  _applyCandColVis();
+}
+function openCandColPanel(){
+  const existing=document.getElementById('cand-col-panel');
+  if(existing){existing.remove();return;}
+  const btn=document.getElementById('btn-cand-col-vis');
+  if(!btn)return;
+  const rect=btn.getBoundingClientRect();
+  const panel=document.createElement('div');
+  panel.id='cand-col-panel';
+  panel.style.cssText=`position:fixed;top:${rect.bottom+6}px;left:${rect.left}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.12);z-index:200;min-width:180px;padding:6px 0`;
+  panel.innerHTML=`<div style="padding:6px 14px 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">Columnas visibles</div>`+
+    _candColDefs.map(({key,label})=>`
+      <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;border-radius:6px;font-size:13px;user-select:none"
+        onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        <input type="checkbox" ${_candColVis[key]===false?'':'checked'}
+          style="accent-color:var(--accent);width:14px;height:14px"
+          onchange="toggleCandCol('${key}')">
+        ${label}
+      </label>`).join('');
+  document.body.appendChild(panel);
+  const close=e=>{if(!panel.contains(e.target)&&e.target.id!=='btn-cand-col-vis'){panel.remove();document.removeEventListener('mousedown',close);}};
+  setTimeout(()=>document.addEventListener('mousedown',close),0);
+}
+
+/* ── Vacantes column visibility ─────────────────────────── */
+let _vacColVis=JSON.parse(localStorage.getItem('vac_col_vis')||'{}');
+const _vacColDefs=[
+  {key:'folio',        label:'Folio',        col:3},
+  {key:'empresa',      label:'Empresa',      col:4},
+  {key:'reclutador',   label:'Reclutador',   col:5},
+  {key:'proyecto',     label:'Proyecto',     col:6},
+  {key:'departamento', label:'Departamento', col:7},
+  {key:'apertura',     label:'Apertura',     col:8},
+  {key:'sla',          label:'SLA',          col:10},
+  {key:'dias',         label:'Días',         col:11},
+  {key:'cands',        label:'Cands.',       col:12},
+];
+function _applyVacColVis(){
+  let css='';
+  _vacColDefs.forEach(({key,col})=>{
+    if(_vacColVis[key]===false)
+      css+=`#vacantes-table table th:nth-child(${col}),#vacantes-table table td:nth-child(${col}){display:none!important}`;
+  });
+  let s=document.getElementById('vac-col-vis-style');
+  if(!s){s=document.createElement('style');s.id='vac-col-vis-style';document.head.appendChild(s);}
+  s.textContent=css;
+}
+function toggleVacCol(key){
+  _vacColVis[key]=(_vacColVis[key]===false)?true:false;
+  localStorage.setItem('vac_col_vis',JSON.stringify(_vacColVis));
+  _applyVacColVis();
+}
+function openVacColPanel(){
+  const existing=document.getElementById('vac-col-panel');
+  if(existing){existing.remove();return;}
+  const btn=document.getElementById('btn-vac-col-vis');
+  if(!btn)return;
+  const rect=btn.getBoundingClientRect();
+  const panel=document.createElement('div');
+  panel.id='vac-col-panel';
+  panel.style.cssText=`position:fixed;top:${rect.bottom+6}px;left:${rect.left}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.12);z-index:200;min-width:180px;padding:6px 0`;
+  panel.innerHTML=`<div style="padding:6px 14px 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">Columnas visibles</div>`+
+    _vacColDefs.map(({key,label})=>`
+      <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;border-radius:6px;font-size:13px;user-select:none"
+        onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        <input type="checkbox" ${_vacColVis[key]===false?'':'checked'}
+          style="accent-color:var(--accent);width:14px;height:14px"
+          onchange="toggleVacCol('${key}')">
+        ${label}
+      </label>`).join('');
+  document.body.appendChild(panel);
+  const close=e=>{if(!panel.contains(e.target)&&e.target.id!=='btn-vac-col-vis'){panel.remove();document.removeEventListener('mousedown',close);}};
+  setTimeout(()=>document.addEventListener('mousedown',close),0);
+}
+
 function openEDColPanel(){
   const existing=document.getElementById('ed-col-panel');
   if(existing){existing.remove();return;}
@@ -4860,6 +4961,7 @@ function renderVacantesTable(){
     <thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>SLA</th><th>Días</th><th>Cands.</th><th style="min-width:120px">Acción</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="13" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>
   </table>`;
+  _applyVacColVis();
   const _vcnt=document.getElementById('vacantes-count');
   if(_vcnt)_vcnt.innerHTML=`Mostrando <strong>${list.length}</strong> registros`;
 }
@@ -5586,6 +5688,7 @@ function renderCandidatosTable(){
     <thead><tr><th style="width:36px;text-align:center">#</th><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Etapa</th><th>Días proceso</th><th>Días cliente</th><th>Acción</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos</td></tr>'}</tbody>
   </table>`;
+  _applyCandColVis();
   const _ccnt=document.getElementById('candidatos-count');
   if(_ccnt)_ccnt.innerHTML=`Mostrando <strong>${list.length}</strong> registros`;
   if(window.innerWidth>768){

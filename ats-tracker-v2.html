@@ -6961,7 +6961,10 @@ async function showHCTab(tab){
       <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
         <div style="min-width:320px;flex:0 0 auto">
           <div id="hc-hist-tabla"><div style="color:var(--text3);font-size:13px">Cargando...</div></div>
-          <button class="btn btn-primary btn-sm" onclick="guardarHCHistorico()" style="margin-top:10px"><i class="fa fa-save"></i> Guardar</button>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-primary btn-sm" onclick="guardarHCHistorico()"><i class="fa fa-save"></i> Guardar</button>
+            <button class="btn btn-ghost btn-sm" onclick="exportHCHistoricoExcel()"><i class="fa fa-file-excel"></i> Exportar Excel</button>
+          </div>
         </div>
         <div style="flex:1;min-width:320px;height:360px;position:relative">
           <canvas id="hc-hist-chart"></canvas>
@@ -6995,7 +6998,10 @@ async function showHCTab(tab){
       <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
         <div style="min-width:360px;flex:0 0 40%;overflow-x:auto">
           <div id="hc-plhist-tabla"><div style="color:var(--text3);font-size:13px">Cargando...</div></div>
-          <button class="btn btn-primary btn-sm" onclick="guardarHCPlantHistorico()" style="margin-top:10px"><i class="fa fa-save"></i> Guardar</button>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-primary btn-sm" onclick="guardarHCPlantHistorico()"><i class="fa fa-save"></i> Guardar</button>
+            <button class="btn btn-ghost btn-sm" onclick="exportHCPlantHistoricoExcel()"><i class="fa fa-file-excel"></i> Exportar Excel</button>
+          </div>
         </div>
         <div style="flex:1;min-width:320px">
           <div style="height:360px;position:relative">
@@ -7772,6 +7778,52 @@ async function guardarHCPlantHistorico(){
   if(error){showToast('Error: '+error.message,'err');return;}
   showToast('Histórico Plantilla guardado ✓');
   renderHCPlantHistorico();
+}
+
+function exportHCHistoricoExcel(){
+  const desde = parseInt(document.getElementById('hc-hist-desde')?.value)||1;
+  const hasta  = parseInt(document.getElementById('hc-hist-hasta')?.value)||52;
+  const gAnio  = window._hcHistAnio || window.hcCurrentAnio || new Date().getFullYear();
+  const empId  = window._hcHistEmpId || window.hcCurrentEmpId;
+  const emp    = DB.empresas.find(x=>x.id===empId)||{};
+  const rows   = [['Semana','Plantilla Total','Vacantes','Contrataciones','Máx 7.5%','Mín 3.5%']];
+  for(let s=desde; s<=hasta; s++){
+    const plant = document.getElementById(`hh-plant-${s}`)?.value ?? '';
+    const vac   = document.getElementById(`hh-vac-${s}`)?.value ?? '';
+    const cont  = document.getElementById(`hh-cont-${s}`)?.value ?? '';
+    const max   = document.getElementById(`hh-max-${s}`)?.textContent ?? '';
+    const min   = document.getElementById(`hh-min-${s}`)?.textContent ?? '';
+    rows.push([`Sem. ${s}`, plant, vac, cont, max, min]);
+  }
+  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `historico-vacantes-${emp.nombre||empId}-${gAnio}.csv`;
+  a.click();
+}
+
+function exportHCPlantHistoricoExcel(){
+  const desde = parseInt(document.getElementById('hc-plhist-desde')?.value)||1;
+  const hasta  = parseInt(document.getElementById('hc-plhist-hasta')?.value)||52;
+  const gAnio  = window._hcPlantHistAnio || window.hcCurrentAnio || new Date().getFullYear();
+  const empId  = window._hcPlantHistEmpId || window.hcCurrentEmpId;
+  const emp    = DB.empresas.find(x=>x.id===empId)||{};
+  const rows   = [['Semana','Planta Auth.','Activos','Mín 7.5%','Máx 3.5%','Cumpl. %']];
+  for(let s=desde; s<=hasta; s++){
+    const plant = document.getElementById(`hphi-plant-${s}`)?.value ?? '';
+    const act   = document.getElementById(`hphi-act-${s}`)?.value ?? '';
+    const min   = document.getElementById(`hphi-min-${s}`)?.textContent ?? '';
+    const max   = document.getElementById(`hphi-max-${s}`)?.textContent ?? '';
+    const cum   = document.getElementById(`hphi-cum-${s}`)?.textContent ?? '';
+    rows.push([`Sem. ${s}`, plant, act, min, max, cum]);
+  }
+  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `historico-plantilla-${emp.nombre||empId}-${gAnio}.csv`;
+  a.click();
 }
 
 async function updateHCRow(empId, proyecto, auth, el, campo){

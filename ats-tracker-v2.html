@@ -7169,7 +7169,7 @@ async function showHCTab(tab){
     content.innerHTML=`
       <div style="display:flex;gap:8px;margin-bottom:12px">
         <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${gEmpId2}')"><i class="fa fa-arrow-left"></i> Semanas</button>
-        ${currentHCSemana?`<button class="btn btn-ghost btn-sm" onclick="abrirTablaHC('${gEmpId2}',${currentHCSemana},${currentHCAnio||gAnio2})"><i class="fa fa-table"></i> Regresar a semana ${currentHCSemana}</button>`:''}
+        ${(window.hcCurrentSemana||currentHCSemana)?`<button class="btn btn-ghost btn-sm" onclick="abrirTablaHC('${gEmpId2}',${window.hcCurrentSemana||currentHCSemana},${window.hcCurrentAnio||currentHCAnio||gAnio2})"><i class="fa fa-table"></i> Regresar a semana ${window.hcCurrentSemana||currentHCSemana}</button>`:''}
       </div>
       <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px">
         <div style="font-size:14px;font-weight:600">${gEmp2.nombre||''} — Histórico ${gAnio2}</div>
@@ -7209,7 +7209,7 @@ async function showHCTab(tab){
     content.innerHTML=`
       <div style="display:flex;gap:8px;margin-bottom:12px">
         <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${gEmpId3}')"><i class="fa fa-arrow-left"></i> Semanas</button>
-        ${currentHCSemana?`<button class="btn btn-ghost btn-sm" onclick="abrirTablaHC('${gEmpId3}',${currentHCSemana},${currentHCAnio||gAnio3})"><i class="fa fa-table"></i> Regresar a semana ${currentHCSemana}</button>`:''}
+        ${(window.hcCurrentSemana||currentHCSemana)?`<button class="btn btn-ghost btn-sm" onclick="abrirTablaHC('${gEmpId3}',${window.hcCurrentSemana||currentHCSemana},${window.hcCurrentAnio||currentHCAnio||gAnio3})"><i class="fa fa-table"></i> Regresar a semana ${window.hcCurrentSemana||currentHCSemana}</button>`:''}
       </div>
       <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px">
         <div style="font-size:14px;font-weight:600">${gEmp3.nombre||''} — Histórico Plantilla ${gAnio3}</div>

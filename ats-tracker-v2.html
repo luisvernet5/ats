@@ -1282,7 +1282,8 @@ const tokenType = hashParams.get('type');
 
 function showResetPasswordScreen() {
   document.getElementById('auth-screen').style.display = 'flex';
-  document.querySelector('#auth-screen > div > div:first-child').style.display = 'none';
+  const card = document.querySelector('#auth-screen > div');
+  if(card) [...card.children].forEach(el=>{ el.style.display='none'; });
   document.getElementById('reset-password-screen').style.display = 'block';
 }
 

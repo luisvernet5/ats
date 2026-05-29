@@ -7905,8 +7905,6 @@ async function renderHCPlantHistorico(){
       </div>
     </div>`;
 
-  // label offset per dataset: [yOffset, baseline]
-  const _labelCfg=[[-16,'bottom'],[-8,'bottom'],[10,'top'],[18,'top']];
   window._hcPlantHistChart=new Chart(chartEl,{
     type:'line',
     data:{
@@ -7949,18 +7947,21 @@ async function renderHCPlantHistorico(){
       animation:{
         onComplete:function(){
           const c=this.ctx; c.save();
-          this.data.datasets.forEach((dataset,i)=>{
-            const meta=this.getDatasetMeta(i);
-            const [yOff,baseline]=_labelCfg[i]||[-10,'bottom'];
-            c.fillStyle=dataset.borderColor;
-            c.textAlign='center';
-            c.textBaseline=baseline;
-            c.font='600 9.5px Arial';
-            meta.data.forEach((point,j)=>{
-              const val=dataset.data[j];
-              if(val!=null&&val>0) c.fillText(val, point.x, point.y+yOff);
+          c.font='600 9.5px Arial'; c.textAlign='center';
+          const nPts=this.data.labels.length;
+          const metas=this.data.datasets.map((_,i)=>this.getDatasetMeta(i));
+          const offCfg=[[-17,'bottom'],[-8,'bottom'],[8,'top'],[17,'top']];
+          for(let j=0;j<nPts;j++){
+            const pts=this.data.datasets.map((ds,i)=>({
+              i, val:ds.data[j], py:metas[i].data[j]?.y??null, color:ds.borderColor
+            })).filter(p=>p.val!=null&&p.val>0&&p.py!==null);
+            pts.sort((a,b)=>a.py-b.py);
+            pts.forEach((pt,rank)=>{
+              const [off,bl]=offCfg[rank]||[-10,'bottom'];
+              c.fillStyle=pt.color; c.textBaseline=bl;
+              c.fillText(pt.val, metas[pt.i].data[j].x, metas[pt.i].data[j].y+off);
             });
-          });
+          }
           c.restore();
         }
       }

@@ -1436,7 +1436,7 @@ function adaptUIToRole() {
     </div>`;
   }
   if(rol === 'rh_cliente') {
-    ['nav-empresas','nav-pipeline','nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-config','nav-headcount'].forEach(id => {
+    ['nav-empresas','nav-pipeline','nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-config','nav-headcount','nav-ese'].forEach(id => {
       const el = document.getElementById(id); if(el) el.style.display='none';
     });
     // Mostrar solo botones de nueva vacante y agregar candidato
@@ -1558,8 +1558,8 @@ function adaptUIToRole() {
     }
   }
 
-  // ESE — visible para admin, reclutador y facturacion
-  if(['admin','reclutador','facturacion'].includes(rol) && !document.getElementById('nav-ese')){
+  // ESE — visible solo para admin y reclutador
+  if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-ese')){
     const navEl = document.querySelector('.sb-nav');
     if(navEl){
       const eseItem = document.createElement('div');
@@ -4808,12 +4808,13 @@ function renderVacantesEliminadas(){
         <td>${fecha}</td>
         <td>${cands.length}</td>
         <td>
+          ${currentUserData?.rol==='admin'?`
           <button class="btn btn-green btn-sm" onclick="event.stopPropagation();reactivarVacante('${item.id}')">
             <i class="fa fa-undo"></i> Reactivar
           </button>
           <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();borrarVacantePermanente('${item.id}')">
             <i class="fa fa-trash"></i>
-          </button>
+          </button>`:''}
         </td>
       </tr>
       <tr id="veli-${item.id}" style="display:none;background:var(--surface2)">

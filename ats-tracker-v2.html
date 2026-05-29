@@ -1534,8 +1534,8 @@ function adaptUIToRole() {
       document.querySelector('.main').appendChild(pg);
     }
   }
-  // Documentación — solo admin y reclutador
-  if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-documentacion')){
+  // Documentación — admin, reclutador y rh_cliente
+  if(['admin','reclutador','rh_cliente'].includes(rol) && !document.getElementById('nav-documentacion')){
     const navEl = document.querySelector('.sb-nav');
     const configItem = document.getElementById('nav-config');
     if(navEl){

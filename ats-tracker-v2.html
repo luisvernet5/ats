@@ -3063,6 +3063,58 @@ function openVacColPanel(){
   setTimeout(()=>document.addEventListener('mousedown',close),0);
 }
 
+/* ── Contratados column visibility ──────────────────────── */
+let _ctColVis=JSON.parse(localStorage.getItem('ct_col_vis')||'{}');
+const _ctColDefs=[
+  {key:'folio',        label:'Folio',        col:3},
+  {key:'empresa',      label:'Empresa',      col:4},
+  {key:'reclutador',   label:'Reclutador',   col:5},
+  {key:'departamento', label:'Departamento', col:7},
+  {key:'proyecto',     label:'Proyecto',     col:8},
+  {key:'apertura',     label:'Apertura',     col:9},
+  {key:'fecha_cont',   label:'Fecha cont.',  col:10},
+  {key:'semana',       label:'Semana',       col:11},
+  {key:'dias_proc',    label:'Días proceso', col:12},
+  {key:'dias_cli',     label:'Días cliente', col:13},
+];
+function _applyCtColVis(){
+  let css='';
+  _ctColDefs.forEach(({key,col})=>{
+    if(_ctColVis[key]===false)
+      css+=`#ct-table-wrap table th:nth-child(${col}),#ct-table-wrap table td:nth-child(${col}){display:none!important}`;
+  });
+  let s=document.getElementById('ct-col-vis-style');
+  if(!s){s=document.createElement('style');s.id='ct-col-vis-style';document.head.appendChild(s);}
+  s.textContent=css;
+}
+function toggleCtCol(key){
+  _ctColVis[key]=(_ctColVis[key]===false)?true:false;
+  localStorage.setItem('ct_col_vis',JSON.stringify(_ctColVis));
+  _applyCtColVis();
+}
+function openCtColPanel(){
+  const existing=document.getElementById('ct-col-panel');
+  if(existing){existing.remove();return;}
+  const btn=document.getElementById('btn-ct-col-vis');
+  if(!btn)return;
+  const rect=btn.getBoundingClientRect();
+  const panel=document.createElement('div');
+  panel.id='ct-col-panel';
+  panel.style.cssText=`position:fixed;top:${rect.bottom+6}px;left:${rect.left}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.12);z-index:200;min-width:180px;padding:6px 0`;
+  panel.innerHTML=`<div style="padding:6px 14px 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">Columnas visibles</div>`+
+    _ctColDefs.map(({key,label})=>`
+      <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;border-radius:6px;font-size:13px;user-select:none"
+        onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        <input type="checkbox" ${_ctColVis[key]===false?'':'checked'}
+          style="accent-color:var(--accent);width:14px;height:14px"
+          onchange="toggleCtCol('${key}')">
+        ${label}
+      </label>`).join('');
+  document.body.appendChild(panel);
+  const close=e=>{if(!panel.contains(e.target)&&e.target.id!=='btn-ct-col-vis'){panel.remove();document.removeEventListener('mousedown',close);}};
+  setTimeout(()=>document.addEventListener('mousedown',close),0);
+}
+
 function openEDColPanel(){
   const existing=document.getElementById('ed-col-panel');
   if(existing){existing.remove();return;}
@@ -8402,6 +8454,7 @@ function renderContratados(){
         <option value="0">Todos</option>
       </select>
       <div class="sp"></div>
+      <button id="btn-ct-col-vis" class="btn btn-ghost btn-sm" onclick="openCtColPanel()"><i class="fa fa-columns"></i> Columnas</button>
       <button class="btn btn-green btn-sm" onclick="exportContratados()"><i class="fa fa-file-csv"></i> Exportar Excel</button>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">
@@ -8516,6 +8569,7 @@ function _ctRender(){
     </tr></thead>
     <tbody>${rows}</tbody>
   </table></div>` : '<div style="color:var(--text3);font-size:13px;padding:16px 0">Sin contratados registrados.</div>';
+  _applyCtColVis();
 
   const pager = document.getElementById('ct-pager');
   if(!pager) return;

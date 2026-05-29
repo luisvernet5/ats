@@ -7076,10 +7076,13 @@ async function showHCTab(tab){
     const resumenMap = {};
     (resumen||[]).forEach(r=>{ if(!resumenMap[r.proyecto]) resumenMap[r.proyecto]=r; });
 
-    const labelsArr = (plantilla||[]).map(p=>p.proyecto);
-    const authArr   = (plantilla||[]).map(p=>p.plantilla_autorizada||0);
-    const actualArr = (plantilla||[]).map(p=>resumenMap[p.proyecto]?.actual||0);
-    const bajasArr  = (plantilla||[]).map(p=>resumenMap[p.proyecto]?.bajas||0);
+    const _plantMap=new Map();
+    (plantilla||[]).forEach(p=>_plantMap.set(p.proyecto,p));
+    const plantillaUniq=[..._plantMap.values()];
+    const labelsArr = plantillaUniq.map(p=>p.proyecto);
+    const authArr   = plantillaUniq.map(p=>p.plantilla_autorizada||0);
+    const actualArr = plantillaUniq.map(p=>resumenMap[p.proyecto]?.actual||0);
+    const bajasArr  = plantillaUniq.map(p=>resumenMap[p.proyecto]?.bajas||0);
     const semLabel  = gSemana ? `Semana ${gSemana} — ${gAnio}` : `${gAnio}`;
     const semOpts   = semanasDisp.map(s=>`<option value="${s}"${s===gSemana?' selected':''}>${s}</option>`).join('');
     const chartH    = Math.max(300, labelsArr.length * 32 + 80);

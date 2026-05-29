@@ -9124,7 +9124,8 @@ async function exportarRespaldo(){
   try {
     const [
       vacantes, candidatos, empresas, reclutadores, garantias, usuarios,
-      referencias, hc_plantilla, hc_resumen, hc_historico, hc_plantilla_historico
+      referencias, hc_plantilla, hc_resumen, hc_historico, hc_plantilla_historico,
+      ese, doc_plantillas, doc_candidato, perfiles_puesto
     ] = await Promise.all([
       sbClient.from('vacantes').select('*'),
       sbClient.from('candidatos').select('*'),
@@ -9137,9 +9138,13 @@ async function exportarRespaldo(){
       sbClient.from('hc_resumen').select('*'),
       sbClient.from('hc_historico').select('*'),
       sbClient.from('hc_plantilla_historico').select('*'),
+      sbClient.from('ese').select('*'),
+      sbClient.from('doc_plantillas').select('*'),
+      sbClient.from('doc_candidato').select('*'),
+      sbClient.from('perfiles_puesto').select('*'),
     ]);
     const backup = {
-      version: '2.0',
+      version: '2.1',
       fecha: new Date().toISOString(),
       tablas: {
         empresas: empresas.data||[],
@@ -9153,6 +9158,10 @@ async function exportarRespaldo(){
         hc_resumen: hc_resumen.data||[],
         hc_historico: hc_historico.data||[],
         hc_plantilla_historico: hc_plantilla_historico.data||[],
+        ese: ese.data||[],
+        doc_plantillas: doc_plantillas.data||[],
+        doc_candidato: doc_candidato.data||[],
+        perfiles_puesto: perfiles_puesto.data||[],
       }
     };
     const counts = Object.entries(backup.tablas).map(([k,v])=>`${k}: ${v.length}`).join(', ');
@@ -9176,7 +9185,7 @@ async function importarRespaldo(input){
     const backup = JSON.parse(text);
     if(!backup.tablas) throw new Error('Archivo de respaldo inválido');
     showToast('Importando datos...');
-    const tablas = ['empresas','reclutadores','usuarios','vacantes','candidatos','garantias','referencias','hc_plantilla','hc_resumen','hc_historico','hc_plantilla_historico'];
+    const tablas = ['empresas','reclutadores','usuarios','vacantes','candidatos','garantias','referencias','hc_plantilla','hc_resumen','hc_historico','hc_plantilla_historico','ese','doc_plantillas','doc_candidato','perfiles_puesto'];
     for(const tabla of tablas){
       const registros = backup.tablas[tabla];
       if(!registros?.length) continue;

@@ -425,6 +425,8 @@ input[type=date]{color:var(--text)}
     <div class="nav-item" onclick="showPage('desercion')" id="nav-desercion" data-tooltip="Deserción"><i class="fa fa-door-open"></i><span class="nav-item-text"> Deserción</span></div>
     <div class="nav-item" onclick="showPage('headcount')" id="nav-headcount" data-tooltip="HeadCount"><i class="fa fa-users"></i><span class="nav-item-text"> HeadCount</span></div>
     <div class="nav-item" onclick="showPage('contratados')" id="nav-contratados" data-tooltip="Contratados"><i class="fa fa-user-check"></i><span class="nav-item-text"> Contratados</span></div>
+    <div class="nav-section">Base de datos</div>
+    <div class="nav-item" onclick="showPage('basedatos')" id="nav-basedatos" data-tooltip="Base de datos de personal"><i class="fa fa-database"></i><span class="nav-item-text"> Base de datos</span></div>
     <div class="nav-section">Config</div>
     <div class="nav-item" onclick="showPage('config')" id="nav-config" data-tooltip="Configuración"><i class="fa fa-cog"></i><span class="nav-item-text"> Configuración</span></div>
   </nav>
@@ -597,6 +599,9 @@ input[type=date]{color:var(--text)}
   <div class="page" id="page-ese"></div>
   <div class="page" id="page-documentacion"></div>
   <div class="page" id="page-perfiles"></div>
+
+  <!-- BASE DE DATOS -->
+  <div class="page" id="page-basedatos"></div>
 
   <!-- DESERCION -->
   <div class="page" id="page-desercion"></div>
@@ -2377,7 +2382,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount',perfiles:'Perfiles de puesto',ese:'ESE',documentacion:'Documentación'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount',perfiles:'Perfiles de puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);
@@ -2402,6 +2407,7 @@ function renderPage(p){
   if(p==='ese')renderESE();
   if(p==='documentacion')renderDocumentacion();
   if(p==='perfiles')renderPerfiles();
+  if(p==='basedatos')renderBaseDatos();
 }
 
 /* ============================================================
@@ -8729,6 +8735,116 @@ function exportContratados(){
   a.href = URL.createObjectURL(blob);
   a.download = 'contratados.csv';
   a.click();
+}
+
+/* ============================================================
+   BASE DE DATOS DE PERSONAL
+   ============================================================ */
+let _bdOpenEmpId=null,_bdQ='';
+
+function _bdGetHCLatest(empId){
+  const rows=(DB.hc_resumen||[]).filter(r=>r.empresa_id===empId);
+  if(!rows.length) return null;
+  const s=[...rows].sort((a,b)=>a.anio!==b.anio?b.anio-a.anio:b.semana-a.semana)[0];
+  const sr=rows.filter(r=>r.semana===s.semana&&r.anio===s.anio);
+  const pl=(DB.hc_plantilla||[]).filter(r=>r.empresa_id===empId&&r.activo!==false);
+  return{actual:sr.reduce((t,r)=>t+(r.actual||0),0),bajas:sr.reduce((t,r)=>t+(r.bajas||0),0),
+    plantilla:pl.reduce((t,r)=>t+(r.plantilla_autorizada||0),0),semana:s.semana,anio:s.anio};
+}
+function _bdColocados(empId){
+  return DB.candidatos.filter(c=>{
+    if(c.descartado||!esColocado(c)) return false;
+    return (DB.vacantes.find(x=>x.id===c.vacante_id)||{}).empresa_id===empId;
+  });
+}
+function renderBaseDatos(){
+  const page=document.getElementById('page-basedatos'); if(!page) return;
+  const mes=today().substring(0,7);
+  const cards=DB.empresas.map(emp=>{
+    const id=emp.id,hc=_bdGetHCLatest(id),col=_bdColocados(id);
+    const activo=hc?hc.actual:col.length,planta=hc?hc.plantilla:0;
+    const altas=col.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};const f=getFechaContratacion(v,c);return f&&f.startsWith(mes);}).length;
+    const bajas=hc?hc.bajas:0,vacA=DB.vacantes.filter(v=>v.empresa_id===id&&v.estado==='Abierta').length;
+    const pct=planta>0?Math.round((activo/planta)*100):null;
+    const sl=hc?`S${hc.semana} – ${hc.anio}`:'Sin datos HC',open=_bdOpenEmpId===id;
+    const color=emp.color||'var(--accent)';
+    return`<div id="bd-card-${id}" onclick="bdToggleEmpresa('${id}')" style="background:var(--surface);border:2px solid ${open?color:'var(--border)'};border-radius:12px;padding:18px 20px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;box-shadow:${open?'0 4px 18px rgba(0,0,0,.1)':'none'}">
+      <div style="position:absolute;top:0;left:0;right:0;height:4px;background:${color}"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;margin-top:6px">
+        ${emp.logo?`<img src="${emp.logo}" style="width:32px;height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
+        <div><div style="font-weight:700;font-size:14px">${emp.nombre}</div><div style="font-size:10px;color:var(--text3)">${sl}</div></div>
+        <div style="margin-left:auto"><i class="fa fa-chevron-${open?'up':'down'}" style="color:var(--text3);font-size:11px"></i></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        <div style="text-align:center;background:var(--surface2);border-radius:8px;padding:10px 4px"><div style="font-size:22px;font-weight:700;font-family:var(--mono);color:${color}">${activo}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">HC Activo${planta?' / '+planta:''}</div></div>
+        <div style="text-align:center;background:var(--surface2);border-radius:8px;padding:10px 4px"><div style="font-size:22px;font-weight:700;font-family:var(--mono);color:var(--green)">${altas}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">Altas mes</div></div>
+        <div style="text-align:center;background:var(--surface2);border-radius:8px;padding:10px 4px"><div style="font-size:22px;font-weight:700;font-family:var(--mono);color:var(--red)">${bajas}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">Bajas (últ. sem.)</div></div>
+        <div style="text-align:center;background:var(--surface2);border-radius:8px;padding:10px 4px"><div style="font-size:22px;font-weight:700;font-family:var(--mono);color:var(--amber)">${vacA}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">Vac. abiertas</div></div>
+      </div>
+      ${pct!==null?`<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px"><span>Ocupación plantilla</span><span>${pct}%</span></div><div style="height:5px;background:var(--border2);border-radius:3px"><div style="height:100%;width:${Math.min(pct,100)}%;background:${color};border-radius:3px"></div></div></div>`:''}
+      <div style="margin-top:10px;font-size:11px;color:var(--text3);text-align:right">${col.length} contratado${col.length!==1?'s':''} en ATS <i class="fa fa-users" style="margin-left:3px"></i></div>
+    </div>`;
+  }).join('');
+  page.innerHTML=`<div style="padding:24px 28px">
+    <div style="font-size:12px;color:var(--text3);margin-bottom:18px"><i class="fa fa-info-circle"></i> HC Activo y Bajas provienen del módulo HeadCount (semana más reciente). Altas del mes y contratados histórico provienen del ATS.</div>
+    <div id="bd-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:24px">${cards||'<div style="color:var(--text3)">Sin empresas registradas.</div>'}</div>
+    <div id="bd-detail-panel" style="${_bdOpenEmpId?'':'display:none'}"></div>
+  </div>`;
+  if(_bdOpenEmpId) bdRenderPersonalTable(_bdOpenEmpId);
+}
+function bdToggleEmpresa(empId){
+  _bdQ='';
+  if(_bdOpenEmpId===empId){_bdOpenEmpId=null;renderBaseDatos();return;}
+  _bdOpenEmpId=empId; renderBaseDatos();
+  setTimeout(()=>document.getElementById('bd-detail-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),120);
+}
+function bdRenderPersonalTable(empId){
+  const panel=document.getElementById('bd-detail-panel'); if(!panel) return;
+  const emp=DB.empresas.find(x=>x.id===empId)||{};
+  let lista=_bdColocados(empId);
+  if(_bdQ){const q=_bdQ.toLowerCase();lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};return(c.nombre||'').toLowerCase().includes(q)||(v.nombre||'').toLowerCase().includes(q)||(v.proyecto||'').toLowerCase().includes(q)||(v.departamento||'').toLowerCase().includes(q);});}
+  lista=[...lista].sort((a,b)=>{
+    const va=DB.vacantes.find(x=>x.id===a.vacante_id)||{},vb=DB.vacantes.find(x=>x.id===b.vacante_id)||{};
+    return(getFechaContratacion(vb,b)||'').localeCompare(getFechaContratacion(va,a)||'');
+  });
+  const rows=lista.map((c,i)=>{
+    const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{},rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+    const fc=getFechaContratacion(v,c),wn=getWeekNumber(fc);
+    return`<tr><td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td><td><strong>${c.nombre||'—'}</strong></td><td style="font-size:12px;color:var(--text2)">${v.nombre||'—'}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td style="font-size:12px">${v.proyecto||'—'}</td><td style="font-size:12px">${v.departamento||'—'}</td><td style="font-size:12px;color:var(--text2)">${rec.nombre||'—'}</td><td style="font-family:var(--mono);font-size:12px">${fmt(fc)||'—'}</td><td style="font-size:11px;color:var(--text3)">${wn?`S${wn.week} (${wn.year})`:'—'}</td></tr>`;
+  }).join('');
+  const color=emp.color||'var(--accent)';
+  panel.style.display='';
+  panel.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:20px 24px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+      <div style="width:5px;height:34px;border-radius:3px;background:${color}"></div>
+      <div><div style="font-size:16px;font-weight:700">Personal contratado — ${emp.nombre||''}</div><div style="font-size:12px;color:var(--text3)">${lista.length} registro${lista.length!==1?'s':''}</div></div>
+      <span style="flex:1"></span>
+      <input type="text" placeholder="Buscar nombre, vacante, proyecto..." value="${_bdQ}" oninput="_bdQ=this.value;bdRenderPersonalTable('${empId}')" style="width:280px;padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--text);font-size:13px">
+      <button class="btn btn-green btn-sm" onclick="bdExportEmp('${empId}')"><i class="fa fa-file-csv"></i> Exportar</button>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th style="width:36px">#</th><th>Nombre</th><th>Puesto</th><th>Folio</th><th>Proyecto</th><th>Departamento</th><th>Reclutador</th><th>Fecha contratación</th><th>Semana</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3)">Sin personal registrado</td></tr>'}</tbody>
+    </table></div>
+  </div>`;
+}
+function bdExportEmp(empId){
+  const emp=DB.empresas.find(x=>x.id===empId)||{};
+  const lista=[..._bdColocados(empId)].sort((a,b)=>{
+    const va=DB.vacantes.find(x=>x.id===a.vacante_id)||{},vb=DB.vacantes.find(x=>x.id===b.vacante_id)||{};
+    return(getFechaContratacion(vb,b)||'').localeCompare(getFechaContratacion(va,a)||'');
+  });
+  const hdr=['#','Nombre','Puesto','Folio','Proyecto','Departamento','Reclutador','Fecha contratación','Semana'];
+  const rows=lista.map((c,i)=>{
+    const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{},rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
+    const fc=getFechaContratacion(v,c),wn=getWeekNumber(fc);
+    return[i+1,c.nombre||'',v.nombre||'',v.folio||'',v.proyecto||'',v.departamento||'',rec.nombre||'',fc||'',wn?`S${wn.week} (${wn.year})`:''];
+  });
+  const csv=[hdr,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`personal_${(emp.nombre||empId).replace(/\s+/g,'_')}_${today()}.csv`; a.click();
+  showToast('Exportado ✓');
 }
 
 /* ============================================================

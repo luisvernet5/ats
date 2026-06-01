@@ -11713,15 +11713,17 @@ function exportarDocumentacionExcel(){
 function _docCandidatosFiltrados(){
   const q = _docQ.toLowerCase().trim();
   const recId = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
+  const empIdCliente = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
   // Empresas donde el reclutador tiene vacantes asignadas
   const recEmpIds = recId
     ? new Set(DB.vacantes.filter(v=>v.reclutador_id===recId).map(v=>v.empresa_id).filter(Boolean))
     : null;
   const scope = c => {
     if(c.descartado) return false;
-    if(!recEmpIds) return true; // admin y otros roles ven todo
     const vac = DB.vacantes.find(v=>v.id===c.vacante_id)||{};
-    return recEmpIds.has(vac.empresa_id);
+    if(empIdCliente) return vac.empresa_id===empIdCliente;
+    if(recEmpIds) return recEmpIds.has(vac.empresa_id);
+    return true; // admin ve todo
   };
   const porBusqueda = q
     ? DB.candidatos.filter(c=>scope(c) && (c.nombre||'').toLowerCase().includes(q))

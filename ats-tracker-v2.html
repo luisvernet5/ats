@@ -8783,7 +8783,6 @@ function _bdRenderDashboard(){
     const id=emp.id,hc=_bdGetHCLatest(id);
     const activo=hc?hc.actual:'—',planta=hc?hc.plantilla:0;
     const altas=hc?hc.contratados:'—',bajas=hc?hc.bajas:'—';
-    const vacA=DB.vacantes.filter(v=>v.empresa_id===id&&v.estado==='Abierta').length;
     const pct=(hc&&planta>0)?Math.round((hc.actual/planta)*100):null;
     const sl=hc?`S${hc.semana} – ${hc.anio}`:'Sin datos HC';
     const color=emp.color||'var(--accent)';

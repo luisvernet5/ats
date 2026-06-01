@@ -2452,8 +2452,23 @@ function doExport(){
     if(recId)vacs=vacs.filter(v=>v.reclutador_id===recId);
     if(est)vacs=vacs.filter(v=>v.estado===est);
     if(orden==='folio') vacs=[...vacs].sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true}));
-    else if(orden==='proyecto') vacs=[...vacs].sort((a,b)=>(a.proyecto||'').localeCompare(b.proyecto||'',undefined,{sensitivity:'base'}));
-    else if(orden==='departamento') vacs=[...vacs].sort((a,b)=>(a.departamento||'').localeCompare(b.departamento||'',undefined,{sensitivity:'base'}));
+    else if(orden==='proyecto'||orden==='departamento'){
+      const campo=orden==='proyecto'?'proyecto':'departamento';
+      const cfgKey=orden==='proyecto'?'proyectos':'departamentos';
+      vacs=[...vacs].sort((a,b)=>{
+        const empA=DB.empresas.find(x=>x.id===a.empresa_id)||{};
+        const empB=DB.empresas.find(x=>x.id===b.empresa_id)||{};
+        if(a.empresa_id===b.empresa_id){
+          const ord=empA[cfgKey]||[];
+          const ia=ord.indexOf(a[campo]??''); const ib=ord.indexOf(b[campo]??'');
+          if(ia===-1&&ib===-1) return (a.fecha_apertura||'').localeCompare(b.fecha_apertura||'');
+          if(ia===-1) return 1; if(ib===-1) return -1;
+          if(ia!==ib) return ia-ib;
+          return (a.fecha_apertura||'').localeCompare(b.fecha_apertura||'');
+        }
+        return (empA.nombre||'').localeCompare(empB.nombre||'');
+      });
+    }
     const header=['#','Folio','Vacante','Empresa','Reclutador','Proyecto','Departamento','Fecha apertura','Estado','Días abierta','Total candidatos','Candidatos activos','Candidatos validados','Candidatos desertaron'];
     rows.push(header);
     vacs.forEach((v,i)=>{

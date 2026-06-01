@@ -8763,6 +8763,7 @@ function _bdGetHCLatest(empId){
   const sr=rows.filter(r=>r.semana===s.semana&&r.anio===s.anio);
   const pl=(DB.hc_plantilla||[]).filter(r=>r.empresa_id===empId&&r.activo!==false);
   return{actual:sr.reduce((t,r)=>t+(r.actual||0),0),bajas:sr.reduce((t,r)=>t+(r.bajas||0),0),
+    contratados:sr.reduce((t,r)=>t+(r.contratados||0),0),
     plantilla:pl.reduce((t,r)=>t+(r.plantilla_autorizada||0),0),semana:s.semana,anio:s.anio};
 }
 function _bdColocados(empId){

@@ -8776,7 +8776,14 @@ function renderBaseDatos(){
   _bdRenderDashboard();
 }
 function _bdPersonalEmp(empId){
-  return(DB.personal||[]).filter(p=>p.empresa_id===empId);
+  const porId=(DB.personal||[]).filter(p=>p.empresa_id===empId);
+  if(porId.length) return porId;
+  // Fallback: si no hay match por ID, buscar por nombre de empresa
+  const emp=DB.empresas.find(x=>x.id===empId)||{};
+  const nombre=(emp.nombre||'').toLowerCase();
+  const sinEmp=(DB.personal||[]).filter(p=>!p.empresa_id||p.empresa_id==='');
+  if(sinEmp.length) return sinEmp; // todos los sin empresa_id van a esta empresa
+  return(DB.personal||[]).filter(p=>(p.empresa_id||'').toLowerCase().includes(nombre));
 }
 function _bdRenderDashboard(){
   const page=document.getElementById('page-basedatos'); if(!page) return;
@@ -8786,7 +8793,7 @@ function _bdRenderDashboard(){
     const personal=_bdPersonalEmp(id);
     const activo=personal.length?personal.filter(p=>(p.status||'').toUpperCase()==='ACTIVO').length:(hc?hc.actual:'—');
     const planta=hc?hc.plantilla:0;
-    const altas=personal.length?personal.filter(p=>{const f=p.fecha_ingreso||p.fecha_alta_imss||'';return f.startsWith(mes);}).length:(hc?hc.contratados:'—');
+    const altas=personal.length?personal.filter(p=>{const f=p.fecha_ingreso_planta||p.fecha_alta||'';return f.startsWith(mes);}).length:(hc?hc.contratados:'—');
     const bajas=personal.length?personal.filter(p=>{const f=p.fecha_baja||'';return f.startsWith(mes);}).length:(hc?hc.bajas:'—');
     const pct=(planta>0&&typeof activo==='number')?Math.round((activo/planta)*100):null;
     const sl=personal.length?`${personal.length} registros`:(hc?`S${hc.semana} – ${hc.anio}`:'Sin datos');
@@ -8820,7 +8827,7 @@ function _bdRenderDetail(empId){
   let lista=_bdPersonalEmp(empId);
   if(_bdQ){
     const q=_bdQ.toLowerCase();
-    lista=lista.filter(p=>(p.nombre||'').toLowerCase().includes(q)||(p.puesto_oficial||'').toLowerCase().includes(q)||(p.proyecto||'').toLowerCase().includes(q)||(p.categoria||'').toLowerCase().includes(q)||(p.id_nomina||'').toLowerCase().includes(q));
+    lista=lista.filter(p=>(p.nombre||'').toLowerCase().includes(q)||(p.puesto_organigrama||'').toLowerCase().includes(q)||(p.proyecto||'').toLowerCase().includes(q)||(p.puesto_contrato_nomina||'').toLowerCase().includes(q)||(String(p.id_nomina||'')).toLowerCase().includes(q));
   }
   lista=[...lista].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
   const statusBadge=s=>{
@@ -8833,10 +8840,10 @@ function _bdRenderDetail(empId){
     <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
     <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${p.id_nomina||'—'}</td>
     <td><strong>${p.nombre||'—'}</strong></td>
-    <td style="font-size:12px;color:var(--text2)">${p.puesto_oficial||'—'}</td>
-    <td style="font-size:12px">${p.categoria||'—'}</td>
+    <td style="font-size:12px;color:var(--text2)">${p.puesto_organigrama||'—'}</td>
+    <td style="font-size:12px">${p.puesto_contrato_nomina||'—'}</td>
     <td style="font-size:12px">${p.proyecto||'—'}</td>
-    <td style="font-family:var(--mono);font-size:12px">${p.fecha_ingreso?fmt(p.fecha_ingreso):'—'}</td>
+    <td style="font-family:var(--mono);font-size:12px">${p.fecha_ingreso_planta?fmt(p.fecha_ingreso_planta):'—'}</td>
     <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${p.fecha_vencimiento_contrato?fmt(p.fecha_vencimiento_contrato):'—'}</td>
     <td>${statusBadge(p.status)}</td>
   </tr>`).join('');
@@ -8856,7 +8863,7 @@ function _bdRenderDetail(empId){
       <button class="btn btn-green btn-sm" onclick="bdExportEmp('${empId}')"><i class="fa fa-file-csv"></i> Exportar</button>
     </div>
     <div class="table-wrap"><table>
-      <thead><tr><th style="width:36px">#</th><th>ID Nómina</th><th>Nombre</th><th>Puesto oficial</th><th>Categoría</th><th>Proyecto</th><th>Fecha ingreso</th><th>Venc. contrato</th><th>Status</th></tr></thead>
+      <thead><tr><th style="width:36px">#</th><th>ID Nómina</th><th>Nombre</th><th>Puesto organigrama</th><th>Puesto contrato</th><th>Proyecto</th><th>Fecha ingreso</th><th>Venc. contrato</th><th>Status</th></tr></thead>
       <tbody>${rows||'<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text3)">Sin registros para esta empresa</td></tr>'}</tbody>
     </table></div>
   </div>`;
@@ -8864,15 +8871,16 @@ function _bdRenderDetail(empId){
 function bdExportEmp(empId){
   const emp=DB.empresas.find(x=>x.id===empId)||{};
   const lista=[..._bdPersonalEmp(empId)].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
-  const hdr=['#','ID Nómina','Nombre','Puesto oficial','Puesto contrato','Categoría','Proyecto','Tipo nómina','NSS','Fecha ingreso','Fecha alta IMSS','Fecha baja','Motivo baja','Status','Estado civil','CURP','RFC','Fecha nacimiento','Teléfono','Correo','Banco','CLABE','Sueldo mensual neto','Sueldo diario','SDI','Talla playera','Talla botas','Talla chaleco'];
+  const hdr=['#','ID Nómina','Status','Nombre','Puesto organigrama','Puesto contrato nómina','Proyecto','Tipo nómina','NSS','Fecha ingreso planta','Fecha alta IMSS','Fecha baja','Motivo baja','Estado civil','CURP','RFC','Fecha nacimiento','Teléfono','Correo','Banco','CLABE','Sueldo mensual neto','Sueldo diario','SDI','Playera','Botas','Chaleco'];
   const rows=lista.map((p,i)=>[
-    i+1, p.id_nomina||'', p.nombre||'', p.puesto_oficial||'', p.puesto_contrato||'',
-    p.categoria||'', p.proyecto||'', p.tipo_nomina||'', p.num_seguridad_social||'',
-    p.fecha_ingreso||'', p.fecha_alta_imss||'', p.fecha_baja||'', p.motivo_baja||'', p.status||'',
+    i+1, p.id_nomina||'', p.status||'', p.nombre||'',
+    p.puesto_organigrama||'', p.puesto_contrato_nomina||'', p.proyecto||'',
+    p.tipo_nomina||'', p.num_seguridad_social||'',
+    p.fecha_ingreso_planta||'', p.fecha_alta||'', p.fecha_baja||'', p.motivo_baja||'',
     p.estado_civil||'', p.curp||'', p.rfc||'', p.fecha_nacimiento||'',
     p.telefono||'', p.correo||'', p.banco||'', p.clabe||'',
     p.sueldo_mensual_neto||'', p.sueldo_diario||'', p.sdi||'',
-    p.talla_playera||'', p.talla_botas||'', p.talla_chaleco||''
+    p.playera||'', p.botas||'', p.chaleco||''
   ]);
   const csv=[hdr,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});

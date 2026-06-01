@@ -425,8 +425,6 @@ input[type=date]{color:var(--text)}
     <div class="nav-item" onclick="showPage('desercion')" id="nav-desercion" data-tooltip="Deserción"><i class="fa fa-door-open"></i><span class="nav-item-text"> Deserción</span></div>
     <div class="nav-item" onclick="showPage('headcount')" id="nav-headcount" data-tooltip="HeadCount"><i class="fa fa-users"></i><span class="nav-item-text"> HeadCount</span></div>
     <div class="nav-item" onclick="showPage('contratados')" id="nav-contratados" data-tooltip="Contratados"><i class="fa fa-user-check"></i><span class="nav-item-text"> Contratados</span></div>
-    <div class="nav-section">Base de datos</div>
-    <div class="nav-item" onclick="showPage('basedatos')" id="nav-basedatos" data-tooltip="Base de datos de personal"><i class="fa fa-database"></i><span class="nav-item-text"> Base de datos</span></div>
     <div class="nav-section">Config</div>
     <div class="nav-item" onclick="showPage('config')" id="nav-config" data-tooltip="Configuración"><i class="fa fa-cog"></i><span class="nav-item-text"> Configuración</span></div>
   </nav>
@@ -1583,6 +1581,22 @@ function adaptUIToRole() {
     }
   }
 
+  // Base de datos de personal — visible para admin y reclutador
+  if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-basedatos')){
+    const navEl = document.querySelector('.sb-nav');
+    if(navEl){
+      const bdItem = document.createElement('div');
+      bdItem.className = 'nav-item';
+      bdItem.id = 'nav-basedatos';
+      bdItem.dataset.tooltip = 'Base de datos de personal';
+      bdItem.innerHTML = '<i class="fa fa-database"></i><span class="nav-item-text"> Base de datos</span>';
+      bdItem.setAttribute('onclick', "showPage('basedatos')");
+      const anchor = document.getElementById('nav-documentacion') || document.getElementById('nav-candidatos');
+      if(anchor) anchor.parentNode.insertBefore(bdItem, anchor.nextSibling);
+      else navEl.appendChild(bdItem);
+    }
+  }
+
   // Perfiles de puesto — visible para admin, reclutador y rh_cliente
   if(!document.getElementById('nav-perfiles')){
     const navEl = document.querySelector('.sb-nav');
@@ -1593,7 +1607,7 @@ function adaptUIToRole() {
       perfilItem.dataset.tooltip = 'Perfiles de puesto';
       perfilItem.innerHTML = '<i class="fa fa-id-card"></i><span class="nav-item-text"> Perfiles de puesto</span>';
       perfilItem.setAttribute('onclick', "showPage('perfiles')");
-      const anchor = document.getElementById('nav-documentacion') || document.getElementById('nav-candidatos');
+      const anchor = document.getElementById('nav-basedatos') || document.getElementById('nav-documentacion') || document.getElementById('nav-candidatos');
       if(anchor) anchor.parentNode.insertBefore(perfilItem, anchor.nextSibling);
       else navEl.appendChild(perfilItem);
       if(rol==='facturacion') perfilItem.style.display='none';

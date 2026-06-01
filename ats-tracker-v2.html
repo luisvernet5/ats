@@ -8773,6 +8773,11 @@ function _bdColocados(empId){
 }
 function renderBaseDatos(){
   const page=document.getElementById('page-basedatos'); if(!page) return;
+  if(_bdOpenEmpId){_bdRenderDetail(_bdOpenEmpId);return;}
+  _bdRenderDashboard();
+}
+function _bdRenderDashboard(){
+  const page=document.getElementById('page-basedatos'); if(!page) return;
   const mes=today().substring(0,7);
   const cards=DB.empresas.map(emp=>{
     const id=emp.id,hc=_bdGetHCLatest(id),col=_bdColocados(id);
@@ -8780,14 +8785,14 @@ function renderBaseDatos(){
     const altas=col.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};const f=getFechaContratacion(v,c);return f&&f.startsWith(mes);}).length;
     const bajas=hc?hc.bajas:0,vacA=DB.vacantes.filter(v=>v.empresa_id===id&&v.estado==='Abierta').length;
     const pct=planta>0?Math.round((activo/planta)*100):null;
-    const sl=hc?`S${hc.semana} – ${hc.anio}`:'Sin datos HC',open=_bdOpenEmpId===id;
+    const sl=hc?`S${hc.semana} – ${hc.anio}`:'Sin datos HC';
     const color=emp.color||'var(--accent)';
-    return`<div id="bd-card-${id}" onclick="bdToggleEmpresa('${id}')" style="background:var(--surface);border:2px solid ${open?color:'var(--border)'};border-radius:12px;padding:18px 20px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;box-shadow:${open?'0 4px 18px rgba(0,0,0,.1)':'none'}">
+    return`<div onclick="bdOpenEmpresa('${id}')" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden" onmouseenter="this.style.boxShadow='0 4px 18px rgba(0,0,0,.1)';this.style.borderColor='${color}'" onmouseleave="this.style.boxShadow='none';this.style.borderColor='var(--border)'">
       <div style="position:absolute;top:0;left:0;right:0;height:4px;background:${color}"></div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;margin-top:6px">
         ${emp.logo?`<img src="${emp.logo}" style="width:32px;height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
         <div><div style="font-weight:700;font-size:14px">${emp.nombre}</div><div style="font-size:10px;color:var(--text3)">${sl}</div></div>
-        <div style="margin-left:auto"><i class="fa fa-chevron-${open?'up':'down'}" style="color:var(--text3);font-size:11px"></i></div>
+        <div style="margin-left:auto;color:var(--text3);font-size:11px"><i class="fa fa-arrow-right"></i></div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
         <div style="text-align:center;background:var(--surface2);border-radius:8px;padding:10px 4px"><div style="font-size:22px;font-weight:700;font-family:var(--mono);color:${color}">${activo}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">HC Activo${planta?' / '+planta:''}</div></div>
@@ -8801,20 +8806,15 @@ function renderBaseDatos(){
   }).join('');
   page.innerHTML=`<div style="padding:24px 28px">
     <div style="font-size:12px;color:var(--text3);margin-bottom:18px"><i class="fa fa-info-circle"></i> HC Activo y Bajas provienen del módulo HeadCount (semana más reciente). Altas del mes y contratados histórico provienen del ATS.</div>
-    <div id="bd-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:24px">${cards||'<div style="color:var(--text3)">Sin empresas registradas.</div>'}</div>
-    <div id="bd-detail-panel" style="${_bdOpenEmpId?'':'display:none'}"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">${cards||'<div style="color:var(--text3)">Sin empresas registradas.</div>'}</div>
   </div>`;
-  if(_bdOpenEmpId) bdRenderPersonalTable(_bdOpenEmpId);
 }
-function bdToggleEmpresa(empId){
-  _bdQ='';
-  if(_bdOpenEmpId===empId){_bdOpenEmpId=null;renderBaseDatos();return;}
-  _bdOpenEmpId=empId; renderBaseDatos();
-  setTimeout(()=>document.getElementById('bd-detail-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),120);
-}
-function bdRenderPersonalTable(empId){
-  const panel=document.getElementById('bd-detail-panel'); if(!panel) return;
+function bdOpenEmpresa(empId){_bdQ='';_bdOpenEmpId=empId;renderBaseDatos();}
+function bdBack(){_bdQ='';_bdOpenEmpId=null;renderBaseDatos();}
+function _bdRenderDetail(empId){
+  const page=document.getElementById('page-basedatos'); if(!page) return;
   const emp=DB.empresas.find(x=>x.id===empId)||{};
+  const color=emp.color||'var(--accent)';
   let lista=_bdColocados(empId);
   if(_bdQ){const q=_bdQ.toLowerCase();lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};return(c.nombre||'').toLowerCase().includes(q)||(v.nombre||'').toLowerCase().includes(q)||(v.proyecto||'').toLowerCase().includes(q)||(v.departamento||'').toLowerCase().includes(q);});}
   lista=[...lista].sort((a,b)=>{
@@ -8826,19 +8826,24 @@ function bdRenderPersonalTable(empId){
     const fc=getFechaContratacion(v,c),wn=getWeekNumber(fc);
     return`<tr><td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td><td><strong>${c.nombre||'—'}</strong></td><td style="font-size:12px;color:var(--text2)">${v.nombre||'—'}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td style="font-size:12px">${v.proyecto||'—'}</td><td style="font-size:12px">${v.departamento||'—'}</td><td style="font-size:12px;color:var(--text2)">${rec.nombre||'—'}</td><td style="font-family:var(--mono);font-size:12px">${fmt(fc)||'—'}</td><td style="font-size:11px;color:var(--text3)">${wn?`S${wn.week} (${wn.year})`:'—'}</td></tr>`;
   }).join('');
-  const color=emp.color||'var(--accent)';
-  panel.style.display='';
-  panel.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:20px 24px">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-      <div style="width:5px;height:34px;border-radius:3px;background:${color}"></div>
-      <div><div style="font-size:16px;font-weight:700">Personal contratado — ${emp.nombre||''}</div><div style="font-size:12px;color:var(--text3)">${lista.length} registro${lista.length!==1?'s':''}</div></div>
+  page.innerHTML=`<div style="padding:24px 28px">
+    <div style="margin-bottom:18px">
+      <button class="btn btn-ghost btn-sm" onclick="bdBack()"><i class="fa fa-arrow-left"></i> Volver a empresas</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <div style="width:5px;height:40px;border-radius:3px;background:${color}"></div>
+      ${emp.logo?`<img src="${emp.logo}" style="height:36px;object-fit:contain;border-radius:4px">`:`<div style="width:36px;height:36px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
+      <div>
+        <div style="font-size:20px;font-weight:700">${emp.nombre||''}</div>
+        <div style="font-size:12px;color:var(--text3)">Personal contratado — ${lista.length} registro${lista.length!==1?'s':''}</div>
+      </div>
       <span style="flex:1"></span>
-      <input type="text" placeholder="Buscar nombre, vacante, proyecto..." value="${_bdQ}" oninput="_bdQ=this.value;bdRenderPersonalTable('${empId}')" style="width:280px;padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--text);font-size:13px">
+      <input type="text" placeholder="Buscar nombre, vacante, proyecto..." value="${_bdQ}" oninput="_bdQ=this.value;_bdRenderDetail('${empId}')" style="width:280px;padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--text);font-size:13px">
       <button class="btn btn-green btn-sm" onclick="bdExportEmp('${empId}')"><i class="fa fa-file-csv"></i> Exportar</button>
     </div>
     <div class="table-wrap"><table>
       <thead><tr><th style="width:36px">#</th><th>Nombre</th><th>Puesto</th><th>Folio</th><th>Proyecto</th><th>Departamento</th><th>Reclutador</th><th>Fecha contratación</th><th>Semana</th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3)">Sin personal registrado</td></tr>'}</tbody>
+      <tbody>${rows||'<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text3)">Sin personal registrado para esta empresa</td></tr>'}</tbody>
     </table></div>
   </div>`;
 }

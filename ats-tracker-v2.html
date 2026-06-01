@@ -11463,6 +11463,7 @@ function renderDocumentacion(){
           </div>
           <span class="sp"></span>
           <span id="doc-count" style="font-size:13px;color:var(--text3)"></span>
+          <button class="btn btn-green btn-sm" onclick="exportarDocumentacionExcel()"><i class="fa fa-file-excel"></i> Exportar Excel</button>
         </div>
         <div id="doc-results"></div>
       </div>`;
@@ -11499,6 +11500,38 @@ function _docRenderResultados(){
     </tr></thead>
     <tbody>${lista.map((c,i)=>_docRow(c,i+1)).join('')}</tbody>
   </table></div>`;
+}
+
+function exportarDocumentacionExcel(){
+  const lista = _docCandidatosFiltrados();
+  if(!lista.length){ showToast('No hay candidatos para exportar','err'); return; }
+  // Recopilar todos los documentos únicos de las empresas en la lista
+  const allDocs=new Map();
+  lista.forEach(c=>{
+    const vac=DB.vacantes.find(v=>v.id===c.vacante_id)||{};
+    (_docGetPlantilla(vac.empresa_id)||[]).forEach(d=>{ if(!allDocs.has(d.id)) allDocs.set(d.id,d.nombre); });
+  });
+  const docIds=[...allDocs.keys()];
+  const docNames=[...allDocs.values()];
+  const headers=['#','Candidato','Empresa','Vacante','Proyecto','Departamento','Entregados','Total',...docNames];
+  const rows=lista.map((c,i)=>{
+    const vac=DB.vacantes.find(v=>v.id===c.vacante_id)||{};
+    const emp=DB.empresas.find(e=>e.id===vac.empresa_id)||{};
+    const docs=_docGetPlantilla(vac.empresa_id)||[];
+    const status=_docGetStatus(c.id)||[];
+    const entregados=docs.filter(d=>status.find(x=>x.doc_id===d.id)?.entregado).length;
+    const docCells=docIds.map(docId=>{
+      if(!docs.find(d=>d.id===docId)) return '—';
+      return status.find(x=>x.doc_id===docId)?.entregado ? '✓' : '✗';
+    });
+    return[i+1,c.nombre||'',emp.nombre||'',vac.folio||'',vac.proyecto||'',vac.departamento||'',entregados,docs.length,...docCells];
+  });
+  const ws=XLSX.utils.aoa_to_sheet([headers,...rows]);
+  ws['!cols']=[{wch:4},{wch:30},{wch:18},{wch:14},{wch:30},{wch:20},{wch:11},{wch:7},...docNames.map(()=>({wch:22}))];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Documentación');
+  XLSX.writeFile(wb,`Documentacion_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast('Excel exportado ✓');
 }
 
 function _docCandidatosFiltrados(){

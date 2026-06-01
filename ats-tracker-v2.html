@@ -11494,7 +11494,7 @@ function _docRenderResultados(){
   }
   results.innerHTML = `<div class="table-wrap"><table id="doc-table">
     <thead><tr>
-      <th>#</th><th>Candidato</th><th>Empresa</th><th>Vacante</th>
+      <th>#</th><th>Candidato</th><th>Empresa</th><th>Vacante</th><th>Proyecto</th><th>Departamento</th>
       <th>Documentos</th><th></th>
     </tr></thead>
     <tbody>${lista.map((c,i)=>_docRow(c,i+1)).join('')}</tbody>
@@ -11538,6 +11538,8 @@ function _docRow(c, n){
     <td><strong>${c.nombre||'—'}</strong></td>
     <td style="font-size:12px;color:var(--text2)">${emp.nombre||'—'}</td>
     <td style="font-size:12px;color:var(--text2)">${vac.titulo||vac.folio||'—'}</td>
+    <td style="font-size:12px;color:var(--text2)">${vac.proyecto||'—'}</td>
+    <td style="font-size:12px;color:var(--text2)">${vac.departamento||'—'}</td>
     <td>
       ${docs.length===0
         ? `<span style="font-size:12px;color:var(--text3)">Sin plantilla configurada</span>`

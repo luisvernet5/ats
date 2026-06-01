@@ -2469,15 +2469,17 @@ function doExport(){
         return (empA.nombre||'').localeCompare(empB.nombre||'');
       });
     }
-    const header=['#','Folio','Vacante','Empresa','Reclutador','Proyecto','Departamento','Fecha apertura','Estado','Candidato contratado','Días abierta','Total candidatos','Candidatos activos','Candidatos validados','Candidatos desertaron'];
+    const header=['#','Folio','Vacante','Empresa','Reclutador','Proyecto','Departamento','Fecha apertura','Estado','Candidato contratado','Fecha contratación','Días abierta','Total candidatos','Candidatos activos','Candidatos validados','Candidatos desertaron'];
     rows.push(header);
     vacs.forEach((v,i)=>{
       const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
       const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
       const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
-      const contratado=v.estado==='Cubierta'?(DB.candidatos.find(c=>c.id===v.candidato_contratado)||{}).nombre||'—':'—';
+      const candObj=v.estado==='Cubierta'?DB.candidatos.find(c=>c.id===v.candidato_contratado)||{}:{};
+      const contratado=v.estado==='Cubierta'?candObj.nombre||'—':'—';
+      const fechaCont=v.estado==='Cubierta'?fmt(getFechaContratacion(v,candObj))||'—':'—';
       rows.push([
-        i+1,v.folio||'—',v.nombre,emp.nombre||'—',rec.nombre||'—',v.proyecto||'—',v.departamento||'—',fmt(v.fecha_apertura),v.estado,contratado,
+        i+1,v.folio||'—',v.nombre,emp.nombre||'—',rec.nombre||'—',v.proyecto||'—',v.departamento||'—',fmt(v.fecha_apertura),v.estado,contratado,fechaCont,
         daysBetween(v.fecha_apertura)||0,
         cands.length,
         cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length,
@@ -3467,18 +3469,20 @@ function doExportDirect(empId,recId,est,tipo){
 
   // ── Hoja 1: Vacantes
   const h1=['#','Folio','Vacante','Empresa','Reclutador','Proyecto','Departamento',
-    'Tipo','Colaborador que salió','Fecha apertura','Estado','Candidato contratado',
+    'Tipo','Colaborador que salió','Fecha apertura','Estado','Candidato contratado','Fecha contratación',
     'Días abierta','Total candidatos','Activos','Validados','Deserciones'];
   const r1=vacs.map((v,i)=>{
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
     const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
-    const contratado=v.estado==='Cubierta'?(DB.candidatos.find(c=>c.id===v.candidato_contratado)||{}).nombre||'—':'—';
+    const candObj=v.estado==='Cubierta'?DB.candidatos.find(c=>c.id===v.candidato_contratado)||{}:{};
+    const contratado=v.estado==='Cubierta'?candObj.nombre||'—':'—';
+    const fechaCont=v.estado==='Cubierta'?fmt(getFechaContratacion(v,candObj))||'—':'—';
     return[
       i+1, v.folio||'—', v.nombre, emp.nombre||'—', rec.nombre||'—',
       v.proyecto||'—', v.departamento||'—',
       v.tipo_vacante||'—', v.colaborador_sustituido||'—',
-      fmt(v.fecha_apertura), v.estado, contratado,
+      fmt(v.fecha_apertura), v.estado, contratado, fechaCont,
       daysBetween(v.fecha_apertura)||0,
       cands.length,
       cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length,
@@ -3544,12 +3548,14 @@ function doExportDirect(empId,recId,est,tipo){
         const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
         const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
         const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
-        const contratado=v.estado==='Cubierta'?(DB.candidatos.find(c=>c.id===v.candidato_contratado)||{}).nombre||'—':'—';
+        const candObj2=v.estado==='Cubierta'?DB.candidatos.find(c=>c.id===v.candidato_contratado)||{}:{};
+        const contratado=v.estado==='Cubierta'?candObj2.nombre||'—':'—';
+        const fechaCont=v.estado==='Cubierta'?fmt(getFechaContratacion(v,candObj2))||'—':'—';
         aoa1.push([
           _pCounter++, v.folio||'—', v.nombre, emp.nombre||'—', rec.nombre||'—',
           v.proyecto||'—', v.departamento||'—',
           v.tipo_vacante||'—', v.colaborador_sustituido||'—',
-          fmt(v.fecha_apertura), v.estado, contratado,
+          fmt(v.fecha_apertura), v.estado, contratado, fechaCont,
           daysBetween(v.fecha_apertura)||0,
           cands.length,
           cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length,

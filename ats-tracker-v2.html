@@ -11554,13 +11554,24 @@ function exportarDocumentacionExcel(){
 
 function _docCandidatosFiltrados(){
   const q = _docQ.toLowerCase().trim();
+  const recId = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
+  // Empresas donde el reclutador tiene vacantes asignadas
+  const recEmpIds = recId
+    ? new Set(DB.vacantes.filter(v=>v.reclutador_id===recId).map(v=>v.empresa_id).filter(Boolean))
+    : null;
+  const scope = c => {
+    if(c.descartado) return false;
+    if(!recEmpIds) return true; // admin y otros roles ven todo
+    const vac = DB.vacantes.find(v=>v.id===c.vacante_id)||{};
+    return recEmpIds.has(vac.empresa_id);
+  };
   const porBusqueda = q
-    ? DB.candidatos.filter(c=>!c.descartado && (c.nombre||'').toLowerCase().includes(q))
+    ? DB.candidatos.filter(c=>scope(c) && (c.nombre||'').toLowerCase().includes(q))
     : [];
   // Unir con anclados (siempre visibles), sin duplicados
   const ids = new Set(porBusqueda.map(c=>c.id));
   const anclados = _docPinned.size
-    ? DB.candidatos.filter(c=>_docPinned.has(c.id) && !ids.has(c.id))
+    ? DB.candidatos.filter(c=>_docPinned.has(c.id) && !ids.has(c.id) && scope(c))
     : [];
   return [...anclados, ...porBusqueda]
     .sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''))

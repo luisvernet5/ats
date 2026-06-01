@@ -2447,14 +2447,14 @@ function doExport(){
     if(empId)vacs=vacs.filter(v=>v.empresa_id===empId);
     if(recId)vacs=vacs.filter(v=>v.reclutador_id===recId);
     if(est)vacs=vacs.filter(v=>v.estado===est);
-    const header=['#','Vacante','Empresa','Reclutador','Fecha apertura','Estado','Días abierta','Total candidatos','Candidatos activos','Candidatos validados','Candidatos desertaron'];
+    const header=['#','Vacante','Empresa','Reclutador','Proyecto','Departamento','Fecha apertura','Estado','Días abierta','Total candidatos','Candidatos activos','Candidatos validados','Candidatos desertaron'];
     rows.push(header);
     vacs.forEach((v,i)=>{
       const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
       const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
       const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
       rows.push([
-        i+1,v.nombre,emp.nombre||'—',rec.nombre||'—',fmt(v.fecha_apertura),v.estado,
+        i+1,v.nombre,emp.nombre||'—',rec.nombre||'—',v.proyecto||'—',v.departamento||'—',fmt(v.fecha_apertura),v.estado,
         daysBetween(v.fecha_apertura)||0,
         cands.length,
         cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length,

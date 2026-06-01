@@ -1468,6 +1468,24 @@ function adaptUIToRole() {
     ['nav-empresas','nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-config','nav-headcount'].forEach(id => {
       const el = document.getElementById(id); if(el) el.style.display='none';
     });
+    if(!document.getElementById('nav-garantias')){
+      const garantiaItem=document.createElement('div');
+      garantiaItem.className='nav-item';
+      garantiaItem.id='nav-garantias';
+      garantiaItem.dataset.tooltip='Garantías';
+      garantiaItem.innerHTML='<i class="fa fa-shield-alt"></i><span class="nav-item-text"> Garantías</span>';
+      garantiaItem.setAttribute('onclick',"showPage('garantias')");
+      const anchor=document.getElementById('nav-contratados')||document.getElementById('nav-candidatos');
+      const navEl=document.querySelector('.sb-nav');
+      if(anchor) anchor.parentNode.insertBefore(garantiaItem,anchor.nextSibling);
+      else if(navEl) navEl.appendChild(garantiaItem);
+    }
+    if(!document.getElementById('page-garantias')){
+      const pg=document.createElement('div');
+      pg.className='page';
+      pg.id='page-garantias';
+      document.querySelector('.main').appendChild(pg);
+    }
   } else if(rol === 'facturacion') {
     // Ocultar todos los ítems y secciones del menú
     ['nav-dashboard','nav-empresas','nav-pipeline','nav-vacantes','nav-candidatos',

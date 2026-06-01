@@ -10904,7 +10904,7 @@ function openPerfilModal(empId, perfilId){
       </div>
       <div class="g2" style="margin-bottom:10px">
         <div class="fg"><label>Nombre del puesto</label><input type="text" id="pf-nombre-puesto" value="${v('nombre_puesto')}" placeholder="Ej. Técnico de mantenimiento"></div>
-        <div class="fg"><label>No. de revisión</label><input type="number" id="pf-no-revision" value="${v('no_revision')||1}" min="1"></div>
+        <div class="fg"><label>No. de revisión</label><input type="text" id="pf-no-revision" value="${v('no_revision')||1}" oninput="this.value=this.value.replace(/[^0-9]/g,'')"></div>
       </div>
       <div class="g2" style="margin-bottom:10px">
         <div class="fg"><label>Lugar de trabajo</label><input type="text" id="pf-lugar-trabajo" value="${v('lugar_trabajo')}"></div>
@@ -11046,7 +11046,7 @@ function openPerfilModal(empId, perfilId){
 
       <!-- ACOMPAÑAMIENTO -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Acompañamiento - Capacitación</div>
-      <div class="fg" style="margin-bottom:14px">${_rtBox('pf-acompanamiento',v('acompanamiento_capacitacion'),'• Capacitación 1')}</div>
+      <div class="fg" style="margin-bottom:14px">${_rtBox('pf-acompanamiento',v('acompanamiento_capacitacion'))}</div>
 
       <!-- RESPONSABILIDADES -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Responsabilidades</div>

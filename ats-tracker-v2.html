@@ -542,6 +542,11 @@ input[type=date]{color:var(--text)}
         </button>
       </div>
       <span class="sp"></span>
+      <select id="cand-page-size" onchange="_candPageSize=parseInt(this.value);_candPage=1;renderCandidatosTable()" style="width:auto;min-width:130px">
+        <option value="30" selected>30 registros</option>
+        <option value="100">100 registros</option>
+        <option value="0">Todos</option>
+      </select>
       <button id="btn-cand-col-vis" class="btn btn-ghost btn-sm" onclick="openCandColPanel()"><i class="fa fa-columns"></i> Columnas</button>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">
@@ -550,7 +555,7 @@ input[type=date]{color:var(--text)}
       <button id="cand-vista-departamento" class="btn btn-ghost btn-sm" onclick="setVistaCand('departamento')"><i class="fa fa-sitemap"></i> Por departamento</button>
     </div>
     <div class="table-wrap" id="candidatos-table"></div>
-    <div id="candidatos-count" style="font-size:12px;color:var(--text3);padding:8px 0;"></div>
+    <div id="cand-pager" style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:12px;gap:10px;flex-wrap:wrap"></div>
   </div>
 
   <!-- RECLUTADORES -->
@@ -1281,6 +1286,7 @@ let _rdRecId = null;
 let _vacVistaActual = 'folio';
 let _ctVistaActual = 'folio';
 let _candVistaActual = 'folio';
+let _candPage=1, _candPageSize=30, _candPageFromNav=false;
 
 const hashParams = new URLSearchParams(window.location.hash.substring(1));
 const accessToken = hashParams.get('access_token');
@@ -5656,7 +5662,16 @@ function renderCandidatosTable(){
     });
   }
 
-  const rows=list.map((c,i)=>{
+  if(!_candPageFromNav) _candPage=1;
+  _candPageFromNav=false;
+  const _candTotal=list.length;
+  const _ps=_candPageSize;
+  const _start=_ps===0?0:(_candPage-1)*_ps;
+  const _end=_ps===0?_candTotal:Math.min(_start+_ps,_candTotal);
+  const slice=list.slice(_start,_end);
+
+  const rows=slice.map((c,i)=>{
+  const _absIdx=_start+i;
     const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const r=DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
@@ -5682,7 +5697,7 @@ function renderCandidatosTable(){
       </div>`;
     }).join('');
     return`<tr>
-      <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
+      <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${_absIdx+1}</td>
       <td class="td-p" style="white-space:normal;word-break:break-word;min-width:140px;max-width:180px">
         <div style="display:flex;align-items:flex-start;gap:4px">
           <span class="vac-expand-icon" id="cx-icon-${c.id}" style="flex-shrink:0;margin-top:2px">▶</span>
@@ -5752,8 +5767,16 @@ function renderCandidatosTable(){
     <tbody>${rows||'<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos</td></tr>'}</tbody>
   </table>`;
   _applyCandColVis();
-  const _ccnt=document.getElementById('candidatos-count');
-  if(_ccnt)_ccnt.innerHTML=`Mostrando <strong>${list.length}</strong> registros`;
+  const _pager=document.getElementById('cand-pager');
+  if(_pager){
+    const _totalPages=_ps===0?1:Math.ceil(_candTotal/_ps);
+    const _from=_ps===0?1:_start+1;
+    const _to=_ps===0?_candTotal:_end;
+    const _sel=document.getElementById('cand-page-size');
+    if(_sel)_sel.value=String(_ps);
+    _pager.innerHTML=_candTotal?`<span style="font-size:12px;color:var(--text3)">Mostrando <strong>${_from}–${_to}</strong> de <strong>${_candTotal}</strong> candidato${_candTotal!==1?'s':''}</span>
+      <div style="display:flex;align-items:center;gap:8px">${buildPager(_candPage,_totalPages,'candIrPagina')}</div>`:'';
+  }
   if(window.innerWidth>768){
     document.getElementById('candidatos-table').style.overflow='visible';
     const tbl=document.getElementById('candidatos-table').querySelector('table');
@@ -5764,6 +5787,12 @@ function renderCandidatosTable(){
     const icon=document.getElementById('cx-icon-'+cid);
     if(row){row.classList.add('open');if(icon)icon.classList.add('expanded');}
   });
+}
+function candIrPagina(n){
+  const total=(window._candFiltered||(()=>{const t=_candPageSize===0?1:Math.ceil(0/_candPageSize);return t;})());
+  _candPageFromNav=true;
+  _candPage=Math.max(1,n);
+  renderCandidatosTable();
 }
 function toggleCandRow(cid){
   const row=document.getElementById('cx-'+cid);

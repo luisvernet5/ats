@@ -2447,14 +2447,14 @@ function doExport(){
     if(empId)vacs=vacs.filter(v=>v.empresa_id===empId);
     if(recId)vacs=vacs.filter(v=>v.reclutador_id===recId);
     if(est)vacs=vacs.filter(v=>v.estado===est);
-    const header=['Vacante','Empresa','Reclutador','Fecha apertura','Estado','Días abierta','Total candidatos','Candidatos activos','Candidatos validados','Candidatos desertaron'];
+    const header=['#','Vacante','Empresa','Reclutador','Fecha apertura','Estado','Días abierta','Total candidatos','Candidatos activos','Candidatos validados','Candidatos desertaron'];
     rows.push(header);
-    vacs.forEach(v=>{
+    vacs.forEach((v,i)=>{
       const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
       const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
       const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
       rows.push([
-        v.nombre,emp.nombre||'—',rec.nombre||'—',fmt(v.fecha_apertura),v.estado,
+        i+1,v.nombre,emp.nombre||'—',rec.nombre||'—',fmt(v.fecha_apertura),v.estado,
         daysBetween(v.fecha_apertura)||0,
         cands.length,
         cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length,
@@ -2466,13 +2466,13 @@ function doExport(){
     let cands=DB.candidatos;
     if(empId){const vIds=DB.vacantes.filter(v=>v.empresa_id===empId).map(v=>v.id);cands=cands.filter(c=>vIds.includes(c.vacante_id));}
     if(recId)cands=cands.filter(c=>c.reclutador_id===recId);
-    const header=['Candidato','Vacante','Empresa','Reclutador','Etapa','Fuente','Días proceso','Días cliente','Motivo deserción','Fecha salida'];
+    const header=['#','Candidato','Vacante','Empresa','Reclutador','Etapa','Fuente','Días proceso','Días cliente','Motivo deserción','Fecha salida'];
     rows.push(header);
-    cands.forEach(c=>{
+    cands.forEach((c,i)=>{
       const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
       const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
       const rec=DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
-      rows.push([c.nombre,v.nombre||'—',emp.nombre||'—',rec.nombre||'—',c.etapa,c.fuente||'—',processTotal(c)||0,clienteDays(c)||0,c.motivo_desercion||'—',fmt(c.fecha_salida)]);
+      rows.push([i+1,c.nombre,v.nombre||'—',emp.nombre||'—',rec.nombre||'—',c.etapa,c.fuente||'—',processTotal(c)||0,clienteDays(c)||0,c.motivo_desercion||'—',fmt(c.fecha_salida)]);
     });
   }
 

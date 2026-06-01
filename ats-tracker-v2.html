@@ -8838,17 +8838,66 @@ function _bdRenderDetail(empId){
     if(u==='BAJA') return`<span class="badge br">Baja</span>`;
     return`<span class="badge bx">${s||'—'}</span>`;
   };
+  const c=(v,mono=false)=>`<td style="white-space:nowrap;font-size:11px;${mono?'font-family:var(--mono);':''}">${v||'—'}</td>`;
+  const d=v=>v?fmt(v):'—';
   const rows=lista.map((p,i)=>`<tr>
-    <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
-    <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${p.id_nomina||'—'}</td>
-    <td><strong>${p.nombre||'—'}</strong></td>
-    <td style="font-size:12px;color:var(--text2)">${p.puesto_organigrama||'—'}</td>
-    <td style="font-size:12px">${p.puesto_contrato_nomina||'—'}</td>
-    <td style="font-size:12px">${p.proyecto||'—'}</td>
-    <td style="font-family:var(--mono);font-size:12px">${p.fecha_ingreso_planta?fmt(p.fecha_ingreso_planta):'—'}</td>
-    <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${p.fecha_vencimiento_contrato?fmt(p.fecha_vencimiento_contrato):'—'}</td>
-    <td>${statusBadge(p.status)}</td>
+    <td style="text-align:center;font-size:11px;color:var(--text3);font-family:var(--mono);width:32px;position:sticky;left:0;background:var(--surface)">${i+1}</td>
+    ${c(p.modificacion_puesto)}
+    ${c(p.id_nomina,true)}
+    <td style="white-space:nowrap;font-size:11px;position:sticky;left:32px;background:var(--surface)">${statusBadge(p.status)}</td>
+    <td style="white-space:nowrap;font-size:11px;font-weight:600;min-width:180px">${p.nombre||'—'}</td>
+    ${c(p.puesto_organigrama)}
+    ${c(p.puesto_contrato_nomina)}
+    ${c(d(p.fecha_vencimiento_contrato),true)}
+    ${c(p.proyecto)}
+    ${c(p.puesto_anterior)}
+    ${c(d(p.fecha_modificacion_puesto),true)}
+    ${c(p.tipo_nomina)}
+    ${c(p.puesto2)}
+    ${c(p.num_seguridad_social,true)}
+    ${c(d(p.fecha_ingreso_planta),true)}
+    ${c(d(p.fecha_alta),true)}
+    ${c(d(p.fecha_baja),true)}
+    ${c(p.motivo_baja)}
+    ${c(d(p.reingreso),true)}
+    ${c(d(p.baja),true)}
+    ${c(d(p.reingreso2),true)}
+    ${c(p.sueldo_mensual_neto,true)}
+    ${c(p.sueldo_mensual_autorizado,true)}
+    ${c(p.sueldo_diario,true)}
+    ${c(p.factor,true)}
+    ${c(p.sdi,true)}
+    ${c(p.sueldo_bruto,true)}
+    ${c(p.estado_civil)}
+    ${c(p.curp,true)}
+    ${c(p.rfc,true)}
+    ${c(d(p.fecha_nacimiento),true)}
+    ${c(p.banco)}
+    ${c(p.tarjeta,true)}
+    ${c(p.num_cuenta,true)}
+    ${c(p.clabe,true)}
+    ${c(p.tarjeta_banorte_asignada,true)}
+    ${c(p.infonavit)}
+    ${c(p.factor_tipo_descuento)}
+    ${c(p.calle)} ${c(p.numero)} ${c(p.colonia)} ${c(p.municipio)} ${c(p.estado)} ${c(p.cp,true)}
+    ${c(p.telefono,true)}
+    ${c(p.correo)}
+    ${c(p.beneficiario)}
+    ${c(p.telefono_beneficiario,true)}
+    ${c(p.parentesco)}
+    ${c(p.tarjeta_vales_enred,true)}
+    ${c(p.tarjeta_gasolina,true)}
+    ${c(p.viaticos)}
+    ${c(p.playera)}
+    ${c(p.botas)}
+    ${c(p.chaleco)}
+    ${c(p.pantalon)}
+    ${c(p.credencial_nc)}
+    ${c(p.perfil_declaratoria)}
+    ${c(p.revisiones)}
+    ${c(p.carpeta)}
   </tr>`).join('');
+  const th=t=>`<th style="white-space:nowrap;font-size:11px;padding:8px 10px">${t}</th>`;
   page.innerHTML=`<div style="padding:24px 28px">
     <div style="margin-bottom:18px">
       <button class="btn btn-ghost btn-sm" onclick="bdBack()"><i class="fa fa-arrow-left"></i> Volver a empresas</button>
@@ -8858,15 +8907,32 @@ function _bdRenderDetail(empId){
       ${emp.logo?`<img src="${emp.logo}" style="height:36px;object-fit:contain;border-radius:4px">`:`<div style="width:36px;height:36px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
       <div>
         <div style="font-size:20px;font-weight:700">${emp.nombre||''}</div>
-        <div style="font-size:12px;color:var(--text3)">Base de datos de personal — ${lista.length} registro${lista.length!==1?'s':''}</div>
+        <div style="font-size:12px;color:var(--text3)">Base de datos de personal — ${lista.length} registros</div>
       </div>
       <span style="flex:1"></span>
       <input type="text" placeholder="Buscar nombre, puesto, proyecto, ID nómina..." value="${_bdQ}" oninput="_bdQ=this.value;_bdRenderDetail('${empId}')" style="width:300px;padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--text);font-size:13px">
       <button class="btn btn-green btn-sm" onclick="bdExportEmp('${empId}')"><i class="fa fa-file-csv"></i> Exportar</button>
     </div>
-    <div class="table-wrap"><table>
-      <thead><tr><th style="width:36px">#</th><th>ID Nómina</th><th>Nombre</th><th>Puesto organigrama</th><th>Puesto contrato</th><th>Proyecto</th><th>Fecha ingreso</th><th>Venc. contrato</th><th>Status</th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text3)">Sin registros para esta empresa</td></tr>'}</tbody>
+    <div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px"><table style="border-collapse:collapse;width:max-content;min-width:100%">
+      <thead style="background:var(--surface2)"><tr>
+        <th style="position:sticky;left:0;background:var(--surface2);white-space:nowrap;font-size:11px;padding:8px 6px;width:32px">#</th>
+        ${th('Categoría')}${th('ID Nómina')}
+        <th style="position:sticky;left:32px;background:var(--surface2);white-space:nowrap;font-size:11px;padding:8px 10px">Status</th>
+        ${th('Nombre')}${th('Puesto organigrama')}${th('Puesto contrato nómina')}${th('Venc. contrato')}
+        ${th('Proyecto')}${th('Puesto anterior')}${th('Fecha mod. puesto')}${th('Tipo nómina')}${th('Puesto 2')}
+        ${th('NSS')}${th('Fecha ingreso planta')}${th('Fecha alta IMSS')}${th('Fecha baja')}${th('Motivo baja')}
+        ${th('Reingreso')}${th('Baja 2')}${th('Reingreso 2')}
+        ${th('Sueldo neto')}${th('Sueldo autorizado')}${th('Sueldo diario')}${th('Factor')}${th('SDI')}${th('Sueldo bruto')}
+        ${th('Estado civil')}${th('CURP')}${th('RFC')}${th('Fecha nacimiento')}
+        ${th('Banco')}${th('Tarjeta')}${th('Núm. cuenta')}${th('CLABE')}${th('Tarjeta Banorte')}${th('INFONAVIT')}${th('Factor descuento')}
+        ${th('Calle')}${th('Núm.')}${th('Colonia')}${th('Municipio')}${th('Estado')}${th('CP')}
+        ${th('Teléfono')}${th('Correo')}
+        ${th('Beneficiario')}${th('Tel. beneficiario')}${th('Parentesco')}
+        ${th('Tarjeta vales')}${th('Tarjeta gasolina')}${th('Viáticos')}
+        ${th('Playera')}${th('Botas')}${th('Chaleco')}${th('Pantalón')}
+        ${th('Credencial NC')}${th('Perfil declaratoria')}${th('Revisiones')}${th('Carpeta')}
+      </tr></thead>
+      <tbody>${rows||`<tr><td colspan="60" style="text-align:center;padding:32px;color:var(--text3)">Sin registros</td></tr>`}</tbody>
     </table></div>
   </div>`;
 }

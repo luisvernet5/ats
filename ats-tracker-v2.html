@@ -1108,6 +1108,9 @@ input[type=date]{color:var(--text)}
       <div class="fr full"><div class="fg"><label>¿Qué exportar?</label>
         <select id="exp-tipo"><option value="vacantes">Vacantes con candidatos (tabla concentrado)</option><option value="candidatos">Solo candidatos</option></select>
       </div></div>
+      <div class="fr full"><div class="fg"><label>Ordenar vacantes por</label>
+        <select id="exp-orden"><option value="folio">Folio</option><option value="proyecto">Proyecto</option><option value="departamento">Departamento</option></select>
+      </div></div>
     </div>
     <div class="mf">
       <button class="btn btn-ghost" onclick="closeModal('modal-export')">Cancelar</button>
@@ -2439,6 +2442,7 @@ function doExport(){
   const recId=document.getElementById('exp-rec').value;
   const est=document.getElementById('exp-est').value;
   const tipo=document.getElementById('exp-tipo').value;
+  const orden=document.getElementById('exp-orden').value;
   closeModal('modal-export');
 
   let rows=[];
@@ -2447,14 +2451,17 @@ function doExport(){
     if(empId)vacs=vacs.filter(v=>v.empresa_id===empId);
     if(recId)vacs=vacs.filter(v=>v.reclutador_id===recId);
     if(est)vacs=vacs.filter(v=>v.estado===est);
-    const header=['#','Vacante','Empresa','Reclutador','Proyecto','Departamento','Fecha apertura','Estado','Días abierta','Total candidatos','Candidatos activos','Candidatos validados','Candidatos desertaron'];
+    if(orden==='folio') vacs=[...vacs].sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true}));
+    else if(orden==='proyecto') vacs=[...vacs].sort((a,b)=>(a.proyecto||'').localeCompare(b.proyecto||'',undefined,{sensitivity:'base'}));
+    else if(orden==='departamento') vacs=[...vacs].sort((a,b)=>(a.departamento||'').localeCompare(b.departamento||'',undefined,{sensitivity:'base'}));
+    const header=['#','Folio','Vacante','Empresa','Reclutador','Proyecto','Departamento','Fecha apertura','Estado','Días abierta','Total candidatos','Candidatos activos','Candidatos validados','Candidatos desertaron'];
     rows.push(header);
     vacs.forEach((v,i)=>{
       const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
       const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
       const cands=DB.candidatos.filter(c=>c.vacante_id===v.id);
       rows.push([
-        i+1,v.nombre,emp.nombre||'—',rec.nombre||'—',v.proyecto||'—',v.departamento||'—',fmt(v.fecha_apertura),v.estado,
+        i+1,v.folio||'—',v.nombre,emp.nombre||'—',rec.nombre||'—',v.proyecto||'—',v.departamento||'—',fmt(v.fecha_apertura),v.estado,
         daysBetween(v.fecha_apertura)||0,
         cands.length,
         cands.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length,

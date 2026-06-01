@@ -5808,8 +5808,7 @@ function renderCandidatosTable(){
             <div>
               <div class="fg" style="margin-bottom:10px">
                 <label>Etapa actual</label>
-                <select id="ci-etapa-${c.id}" onchange="candInlineEtapaChange('${c.id}')"
-                  ${currentUserData?.rol==='rh_cliente'?'disabled title="Solo los reclutadores pueden cambiar etapas"':''}>${etapaOpts}</select>
+                <select id="ci-etapa-${c.id}" onchange="candInlineEtapaChange('${c.id}')">${etapaOpts}</select>
               </div>
               <div id="ci-motivo-div-${c.id}" style="display:${isSalida?'block':'none'};margin-bottom:10px">
                 <div class="fg">
@@ -5821,7 +5820,7 @@ function renderCandidatosTable(){
                   <input type="date" id="ci-fsalida-${c.id}" value="${c.fecha_salida||''}">
                 </div>
               </div>
-              ${currentUserData?.rol!=='rh_cliente'?`<button class="btn btn-primary btn-sm" onclick="saveCandEtapa('${c.id}')"><i class="fa fa-save"></i> Guardar</button>`:''}
+              <button class="btn btn-primary btn-sm" onclick="saveCandEtapa('${c.id}')"><i class="fa fa-save"></i> Guardar</button>
             </div>
             <div>
               ${timelineRows||'<div style="font-size:12px;color:var(--text3)">Sin etapas configuradas</div>'}

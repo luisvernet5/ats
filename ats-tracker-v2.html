@@ -8790,7 +8790,7 @@ function _bdRenderDashboard(){
   const mes=today().substring(0,7);
   const cards=DB.empresas.map(emp=>{
     const id=emp.id,hc=_bdGetHCLatest(id);
-    const personal=_bdPersonalEmp(id);
+    const personal=_bdPersonalEmp(id).filter(p=>p.nombre&&p.nombre.trim());
     const activo=personal.length?personal.filter(p=>(p.status||'').toUpperCase()==='ACTIVO').length:(hc?hc.actual:'—');
     const planta=hc?hc.plantilla:0;
     const altas=personal.length?personal.filter(p=>{const f=p.fecha_ingreso_planta||p.fecha_alta||'';return f.startsWith(mes);}).length:(hc?hc.contratados:'—');
@@ -8829,7 +8829,9 @@ function _bdRenderDetail(empId){
     const q=_bdQ.toLowerCase();
     lista=lista.filter(p=>(p.nombre||'').toLowerCase().includes(q)||(p.puesto_organigrama||'').toLowerCase().includes(q)||(p.proyecto||'').toLowerCase().includes(q)||(p.puesto_contrato_nomina||'').toLowerCase().includes(q)||(String(p.id_nomina||'')).toLowerCase().includes(q));
   }
-  lista=[...lista].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+  lista=[...lista]
+    .filter(p=>p.nombre&&p.nombre.trim())
+    .sort((a,b)=>Number(a.id_nomina||9999)-Number(b.id_nomina||9999));
   const statusBadge=s=>{
     const u=(s||'').toUpperCase();
     if(u==='ACTIVO') return`<span class="badge bg">Activo</span>`;

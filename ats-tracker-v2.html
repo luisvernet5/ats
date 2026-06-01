@@ -5878,10 +5878,6 @@ function candInlineEtapaChange(cid){
   if(mDiv)mDiv.style.display=ETAPAS_SALIDA.includes(etapa)?'block':'none';
 }
 async function saveCandEtapa(cid){
-  if(currentUserData?.rol==='rh_cliente'){
-    showToast('No tienes permisos para cambiar etapas','err');
-    return;
-  }
   const c=DB.candidatos.find(x=>x.id===cid);if(!c)return;
   const etapa=document.getElementById('ci-etapa-'+cid).value;
   const _candEtapaAnterior = {...c};

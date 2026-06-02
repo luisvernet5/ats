@@ -11280,6 +11280,7 @@ function _rtGet(id){
 function _rtToText(html){
   return (html||'')
     .replace(/<br\s*\/?>/gi,'\n')
+    .replace(/<\/div>/gi,'\n').replace(/<div[^>]*>/gi,'')
     .replace(/<\/p>/gi,'\n').replace(/<p[^>]*>/gi,'')
     .replace(/<li[^>]*>/gi,'• ').replace(/<\/li>/gi,'\n')
     .replace(/<\/ul>|<\/ol>/gi,'').replace(/<ul[^>]*>|<ol[^>]*>/gi,'')
@@ -11828,19 +11829,19 @@ async function generarPDFPerfil(id){
   const rowTA=(label,val)=>{
     const txt=String(val||'').trim();
     if(!txt) return;
-    doc.setFontSize(8);
+    doc.setFontSize(8);doc.setFont('helvetica','normal');
     const lines=[];
     for(const raw of txt.split('\n')){
-      for(const l of doc.splitTextToSize(raw||' ',mr-ml-38)) lines.push(l);
+      for(const l of doc.splitTextToSize(raw||' ',mr-ml-40)) lines.push(l);
     }
     if(!lines.length) return;
-    chkNewPage();
     const startY=y;
-    doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
-    doc.text(label,ml,startY+4);
-    doc.setFont('helvetica','normal');doc.setTextColor(...black);
-    for(const l of lines){chkNewPage(lh);doc.text(l,ml+38,y+4);y+=lh;}
-    if(y<startY+lh) y=startY+lh;
+    chkNewPage(LH*Math.min(lines.length,3));
+    doc.setTextColor(60,60,60);
+    doc.text(label,ml,startY+5);
+    doc.setTextColor(...black);
+    for(const l of lines){chkNewPage(LH);doc.text(l,ml+38,y+5);y+=LH;}
+    if(y<startY+LH) y=startY+LH;
     doc.setDrawColor(220,220,220);doc.line(ml,y,mr,y);
     y+=2;
   };
@@ -11861,6 +11862,17 @@ async function generarPDFPerfil(id){
     y+=totalH;
   };
   const chkNewPage=(extra=0)=>{ if(y+extra>268){doc.addPage();y=14;} };
+  const LH=7; // line height for free-text sections (mm)
+  const renderTextBlock=(rawHtml,x,width)=>{
+    doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
+    const txt=_rtToText(rawHtml||'');
+    if(!txt){return;}
+    txt.split('\n').forEach(rawLine=>{
+      const subLines=doc.splitTextToSize(rawLine,width);
+      subLines.forEach(l=>{chkNewPage(LH);doc.text(l,x,y+5);y+=LH;});
+    });
+    y+=2;
+  };
 
   // Header con logo
   if(emp.logo){
@@ -11885,11 +11897,7 @@ async function generarPDFPerfil(id){
   row2('Departamento',p.departamento||'','Proyecto',p.proyecto||'');
 
   section('Actividades Esenciales');
-  const actTxt=_rtToText(p.actividades_esenciales||'');
-  const actLines=actTxt.split('\n').flatMap(l=>doc.splitTextToSize(l||' ',mr-ml-6));
-  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
-  actLines.forEach(l=>{chkNewPage(lh);doc.text(l,ml+2,y+4);y+=lh;});
-  y+=2;
+  renderTextBlock(p.actividades_esenciales||'',ml+2,mr-ml-4);
 
   section('Perfil de puesto');
   const edadStr=(p.edad_ini||p.edad_fin)?(p.edad_ini&&p.edad_fin?`${p.edad_ini} hasta ${p.edad_fin} años`:p.edad_ini?`Desde ${p.edad_ini} años`:`Hasta ${p.edad_fin} años`):(p.edad||'');
@@ -11964,11 +11972,7 @@ async function generarPDFPerfil(id){
 
   chkNewPage();
   section('Acompañamiento - Capacitación');
-  const acTxt=_rtToText(p.acompanamiento_capacitacion||'');
-  const acLines=acTxt.split('\n').flatMap(l=>doc.splitTextToSize(l||' ',mr-ml-6));
-  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
-  acLines.forEach(l=>{chkNewPage(lh);doc.text(l,ml+2,y+4);y+=lh;});
-  y+=2;
+  renderTextBlock(p.acompanamiento_capacitacion||'',ml+2,mr-ml-4);
 
   chkNewPage();
   section('Responsabilidades');
@@ -12004,11 +12008,8 @@ async function generarPDFPerfil(id){
 
   chkNewPage();
   section('Entregables');
-  const entTxt=_rtToText(p.entregables||'');
-  const entLines=entTxt.split('\n').flatMap(l=>doc.splitTextToSize(l||' ',mr-ml-6));
-  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
-  entLines.forEach(l=>{chkNewPage(lh);doc.text(l,ml+2,y+4);y+=lh;});
-  y+=4;
+  renderTextBlock(p.entregables||'',ml+2,mr-ml-4);
+  y+=2;
 
   if(y>220){doc.addPage();y=14;}
   section('Autorizaciones');

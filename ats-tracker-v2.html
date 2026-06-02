@@ -127,6 +127,7 @@ tr:hover td{background:var(--surface2)}
 .modal-overlay.open{display:flex}
 .modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--rl);width:660px;max-width:96vw;max-height:90vh;overflow-y:auto}
 .modal-lg{width:780px}
+.modal-xl{width:920px}
 .mh{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--surface);z-index:1}
 .mh h3{font-size:15px;font-weight:600}
 .mb{padding:18px 22px}
@@ -1271,6 +1272,165 @@ input[type=date]{color:var(--text)}
     <button class="xbtn" onclick="closePanel()"><i class="fa fa-times"></i></button>
   </div>
   <div class="dpb" id="dp-body"></div>
+</div>
+
+<!-- MODAL ALTA TRABAJADOR -->
+<div class="modal-overlay" id="modal-alta-trabajador">
+  <div class="modal modal-xl">
+    <div class="mh">
+      <h3><i class="fa fa-user-plus" style="color:var(--accent);margin-right:8px"></i>Alta de trabajador</h3>
+      <button class="xbtn" onclick="bdCerrarAlta()"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="mb" style="max-height:72vh;overflow-y:auto;padding-bottom:8px">
+      <div class="sep">Datos generales</div>
+      <div class="fr">
+        <div class="fg"><label>Status</label>
+          <select id="alta-status"><option value="ACTIVO">Activo</option><option value="BAJA">Baja</option></select>
+        </div>
+        <div class="fg"><label>ID Nómina</label><input type="text" id="alta-id_nomina" placeholder="Ej. 1042"></div>
+      </div>
+      <div class="fr full">
+        <div class="fg"><label>Nombre completo *</label><input type="text" id="alta-nombre" placeholder="Apellido Apellido Nombre"></div>
+      </div>
+      <div class="fr g3c">
+        <div class="fg"><label>CURP</label><input type="text" id="alta-curp" placeholder="CURP" style="text-transform:uppercase"></div>
+        <div class="fg"><label>RFC</label><input type="text" id="alta-rfc" placeholder="RFC" style="text-transform:uppercase"></div>
+        <div class="fg"><label>NSS</label><input type="text" id="alta-nss" placeholder="Núm. Seguridad Social"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Fecha de nacimiento</label><input type="date" id="alta-fecha_nacimiento"></div>
+        <div class="fg"><label>Estado civil</label>
+          <select id="alta-estado_civil">
+            <option value="">—</option>
+            <option>SOLTERO</option><option>CASADO</option><option>UNION LIBRE</option><option>DIVORCIADO</option><option>VIUDO</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="sep">Puesto</div>
+      <div class="fr">
+        <div class="fg"><label>Puesto organigrama</label><input type="text" id="alta-puesto_organigrama"></div>
+        <div class="fg"><label>Puesto contrato / nómina</label><input type="text" id="alta-puesto_contrato_nomina"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Proyecto</label><input type="text" id="alta-proyecto"></div>
+        <div class="fg"><label>Tipo nómina</label>
+          <select id="alta-tipo_nomina">
+            <option value="">—</option>
+            <option>SEMANAL</option><option>CATORCENAL</option><option>QUINCENAL</option><option>MENSUAL</option>
+          </select>
+        </div>
+      </div>
+      <div class="fr g3c">
+        <div class="fg"><label>Categoría / Mod. puesto</label><input type="text" id="alta-modificacion_puesto"></div>
+        <div class="fg"><label>Puesto 2</label><input type="text" id="alta-puesto2"></div>
+        <div class="fg"><label>Puesto anterior</label><input type="text" id="alta-puesto_anterior"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Vencimiento contrato</label><input type="date" id="alta-fecha_vencimiento_contrato"></div>
+        <div class="fg"><label>Fecha mod. puesto</label><input type="date" id="alta-fecha_modificacion_puesto"></div>
+      </div>
+
+      <div class="sep">Fechas laborales</div>
+      <div class="fr g3c">
+        <div class="fg"><label>Fecha ingreso planta</label><input type="date" id="alta-fecha_ingreso_planta"></div>
+        <div class="fg"><label>Fecha alta IMSS</label><input type="date" id="alta-fecha_alta"></div>
+        <div class="fg"><label>Fecha baja</label><input type="date" id="alta-fecha_baja"></div>
+      </div>
+      <div class="fr g3c">
+        <div class="fg"><label>Motivo baja</label><input type="text" id="alta-motivo_baja"></div>
+        <div class="fg"><label>Reingreso</label><input type="date" id="alta-reingreso"></div>
+        <div class="fg"><label>Baja 2</label><input type="date" id="alta-baja"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Reingreso 2</label><input type="date" id="alta-reingreso2"></div>
+        <div class="fg"></div>
+      </div>
+
+      <div class="sep">Sueldo</div>
+      <div class="fr g3c">
+        <div class="fg"><label>Sueldo mensual neto</label><input type="number" id="alta-sueldo_mensual_neto" step="0.01" placeholder="0.00"></div>
+        <div class="fg"><label>Sueldo mensual autorizado</label><input type="number" id="alta-sueldo_mensual_autorizado" step="0.01" placeholder="0.00"></div>
+        <div class="fg"><label>Sueldo diario</label><input type="number" id="alta-sueldo_diario" step="0.01" placeholder="0.00"></div>
+      </div>
+      <div class="fr g3c">
+        <div class="fg"><label>Factor</label><input type="number" id="alta-factor" step="0.0001" placeholder="0.0000"></div>
+        <div class="fg"><label>SDI</label><input type="number" id="alta-sdi" step="0.01" placeholder="0.00"></div>
+        <div class="fg"><label>Sueldo bruto</label><input type="number" id="alta-sueldo_bruto" step="0.01" placeholder="0.00"></div>
+      </div>
+
+      <div class="sep">Banco</div>
+      <div class="fr g3c">
+        <div class="fg"><label>Banco</label><input type="text" id="alta-banco"></div>
+        <div class="fg"><label>Tarjeta</label><input type="text" id="alta-tarjeta"></div>
+        <div class="fg"><label>Núm. cuenta</label><input type="text" id="alta-num_cuenta"></div>
+      </div>
+      <div class="fr g3c">
+        <div class="fg"><label>CLABE interbancaria</label><input type="text" id="alta-clabe"></div>
+        <div class="fg"><label>Tarjeta Banorte asignada</label><input type="text" id="alta-tarjeta_banorte_asignada"></div>
+        <div class="fg"><label>INFONAVIT</label><input type="text" id="alta-infonavit"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Factor tipo descuento</label><input type="text" id="alta-factor_tipo_descuento"></div>
+        <div class="fg"></div>
+      </div>
+
+      <div class="sep">Domicilio</div>
+      <div class="fr">
+        <div class="fg"><label>Calle</label><input type="text" id="alta-calle"></div>
+        <div class="fg"><label>Número</label><input type="text" id="alta-numero"></div>
+      </div>
+      <div class="fr g3c">
+        <div class="fg"><label>Colonia</label><input type="text" id="alta-colonia"></div>
+        <div class="fg"><label>Municipio</label><input type="text" id="alta-municipio"></div>
+        <div class="fg"><label>Estado</label><input type="text" id="alta-estado_domicilio"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>CP</label><input type="text" id="alta-cp" placeholder="00000"></div>
+        <div class="fg"></div>
+      </div>
+
+      <div class="sep">Contacto y beneficiario</div>
+      <div class="fr">
+        <div class="fg"><label>Teléfono</label><input type="tel" id="alta-telefono" placeholder="10 dígitos"></div>
+        <div class="fg"><label>Correo electrónico</label><input type="email" id="alta-correo"></div>
+      </div>
+      <div class="fr g3c">
+        <div class="fg"><label>Beneficiario</label><input type="text" id="alta-beneficiario"></div>
+        <div class="fg"><label>Teléfono beneficiario</label><input type="tel" id="alta-telefono_beneficiario"></div>
+        <div class="fg"><label>Parentesco</label><input type="text" id="alta-parentesco"></div>
+      </div>
+
+      <div class="sep">Prestaciones</div>
+      <div class="fr g3c">
+        <div class="fg"><label>Tarjeta vales (Enred)</label><input type="text" id="alta-tarjeta_vales_enred"></div>
+        <div class="fg"><label>Tarjeta gasolina</label><input type="text" id="alta-tarjeta_gasolina"></div>
+        <div class="fg"><label>Viáticos</label><input type="text" id="alta-viaticos"></div>
+      </div>
+
+      <div class="sep">Uniformes y equipo</div>
+      <div class="fr g3c">
+        <div class="fg"><label>Playera (talla)</label><input type="text" id="alta-playera" placeholder="S / M / L / XL"></div>
+        <div class="fg"><label>Botas (talla)</label><input type="text" id="alta-botas"></div>
+        <div class="fg"><label>Chaleco (talla)</label><input type="text" id="alta-chaleco"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Pantalón (talla)</label><input type="text" id="alta-pantalon"></div>
+        <div class="fg"><label>Credencial NC</label><input type="text" id="alta-credencial_nc"></div>
+      </div>
+
+      <div class="sep">Documentación</div>
+      <div class="fr g3c">
+        <div class="fg"><label>Perfil declaratoria</label><input type="text" id="alta-perfil_declaratoria"></div>
+        <div class="fg"><label>Revisiones</label><input type="text" id="alta-revisiones"></div>
+        <div class="fg"><label>Carpeta</label><input type="text" id="alta-carpeta"></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="bdCerrarAlta()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-alta" onclick="bdGuardarAlta()"><i class="fa fa-save"></i> Guardar alta</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -8912,6 +9072,7 @@ function _bdRenderDetail(empId){
       <span style="flex:1"></span>
       <input type="text" placeholder="Buscar nombre, puesto, proyecto, ID nómina..." value="${_bdQ}" oninput="_bdQ=this.value;_bdRenderDetail('${empId}')" style="width:300px;padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--text);font-size:13px">
       <button class="btn btn-green btn-sm" onclick="bdExportEmp('${empId}')"><i class="fa fa-file-csv"></i> Exportar</button>
+      <button class="btn btn-primary btn-sm" onclick="bdAbrirAlta('${empId}')"><i class="fa fa-user-plus"></i> Alta trabajador</button>
     </div>
     <div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px"><table style="border-collapse:collapse;width:max-content;min-width:100%">
       <thead style="background:var(--surface2)"><tr>
@@ -8955,6 +9116,108 @@ function bdExportEmp(empId){
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   a.download=`personal_${(emp.nombre||empId).replace(/\s+/g,'_')}_${today()}.csv`; a.click();
   showToast('Exportado ✓');
+}
+
+/* ============================================================
+   ALTA DE TRABAJADOR — BD PERSONAL
+   ============================================================ */
+let _bdAltaEmpId = null;
+function bdAbrirAlta(empId){
+  _bdAltaEmpId = empId;
+  document.querySelectorAll('#modal-alta-trabajador input, #modal-alta-trabajador select').forEach(el=>{
+    el.value = el.tagName==='SELECT' ? el.options[0]?.value||'' : '';
+  });
+  document.getElementById('alta-status').value = 'ACTIVO';
+  document.getElementById('modal-alta-trabajador').classList.add('open');
+}
+function bdCerrarAlta(){
+  document.getElementById('modal-alta-trabajador').classList.remove('open');
+}
+async function bdGuardarAlta(){
+  const nombre = (document.getElementById('alta-nombre')?.value||'').trim();
+  if(!nombre){ showToast('El nombre es obligatorio','err'); return; }
+  const g = id => { const v=(document.getElementById(id)?.value||'').trim(); return v||null; };
+  const registro = {
+    id: 'p-'+Date.now()+'-'+Math.random().toString(36).substr(2,6),
+    empresa_id: _bdAltaEmpId,
+    status: document.getElementById('alta-status').value||'ACTIVO',
+    id_nomina: g('alta-id_nomina'),
+    nombre,
+    curp: g('alta-curp'),
+    rfc: g('alta-rfc'),
+    num_seguridad_social: g('alta-nss'),
+    fecha_nacimiento: g('alta-fecha_nacimiento'),
+    estado_civil: g('alta-estado_civil'),
+    puesto_organigrama: g('alta-puesto_organigrama'),
+    puesto_contrato_nomina: g('alta-puesto_contrato_nomina'),
+    proyecto: g('alta-proyecto'),
+    tipo_nomina: g('alta-tipo_nomina'),
+    modificacion_puesto: g('alta-modificacion_puesto'),
+    puesto2: g('alta-puesto2'),
+    puesto_anterior: g('alta-puesto_anterior'),
+    fecha_vencimiento_contrato: g('alta-fecha_vencimiento_contrato'),
+    fecha_modificacion_puesto: g('alta-fecha_modificacion_puesto'),
+    fecha_ingreso_planta: g('alta-fecha_ingreso_planta'),
+    fecha_alta: g('alta-fecha_alta'),
+    fecha_baja: g('alta-fecha_baja'),
+    motivo_baja: g('alta-motivo_baja'),
+    reingreso: g('alta-reingreso'),
+    baja: g('alta-baja'),
+    reingreso2: g('alta-reingreso2'),
+    sueldo_mensual_neto: g('alta-sueldo_mensual_neto'),
+    sueldo_mensual_autorizado: g('alta-sueldo_mensual_autorizado'),
+    sueldo_diario: g('alta-sueldo_diario'),
+    factor: g('alta-factor'),
+    sdi: g('alta-sdi'),
+    sueldo_bruto: g('alta-sueldo_bruto'),
+    banco: g('alta-banco'),
+    tarjeta: g('alta-tarjeta'),
+    num_cuenta: g('alta-num_cuenta'),
+    clabe: g('alta-clabe'),
+    tarjeta_banorte_asignada: g('alta-tarjeta_banorte_asignada'),
+    infonavit: g('alta-infonavit'),
+    factor_tipo_descuento: g('alta-factor_tipo_descuento'),
+    calle: g('alta-calle'),
+    numero: g('alta-numero'),
+    colonia: g('alta-colonia'),
+    municipio: g('alta-municipio'),
+    estado: g('alta-estado_domicilio'),
+    cp: g('alta-cp'),
+    telefono: g('alta-telefono'),
+    correo: g('alta-correo'),
+    beneficiario: g('alta-beneficiario'),
+    telefono_beneficiario: g('alta-telefono_beneficiario'),
+    parentesco: g('alta-parentesco'),
+    tarjeta_vales_enred: g('alta-tarjeta_vales_enred'),
+    tarjeta_gasolina: g('alta-tarjeta_gasolina'),
+    viaticos: g('alta-viaticos'),
+    playera: g('alta-playera'),
+    botas: g('alta-botas'),
+    chaleco: g('alta-chaleco'),
+    pantalon: g('alta-pantalon'),
+    credencial_nc: g('alta-credencial_nc'),
+    perfil_declaratoria: g('alta-perfil_declaratoria'),
+    revisiones: g('alta-revisiones'),
+    carpeta: g('alta-carpeta'),
+  };
+  // Quitar nulls antes de insertar
+  const payload = Object.fromEntries(Object.entries(registro).filter(([,v])=>v!==null));
+  const btn = document.getElementById('btn-guardar-alta');
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Guardando...'; }
+  try {
+    if(!SANDBOX_MODE){
+      const { error } = await sbClient.from('bd_personal').insert(payload);
+      if(error) throw new Error(error.message);
+    }
+    DB.personal.push(registro);
+    bdCerrarAlta();
+    showToast('Trabajador dado de alta ✓');
+    _bdRenderDetail(_bdAltaEmpId);
+  } catch(e){
+    showToast('Error al guardar: '+e.message,'err');
+  } finally {
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa fa-save"></i> Guardar alta'; }
+  }
 }
 
 /* ============================================================

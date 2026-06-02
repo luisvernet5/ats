@@ -1313,7 +1313,7 @@ input[type=date]{color:var(--text)}
         <div class="fg"><label>Puesto contrato / nómina</label><input type="text" id="alta-puesto_contrato_nomina"></div>
       </div>
       <div class="fr">
-        <div class="fg"><label>Proyecto</label><input type="text" id="alta-proyecto"></div>
+        <div class="fg"><label>Proyecto</label><select id="alta-proyecto"><option value="">Sin asignar</option></select></div>
         <div class="fg"><label>Tipo nómina</label>
           <select id="alta-tipo_nomina">
             <option value="">—</option>
@@ -1338,7 +1338,21 @@ input[type=date]{color:var(--text)}
         <div class="fg"><label>Fecha baja</label><input type="date" id="alta-fecha_baja"></div>
       </div>
       <div class="fr g3c">
-        <div class="fg"><label>Motivo baja</label><input type="text" id="alta-motivo_baja"></div>
+        <div class="fg"><label>Motivo baja</label>
+          <select id="alta-motivo_baja">
+            <option value="">—</option>
+            <option>RENUNCIA VOLUNTARIA</option>
+            <option>ABANDONO DE EMPLEO</option>
+            <option>LIQUIDACIÓN</option>
+            <option>FINIQUITO</option>
+            <option>TÉRMINO DE CONTRATO</option>
+            <option>MUTUO ACUERDO</option>
+            <option>JUBILACIÓN / PENSIÓN</option>
+            <option>INCAPACIDAD PERMANENTE</option>
+            <option>DEFUNCIÓN</option>
+            <option>OTRO</option>
+          </select>
+        </div>
         <div class="fg"><label>Reingreso</label><input type="date" id="alta-reingreso"></div>
         <div class="fg"><label>Baja 2</label><input type="date" id="alta-baja"></div>
       </div>
@@ -9128,6 +9142,11 @@ function bdAbrirAlta(empId){
     el.value = el.tagName==='SELECT' ? el.options[0]?.value||'' : '';
   });
   document.getElementById('alta-status').value = 'ACTIVO';
+  // Poblar proyectos de la empresa
+  const emp = DB.empresas.find(x=>x.id===empId)||{};
+  const proySel = document.getElementById('alta-proyecto');
+  proySel.innerHTML = '<option value="">Sin asignar</option>';
+  (emp.proyectos||[]).forEach(p=>{ proySel.innerHTML+=`<option value="${p}">${p}</option>`; });
   document.getElementById('modal-alta-trabajador').classList.add('open');
 }
 function bdCerrarAlta(){

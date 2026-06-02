@@ -1764,8 +1764,8 @@ function adaptUIToRole() {
     }
   }
 
-  // Base de datos de personal — visible para admin y reclutador
-  if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-basedatos')){
+  // BASE DE DATOS — desactivado temporalmente
+  /* if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-basedatos')){
     const navEl = document.querySelector('.sb-nav');
     if(navEl){
       const bdItem = document.createElement('div');
@@ -1778,7 +1778,7 @@ function adaptUIToRole() {
       if(anchor) anchor.parentNode.insertBefore(bdItem, anchor.nextSibling);
       else navEl.appendChild(bdItem);
     }
-  }
+  } */
 
   // Perfiles de puesto — visible para admin, reclutador y rh_cliente
   if(!document.getElementById('nav-perfiles')){
@@ -2606,7 +2606,7 @@ function renderPage(p){
   if(p==='ese')renderESE();
   if(p==='documentacion')renderDocumentacion();
   if(p==='perfiles')renderPerfiles();
-  if(p==='basedatos')renderBaseDatos();
+  // if(p==='basedatos')renderBaseDatos(); // desactivado temporalmente
 }
 
 /* ============================================================

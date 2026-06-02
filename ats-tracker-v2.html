@@ -2337,7 +2337,7 @@ async function loadDB(){
       const _rhEmpId = currentUserData?.empresa_id||null;
       console.log('[loadDB] ROL ACTUAL:', currentUserData?.rol, '| es rh_cliente:', _isRhC, '| EMPRESA ID:', _rhEmpId);
       console.log('[loadDB] currentUserData completo:', JSON.stringify(currentUserData));
-      const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand,perfiles,personal]=await Promise.all([
+      const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand,perfiles]=await Promise.all([
         sbClient.from('empresas').select('*'),
         (_isRhC && _rhEmpId
           ? sbClient.from('vacantes').select('*').filter('data->>empresa_id','eq',_rhEmpId)
@@ -2349,7 +2349,6 @@ async function loadDB(){
         sbClient.from('doc_plantillas').select('*'),
         sbClient.from('doc_candidato').select('*'),
         sbClient.from('perfiles_puesto').select('*'),
-        sbClient.from('bd_personal').select('*'),
       ]);
       console.log('[loadDB] vacantes cargadas:', vac.data?.length, '| error:', vac.error?.message||null);
       DB.empresas=emp.data?.map(r=>r.data)||[];
@@ -2360,7 +2359,7 @@ async function loadDB(){
       DB.docPlantillas=docPlt.data||[];
       DB.docCandidato=docCand.data||[];
       DB.perfilesPuesto=(perfiles.data||[]).map(r=>({id:r.id,empresa_id:r.empresa_id,...(r.data||{})}));
-      DB.personal=personal.data||[];
+      DB.personal=[];
       _candConRefs=new Set((refs.data||[]).flatMap(r=>{
         const ids=[];
         // formato nuevo: columnas planas
@@ -8935,7 +8934,8 @@ function exportContratados(){
 /* ============================================================
    BASE DE DATOS DE PERSONAL
    ============================================================ */
-let _bdOpenEmpId=null,_bdQ='';
+let _bdOpenEmpId=null,_bdQ='',_bdPersonalLoaded=false,_bdSearchTimer=null;
+function _bdSearchDebounce(empId){clearTimeout(_bdSearchTimer);_bdSearchTimer=setTimeout(()=>_bdRenderDetail(empId),220);}
 
 function _bdGetHCLatest(empId){
   const rows=(DB.hc_resumen||[]).filter(r=>r.empresa_id===empId);
@@ -8953,8 +8953,22 @@ function _bdColocados(empId){
     return (DB.vacantes.find(x=>x.id===c.vacante_id)||{}).empresa_id===empId;
   });
 }
-function renderBaseDatos(){
+async function renderBaseDatos(){
   const page=document.getElementById('page-basedatos'); if(!page) return;
+  if(!_bdPersonalLoaded&&!SANDBOX_MODE){
+    page.innerHTML='<div style="padding:60px;text-align:center;color:var(--text3)"><i class="fa fa-spinner fa-spin" style="font-size:22px;margin-bottom:12px;display:block"></i>Cargando base de datos...</div>';
+    try{
+      const {data,error}=await sbClient.from('bd_personal').select('*');
+      if(error) throw new Error(error.message);
+      DB.personal=data||[];
+      _bdPersonalLoaded=true;
+    }catch(e){
+      page.innerHTML=`<div style="padding:40px;text-align:center;color:var(--red)"><i class="fa fa-exclamation-triangle"></i> Error al cargar: ${e.message}</div>`;
+      return;
+    }
+  }else if(!_bdPersonalLoaded){
+    _bdPersonalLoaded=true;
+  }
   if(_bdOpenEmpId){_bdRenderDetail(_bdOpenEmpId);return;}
   _bdRenderDashboard();
 }
@@ -9093,7 +9107,7 @@ function _bdRenderDetail(empId){
         <div style="font-size:12px;color:var(--text3)">Base de datos de personal — ${lista.length} registros</div>
       </div>
       <span style="flex:1"></span>
-      <input type="text" placeholder="Buscar nombre, puesto, proyecto, ID nómina..." value="${_bdQ}" oninput="_bdQ=this.value;_bdRenderDetail('${empId}')" style="width:300px;padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--text);font-size:13px">
+      <input type="text" placeholder="Buscar nombre, puesto, proyecto, ID nómina..." value="${_bdQ}" oninput="_bdQ=this.value;_bdSearchDebounce('${empId}')" style="width:300px;padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--text);font-size:13px">
       <button class="btn btn-green btn-sm" onclick="bdExportEmp('${empId}')"><i class="fa fa-file-csv"></i> Exportar</button>
       <button class="btn btn-primary btn-sm" onclick="bdAbrirAlta('${empId}')"><i class="fa fa-user-plus"></i> Alta trabajador</button>
     </div>

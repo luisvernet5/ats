@@ -11805,18 +11805,25 @@ async function generarPDFPerfil(id){
     y+=9;
   };
   const row2=(label,val,label2,val2)=>{
+    const valMaxW = label2 ? (W/2 - (ml+38) - 4) : (mr - (ml+40));
+    const val2MaxW = label2 ? (mr - (W/2+36) - 2) : 0;
+    const valLines = doc.splitTextToSize(String(val||''), valMaxW);
+    const val2Lines = label2 ? doc.splitTextToSize(String(val2||''), val2MaxW) : [];
+    const maxLines = Math.max(1, valLines.length, val2Lines.length);
+    const rowH = maxLines * 5 + 3;
+    chkNewPage(rowH);
     doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
     doc.text(label,ml,y+4);
     doc.setFont('helvetica','bold');doc.setTextColor(...black);
-    doc.text(String(val||''),ml+38,y+4);
+    valLines.forEach((l,i)=>doc.text(l,ml+38,y+4+i*5));
     if(label2){
       doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
       doc.text(label2,W/2+2,y+4);
       doc.setFont('helvetica','bold');doc.setTextColor(...black);
-      doc.text(String(val2||''),W/2+36,y+4);
+      val2Lines.forEach((l,i)=>doc.text(l,W/2+36,y+4+i*5));
     }
-    doc.setDrawColor(220,220,220);doc.line(ml,y+lh,mr,y+lh);
-    y+=lh;
+    doc.setDrawColor(220,220,220);doc.line(ml,y+rowH,mr,y+rowH);
+    y+=rowH;
   };
   const rowTA=(label,val)=>{
     const txt=String(val||'').trim();
@@ -11832,9 +11839,10 @@ async function generarPDFPerfil(id){
     doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
     doc.text(label,ml,startY+4);
     doc.setFont('helvetica','normal');doc.setTextColor(...black);
-    for(const l of lines){chkNewPage();doc.text(l,ml+38,y+4);y+=5;}
-    if(y>startY&&y<startY+lh) y=startY+lh;
+    for(const l of lines){chkNewPage(lh);doc.text(l,ml+38,y+4);y+=lh;}
+    if(y<startY+lh) y=startY+lh;
     doc.setDrawColor(220,220,220);doc.line(ml,y,mr,y);
+    y+=2;
   };
   const rowSide=(label,val)=>{
     const txt=String(val||'').trim();
@@ -11852,7 +11860,7 @@ async function generarPDFPerfil(id){
     doc.setDrawColor(220,220,220);doc.line(ml,y+totalH,mr,y+totalH);
     y+=totalH;
   };
-  const chkNewPage=()=>{ if(y>275){doc.addPage();y=14;} };
+  const chkNewPage=(extra=0)=>{ if(y+extra>268){doc.addPage();y=14;} };
 
   // Header con logo
   if(emp.logo){
@@ -11878,9 +11886,9 @@ async function generarPDFPerfil(id){
 
   section('Actividades Esenciales');
   const actTxt=_rtToText(p.actividades_esenciales||'');
-  const actLines=actTxt.split('\n').flatMap(l=>doc.splitTextToSize(l,mr-ml-4));
+  const actLines=actTxt.split('\n').flatMap(l=>doc.splitTextToSize(l||' ',mr-ml-6));
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
-  actLines.forEach(l=>{chkNewPage();doc.text(l,ml+2,y+4);y+=5;});
+  actLines.forEach(l=>{chkNewPage(lh);doc.text(l,ml+2,y+4);y+=lh;});
   y+=2;
 
   section('Perfil de puesto');
@@ -11957,9 +11965,9 @@ async function generarPDFPerfil(id){
   chkNewPage();
   section('Acompañamiento - Capacitación');
   const acTxt=_rtToText(p.acompanamiento_capacitacion||'');
-  const acLines=acTxt.split('\n').flatMap(l=>doc.splitTextToSize(l,mr-ml-4));
+  const acLines=acTxt.split('\n').flatMap(l=>doc.splitTextToSize(l||' ',mr-ml-6));
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
-  acLines.forEach(l=>{chkNewPage();doc.text(l,ml+2,y+4);y+=5;});
+  acLines.forEach(l=>{chkNewPage(lh);doc.text(l,ml+2,y+4);y+=lh;});
   y+=2;
 
   chkNewPage();
@@ -11997,9 +12005,9 @@ async function generarPDFPerfil(id){
   chkNewPage();
   section('Entregables');
   const entTxt=_rtToText(p.entregables||'');
-  const entLines=entTxt.split('\n').flatMap(l=>doc.splitTextToSize(l,mr-ml-4));
+  const entLines=entTxt.split('\n').flatMap(l=>doc.splitTextToSize(l||' ',mr-ml-6));
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
-  entLines.forEach(l=>{chkNewPage();doc.text(l,ml+2,y+4);y+=5;});
+  entLines.forEach(l=>{chkNewPage(lh);doc.text(l,ml+2,y+4);y+=lh;});
   y+=4;
 
   if(y>220){doc.addPage();y=14;}

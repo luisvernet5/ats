@@ -3898,9 +3898,12 @@ async function saveVacante(){
   const empPrefix=(emp.nombre||'EMP').substring(0,3).toUpperCase().replace(/\s/g,'');
   const fecha=new Date();
   const mesAnio=String(fecha.getMonth()+1).padStart(2,'0')+fecha.getFullYear().toString().substr(2);
-  // Buscar el número de secuencia más alto ya usado para este prefijo (sin importar mes/año)
+  // Buscar el número de secuencia más alto ya usado para este prefijo,
+  // incluyendo vacantes activas, cerradas, canceladas Y eliminadas
   const rePrefix=new RegExp(`^${empPrefix}-(\\d+)-`,'i');
-  const usedSeqs=DB.vacantes
+  const eliminadas=JSON.parse(localStorage.getItem('vacantes_eliminadas')||'[]');
+  const todasLasVacantes=[...DB.vacantes,...eliminadas];
+  const usedSeqs=todasLasVacantes
     .filter(v=>v.folio&&rePrefix.test(v.folio)&&v.id!==id)
     .map(v=>parseInt(v.folio.match(rePrefix)[1])||0);
   let seq=(usedSeqs.length?Math.max(...usedSeqs):0)+1;

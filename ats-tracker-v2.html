@@ -2005,13 +2005,9 @@ function exportarResumen(){
   const f2 = document.getElementById('res-f2')?.value||'';
   const header = ['Reclutador','Email','Vacantes nuevas','Candidatos nuevos','Cambios de etapa','Vacantes editadas','Vacantes eliminadas','Candidatos editados','Empresas nuevas','Empresas editadas','Total acciones'];
   const rows = data.map(r=>[r.nombre,r.email,r.nuevasVacantes,r.nuevosCandidatos,r.cambiosEtapa,r.editarVacantes,r.eliminarVacantes,r.editarCandidatos,r.nuevasEmpresas,r.editarEmpresas,r.totalAcciones]);
-  const csv = [header,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const BOM = '﻿';
-  const blob = new Blob([BOM+csv],{type:'text/csv;charset=utf-8;'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `resumen_reclutadores_${f1}_${f2}.csv`;
-  a.click();
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([header,...rows]),'Resumen');
+  XLSX.writeFile(wb,`resumen_reclutadores_${f1}_${f2}.xlsx`);
 }
 
 let logPaginaActual = 1;
@@ -2096,12 +2092,9 @@ function exportarLog(){
     d.usuario_nombre||'—', d.usuario_email||'—',
     d.accion||'—', d.entidad||'—', d.detalle||'—'
   ])];
-  const csv = filas.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `log_actividad_${today()}.csv`;
-  a.click();
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(filas),'Log');
+  XLSX.writeFile(wb,`log_actividad_${today()}.xlsx`);
   showToast(`${filtrados.length} registros exportados ✓`);
 }
 
@@ -2706,11 +2699,10 @@ function doExport(){
     });
   }
 
-  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`ats_export_${tipo}_${today()}.csv`;a.click();
-  showToast('Archivo CSV descargado ✓');
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Datos');
+  XLSX.writeFile(wb,`ats_export_${tipo}_${today()}.xlsx`);
+  showToast('Archivo Excel descargado ✓');
 }
 
 /* ============================================================
@@ -3649,12 +3641,9 @@ function exportAnalytics(empId, tab) {
       rows.push([key,g.vacs.length,g.cands.length,avg,avgC,top?`${top[0]} (${top[1]})`:'—',vacMax?`${vacMax.v.nombre} (${vacMax.n})`:'—']);
     });
   }
-  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`analytics_${emp.nombre||empId}_${tab}_${today()}.csv`;
-  a.click();
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Analytics');
+  XLSX.writeFile(wb,`analytics_${emp.nombre||empId}_${tab}_${today()}.xlsx`);
   showToast('Exportado ✓');
 }
 
@@ -5418,12 +5407,9 @@ function exportarCandidatosVacante(vacId) {
       c.motivo_desercion||'—', fmt(c.fecha_salida), c.notas||'—'
     ]);
   });
-  const csv = csvRows.map(r=>r.map(val=>`"${String(val).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `candidatos_${v.folio||v.nombre}_${today()}.csv`;
-  a.click();
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(csvRows),'Candidatos');
+  XLSX.writeFile(wb,`candidatos_${v.folio||v.nombre}_${today()}.xlsx`);
   showToast('Exportado ✓');
 }
 
@@ -5593,12 +5579,9 @@ function exportDescartadosExcel(){
     const rec=DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
     return[i+1,c.nombre||'',v.nombre||'',emp.nombre||'',rec.nombre||'',v.proyecto||'',v.departamento||'',c.etapa||'',c.fecha_descarte||c.fecha_salida||'',c.motivo_descarte||c.motivo_desercion||''];
   });
-  const csv=[header,...filas].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`descartados_${today()}.csv`;
-  a.click();
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([header,...filas]),'Descartados');
+  XLSX.writeFile(wb,`descartados_${today()}.xlsx`);
   showToast('Excel descargado ✓');
 }
 
@@ -6254,12 +6237,9 @@ function exportarReclutador(recId) {
       v.sla_dias||'Sin límite'
     ]);
   });
-  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`vacantes_${r.nombre.replace(/\s/g,'_')}_${today()}.csv`;
-  a.click();
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Vacantes');
+  XLSX.writeFile(wb,`vacantes_${r.nombre.replace(/\s/g,'_')}_${today()}.xlsx`);
   showToast('Exportado ✓');
 }
 function toggleRecRow(rid){
@@ -7064,13 +7044,9 @@ async function doExportGarantias(){
     ]);
   }
 
-  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const BOM = '﻿';
-  const blob = new Blob([BOM+csv],{type:'text/csv;charset=utf-8;'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `garantias_${today()}.csv`;
-  a.click();
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Garantías');
+  XLSX.writeFile(wb,`garantias_${today()}.xlsx`);
 }
 
 async function renderGarantias(){
@@ -8316,12 +8292,9 @@ function exportHCHistoricoExcel(){
     const min   = document.getElementById(`hh-min-${s}`)?.textContent ?? '';
     rows.push([`Sem. ${s}`, plant, vac, cont, max, min]);
   }
-  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
-  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `historico-vacantes-${emp.nombre||empId}-${gAnio}.csv`;
-  a.click();
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Úistórico');
+  XLSX.writeFile(wb,`historico-vacantes-${emp.nombre||empId}-${gAnio}.xlsx`);
 }
 
 function exportHCPlantHistoricoExcel(){
@@ -8339,12 +8312,9 @@ function exportHCPlantHistoricoExcel(){
     const cum   = document.getElementById(`hphi-cum-${s}`)?.textContent ?? '';
     rows.push([`Sem. ${s}`, plant, act, min, max, cum]);
   }
-  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
-  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `historico-plantilla-${emp.nombre||empId}-${gAnio}.csv`;
-  a.click();
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Úistórico');
+  XLSX.writeFile(wb,`historico-plantilla-${emp.nombre||empId}-${gAnio}.xlsx`);
 }
 
 async function updateHCRow(empId, proyecto, auth, el, campo){
@@ -8701,13 +8671,9 @@ async function exportarHC(){
     const pct = actual>0?((vac/auth)*100).toFixed(1)+'%':'0%';
     return[p.proyecto,auth,actual,vac,r.cartera||0,r.entrevista||0,r.validacion||0,r.proceso_contratacion||0,r.contratados||0,r.bajas||0,pct];
   });
-  const csv = [header,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const BOM='﻿';
-  const blob=new Blob([BOM+csv],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`headcount_${emp.nombre||empId}_sem${semana}.csv`;
-  a.click();
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([header,...rows]),'HeadCount');
+  XLSX.writeFile(wb,`headcount_${emp.nombre||empId}_sem${semana}.xlsx`);
 }
 
 /* ============================================================
@@ -8931,12 +8897,9 @@ function exportContratados(){
     const diasCliente = clienteDays(c);
     return [i+1,v.nombre||'',v.folio||'',emp.nombre||'',rec.nombre||'',c.nombre||'',v.departamento||'',v.proyecto||'',v.fecha_apertura||'',fechaCont||'',wn?`S${wn.week} (${wn.year})`:'',diasTotal!==null?diasTotal+'d':'',diasCliente!==null?diasCliente+'d':''];
   });
-  const csv = [header,...rows].map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
-  const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'contratados.csv';
-  a.click();
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([header,...rows]),'Contratados');
+  XLSX.writeFile(wb,'contratados.xlsx');
 }
 
 /* ============================================================
@@ -9156,10 +9119,9 @@ function bdExportEmp(empId){
     p.sueldo_mensual_neto||'', p.sueldo_diario||'', p.sdi||'',
     p.playera||'', p.botas||'', p.chaleco||''
   ]);
-  const csv=[hdr,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download=`personal_${(emp.nombre||empId).replace(/\s+/g,'_')}_${today()}.csv`; a.click();
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([hdr,...rows]),'Personal');
+  XLSX.writeFile(wb,`personal_${(emp.nombre||empId).replace(/\s+/g,'_')}_${today()}.xlsx`);
   showToast('Exportado ✓');
 }
 
@@ -9319,12 +9281,9 @@ function exportDesercionExcel(){
     const d = processTotal(c);
     return [i+1, c.nombre||'', v.nombre||'', emp.nombre||'', r.nombre||'', c.etapa||'', c.motivo_desercion||'', d!==null?d:'', c.fecha_salida||''];
   });
-  const csv = [header, ...filas].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `desercion_${today()}.csv`;
-  a.click();
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([header,...filas]),'Deserción');
+  XLSX.writeFile(wb,`desercion_${today()}.xlsx`);
   showToast('Excel descargado ✓');
 }
 
@@ -9349,12 +9308,9 @@ function exportDesercionEmpresaExcel(empId){
     const d = processTotal(c);
     return [i+1, c.nombre||'', v.nombre||'', v.proyecto||'', r.nombre||'', c.etapa||'', c.motivo_desercion||'', d!==null?d:'', c.fecha_salida||''];
   });
-  const csv = [header, ...filas].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `desercion_${(emp.nombre||'empresa').replace(/\s+/g,'_')}_${today()}.csv`;
-  a.click();
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([header,...filas]),'Deserción');
+  XLSX.writeFile(wb,`desercion_${(emp.nombre||'empresa').replace(/\s+/g,'_')}_${today()}.xlsx`);
   showToast('Excel descargado ✓');
 }
 

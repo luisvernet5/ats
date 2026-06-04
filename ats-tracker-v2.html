@@ -2312,7 +2312,7 @@ async function doLogout() {
   await sbClient.auth.signOut();
   currentUser = null;
   currentUserData = null;
-  DB.empresas=[]; DB.vacantes=[]; DB.candidatos=[]; DB.reclutadores=[];
+  DB.empresas=[]; DB.vacantes=[]; DB.vacantesEliminadas=[]; DB.candidatos=[]; DB.reclutadores=[];
   document.getElementById('auth-screen').style.display = 'flex';
   const loginBtn = document.getElementById('login-btn');
   if(loginBtn){ loginBtn.disabled = false; loginBtn.textContent = 'Entrar'; }
@@ -5037,11 +5037,10 @@ function getSLAStatus(v) {
   </div>`;
 }
 
-function borrarVacantePermanente(vacId){
+async function borrarVacantePermanente(vacId){
   if(!confirm('¿Eliminar permanentemente? Esta acción no se puede deshacer.')) return;
-  const eliminadas = JSON.parse(localStorage.getItem('vacantes_eliminadas')||'[]');
-  const nuevas = eliminadas.filter(x=>x.id!==vacId);
-  localStorage.setItem('vacantes_eliminadas', JSON.stringify(nuevas));
+  await deleteRecord('vacantes', vacId);
+  DB.vacantesEliminadas = DB.vacantesEliminadas.filter(x=>x.id!==vacId);
   showToast('Eliminada permanentemente ✓');
   renderVacantesEliminadas();
 }
@@ -5049,16 +5048,16 @@ function borrarVacantePermanente(vacId){
 function renderVacantesEliminadas(){
   const page = document.getElementById('page-vacantes-eliminadas');
   if(!page) return;
-  const eliminadas = JSON.parse(localStorage.getItem('vacantes_eliminadas')||'[]');
+  const eliminadas = DB.vacantesEliminadas||[];
   if(!eliminadas.length){
     page.innerHTML='<div style="padding:24px 28px"><div style="color:var(--text3);font-size:13px">No hay vacantes eliminadas.</div></div>';
     return;
   }
   const rows = eliminadas.map((item,i)=>{
-    const v = item.vacante||{};
-    const emp = item.empresa||{};
-    const cands = item.candidatos||[];
-    const fecha = item.fecha ? new Date(item.fecha).toLocaleDateString('es-MX') : '—';
+    const v = item;
+    const emp = DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const cands = item.candidatos_backup||[];
+    const fecha = item.fecha_eliminacion ? new Date(item.fecha_eliminacion).toLocaleDateString('es-MX') : '—';
     const candRows = cands.length ? cands.map(c=>`
       <tr>
         <td class="td-p">${c.nombre||'—'}</td>
@@ -5123,18 +5122,17 @@ function toggleVacEliminada(id){
 async function reactivarVacante(vacId){
   if(!confirm('¿Reactivar esta vacante? Se restaurará con estado Abierta.')) return;
   try {
-    const eliminadas = JSON.parse(localStorage.getItem('vacantes_eliminadas')||'[]');
-    const item = eliminadas.find(x=>x.id===vacId);
+    const item = DB.vacantesEliminadas.find(x=>x.id===vacId);
     if(!item) return;
-    const v = {...item.vacante, estado:'Abierta'};
+    const v = {...item, estado:'Abierta'};
+    delete v.candidatos_backup; delete v.fecha_eliminacion;
     await saveRecord('vacantes', v);
     DB.vacantes.push(v);
-    for(const c of (item.candidatos||[])){
+    for(const c of (item.candidatos_backup||[])){
       await saveRecord('candidatos', c);
       DB.candidatos.push(c);
     }
-    const nuevas = eliminadas.filter(x=>x.id!==vacId);
-    localStorage.setItem('vacantes_eliminadas', JSON.stringify(nuevas));
+    DB.vacantesEliminadas = DB.vacantesEliminadas.filter(x=>x.id!==vacId);
     showToast('Vacante reactivada ✓');
     renderVacantesEliminadas();
   } catch(e) {
@@ -5150,12 +5148,11 @@ async function eliminarVacante(id){
     const emp = DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const cands = DB.candidatos.filter(c=>c.vacante_id===id);
     for(const cid of cands.map(c=>c.id)) await deleteRecord('candidatos', cid);
-    await deleteRecord('vacantes', id);
+    const vEliminada={...v, estado:'Eliminada', fecha_eliminacion:new Date().toISOString(), candidatos_backup:cands};
+    await saveRecord('vacantes', vEliminada);
     DB.candidatos = DB.candidatos.filter(c=>c.vacante_id!==id);
     DB.vacantes = DB.vacantes.filter(x=>x.id!==id);
-    const eliminadas = JSON.parse(localStorage.getItem('vacantes_eliminadas')||'[]');
-    eliminadas.push({ id, fecha: new Date().toISOString(), vacante: v, empresa: emp, candidatos: cands });
-    localStorage.setItem('vacantes_eliminadas', JSON.stringify(eliminadas));
+    DB.vacantesEliminadas.push(vEliminada);
     await logActivity('Eliminar vacante', 'vacantes', id, v?.nombre||id);
     showToast('Vacante eliminada ✓');
     renderVacantesTable();
@@ -9667,7 +9664,7 @@ async function _confirmarClearData(){
     document.getElementById('clear-data-pass').focus();
     return;
   }
-  ['sandbox_empresas','sandbox_vacantes','sandbox_candidatos','sandbox_reclutadores','vacantes_eliminadas'].forEach(k=>localStorage.removeItem(k));
+  ['sandbox_empresas','sandbox_vacantes','sandbox_candidatos','sandbox_reclutadores'].forEach(k=>localStorage.removeItem(k));
   document.getElementById('clear-data-overlay').remove();
   showToast('Datos locales eliminados ✓');
 }
@@ -10274,7 +10271,7 @@ async function limpiarTodo(){
       sbClient.from('reclutadores').delete().neq('id',''),
     ]);
   }
-  DB.empresas=[];DB.vacantes=[];DB.candidatos=[];DB.reclutadores=[];
+  DB.empresas=[];DB.vacantes=[];DB.vacantesEliminadas=[];DB.candidatos=[];DB.reclutadores=[];
   showToast('Datos eliminados ✓');
   renderDashboard();
 }

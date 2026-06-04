@@ -1110,7 +1110,10 @@ input[type=date]{color:var(--text)}
         <select id="exp-est"><option value="">Todos</option><option>Abierta</option><option>Cubierta</option><option>Cancelada</option></select>
       </div></div>
       <div class="fr full"><div class="fg"><label>¿Qué exportar?</label>
-        <select id="exp-tipo"><option value="vacantes">Vacantes con candidatos (tabla concentrado)</option><option value="candidatos">Solo candidatos</option></select>
+        <select id="exp-tipo" onchange="document.getElementById('exp-etapa-row').style.display=this.value==='candidatos'?'':'none'"><option value="vacantes">Vacantes con candidatos (tabla concentrado)</option><option value="candidatos">Solo candidatos</option></select>
+      </div></div>
+      <div class="fr full" id="exp-etapa-row" style="display:none"><div class="fg"><label>Filtrar por etapa</label>
+        <select id="exp-etapa"><option value="">Todas las etapas</option></select>
       </div></div>
       <div class="fr full"><div class="fg"><label>Ordenar vacantes por</label>
         <select id="exp-orden"><option value="folio">Folio</option><option value="proyecto">Proyecto</option><option value="departamento">Departamento</option></select>
@@ -2628,13 +2631,17 @@ function garantiaBadge(v){
    EXPORT MODAL / CSV
    ============================================================ */
 function exportarCSV(){
-  // populate export modal selects
   const expEmp=document.getElementById('exp-emp');
   const expRec=document.getElementById('exp-rec');
+  const expEtapa=document.getElementById('exp-etapa');
   expEmp.innerHTML='<option value="">Todas las empresas</option>';
   DB.empresas.forEach(e=>expEmp.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
   expRec.innerHTML='<option value="">Todos los reclutadores</option>';
   DB.reclutadores.forEach(r=>expRec.innerHTML+=`<option value="${r.id}">${r.nombre}</option>`);
+  const etapasUnicas=[...new Set(DB.candidatos.map(c=>c.etapa).filter(Boolean))].sort();
+  expEtapa.innerHTML='<option value="">Todas las etapas</option>'+etapasUnicas.map(e=>`<option>${e}</option>`).join('');
+  document.getElementById('exp-tipo').value='vacantes';
+  document.getElementById('exp-etapa-row').style.display='none';
   openModal('modal-export');
 }
 
@@ -2689,10 +2696,35 @@ function doExport(){
       ]);
     });
   } else {
-    let cands=DB.candidatos;
-    if(empId){const vIds=DB.vacantes.filter(v=>v.empresa_id===empId).map(v=>v.id);cands=cands.filter(c=>vIds.includes(c.vacante_id));}
-    if(recId)cands=cands.filter(c=>c.reclutador_id===recId);
-    if(est){const vIds=DB.vacantes.filter(v=>v.estado===est).map(v=>v.id);cands=cands.filter(c=>vIds.includes(c.vacante_id));}
+    const etapa=document.getElementById('exp-etapa')?.value||'';
+    let vacsFiltradas=DB.vacantes;
+    if(empId)vacsFiltradas=vacsFiltradas.filter(v=>v.empresa_id===empId);
+    if(est)vacsFiltradas=vacsFiltradas.filter(v=>v.estado===est);
+    if(orden==='folio')vacsFiltradas=[...vacsFiltradas].sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true}));
+    else if(orden==='proyecto'||orden==='departamento'){
+      const campo=orden==='proyecto'?'proyecto':'departamento';
+      const cfgKey=orden==='proyecto'?'proyectos':'departamentos';
+      vacsFiltradas=[...vacsFiltradas].sort((a,b)=>{
+        const empA=DB.empresas.find(x=>x.id===a.empresa_id)||{};
+        const empB=DB.empresas.find(x=>x.id===b.empresa_id)||{};
+        if(a.empresa_id===b.empresa_id){
+          const ord=empA[cfgKey]||[];
+          const ia=ord.indexOf(a[campo]??''),ib=ord.indexOf(b[campo]??'');
+          if(ia===-1&&ib===-1)return(a.fecha_apertura||'').localeCompare(b.fecha_apertura||'');
+          if(ia===-1)return 1;if(ib===-1)return -1;
+          if(ia!==ib)return ia-ib;
+          return(a.fecha_apertura||'').localeCompare(b.fecha_apertura||'');
+        }
+        return(empA.nombre||'').localeCompare(empB.nombre||'');
+      });
+    }
+    let cands=[];
+    vacsFiltradas.forEach(v=>{
+      let vc=DB.candidatos.filter(c=>c.vacante_id===v.id);
+      if(recId)vc=vc.filter(c=>c.reclutador_id===recId);
+      if(etapa)vc=vc.filter(c=>c.etapa===etapa);
+      cands.push(...vc);
+    });
     const header=['#','Candidato','Vacante','Folio','Empresa','Proyecto','Departamento','Reclutador','Etapa','Fuente','Días proceso','Días cliente','Motivo deserción','Fecha salida'];
     rows.push(header);
     cands.forEach((c,i)=>{

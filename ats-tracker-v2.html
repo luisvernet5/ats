@@ -2692,13 +2692,14 @@ function doExport(){
     let cands=DB.candidatos;
     if(empId){const vIds=DB.vacantes.filter(v=>v.empresa_id===empId).map(v=>v.id);cands=cands.filter(c=>vIds.includes(c.vacante_id));}
     if(recId)cands=cands.filter(c=>c.reclutador_id===recId);
-    const header=['#','Candidato','Vacante','Empresa','Reclutador','Etapa','Fuente','Días proceso','Días cliente','Motivo deserción','Fecha salida'];
+    if(est){const vIds=DB.vacantes.filter(v=>v.estado===est).map(v=>v.id);cands=cands.filter(c=>vIds.includes(c.vacante_id));}
+    const header=['#','Candidato','Vacante','Folio','Empresa','Proyecto','Departamento','Reclutador','Etapa','Fuente','Días proceso','Días cliente','Motivo deserción','Fecha salida'];
     rows.push(header);
     cands.forEach((c,i)=>{
       const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
       const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
       const rec=DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
-      rows.push([i+1,c.nombre,v.nombre||'—',emp.nombre||'—',rec.nombre||'—',c.etapa,c.fuente||'—',processTotal(c)||0,clienteDays(c)||0,c.motivo_desercion||'—',fmt(c.fecha_salida)]);
+      rows.push([i+1,c.nombre,v.nombre||'—',v.folio||'—',emp.nombre||'—',v.proyecto||'—',v.departamento||'—',rec.nombre||'—',c.etapa,c.fuente||'—',processTotal(c)||0,clienteDays(c)||0,c.motivo_desercion||'—',fmt(c.fecha_salida)]);
     });
   }
 

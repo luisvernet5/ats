@@ -1101,7 +1101,7 @@ input[type=date]{color:var(--text)}
     <div class="mh"><h3>Exportar datos</h3><button class="xbtn" onclick="closeModal('modal-export')"><i class="fa fa-times"></i></button></div>
     <div class="mb">
       <div class="fr full"><div class="fg"><label>Filtrar por empresa cliente</label>
-        <select id="exp-emp"><option value="">Todas las empresas</option></select>
+        <select id="exp-emp" onchange="_expUpdateEtapas()"><option value="">Todas las empresas</option></select>
       </div></div>
       <div class="fr full"><div class="fg"><label>Filtrar por reclutador</label>
         <select id="exp-rec"><option value="">Todos los reclutadores</option></select>
@@ -2638,11 +2638,21 @@ function exportarCSV(){
   DB.empresas.forEach(e=>expEmp.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
   expRec.innerHTML='<option value="">Todos los reclutadores</option>';
   DB.reclutadores.forEach(r=>expRec.innerHTML+=`<option value="${r.id}">${r.nombre}</option>`);
-  const etapasUnicas=[...new Set(DB.candidatos.map(c=>c.etapa).filter(Boolean))].sort();
-  _mfPopulate('exp-etapa', etapasUnicas.map(e=>({value:e,label:e})), 'Todas las etapas');
+  _expUpdateEtapas();
   document.getElementById('exp-tipo').value='vacantes';
   document.getElementById('exp-etapa-row').style.display='none';
   openModal('modal-export');
+}
+
+function _expUpdateEtapas(){
+  const empId=document.getElementById('exp-emp')?.value||'';
+  let etapas;
+  if(empId){
+    etapas=getEmpresaEtapas(empId).map(e=>e.label);
+  } else {
+    etapas=[...new Set(DB.candidatos.map(c=>c.etapa).filter(Boolean))].sort();
+  }
+  _mfPopulate('exp-etapa', etapas.map(e=>({value:e,label:e})), 'Todas las etapas');
 }
 
 function doExport(){

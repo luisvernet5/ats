@@ -2345,7 +2345,9 @@ async function loadDB(){
       ]);
       console.log('[loadDB] vacantes cargadas:', vac.data?.length, '| error:', vac.error?.message||null);
       DB.empresas=emp.data?.map(r=>r.data)||[];
-      DB.vacantes=vac.data?.map(r=>r.data)||[];
+      const _allVacs=vac.data?.map(r=>r.data)||[];
+      DB.vacantes=_allVacs.filter(v=>v.estado!=='Eliminada');
+      DB.vacantesEliminadas=_allVacs.filter(v=>v.estado==='Eliminada');
       DB.candidatos=cand.data?.map(r=>r.data)||[];
       DB.reclutadores=rec.data?.map(r=>r.data)||[];
       DB.ese=eseRes.data||[];
@@ -2419,6 +2421,7 @@ const EMPRESA_COLORS=['#2AAADE','#A855F7','#F59E0B','#22C55E','#EF4444','#F97316
 const DB={
   empresas:[],
   vacantes:[],
+  vacantesEliminadas:[],
   candidatos:[],
   ese:[],
   perfilesPuesto:[],
@@ -3890,8 +3893,7 @@ async function saveVacante(){
   // Buscar el número de secuencia más alto ya usado para este prefijo,
   // incluyendo vacantes activas, cerradas, canceladas Y eliminadas
   const rePrefix=new RegExp(`^${empPrefix}-(\\d+)-`,'i');
-  const eliminadas=JSON.parse(localStorage.getItem('vacantes_eliminadas')||'[]');
-  const todasLasVacantes=[...DB.vacantes,...eliminadas];
+  const todasLasVacantes=[...DB.vacantes,...DB.vacantesEliminadas];
   const usedSeqs=todasLasVacantes
     .filter(v=>v.folio&&rePrefix.test(v.folio)&&v.id!==id)
     .map(v=>parseInt(v.folio.match(rePrefix)[1])||0);

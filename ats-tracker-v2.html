@@ -10493,9 +10493,9 @@ async function exportEntrevistaPDF() {
   const val = id => (document.getElementById(id)?.value||'').trim();
   const radio = n => document.querySelector(`input[name="${n}"]:checked`)?.value||'';
   const chks = (ids,labels) => ids.map((id,i)=>document.getElementById(id)?.checked?labels[i]:null).filter(Boolean).join(', ')||'—';
-  const candNombre = val('cand-nombre')||'Candidato';
   const candId = document.getElementById('cand-id')?.value;
   const candDB = DB.candidatos.find(c=>c.id===candId)||{};
+  const candNombre = candDB.nombre || val('cand-nombre') || 'Candidato';
   const empId = document.getElementById('cand-empresa')?.value || '';
   const vacId = document.getElementById('cand-vacante')?.value || candDB.vacante_id || '';
   const vac = DB.vacantes.find(v=>v.id===vacId)||{};
@@ -10621,11 +10621,9 @@ function _refResolveEmp(){
   return DB.empresas.find(e=>e.id===empId)||{};
 }
 function _refResolveCandNombre(){
-  const v=document.getElementById('cand-nombre')?.value||'';
-  if(v.trim()&&v.trim()!=='Candidato') return v.trim();
   const candId=document.getElementById('cand-id')?.value;
   const cand=DB.candidatos.find(x=>x.id===candId)||{};
-  return cand.nombre||'Candidato';
+  return cand.nombre || document.getElementById('cand-nombre')?.value?.trim() || 'Candidato';
 }
 async function exportRefLaboralesPDF() {
   if(!window.jspdf){showToast('jsPDF no disponible','err');return;}

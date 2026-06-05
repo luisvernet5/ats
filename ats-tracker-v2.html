@@ -518,6 +518,7 @@ input[type=date]{color:var(--text)}
       <span class="sp"></span>
       <button id="btn-vac-col-vis" class="btn btn-ghost btn-sm" onclick="openVacColPanel()"><i class="fa fa-columns"></i> Columnas</button>
       <button class="btn btn-green btn-sm" onclick="exportarCSV()" style="white-space:nowrap"><i class="fa fa-file-csv"></i> Exportar</button>
+      <button class="btn btn-ghost btn-sm" onclick="openImportVacantesModal()" style="white-space:nowrap"><i class="fa fa-upload"></i> Carga masiva</button>
       <button class="btn btn-primary btn-sm" onclick="openVacanteModal()" style="white-space:nowrap"><i class="fa fa-plus"></i> Nueva</button>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">
@@ -776,6 +777,39 @@ input[type=date]{color:var(--text)}
     <div class="mf">
       <button class="btn btn-ghost" onclick="closeModal('modal-vacante')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveVacante()">Guardar vacante</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL CARGA MASIVA VACANTES ===== -->
+<div class="modal-overlay" id="modal-import-vac">
+  <div class="modal" style="width:740px;max-width:96vw">
+    <div class="mh"><h3>Carga masiva de vacantes</h3><button class="xbtn" onclick="closeModal('modal-import-vac')"><i class="fa fa-times"></i></button></div>
+    <div class="mb">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border-radius:8px;margin-bottom:14px">
+        <i class="fa fa-info-circle" style="color:var(--primary);font-size:18px;flex-shrink:0"></i>
+        <span style="font-size:13px;color:var(--text2)">Descarga la plantilla, llénala con los datos de las vacantes y luego súbela. Las columnas marcadas con * son obligatorias.</span>
+        <button class="btn btn-ghost btn-sm" style="flex-shrink:0;white-space:nowrap" onclick="descargarLayoutVacantes()"><i class="fa fa-download"></i> Descargar plantilla</button>
+      </div>
+      <div style="border:2px dashed var(--border);border-radius:8px;padding:24px;text-align:center;cursor:pointer;transition:border-color .2s" id="imp-vac-dropzone" onclick="document.getElementById('imp-vac-file').click()" ondragover="event.preventDefault();this.style.borderColor='var(--primary)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="event.preventDefault();this.style.borderColor='var(--border)';handleImportVacFile({target:{files:event.dataTransfer.files}})">
+        <i class="fa fa-file-excel" style="font-size:32px;color:var(--text3);margin-bottom:8px"></i>
+        <div style="font-size:14px;color:var(--text2)">Arrastra tu archivo aquí o <span style="color:var(--primary);font-weight:600">haz clic para seleccionar</span></div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px">Soporta .xlsx, .xls, .csv</div>
+        <input type="file" id="imp-vac-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportVacFile(event)">
+      </div>
+      <div id="imp-vac-preview" style="display:none;margin-top:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span id="imp-vac-summary" style="font-size:13px;font-weight:600"></span>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('imp-vac-file').value='';document.getElementById('imp-vac-preview').style.display='none';document.getElementById('btn-imp-vac-confirm').style.display='none'"><i class="fa fa-times"></i> Limpiar</button>
+        </div>
+        <div style="max-height:280px;overflow:auto;border-radius:6px;border:1px solid var(--border)">
+          <table class="table" style="font-size:12px" id="imp-vac-table"><thead></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-import-vac')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-imp-vac-confirm" style="display:none" onclick="doImportVacantes()"><i class="fa fa-upload"></i> Importar vacantes</button>
     </div>
   </div>
 </div>
@@ -4001,6 +4035,202 @@ async function saveVacante(){
   } catch(e) {
     showToast('Error al guardar vacante: '+e.message,'err');
   }
+}
+
+/* ============================================================
+   CARGA MASIVA DE VACANTES
+   ============================================================ */
+const _IMP_VAC_COLS = ['Empresa *','Nombre del puesto *','Fecha apertura (YYYY-MM-DD) *','Reclutador','Departamento','Proyecto','Salario','SLA días','Tipo (Nueva creación / Sustitución)','Colaborador sustituido','Descripción'];
+let _impVacRows = []; // parsed + validated rows
+
+function openImportVacantesModal(){
+  _impVacRows = [];
+  const fi = document.getElementById('imp-vac-file');
+  if(fi) fi.value = '';
+  document.getElementById('imp-vac-preview').style.display = 'none';
+  document.getElementById('btn-imp-vac-confirm').style.display = 'none';
+  openModal('modal-import-vac');
+}
+
+function descargarLayoutVacantes(){
+  const wb = XLSX.utils.book_new();
+  // Hoja principal con headers + fila ejemplo
+  const empresaEjemplo = DB.empresas[0]?.nombre || 'Nombre empresa';
+  const recEjemplo = DB.reclutadores[0]?.nombre || 'Nombre reclutador';
+  const example = [[empresaEjemplo,'Gerente de Ventas',today(),recEjemplo,'Comercial','Norte','$25,000 - $30,000','30','Nueva creación','','Responsable del equipo de ventas zona norte']];
+  const ws = XLSX.utils.aoa_to_sheet([_IMP_VAC_COLS, ...example]);
+  ws['!cols'] = _IMP_VAC_COLS.map((_,i)=>({wch:[28,28,32,24,20,20,24,10,32,24,40][i]||20}));
+  XLSX.utils.book_append_sheet(wb, ws, 'Vacantes');
+  // Hoja catálogos
+  const maxLen = Math.max(DB.empresas.length, DB.reclutadores.length, 1);
+  const catRows = [['Empresas disponibles','Reclutadores disponibles','Tipos de vacante']];
+  for(let i=0;i<Math.max(DB.empresas.length,DB.reclutadores.length,2);i++){
+    catRows.push([DB.empresas[i]?.nombre||'', DB.reclutadores[i]?.nombre||'', i===0?'Nueva creación':i===1?'Sustitución':'']);
+  }
+  const wsCat = XLSX.utils.aoa_to_sheet(catRows);
+  wsCat['!cols'] = [{wch:32},{wch:28},{wch:24}];
+  XLSX.utils.book_append_sheet(wb, wsCat, 'Catálogos');
+  XLSX.writeFile(wb, 'plantilla_vacantes.xlsx');
+}
+
+function handleImportVacFile(e){
+  const file = e.target?.files?.[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const wb = XLSX.read(ev.target.result, {type:'binary', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      if(raw.length < 2){ showToast('El archivo no tiene filas de datos','err'); return; }
+      // find header row (first row with "Empresa" or "Nombre del puesto")
+      let hdrIdx = raw.findIndex(r=>r.some(c=>String(c).toLowerCase().includes('empresa')||String(c).toLowerCase().includes('nombre del puesto')));
+      if(hdrIdx<0) hdrIdx=0;
+      const headers = raw[hdrIdx].map(h=>String(h).trim());
+      const colIdx = {
+        empresa: headers.findIndex(h=>h.toLowerCase().includes('empresa')),
+        nombre:  headers.findIndex(h=>h.toLowerCase().includes('nombre del puesto')||h.toLowerCase().includes('puesto')),
+        fecha:   headers.findIndex(h=>h.toLowerCase().includes('fecha')),
+        rec:     headers.findIndex(h=>h.toLowerCase().includes('reclutador')),
+        depto:   headers.findIndex(h=>h.toLowerCase().includes('departamento')),
+        proy:    headers.findIndex(h=>h.toLowerCase().includes('proyecto')),
+        salario: headers.findIndex(h=>h.toLowerCase().includes('salario')),
+        sla:     headers.findIndex(h=>h.toLowerCase().includes('sla')),
+        tipo:    headers.findIndex(h=>h.toLowerCase().includes('tipo')),
+        colab:   headers.findIndex(h=>h.toLowerCase().includes('colaborador')),
+        desc:    headers.findIndex(h=>h.toLowerCase().includes('descripci')),
+      };
+      _impVacRows = [];
+      for(let i=hdrIdx+1;i<raw.length;i++){
+        const r = raw[i];
+        if(r.every(c=>String(c).trim()==='')){continue;}
+        const get = idx => idx>=0 ? String(r[idx]||'').trim() : '';
+        const empNombre = get(colIdx.empresa);
+        const nombre    = get(colIdx.nombre);
+        let   fecha     = get(colIdx.fecha);
+        // normalize date from JS Date object or string
+        if(fecha && fecha.includes('T')) fecha = fecha.split('T')[0];
+        else if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(fecha)){
+          const [d,m,y]=fecha.split('/'); fecha=`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+        } else if(/^\d{1,2}-\d{1,2}-\d{4}$/.test(fecha)){
+          const [d,m,y]=fecha.split('-'); fecha=`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+        }
+        const recNombre = get(colIdx.rec);
+        const depto     = get(colIdx.depto);
+        const proy      = get(colIdx.proy);
+        const salario   = get(colIdx.salario);
+        const sla       = get(colIdx.sla);
+        const tipo      = get(colIdx.tipo)||'Nueva creación';
+        const colab     = get(colIdx.colab);
+        const desc      = get(colIdx.desc);
+        const errors = [];
+        if(!empNombre) errors.push('Empresa vacía');
+        if(!nombre)    errors.push('Nombre del puesto vacío');
+        if(!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) errors.push('Fecha inválida (use YYYY-MM-DD)');
+        const emp = DB.empresas.find(e=>e.nombre.toLowerCase()===empNombre.toLowerCase());
+        if(empNombre && !emp) errors.push(`Empresa "${empNombre}" no encontrada`);
+        const rec = recNombre ? DB.reclutadores.find(r=>r.nombre.toLowerCase()===recNombre.toLowerCase()) : null;
+        if(recNombre && !rec) errors.push(`Reclutador "${recNombre}" no encontrado`);
+        _impVacRows.push({
+          _row: i+1, _errors: errors,
+          empNombre, nombre, fecha, recNombre, depto, proy, salario, sla, tipo, colab, desc,
+          empresa_id: emp?.id||null, reclutador_id: rec?.id||null
+        });
+      }
+      _impVacRenderPreview();
+    } catch(err){
+      showToast('Error al leer el archivo: '+err.message,'err');
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function _impVacRenderPreview(){
+  const ok    = _impVacRows.filter(r=>r._errors.length===0);
+  const errR  = _impVacRows.filter(r=>r._errors.length>0);
+  const sum   = document.getElementById('imp-vac-summary');
+  sum.innerHTML = `<span style="color:var(--green)"><i class="fa fa-check-circle"></i> ${ok.length} válidas</span>`
+    + (errR.length ? `&nbsp;&nbsp;<span style="color:var(--red)"><i class="fa fa-exclamation-circle"></i> ${errR.length} con errores</span>` : '');
+  const thead = document.querySelector('#imp-vac-table thead');
+  const tbody = document.querySelector('#imp-vac-table tbody');
+  thead.innerHTML = `<tr>${['#','Empresa','Puesto','Fecha','Reclutador','Depto','Proyecto','Estado'].map(h=>`<th>${h}</th>`).join('')}</tr>`;
+  tbody.innerHTML = _impVacRows.map(r=>{
+    const ok = r._errors.length===0;
+    const bg = ok ? '' : 'background:rgba(239,68,68,.07)';
+    const status = ok
+      ? `<span style="color:var(--green);font-size:11px"><i class="fa fa-check"></i> OK</span>`
+      : `<span style="color:var(--red);font-size:11px" title="${r._errors.join('; ')}"><i class="fa fa-times"></i> ${r._errors.join('; ')}</span>`;
+    return `<tr style="${bg}">
+      <td style="color:var(--text3)">${r._row}</td>
+      <td>${r.empNombre||'—'}</td>
+      <td>${r.nombre||'—'}</td>
+      <td>${r.fecha||'—'}</td>
+      <td>${r.recNombre||'—'}</td>
+      <td>${r.depto||'—'}</td>
+      <td>${r.proy||'—'}</td>
+      <td>${status}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('imp-vac-preview').style.display = 'block';
+  document.getElementById('btn-imp-vac-confirm').style.display = ok.length > 0 ? '' : 'none';
+  if(ok.length > 0){
+    document.getElementById('btn-imp-vac-confirm').textContent = '';
+    document.getElementById('btn-imp-vac-confirm').innerHTML = `<i class="fa fa-upload"></i> Importar ${ok.length} vacante${ok.length!==1?'s':''}`;
+  }
+}
+
+async function doImportVacantes(){
+  const valid = _impVacRows.filter(r=>r._errors.length===0);
+  if(!valid.length) return;
+  const btn = document.getElementById('btn-imp-vac-confirm');
+  btn.disabled = true;
+  btn.textContent = 'Importando…';
+  let saved = 0, failed = 0;
+  for(const row of valid){
+    try {
+      const emp = DB.empresas.find(e=>e.id===row.empresa_id)||{};
+      const empPrefix = (emp.nombre||'EMP').substring(0,3).toUpperCase().replace(/\s/g,'');
+      const fecha = new Date();
+      const mesAnio = String(fecha.getMonth()+1).padStart(2,'0')+fecha.getFullYear().toString().substr(2);
+      const rePrefix = new RegExp(`^${empPrefix}-(\\d+)-`,'i');
+      const todasLasVacantes = [...DB.vacantes,...DB.vacantesEliminadas];
+      const usedSeqs = todasLasVacantes
+        .filter(v=>v.folio&&rePrefix.test(v.folio))
+        .map(v=>parseInt(v.folio.match(rePrefix)[1])||0);
+      let seq = (usedSeqs.length?Math.max(...usedSeqs):0)+1;
+      let folioAuto = `${empPrefix}-${String(seq).padStart(3,'0')}-${mesAnio}`;
+      while([...DB.vacantes,...DB.vacantesEliminadas].some(v=>v.folio===folioAuto)){seq++;folioAuto=`${empPrefix}-${String(seq).padStart(3,'0')}-${mesAnio}`;}
+      const nv = {
+        id: uid(),
+        folio: folioAuto,
+        nombre: row.nombre,
+        empresa_id: row.empresa_id,
+        reclutador_id: row.reclutador_id||null,
+        fecha_apertura: row.fecha,
+        salario: row.salario||'',
+        estado: 'Abierta',
+        sla_dias: row.sla ? parseInt(row.sla)||null : null,
+        descripcion: row.desc||'',
+        departamento: row.depto||null,
+        proyecto: row.proy||null,
+        tipo_vacante: row.tipo||'Nueva creación',
+        colaborador_sustituido: row.tipo==='Sustitución'?row.colab||null:null,
+        aplica_garantia: false
+      };
+      await saveRecord('vacantes', nv);
+      DB.vacantes.push(nv);
+      await logActivity('Nueva vacante','vacantes',nv.id,nv.nombre);
+      saved++;
+    } catch(e){
+      console.error('Error importando fila', row._row, e);
+      failed++;
+    }
+  }
+  btn.disabled = false;
+  closeModal('modal-import-vac');
+  showToast(`${saved} vacante${saved!==1?'s':''} importada${saved!==1?'s':''}${failed?` (${failed} errores)`:''}  ✓`);
+  const activePage = document.querySelector('.page.active')?.id.replace('page-','');
+  renderPage(activePage);
 }
 
 function notificarReclutador(vacante) {

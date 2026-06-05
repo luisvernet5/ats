@@ -437,7 +437,8 @@ input[type=date]{color:var(--text)}
     <div class="topbar-title" id="page-title">Dashboard</div>
     <div class="topbar-actions">
       <div id="mode-badge" style="font-size:11px;padding:3px 8px;border-radius:5px;font-weight:500"></div>
-      <button class="btn btn-ghost" onclick="exportarCSV()"><i class="fa fa-download"></i> Exportar</button>
+      <button id="btn-topbar-exportar" class="btn btn-ghost" onclick="exportarCSV()"><i class="fa fa-file-excel"></i> Exportar Excel</button>
+      <button id="btn-topbar-carga-masiva" class="btn btn-ghost" onclick="openImportVacantesModal()"><i class="fa fa-upload"></i> Carga masiva</button>
       <button class="btn btn-ghost" onclick="nav('vacantes');setTimeout(openVacanteModal,80)"><i class="fa fa-plus"></i> Nueva vacante</button>
       <button class="btn btn-primary" onclick="openCandModal(null)"><i class="fa fa-user-plus"></i> Agregar candidato</button>
     </div>
@@ -518,7 +519,6 @@ input[type=date]{color:var(--text)}
       <span class="sp"></span>
       <button id="btn-vac-col-vis" class="btn btn-ghost btn-sm" onclick="openVacColPanel()"><i class="fa fa-columns"></i> Columnas</button>
       <button class="btn btn-green btn-sm" onclick="exportarCSV()" style="white-space:nowrap"><i class="fa fa-file-excel"></i> Exportar Excel</button>
-      <button class="btn btn-ghost btn-sm" onclick="openImportVacantesModal()" style="white-space:nowrap"><i class="fa fa-upload"></i> Carga masiva</button>
       <button class="btn btn-primary btn-sm" onclick="openVacanteModal()" style="white-space:nowrap"><i class="fa fa-plus"></i> Nueva</button>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">
@@ -1681,13 +1681,15 @@ function adaptUIToRole() {
     ['nav-empresas','nav-pipeline','nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-config','nav-headcount','nav-ese'].forEach(id => {
       const el = document.getElementById(id); if(el) el.style.display='none';
     });
-    // Mostrar solo botones de nueva vacante y agregar candidato
+    // Mostrar exportar, carga masiva, nueva vacante y agregar candidato; ocultar el resto
+    const _keepIds = ['btn-topbar-exportar','btn-topbar-carga-masiva'];
     const topbarActions = document.querySelector('.topbar-actions');
     if(topbarActions){
       topbarActions.querySelectorAll('button').forEach(btn=>{
-        if(!btn.textContent.includes('Nueva vacante') && !btn.textContent.includes('Agregar candidato')){
-          btn.style.display='none';
-        }
+        const keep = _keepIds.includes(btn.id)
+          || btn.textContent.includes('Nueva vacante')
+          || btn.textContent.includes('Agregar candidato');
+        if(!keep) btn.style.display='none';
       });
     }
   } else if(rol === 'reclutador') {

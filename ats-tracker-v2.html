@@ -419,6 +419,7 @@ input[type=date]{color:var(--text)}
     <div class="nav-item" onclick="showPage('pipeline')" id="nav-pipeline" data-tooltip="Pipeline"><i class="fa fa-stream"></i><span class="nav-item-text"> Pipeline</span></div>
     <div class="nav-item" onclick="showPage('vacantes')" id="nav-vacantes" data-tooltip="Vacantes"><i class="fa fa-briefcase"></i><span class="nav-item-text"> Vacantes</span></div>
     <div class="nav-item" onclick="showPage('candidatos')" id="nav-candidatos" data-tooltip="Candidatos"><i class="fa fa-users"></i><span class="nav-item-text"> Candidatos</span></div>
+    <div class="nav-item" onclick="showPage('evaluaciones')" id="nav-evaluaciones" data-tooltip="Evaluaciones"><i class="fa fa-clipboard-list"></i><span class="nav-item-text"> Evaluaciones</span></div>
     <div class="nav-section">Reportes</div>
     <div class="nav-item" onclick="showPage('reclutadores')" id="nav-reclutadores" data-tooltip="Reclutadores"><i class="fa fa-user-tie"></i><span class="nav-item-text"> Reclutadores</span></div>
     <div class="nav-item" onclick="nav('tiempos')" id="nav-tiempos" data-tooltip="Análisis de tiempos"><i class="fa fa-clock"></i><span class="nav-item-text"> Análisis de tiempos</span></div>
@@ -571,6 +572,29 @@ input[type=date]{color:var(--text)}
       <button class="btn btn-ghost btn-sm" id="rd-back-btn"><i class="fa fa-arrow-left"></i> Volver a reclutadores</button>
     </div>
     <div id="reclutador-detail-content"></div>
+  </div>
+
+  <!-- EVALUACIONES -->
+  <div class="page" id="page-evaluaciones">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;gap:6px">
+        <button id="evtab-plantillas" class="btn btn-primary btn-sm" onclick="evSetTab('plantillas')"><i class="fa fa-list"></i> Plantillas</button>
+        <button id="evtab-enviadas" class="btn btn-ghost btn-sm" onclick="evSetTab('enviadas')"><i class="fa fa-paper-plane"></i> Enviadas</button>
+      </div>
+      <button class="btn btn-primary btn-sm" id="btn-nueva-eval" onclick="openEvalTemplateModal()"><i class="fa fa-plus"></i> Nueva evaluación</button>
+    </div>
+    <div id="ev-panel-plantillas">
+      <div class="table-wrap"><table class="table" id="eval-plantillas-table">
+        <thead><tr><th>Nombre</th><th>Preguntas</th><th>Estado</th><th>Creada</th><th></th></tr></thead>
+        <tbody id="eval-plantillas-tbody"></tbody>
+      </table></div>
+    </div>
+    <div id="ev-panel-enviadas" style="display:none">
+      <div class="table-wrap"><table class="table" id="eval-enviadas-table">
+        <thead><tr><th>Candidato</th><th>Evaluación</th><th>Vacante</th><th>Estado</th><th>Enviada</th><th></th></tr></thead>
+        <tbody id="eval-enviadas-tbody"></tbody>
+      </table></div>
+    </div>
   </div>
 
   <!-- TIEMPOS -->
@@ -810,6 +834,98 @@ input[type=date]{color:var(--text)}
     <div class="mf">
       <button class="btn btn-ghost" onclick="closeModal('modal-import-vac')">Cancelar</button>
       <button class="btn btn-primary" id="btn-imp-vac-confirm" style="display:none" onclick="doImportVacantes()"><i class="fa fa-upload"></i> Importar vacantes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL PLANTILLA EVALUACIÓN ===== -->
+<div class="modal-overlay" id="modal-eval-template">
+  <div class="modal" style="width:680px;max-width:96vw">
+    <div class="mh"><h3 id="eval-tpl-title">Nueva evaluación</h3><button class="xbtn" onclick="closeModal('modal-eval-template')"><i class="fa fa-times"></i></button></div>
+    <div class="mb">
+      <input type="hidden" id="eval-tpl-id">
+      <div class="fr full"><div class="fg"><label>Nombre de la evaluación *</label><input id="eval-tpl-nombre" placeholder="Ej. Evaluación Técnica Ventas"></div></div>
+      <div class="fr full"><div class="fg"><label>Descripción</label><textarea id="eval-tpl-desc" rows="2" placeholder="Instrucciones o contexto para el candidato..." style="resize:vertical"></textarea></div></div>
+      <div style="margin-top:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <label style="font-weight:600;font-size:13px">Preguntas</label>
+          <button class="btn btn-ghost btn-sm" onclick="evalAddPregunta()"><i class="fa fa-plus"></i> Agregar pregunta</button>
+        </div>
+        <div id="eval-preguntas-list" style="display:flex;flex-direction:column;gap:10px"></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-eval-template')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEvalTemplate()">Guardar evaluación</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL ENVIAR EVALUACIÓN ===== -->
+<div class="modal-overlay" id="modal-enviar-eval">
+  <div class="modal" style="width:520px;max-width:96vw">
+    <div class="mh"><h3>Enviar evaluación</h3><button class="xbtn" onclick="closeModal('modal-enviar-eval')"><i class="fa fa-times"></i></button></div>
+    <div class="mb">
+      <input type="hidden" id="env-eval-id">
+      <div class="fr full"><div class="fg"><label>Evaluación</label>
+        <select id="env-eval-tpl"><option value="">Seleccionar...</option></select>
+      </div></div>
+      <div class="fr full"><div class="fg"><label>Candidato *</label>
+        <input id="env-eval-cand-q" placeholder="Buscar candidato..." oninput="evalBuscarCand(this.value)" autocomplete="off">
+        <div id="env-eval-cand-list" style="border:1px solid var(--border);border-radius:6px;max-height:160px;overflow:auto;display:none;background:var(--surface)"></div>
+        <input type="hidden" id="env-eval-cand-id">
+      </div></div>
+      <div class="fr full"><div class="fg"><label>Vacante (opcional)</label>
+        <select id="env-eval-vac"><option value="">Sin vacante</option></select>
+      </div></div>
+      <div id="env-eval-link-box" style="display:none;margin-top:12px">
+        <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px">Link generado</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input id="env-eval-link" readonly style="flex:1;font-size:12px;font-family:var(--mono);background:var(--bg2)">
+          <button class="btn btn-ghost btn-sm" onclick="evalCopyLink()" title="Copiar"><i class="fa fa-copy"></i></button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-ghost btn-sm" style="flex:1;background:#25D366;color:#fff;border:none" onclick="evalShareWhatsapp()"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+          <button class="btn btn-ghost btn-sm" style="flex:1" onclick="evalShareEmail()"><i class="fa fa-envelope"></i> Email</button>
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-enviar-eval')">Cerrar</button>
+      <button class="btn btn-primary" id="btn-generar-eval-link" onclick="generarLinkEval()"><i class="fa fa-link"></i> Generar link</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL VER RESPUESTAS EVALUACIÓN ===== -->
+<div class="modal-overlay" id="modal-eval-respuestas">
+  <div class="modal" style="width:600px;max-width:96vw">
+    <div class="mh"><h3>Respuestas</h3><button class="xbtn" onclick="closeModal('modal-eval-respuestas')"><i class="fa fa-times"></i></button></div>
+    <div class="mb" id="eval-respuestas-body"></div>
+    <div class="mf"><button class="btn btn-ghost" onclick="closeModal('modal-eval-respuestas')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- ===== FORMULARIO PÚBLICO EVALUACIÓN (mostrado via ?eval=TOKEN) ===== -->
+<div id="eval-public-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;overflow:auto;padding:32px 16px">
+  <div style="max-width:600px;margin:0 auto">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+      <i class="fa fa-clipboard-list" style="font-size:28px;color:var(--primary)"></i>
+      <div>
+        <div id="evpub-nombre" style="font-size:20px;font-weight:700"></div>
+        <div id="evpub-desc" style="font-size:13px;color:var(--text2)"></div>
+      </div>
+    </div>
+    <div id="evpub-completed" style="display:none;text-align:center;padding:40px 20px">
+      <i class="fa fa-check-circle" style="font-size:48px;color:var(--green);margin-bottom:16px"></i>
+      <div style="font-size:18px;font-weight:600;margin-bottom:8px">¡Evaluación completada!</div>
+      <div style="font-size:14px;color:var(--text2)">Tus respuestas han sido enviadas correctamente.</div>
+    </div>
+    <div id="evpub-form">
+      <div id="evpub-preguntas" style="display:flex;flex-direction:column;gap:20px"></div>
+      <div style="margin-top:24px;text-align:right">
+        <button class="btn btn-primary" onclick="submitEvalPublica()"><i class="fa fa-paper-plane"></i> Enviar respuestas</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2352,6 +2468,7 @@ async function doLogout() {
   currentUser = null;
   currentUserData = null;
   DB.empresas=[]; DB.vacantes=[]; DB.vacantesEliminadas=[]; DB.candidatos=[]; DB.reclutadores=[];
+  DB.evaluaciones=[]; DB.evaluacionesEnviadas=[];
   document.getElementById('auth-screen').style.display = 'flex';
   const loginBtn = document.getElementById('login-btn');
   if(loginBtn){ loginBtn.disabled = false; loginBtn.textContent = 'Entrar'; }
@@ -2369,7 +2486,7 @@ async function loadDB(){
       const _rhEmpId = currentUserData?.empresa_id||null;
       console.log('[loadDB] ROL ACTUAL:', currentUserData?.rol, '| es rh_cliente:', _isRhC, '| EMPRESA ID:', _rhEmpId);
       console.log('[loadDB] currentUserData completo:', JSON.stringify(currentUserData));
-      const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand,perfiles]=await Promise.all([
+      const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand,perfiles,evals,evEnv]=await Promise.all([
         sbClient.from('empresas').select('*'),
         (_isRhC && _rhEmpId
           ? sbClient.from('vacantes').select('*').filter('data->>empresa_id','eq',_rhEmpId)
@@ -2381,6 +2498,8 @@ async function loadDB(){
         sbClient.from('doc_plantillas').select('*'),
         sbClient.from('doc_candidato').select('*'),
         sbClient.from('perfiles_puesto').select('*'),
+        sbClient.from('evaluaciones').select('*'),
+        sbClient.from('evaluaciones_enviadas').select('*'),
       ]);
       console.log('[loadDB] vacantes cargadas:', vac.data?.length, '| error:', vac.error?.message||null);
       DB.empresas=emp.data?.map(r=>r.data)||[];
@@ -2394,6 +2513,8 @@ async function loadDB(){
       DB.docCandidato=docCand.data||[];
       DB.perfilesPuesto=(perfiles.data||[]).map(r=>({id:r.id,empresa_id:r.empresa_id,...(r.data||{})}));
       DB.personal=[];
+      DB.evaluaciones=(evals.data||[]).map(r=>r.data||r).filter(Boolean);
+      DB.evaluacionesEnviadas=(evEnv.data||[]).map(r=>r.data||r).filter(Boolean);
       _candConRefs=new Set((refs.data||[]).flatMap(r=>{
         const ids=[];
         // formato nuevo: columnas planas
@@ -2467,6 +2588,8 @@ const DB={
   docPlantillas:[],
   docCandidato:[],
   personal:[],
+  evaluaciones:[],
+  evaluacionesEnviadas:[],
   reclutadores:[
     {id:'r1',nombre:'Ana López',email:'ana@empresa.com'},
     {id:'r2',nombre:'Carlos Méndez',email:'carlos@empresa.com'},
@@ -2641,6 +2764,7 @@ function renderPage(p){
   if(p==='ese')renderESE();
   if(p==='documentacion')renderDocumentacion();
   if(p==='perfiles')renderPerfiles();
+  if(p==='evaluaciones')renderEvaluaciones();
   // if(p==='basedatos')renderBaseDatos(); // desactivado temporalmente
 }
 
@@ -10653,6 +10777,11 @@ sbClient.auth.onAuthStateChange((event, session) => {
 
 // Verificar sesión activa al cargar
 sbClient.auth.getSession().then(async ({ data: { session } }) => {
+  // Formulario público de evaluación (sin login)
+  if(await _checkEvalPublica()) {
+    document.body.style.visibility = 'visible';
+    return;
+  }
   // Flujo legacy: token en hash (#access_token=...&type=recovery)
   if(tokenType === 'recovery' && accessToken) {
     await sbClient.auth.setSession({ access_token: accessToken, refresh_token: hashParams.get('refresh_token')||accessToken });
@@ -12872,6 +13001,336 @@ async function deleteESE(id){
   logActivity('Eliminar ESE','ese',id,_eseDelCand?.nombre||id);
   showToast('ESE eliminado');
   _eseRenderTable();
+}
+
+/* ============================================================
+   EVALUACIONES
+   ============================================================ */
+let _evalPubToken = null;
+let _evalPubData  = null; // {evaluacion, enviada}
+
+// ── Página ──────────────────────────────────────────────────
+function renderEvaluaciones(){
+  renderEvalPlantillas();
+  renderEvalEnviadas();
+}
+function evSetTab(tab){
+  document.getElementById('ev-panel-plantillas').style.display = tab==='plantillas' ? '' : 'none';
+  document.getElementById('ev-panel-enviadas').style.display   = tab==='enviadas'   ? '' : 'none';
+  document.getElementById('evtab-plantillas').className = `btn btn-sm ${tab==='plantillas'?'btn-primary':'btn-ghost'}`;
+  document.getElementById('evtab-enviadas').className   = `btn btn-sm ${tab==='enviadas'  ?'btn-primary':'btn-ghost'}`;
+}
+function renderEvalPlantillas(){
+  const tbody = document.getElementById('eval-plantillas-tbody');
+  if(!tbody) return;
+  if(!DB.evaluaciones.length){
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin evaluaciones. Crea la primera con "+ Nueva evaluación".</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = DB.evaluaciones.map(e=>`
+    <tr>
+      <td><strong>${e.nombre}</strong>${e.descripcion?`<div style="font-size:11px;color:var(--text3)">${e.descripcion}</div>`:''}</td>
+      <td style="text-align:center">${(e.preguntas||[]).length}</td>
+      <td><span class="badge ${e.activa!==false?'bg':'br'}">${e.activa!==false?'Activa':'Inactiva'}</span></td>
+      <td style="font-size:12px;color:var(--text3)">${e.created_at?new Date(e.created_at).toLocaleDateString('es-MX'):'—'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-primary btn-sm" onclick="openEnviarEvalModal('${e.id}')"><i class="fa fa-paper-plane"></i> Enviar</button>
+        <button class="btn btn-ghost btn-sm" onclick="openEvalTemplateModal('${e.id}')"><i class="fa fa-edit"></i></button>
+        <button class="btn btn-danger btn-sm" onclick="deleteEvalTemplate('${e.id}')"><i class="fa fa-trash"></i></button>
+      </td>
+    </tr>`).join('');
+}
+function renderEvalEnviadas(){
+  const tbody = document.getElementById('eval-enviadas-tbody');
+  if(!tbody) return;
+  if(!DB.evaluacionesEnviadas.length){
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Ninguna evaluación enviada aún.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = DB.evaluacionesEnviadas.map(e=>{
+    const ev  = DB.evaluaciones.find(x=>x.id===e.evaluacion_id)||{};
+    const vac = DB.vacantes.find(x=>x.id===e.vacante_id)||{};
+    const badge = e.estado==='completada'?'bg':'bp';
+    const link = _evalLink(e.token);
+    return `<tr>
+      <td>${e.candidato_nombre||'—'}</td>
+      <td>${ev.nombre||'—'}</td>
+      <td style="font-size:12px">${vac.folio||vac.nombre||'—'}</td>
+      <td><span class="badge ${badge}">${e.estado||'pendiente'}</span></td>
+      <td style="font-size:12px;color:var(--text3)">${e.fecha_envio?new Date(e.fecha_envio).toLocaleDateString('es-MX'):'—'}</td>
+      <td style="white-space:nowrap">
+        ${e.estado==='completada'?`<button class="btn btn-ghost btn-sm" onclick="verRespuestasEval('${e.id}')"><i class="fa fa-eye"></i> Ver</button>`:''}
+        <button class="btn btn-ghost btn-sm" onclick="evalCopyLinkById('${e.token}')" title="Copiar link"><i class="fa fa-copy"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Plantilla: crear / editar ────────────────────────────────
+function openEvalTemplateModal(id=null){
+  document.getElementById('eval-tpl-id').value = '';
+  document.getElementById('eval-tpl-nombre').value = '';
+  document.getElementById('eval-tpl-desc').value = '';
+  document.getElementById('eval-preguntas-list').innerHTML = '';
+  document.getElementById('eval-tpl-title').textContent = id ? 'Editar evaluación' : 'Nueva evaluación';
+  if(id){
+    const e = DB.evaluaciones.find(x=>x.id===id)||{};
+    document.getElementById('eval-tpl-id').value = id;
+    document.getElementById('eval-tpl-nombre').value = e.nombre||'';
+    document.getElementById('eval-tpl-desc').value = e.descripcion||'';
+    (e.preguntas||[]).forEach(q=>evalAddPregunta(q));
+  } else {
+    evalAddPregunta();
+  }
+  openModal('modal-eval-template');
+}
+function evalAddPregunta(q=null){
+  const qId = q?.id || ('q_'+uid());
+  const div = document.createElement('div');
+  div.id = 'ep_'+qId;
+  div.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg2)';
+  div.innerHTML = `
+    <div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:8px">
+      <input data-qid="${qId}" data-field="texto" placeholder="Texto de la pregunta *" value="${(q?.texto||'').replace(/"/g,'&quot;')}"
+        style="flex:1;font-weight:500">
+      <button class="btn btn-danger btn-sm" style="flex-shrink:0" onclick="document.getElementById('ep_${qId}').remove()"><i class="fa fa-trash"></i></button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px" id="opts_${qId}">
+      ${(q?.opciones||['','']).map((o,i)=>evalOpcionHTML(qId,o,i)).join('')}
+    </div>
+    <button class="btn btn-ghost btn-sm" style="margin-top:6px;font-size:12px" onclick="evalAddOpcion('${qId}')"><i class="fa fa-plus"></i> Agregar opción</button>`;
+  document.getElementById('eval-preguntas-list').appendChild(div);
+}
+function evalOpcionHTML(qId,val='',idx=0){
+  return `<div style="display:flex;gap:4px;align-items:center" id="opt_${qId}_${idx}">
+    <i class="fa fa-circle" style="font-size:8px;color:var(--text3);flex-shrink:0"></i>
+    <input placeholder="Opción ${idx+1}" value="${(val||'').replace(/"/g,'&quot;')}" data-qid="${qId}" data-field="opcion" style="flex:1;font-size:13px">
+    <button class="btn btn-ghost btn-sm" style="padding:2px 6px" onclick="this.parentElement.remove()"><i class="fa fa-times"></i></button>
+  </div>`;
+}
+function evalAddOpcion(qId){
+  const container = document.getElementById('opts_'+qId);
+  const idx = container.querySelectorAll('[data-field="opcion"]').length;
+  container.insertAdjacentHTML('beforeend', evalOpcionHTML(qId,'',idx));
+}
+async function saveEvalTemplate(){
+  const nombre = (document.getElementById('eval-tpl-nombre').value||'').trim();
+  if(!nombre){ showToast('Escribe el nombre de la evaluación','err'); return; }
+  const preguntas = [];
+  document.getElementById('eval-preguntas-list').querySelectorAll('[data-field="texto"]').forEach(inp=>{
+    const qId = inp.dataset.qid;
+    const texto = inp.value.trim();
+    if(!texto) return;
+    const opciones = [...document.querySelectorAll(`#opts_${qId} [data-field="opcion"]`)]
+      .map(i=>i.value.trim()).filter(Boolean);
+    preguntas.push({id:qId, texto, opciones, requerida:true});
+  });
+  if(!preguntas.length){ showToast('Agrega al menos una pregunta','err'); return; }
+  const id = document.getElementById('eval-tpl-id').value || uid();
+  const ev = {
+    id, nombre,
+    descripcion: document.getElementById('eval-tpl-desc').value.trim(),
+    preguntas,
+    activa: true,
+    created_at: new Date().toISOString()
+  };
+  try {
+    await saveRecord('evaluaciones', ev);
+    const idx = DB.evaluaciones.findIndex(x=>x.id===id);
+    if(idx>=0) DB.evaluaciones[idx]=ev; else DB.evaluaciones.push(ev);
+    showToast('Evaluación guardada ✓');
+    closeModal('modal-eval-template');
+    renderEvalPlantillas();
+  } catch(e){ showToast('Error: '+e.message,'err'); }
+}
+async function deleteEvalTemplate(id){
+  if(!confirm('¿Eliminar esta evaluación?')) return;
+  await deleteRecord('evaluaciones',id);
+  DB.evaluaciones = DB.evaluaciones.filter(x=>x.id!==id);
+  showToast('Evaluación eliminada');
+  renderEvalPlantillas();
+}
+
+// ── Enviar evaluación ────────────────────────────────────────
+function openEnviarEvalModal(evalId=null){
+  document.getElementById('env-eval-cand-q').value = '';
+  document.getElementById('env-eval-cand-id').value = '';
+  document.getElementById('env-eval-cand-list').style.display = 'none';
+  document.getElementById('env-eval-link-box').style.display = 'none';
+  document.getElementById('env-eval-link').value = '';
+  const tplSel = document.getElementById('env-eval-tpl');
+  tplSel.innerHTML = '<option value="">Seleccionar...</option>';
+  DB.evaluaciones.filter(e=>e.activa!==false).forEach(e=>{
+    tplSel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
+  });
+  if(evalId) tplSel.value = evalId;
+  const vacSel = document.getElementById('env-eval-vac');
+  vacSel.innerHTML = '<option value="">Sin vacante</option>';
+  DB.vacantes.filter(v=>v.estado==='Abierta').forEach(v=>{
+    vacSel.innerHTML += `<option value="${v.id}">${v.folio} — ${v.nombre}</option>`;
+  });
+  openModal('modal-enviar-eval');
+}
+function evalBuscarCand(q){
+  const list = document.getElementById('env-eval-cand-list');
+  if(!q.trim()){ list.style.display='none'; return; }
+  const res = DB.candidatos.filter(c=>(c.nombre||'').toLowerCase().includes(q.toLowerCase())).slice(0,8);
+  if(!res.length){ list.style.display='none'; return; }
+  list.innerHTML = res.map(c=>`<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px" onmousedown="evalSelectCand('${c.id}','${(c.nombre||'').replace(/'/g,"\\'")}')">
+    ${c.nombre} <span style="font-size:11px;color:var(--text3)">${DB.vacantes.find(v=>v.id===c.vacante_id)?.nombre||''}</span>
+  </div>`).join('');
+  list.style.display = 'block';
+}
+function evalSelectCand(id, nombre){
+  document.getElementById('env-eval-cand-id').value = id;
+  document.getElementById('env-eval-cand-q').value = nombre;
+  document.getElementById('env-eval-cand-list').style.display = 'none';
+  const cand = DB.candidatos.find(c=>c.id===id)||{};
+  if(cand.vacante_id) document.getElementById('env-eval-vac').value = cand.vacante_id;
+}
+async function generarLinkEval(){
+  const evalId  = document.getElementById('env-eval-tpl').value;
+  const candId  = document.getElementById('env-eval-cand-id').value;
+  const vacId   = document.getElementById('env-eval-vac').value;
+  if(!evalId){ showToast('Selecciona una evaluación','err'); return; }
+  if(!candId){ showToast('Selecciona un candidato','err'); return; }
+  const cand = DB.candidatos.find(c=>c.id===candId)||{};
+  const token = uid()+uid();
+  const enviada = {
+    id: uid(),
+    evaluacion_id: evalId,
+    candidato_id: candId,
+    candidato_nombre: cand.nombre||'',
+    vacante_id: vacId||null,
+    token,
+    estado: 'pendiente',
+    respuestas: null,
+    fecha_envio: new Date().toISOString(),
+    fecha_completada: null
+  };
+  try {
+    await saveRecord('evaluaciones_enviadas', enviada);
+    DB.evaluacionesEnviadas.push(enviada);
+    const link = _evalLink(token);
+    document.getElementById('env-eval-link').value = link;
+    document.getElementById('env-eval-link-box').style.display = '';
+    document.getElementById('btn-generar-eval-link').style.display = 'none';
+    renderEvalEnviadas();
+  } catch(e){ showToast('Error: '+e.message,'err'); }
+}
+function _evalLink(token){
+  return `${location.origin}${location.pathname}?eval=${token}`;
+}
+function evalCopyLink(){
+  const v = document.getElementById('env-eval-link').value;
+  navigator.clipboard?.writeText(v).then(()=>showToast('Link copiado ✓')).catch(()=>{});
+}
+function evalCopyLinkById(token){
+  navigator.clipboard?.writeText(_evalLink(token)).then(()=>showToast('Link copiado ✓')).catch(()=>{});
+}
+function evalShareWhatsapp(){
+  const link = document.getElementById('env-eval-link').value;
+  const cand = document.getElementById('env-eval-cand-q').value;
+  const ev   = DB.evaluaciones.find(x=>x.id===document.getElementById('env-eval-tpl').value)||{};
+  const msg  = encodeURIComponent(`Hola ${cand}, te compartimos la siguiente evaluación técnica: "${ev.nombre}". Por favor complétala en el siguiente link:\n${link}`);
+  window.open(`https://wa.me/?text=${msg}`,'_blank');
+}
+function evalShareEmail(){
+  const link = document.getElementById('env-eval-link').value;
+  const cand = document.getElementById('env-eval-cand-q').value;
+  const ev   = DB.evaluaciones.find(x=>x.id===document.getElementById('env-eval-tpl').value)||{};
+  const sub  = encodeURIComponent(`Evaluación técnica: ${ev.nombre}`);
+  const body = encodeURIComponent(`Hola ${cand},\n\nTe compartimos la siguiente evaluación técnica: "${ev.nombre}".\n\nPor favor complétala en el siguiente enlace:\n${link}\n\nSaludos.`);
+  window.open(`mailto:?subject=${sub}&body=${body}`,'_blank');
+}
+
+// ── Ver respuestas ───────────────────────────────────────────
+function verRespuestasEval(envId){
+  const env = DB.evaluacionesEnviadas.find(x=>x.id===envId)||{};
+  const ev  = DB.evaluaciones.find(x=>x.id===env.evaluacion_id)||{};
+  const respuestas = env.respuestas||{};
+  const html = `
+    <div style="margin-bottom:12px">
+      <strong>${env.candidato_nombre}</strong>
+      <span style="font-size:12px;color:var(--text3);margin-left:8px">${env.fecha_completada?new Date(env.fecha_completada).toLocaleString('es-MX'):''}</span>
+    </div>
+    ${(ev.preguntas||[]).map((q,i)=>`
+      <div style="margin-bottom:14px;padding:10px 12px;background:var(--bg2);border-radius:8px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:4px">${i+1}. ${q.texto}</div>
+        <div style="color:var(--text2);font-size:13px">${respuestas[q.id]||<span style="color:var(--text3)">Sin respuesta</span>}</div>
+      </div>`).join('')}`;
+  document.getElementById('eval-respuestas-body').innerHTML = html;
+  openModal('modal-eval-respuestas');
+}
+
+// ── Formulario público (candidato) ───────────────────────────
+async function _checkEvalPublica(){
+  const params = new URLSearchParams(location.search);
+  const token = params.get('eval');
+  if(!token) return false;
+  _evalPubToken = token;
+  // Fetch evaluacion_enviada by token from Supabase (anon)
+  try {
+    const { data: rows } = await sbClient.from('evaluaciones_enviadas')
+      .select('*').filter('data->>token','eq',token).limit(1);
+    const enviada = rows?.[0]?.data || rows?.[0];
+    if(!enviada){ _showEvalPubError('Evaluación no encontrada.'); return true; }
+    if(enviada.estado==='completada'){ _showEvalPubCompleted(); return true; }
+    const { data: evRows } = await sbClient.from('evaluaciones')
+      .select('*').eq('id', enviada.evaluacion_id).limit(1);
+    const evaluacion = evRows?.[0]?.data || evRows?.[0];
+    if(!evaluacion){ _showEvalPubError('Evaluación no disponible.'); return true; }
+    _evalPubData = { enviada, evaluacion };
+    _renderEvalPublica(evaluacion, enviada);
+  } catch(e){ _showEvalPubError('Error al cargar la evaluación.'); }
+  return true;
+}
+function _showEvalPubCompleted(){
+  document.getElementById('eval-public-screen').style.display = '';
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('evpub-form').style.display = 'none';
+  document.getElementById('evpub-completed').style.display = '';
+}
+function _showEvalPubError(msg){
+  document.getElementById('eval-public-screen').style.display = '';
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('evpub-preguntas').innerHTML = `<div style="color:var(--red);padding:20px;text-align:center">${msg}</div>`;
+  document.getElementById('evpub-nombre').textContent = 'Evaluación';
+}
+function _renderEvalPublica(ev, enviada){
+  document.getElementById('eval-public-screen').style.display = '';
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('evpub-nombre').textContent = ev.nombre||'Evaluación';
+  document.getElementById('evpub-desc').textContent = ev.descripcion||'';
+  document.getElementById('evpub-preguntas').innerHTML = (ev.preguntas||[]).map((q,i)=>`
+    <div style="border:1px solid var(--border);border-radius:10px;padding:16px;background:var(--surface)">
+      <div style="font-weight:600;margin-bottom:10px;font-size:14px">${i+1}. ${q.texto}${q.requerida?'<span style="color:var(--red)"> *</span>':''}</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${(q.opciones||[]).map(opt=>`
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);transition:background .15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+            <input type="radio" name="q_${q.id}" value="${opt.replace(/"/g,'&quot;')}" style="accent-color:var(--primary)">
+            ${opt}
+          </label>`).join('')}
+      </div>
+    </div>`).join('');
+}
+async function submitEvalPublica(){
+  if(!_evalPubData) return;
+  const {evaluacion, enviada} = _evalPubData;
+  const respuestas = {};
+  let allAnswered = true;
+  for(const q of (evaluacion.preguntas||[])){
+    const sel = document.querySelector(`input[name="q_${q.id}"]:checked`);
+    if(q.requerida && !sel){ allAnswered=false; break; }
+    respuestas[q.id] = sel?.value||null;
+  }
+  if(!allAnswered){ showToast('Responde todas las preguntas requeridas','err'); return; }
+  const updated = {...enviada, estado:'completada', respuestas, fecha_completada:new Date().toISOString()};
+  try {
+    await sbClient.from('evaluaciones_enviadas').upsert({id:updated.id, data:updated});
+    document.getElementById('evpub-form').style.display = 'none';
+    document.getElementById('evpub-completed').style.display = '';
+  } catch(e){ showToast('Error al enviar: '+e.message,'err'); }
 }
 </script>
 </body>

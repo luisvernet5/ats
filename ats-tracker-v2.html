@@ -5794,6 +5794,12 @@ function _mfReset(...ids){
    ETAPA FILTER DROPDOWN
    ============================================================ */
 let _etapaOpciones = []; // [{label, color}] disponibles en lista actual
+window._filtroMostrarDescartados = false;
+
+function toggleFiltroDescartados(cb){
+  window._filtroMostrarDescartados = cb.checked;
+  renderCandidatosTable();
+}
 
 function toggleEtapaDropdown(e){
   e.stopPropagation();
@@ -5805,7 +5811,13 @@ function toggleEtapaDropdown(e){
   const panel = document.createElement('div');
   panel.id = 'flt-cand-etapa-panel';
   panel.style.cssText = `position:fixed;top:${rect.bottom+4}px;left:${rect.left}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:6px 4px;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,.15);min-width:190px;max-height:300px;overflow-y:auto`;
-  panel.innerHTML = `<div style="font-size:11px;font-weight:600;color:var(--text3);padding:4px 12px 6px;text-transform:uppercase;letter-spacing:.04em">Etapa</div>
+  panel.innerHTML = `<div style="font-size:11px;font-weight:600;color:var(--text3);padding:4px 12px 6px;text-transform:uppercase;letter-spacing:.04em">Visibilidad</div>
+    <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;border-radius:6px;font-size:13px;user-select:none;border-bottom:1px solid var(--border2);margin-bottom:6px"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <input type="checkbox" id="flt-desc-check" style="accent-color:#ef4444;width:14px;height:14px" ${window._filtroMostrarDescartados?'checked':''} onchange="toggleFiltroDescartados(this)">
+      <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0"></span>Mostrar descartados</span>
+    </label>
+    <div style="font-size:11px;font-weight:600;color:var(--text3);padding:4px 12px 6px;text-transform:uppercase;letter-spacing:.04em">Etapa</div>
     <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;border-radius:6px;font-size:13px;user-select:none;border-bottom:1px solid var(--border2);margin-bottom:2px"
       onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
       <input type="checkbox" id="flt-etapa-all" style="accent-color:var(--accent);width:14px;height:14px" onchange="etapaToggleAll(this)" ${window._etapaFiltroSet===null?'checked':''}> <strong>Seleccionar todo</strong>
@@ -5914,6 +5926,7 @@ function renderCandidatosTable(){
   const _empIdC = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
   const _vacsC = _recIdC ? DB.vacantes.filter(v=>v.reclutador_id===_recIdC) : _empIdC ? DB.vacantes.filter(v=>v.empresa_id===_empIdC) : DB.vacantes;
   let list = (_recIdC||_empIdC) ? DB.candidatos.filter(c=>_vacsC.find(v=>v.id===c.vacante_id)) : DB.candidatos;
+  if(!window._filtroMostrarDescartados) list = list.filter(c=>!_esCandDescartado(c));
   if(q)list=list.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
   const mfCandEmp=_mfGet('flt-cand-emp');if(mfCandEmp){const vids=_vacsC.filter(v=>mfCandEmp.has(v.empresa_id||'')).map(v=>v.id);list=list.filter(c=>vids.includes(c.vacante_id));}
   const mfCandRec=_mfGet('flt-cand-rec');if(mfCandRec)list=list.filter(c=>mfCandRec.has(c.reclutador_id||''));

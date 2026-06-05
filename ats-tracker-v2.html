@@ -591,7 +591,7 @@ input[type=date]{color:var(--text)}
     </div>
     <div id="ev-panel-enviadas" style="display:none">
       <div class="table-wrap"><table class="table" id="eval-enviadas-table">
-        <thead><tr><th>Candidato</th><th>Evaluación</th><th>Vacante</th><th>Estado</th><th>Enviada</th><th></th></tr></thead>
+        <thead><tr><th>Candidato</th><th>Evaluación</th><th>Vacante</th><th>Estado</th><th>Puntaje</th><th>Enviada</th><th></th></tr></thead>
         <tbody id="eval-enviadas-tbody"></tbody>
       </table></div>
     </div>
@@ -846,6 +846,9 @@ input[type=date]{color:var(--text)}
       <input type="hidden" id="eval-tpl-id">
       <div class="fr full"><div class="fg"><label>Nombre de la evaluación *</label><input id="eval-tpl-nombre" placeholder="Ej. Evaluación Técnica Ventas"></div></div>
       <div class="fr full"><div class="fg"><label>Descripción</label><textarea id="eval-tpl-desc" rows="2" placeholder="Instrucciones o contexto para el candidato..." style="resize:vertical"></textarea></div></div>
+      <div class="fr full"><div class="fg"><label>Empresas asignadas <span style="font-size:11px;color:var(--text3)">(dejar vacío = todas)</span></label>
+        <div id="eval-tpl-emps" style="border:1px solid var(--border);border-radius:6px;padding:8px;max-height:110px;overflow-y:auto;display:flex;flex-wrap:wrap;gap:6px;background:var(--bg2)"></div>
+      </div></div>
       <div style="margin-top:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <label style="font-weight:600;font-size:13px">Preguntas</label>
@@ -899,10 +902,14 @@ input[type=date]{color:var(--text)}
 
 <!-- ===== MODAL VER RESPUESTAS EVALUACIÓN ===== -->
 <div class="modal-overlay" id="modal-eval-respuestas">
-  <div class="modal" style="width:600px;max-width:96vw">
+  <div class="modal" style="width:620px;max-width:96vw">
     <div class="mh"><h3>Respuestas</h3><button class="xbtn" onclick="closeModal('modal-eval-respuestas')"><i class="fa fa-times"></i></button></div>
     <div class="mb" id="eval-respuestas-body"></div>
-    <div class="mf"><button class="btn btn-ghost" onclick="closeModal('modal-eval-respuestas')">Cerrar</button></div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-eval-respuestas')">Cerrar</button>
+      <button class="btn btn-ghost" id="btn-informe-eval-xlsx" onclick="generarInformeEvalXLSX()"><i class="fa fa-file-excel"></i> Excel</button>
+      <button class="btn btn-primary" id="btn-informe-eval-pdf" onclick="generarInformeEvalPDF()"><i class="fa fa-file-pdf"></i> Generar informe PDF</button>
+    </div>
   </div>
 </div>
 
@@ -13052,11 +13059,22 @@ function renderEvalEnviadas(){
     const vac = DB.vacantes.find(x=>x.id===e.vacante_id)||{};
     const badge = e.estado==='completada'?'bg':'bp';
     const link = _evalLink(e.token);
+    let scoreHTML = '—';
+    if(e.estado==='completada' && ev.preguntas){
+      const tieneClaves = ev.preguntas.some(q=>q.respuesta_correcta);
+      if(tieneClaves){
+        const resp = e.respuestas||{};
+        const correctas = ev.preguntas.filter(q=>q.respuesta_correcta&&resp[q.id]===q.respuesta_correcta).length;
+        const pct = Math.round(correctas/ev.preguntas.length*100);
+        scoreHTML = `<span style="font-weight:600;color:${pct>=70?'#22c55e':pct>=50?'#f59e0b':'#ef4444'}">${correctas}/${ev.preguntas.length} (${pct}%)</span>`;
+      }
+    }
     return `<tr>
       <td>${e.candidato_nombre||'—'}</td>
       <td>${ev.nombre||'—'}</td>
       <td style="font-size:12px">${vac.folio||vac.nombre||'—'}</td>
       <td><span class="badge ${badge}">${e.estado||'pendiente'}</span></td>
+      <td style="font-size:12px">${scoreHTML}</td>
       <td style="font-size:12px;color:var(--text3)">${e.fecha_envio?new Date(e.fecha_envio).toLocaleDateString('es-MX'):'—'}</td>
       <td style="white-space:nowrap">
         ${e.estado==='completada'?`<button class="btn btn-ghost btn-sm" onclick="verRespuestasEval('${e.id}')"><i class="fa fa-eye"></i> Ver</button>`:''}
@@ -13073,6 +13091,12 @@ function openEvalTemplateModal(id=null){
   document.getElementById('eval-tpl-desc').value = '';
   document.getElementById('eval-preguntas-list').innerHTML = '';
   document.getElementById('eval-tpl-title').textContent = id ? 'Editar evaluación' : 'Nueva evaluación';
+  const selectedEmpIds = id ? (DB.evaluaciones.find(x=>x.id===id)?.empresa_ids||[]) : [];
+  document.getElementById('eval-tpl-emps').innerHTML = DB.empresas.map(e=>`
+    <label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:14px;border:1px solid var(--border);background:${selectedEmpIds.includes(e.id)?'var(--primary)':'var(--surface)'};color:${selectedEmpIds.includes(e.id)?'#fff':'var(--text)'}">
+      <input type="checkbox" name="eval-emp" value="${e.id}" ${selectedEmpIds.includes(e.id)?'checked':''} style="display:none" onchange="this.closest('label').style.background=this.checked?'var(--primary)':'var(--surface)';this.closest('label').style.color=this.checked?'#fff':'var(--text)'">
+      ${e.nombre}
+    </label>`).join('');
   if(id){
     const e = DB.evaluaciones.find(x=>x.id===id)||{};
     document.getElementById('eval-tpl-id').value = id;
@@ -13089,21 +13113,24 @@ function evalAddPregunta(q=null){
   const div = document.createElement('div');
   div.id = 'ep_'+qId;
   div.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg2)';
+  const opciones = q?.opciones||['',''];
+  const correctIdx = q?.respuesta_correcta ? opciones.indexOf(q.respuesta_correcta) : -1;
   div.innerHTML = `
     <div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:8px">
       <input data-qid="${qId}" data-field="texto" placeholder="Texto de la pregunta *" value="${(q?.texto||'').replace(/"/g,'&quot;')}"
         style="flex:1;font-weight:500">
       <button class="btn btn-danger btn-sm" style="flex-shrink:0" onclick="document.getElementById('ep_${qId}').remove()"><i class="fa fa-trash"></i></button>
     </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:4px"><i class="fa fa-check-circle" style="color:#22c55e"></i> Selecciona la respuesta correcta con el radio</div>
     <div style="display:flex;flex-direction:column;gap:4px" id="opts_${qId}">
-      ${(q?.opciones||['','']).map((o,i)=>evalOpcionHTML(qId,o,i)).join('')}
+      ${opciones.map((o,i)=>evalOpcionHTML(qId,o,i,i===correctIdx)).join('')}
     </div>
     <button class="btn btn-ghost btn-sm" style="margin-top:6px;font-size:12px" onclick="evalAddOpcion('${qId}')"><i class="fa fa-plus"></i> Agregar opción</button>`;
   document.getElementById('eval-preguntas-list').appendChild(div);
 }
-function evalOpcionHTML(qId,val='',idx=0){
+function evalOpcionHTML(qId,val='',idx=0,isCorrect=false){
   return `<div style="display:flex;gap:4px;align-items:center" id="opt_${qId}_${idx}">
-    <i class="fa fa-circle" style="font-size:8px;color:var(--text3);flex-shrink:0"></i>
+    <input type="radio" name="correct_${qId}" value="${idx}" title="Marcar como respuesta correcta" ${isCorrect?'checked':''} style="accent-color:#22c55e;flex-shrink:0;cursor:pointer">
     <input placeholder="Opción ${idx+1}" value="${(val||'').replace(/"/g,'&quot;')}" data-qid="${qId}" data-field="opcion" style="flex:1;font-size:13px">
     <button class="btn btn-ghost btn-sm" style="padding:2px 6px" onclick="this.parentElement.remove()"><i class="fa fa-times"></i></button>
   </div>`;
@@ -13121,15 +13148,20 @@ async function saveEvalTemplate(){
     const qId = inp.dataset.qid;
     const texto = inp.value.trim();
     if(!texto) return;
-    const opciones = [...document.querySelectorAll(`#opts_${qId} [data-field="opcion"]`)]
-      .map(i=>i.value.trim()).filter(Boolean);
-    preguntas.push({id:qId, texto, opciones, requerida:true});
+    const opcionesEls = [...document.querySelectorAll(`#opts_${qId} [data-field="opcion"]`)];
+    const opciones = opcionesEls.map(i=>i.value.trim()).filter(Boolean);
+    const correctRadio = document.querySelector(`input[name="correct_${qId}"]:checked`);
+    const correctIdx = correctRadio ? parseInt(correctRadio.value) : -1;
+    const respuesta_correcta = correctIdx>=0 && opciones[correctIdx] ? opciones[correctIdx] : null;
+    preguntas.push({id:qId, texto, opciones, respuesta_correcta, requerida:true});
   });
   if(!preguntas.length){ showToast('Agrega al menos una pregunta','err'); return; }
+  const empresa_ids = [...document.querySelectorAll('input[name="eval-emp"]:checked')].map(cb=>cb.value);
   const id = document.getElementById('eval-tpl-id').value || uid();
   const ev = {
     id, nombre,
     descripcion: document.getElementById('eval-tpl-desc').value.trim(),
+    empresa_ids,
     preguntas,
     activa: true,
     created_at: new Date().toISOString()
@@ -13245,22 +13277,131 @@ function evalShareEmail(){
 }
 
 // ── Ver respuestas ───────────────────────────────────────────
+let _currentEvalEnvId = null;
 function verRespuestasEval(envId){
+  _currentEvalEnvId = envId;
   const env = DB.evaluacionesEnviadas.find(x=>x.id===envId)||{};
   const ev  = DB.evaluaciones.find(x=>x.id===env.evaluacion_id)||{};
   const respuestas = env.respuestas||{};
+  const preguntas = ev.preguntas||[];
+  const tieneClaves = preguntas.some(q=>q.respuesta_correcta);
+  let correctas = 0;
+  const filas = preguntas.map((q,i)=>{
+    const resp = respuestas[q.id]||null;
+    const esCorrecta = q.respuesta_correcta && resp===q.respuesta_correcta;
+    if(esCorrecta) correctas++;
+    const iconoResp = tieneClaves && resp
+      ? (esCorrecta
+          ? `<span style="color:#22c55e;font-weight:700;margin-left:6px">✓</span>`
+          : `<span style="color:#ef4444;font-weight:700;margin-left:6px">✗</span>`)
+      : '';
+    const claveHTML = tieneClaves && q.respuesta_correcta && !esCorrecta && resp
+      ? `<div style="font-size:11px;color:#22c55e;margin-top:3px"><i class="fa fa-check"></i> Correcta: ${q.respuesta_correcta}</div>`
+      : '';
+    return `<div style="margin-bottom:12px;padding:10px 12px;background:var(--bg2);border-radius:8px;border-left:3px solid ${tieneClaves?(esCorrecta?'#22c55e':resp?'#ef4444':'var(--border)'):'var(--border)'}">
+      <div style="font-weight:600;font-size:13px;margin-bottom:6px">${i+1}. ${q.texto}</div>
+      <div style="color:var(--text2);font-size:13px;display:flex;align-items:center">
+        ${resp||'<span style="color:var(--text3)">Sin respuesta</span>'}${iconoResp}
+      </div>${claveHTML}
+    </div>`;
+  });
+  const scoreHTML = tieneClaves
+    ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border-radius:8px;margin-bottom:14px;border:1px solid var(--border)">
+        <i class="fa fa-trophy" style="color:#f59e0b;font-size:20px"></i>
+        <div>
+          <div style="font-weight:700;font-size:16px">${correctas} / ${preguntas.length} correctas</div>
+          <div style="font-size:12px;color:var(--text3)">${Math.round(correctas/preguntas.length*100)}% de acierto</div>
+        </div>
+      </div>` : '';
   const html = `
-    <div style="margin-bottom:12px">
-      <strong>${env.candidato_nombre}</strong>
-      <span style="font-size:12px;color:var(--text3);margin-left:8px">${env.fecha_completada?new Date(env.fecha_completada).toLocaleString('es-MX'):''}</span>
+    <div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+      <div><strong>${env.candidato_nombre}</strong> — <span style="font-size:13px;color:var(--text3)">${ev.nombre||''}</span></div>
+      <span style="font-size:12px;color:var(--text3)">${env.fecha_completada?new Date(env.fecha_completada).toLocaleString('es-MX'):''}</span>
     </div>
-    ${(ev.preguntas||[]).map((q,i)=>`
-      <div style="margin-bottom:14px;padding:10px 12px;background:var(--bg2);border-radius:8px">
-        <div style="font-weight:600;font-size:13px;margin-bottom:4px">${i+1}. ${q.texto}</div>
-        <div style="color:var(--text2);font-size:13px">${respuestas[q.id]||'<span style="color:var(--text3)">Sin respuesta</span>'}</div>
-      </div>`).join('')}`;
+    ${scoreHTML}${filas.join('')}`;
   document.getElementById('eval-respuestas-body').innerHTML = html;
   openModal('modal-eval-respuestas');
+}
+
+function generarInformeEvalXLSX(){
+  const envId = _currentEvalEnvId;
+  const env = DB.evaluacionesEnviadas.find(x=>x.id===envId)||{};
+  const ev  = DB.evaluaciones.find(x=>x.id===env.evaluacion_id)||{};
+  const respuestas = env.respuestas||{};
+  const preguntas = ev.preguntas||[];
+  const tieneClaves = preguntas.some(q=>q.respuesta_correcta);
+  let correctas = 0;
+  const rows = [
+    ['Candidato', env.candidato_nombre||''],
+    ['Evaluación', ev.nombre||''],
+    ['Fecha completada', env.fecha_completada?new Date(env.fecha_completada).toLocaleString('es-MX'):''],
+    [],
+    tieneClaves ? ['#','Pregunta','Respuesta candidato','Respuesta correcta','Resultado'] : ['#','Pregunta','Respuesta candidato'],
+    ...preguntas.map((q,i)=>{
+      const resp = respuestas[q.id]||'Sin respuesta';
+      const esCorrecta = q.respuesta_correcta && resp===q.respuesta_correcta;
+      if(esCorrecta) correctas++;
+      return tieneClaves
+        ? [i+1, q.texto, resp, q.respuesta_correcta||'', esCorrecta?'✓ Correcta':'✗ Incorrecta']
+        : [i+1, q.texto, resp];
+    }),
+  ];
+  if(tieneClaves) rows.push([],['Puntaje',`${correctas} / ${preguntas.length}`,`${Math.round(correctas/preguntas.length*100)}%`]);
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:20},{wch:40},{wch:30},{wch:30},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws,'Resultados');
+  XLSX.writeFile(wb, `evaluacion_${(env.candidato_nombre||'candidato').replace(/\s/g,'_')}.xlsx`);
+}
+
+async function generarInformeEvalPDF(){
+  const envId = _currentEvalEnvId;
+  const env = DB.evaluacionesEnviadas.find(x=>x.id===envId)||{};
+  const ev  = DB.evaluaciones.find(x=>x.id===env.evaluacion_id)||{};
+  const respuestas = env.respuestas||{};
+  const preguntas = ev.preguntas||[];
+  const tieneClaves = preguntas.some(q=>q.respuesta_correcta);
+  let correctas = 0;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'mm',format:'a4'});
+  const W=210, M=18;
+  let y = M;
+  doc.setFillColor(42,170,222); doc.rect(0,0,W,14,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text('Informe de Evaluación', M, 9.5);
+  doc.setTextColor(40,40,40); y=22;
+  doc.setFont('helvetica','bold'); doc.setFontSize(11);
+  doc.text(`Candidato: ${env.candidato_nombre||'—'}`, M, y); y+=6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  doc.text(`Evaluación: ${ev.nombre||'—'}`, M, y); y+=5;
+  doc.text(`Fecha: ${env.fecha_completada?new Date(env.fecha_completada).toLocaleString('es-MX'):'—'}`, M, y); y+=8;
+  if(tieneClaves){
+    preguntas.forEach(q=>{if(q.respuesta_correcta&&respuestas[q.id]===q.respuesta_correcta)correctas++;});
+    const pct = Math.round(correctas/preguntas.length*100);
+    doc.setFillColor(245,247,250); doc.roundedRect(M,y-4,W-M*2,12,2,2,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    doc.setTextColor(42,170,222); doc.text(`Puntaje: ${correctas}/${preguntas.length} correctas (${pct}%)`, M+4, y+4);
+    doc.setTextColor(40,40,40); y+=16;
+  }
+  doc.setDrawColor(220,220,220);
+  preguntas.forEach((q,i)=>{
+    if(y>268){doc.addPage();y=18;}
+    const resp = respuestas[q.id]||'Sin respuesta';
+    const esCorrecta = q.respuesta_correcta && resp===q.respuesta_correcta;
+    doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    doc.text(`${i+1}. ${q.texto}`, M, y, {maxWidth:W-M*2}); y+=5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+    if(tieneClaves && q.respuesta_correcta){
+      doc.setTextColor(esCorrecta?34:220, esCorrecta?197:38, esCorrecta?94:38);
+      doc.text(`Respuesta: ${resp} ${esCorrecta?'✓':'✗'}`, M+4, y); y+=4.5;
+      if(!esCorrecta){ doc.setTextColor(34,197,94); doc.text(`Correcta: ${q.respuesta_correcta}`, M+4, y); y+=4.5; }
+    } else {
+      doc.setTextColor(80,80,80); doc.text(`Respuesta: ${resp}`, M+4, y); y+=4.5;
+    }
+    doc.setTextColor(40,40,40);
+    doc.setDrawColor(235,235,235); doc.line(M,y+1,W-M,y+1); y+=5;
+  });
+  doc.save(`evaluacion_${(env.candidato_nombre||'candidato').replace(/\s/g,'_')}.pdf`);
 }
 
 // ── Formulario público (candidato) ───────────────────────────

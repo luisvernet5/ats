@@ -142,6 +142,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
 select option{background:var(--surface2)}
 textarea{resize:vertical;min-height:70px}
 input[type=date]{color:var(--text)}
+input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;padding:0;background:transparent;border:none;border-radius:0;flex-shrink:0}
 .divider{height:1px;background:var(--border);margin:16px 0}
 .sep{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin:14px 0 10px}
 .tl{display:flex;flex-direction:column}
@@ -13108,73 +13109,193 @@ function openEvalTemplateModal(id=null){
   }
   openModal('modal-eval-template');
 }
-function evalAddPregunta(q=null){
-  const qId = q?.id || ('q_'+uid());
-  const div = document.createElement('div');
-  div.id = 'ep_'+qId;
-  div.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg2)';
-  const opciones = q?.opciones||['',''];
-  const correctIdx = q?.respuesta_correcta ? opciones.indexOf(q.respuesta_correcta) : -1;
-  div.innerHTML = `
-    <div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:8px">
-      <input data-qid="${qId}" data-field="texto" placeholder="Texto de la pregunta *" value="${(q?.texto||'').replace(/"/g,'&quot;')}"
-        style="flex:1;font-weight:500">
-      <button class="btn btn-danger btn-sm" style="flex-shrink:0" onclick="document.getElementById('ep_${qId}').remove()"><i class="fa fa-trash"></i></button>
+const EVAL_TIPOS = [
+  {value:'titulo',        icon:'fa-heading',          label:'Título'},
+  {value:'descripcion',   icon:'fa-align-left',       label:'Descripción'},
+  {value:'texto_corto',   icon:'fa-minus',            label:'Respuesta corta'},
+  {value:'parrafo',       icon:'fa-bars',             label:'Párrafo'},
+  {value:'opcion_multiple',icon:'fa-dot-circle',      label:'Varias opciones'},
+  {value:'casillas',      icon:'fa-check-square',     label:'Casillas'},
+  {value:'desplegable',   icon:'fa-caret-square-down',label:'Desplegable'},
+  {value:'escala_lineal', icon:'fa-sliders-h',        label:'Escala lineal'},
+];
+const _EVAL_TEXTO_TIPOS = new Set(['titulo','descripcion','texto_corto','parrafo']);
+
+function _evalGetOpcContent(qId, tipo, q){
+  if(_EVAL_TEXTO_TIPOS.has(tipo)){
+    if(tipo==='texto_corto') return `<input disabled placeholder="Respuesta corta..." style="width:55%;font-size:13px;opacity:.6;cursor:default;margin-top:4px">`;
+    if(tipo==='parrafo') return `<textarea disabled placeholder="Respuesta larga..." rows="2" style="width:100%;font-size:13px;opacity:.6;cursor:default;resize:none;margin-top:4px"></textarea>`;
+    return '';
+  }
+  if(tipo==='escala_lineal'){
+    const min=q?.escala_min||1, max=q?.escala_max||5;
+    const correcta=q?.respuesta_correcta||'';
+    const scaleOpts=Array.from({length:max-min+1},(_,i)=>i+min);
+    return `<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:8px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:11px;color:var(--text3)">Desde</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <select data-qid="${qId}" data-field="escala_min" onchange="evalUpdateEscala('${qId}')" style="width:62px">
+            ${[1,2].map(v=>`<option value="${v}" ${min==v?'selected':''}>${v}</option>`).join('')}
+          </select>
+          <input data-qid="${qId}" data-field="escala_min_label" placeholder="Etiqueta min" value="${q?.escala_min_label||''}" style="width:110px;font-size:12px">
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:11px;color:var(--text3)">Hasta</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <select data-qid="${qId}" data-field="escala_max" onchange="evalUpdateEscala('${qId}')" style="width:62px">
+            ${[2,3,4,5,6,7,8,9,10].map(v=>`<option value="${v}" ${max==v?'selected':''}>${v}</option>`).join('')}
+          </select>
+          <input data-qid="${qId}" data-field="escala_max_label" placeholder="Etiqueta max" value="${q?.escala_max_label||''}" style="width:110px;font-size:12px">
+        </div>
+      </div>
     </div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:4px"><i class="fa fa-check-circle" style="color:#22c55e"></i> Selecciona la respuesta correcta con el radio</div>
-    <div style="display:flex;flex-direction:column;gap:4px" id="opts_${qId}">
-      ${opciones.map((o,i)=>evalOpcionHTML(qId,o,i,i===correctIdx)).join('')}
+    <div id="escala_preview_${qId}" style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+      ${scaleOpts.map(v=>`<label style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:12px">
+        <input type="radio" name="correct_esc_${qId}" value="${v}" ${correcta==v?'checked':''} style="accent-color:#22c55e" title="Respuesta correcta">
+        <span>${v}</span></label>`).join('')}
     </div>
-    <button class="btn btn-ghost btn-sm" style="margin-top:6px;font-size:12px" onclick="evalAddOpcion('${qId}')"><i class="fa fa-plus"></i> Agregar opción</button>`;
-  document.getElementById('eval-preguntas-list').appendChild(div);
+    <div style="font-size:11px;color:var(--text3);margin-top:4px"><i class="fa fa-check-circle" style="color:#22c55e"></i> Selecciona la respuesta correcta (radio verde)</div>`;
+  }
+  // opcion_multiple / casillas / desplegable
+  const opciones=q?.opciones||['',''];
+  const correctIdx=q?.respuesta_correcta?opciones.indexOf(q.respuesta_correcta):-1;
+  return `<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px" id="opts_${qId}">
+    ${opciones.map((o,i)=>evalOpcionHTML(qId,o,i,i===correctIdx,tipo)).join('')}
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+    <button class="btn btn-ghost btn-sm" style="font-size:12px" onclick="evalAddOpcion('${qId}')"><i class="fa fa-plus"></i> Agregar opción</button>
+    ${tipo==='opcion_multiple'?`<span style="font-size:11px;color:var(--text3)"><i class="fa fa-check-circle" style="color:#22c55e"></i> Radio verde = respuesta correcta</span>`:''}
+  </div>`;
 }
-function evalOpcionHTML(qId,val='',idx=0,isCorrect=false){
+
+function evalOpcionHTML(qId,val='',idx=0,isCorrect=false,tipo='opcion_multiple'){
+  const bullet = tipo==='casillas'
+    ? `<input type="checkbox" disabled style="cursor:default">`
+    : tipo==='desplegable'
+    ? `<span style="font-size:12px;color:var(--text3);min-width:18px">${idx+1}.</span>`
+    : `<input type="radio" name="correct_${qId}" value="${idx}" ${isCorrect?'checked':''} title="Respuesta correcta" style="accent-color:#22c55e;cursor:pointer">`;
   return `<div style="display:flex;gap:6px;align-items:center" id="opt_${qId}_${idx}">
-    <input type="radio" name="correct_${qId}" value="${idx}" title="Marcar como respuesta correcta" ${isCorrect?'checked':''} style="width:16px;min-width:16px;max-width:16px;height:16px;padding:0;margin:0;flex-shrink:0;cursor:pointer;accent-color:#22c55e;border:none;background:transparent">
+    ${bullet}
     <input placeholder="Opción ${idx+1}" value="${(val||'').replace(/"/g,'&quot;')}" data-qid="${qId}" data-field="opcion" style="flex:1;min-width:0;font-size:13px">
     <button class="btn btn-ghost btn-sm" style="padding:2px 8px;flex-shrink:0" onclick="this.parentElement.remove()"><i class="fa fa-times"></i></button>
   </div>`;
 }
+
 function evalAddOpcion(qId){
-  const container = document.getElementById('opts_'+qId);
-  const idx = container.querySelectorAll('[data-field="opcion"]').length;
-  container.insertAdjacentHTML('beforeend', evalOpcionHTML(qId,'',idx));
+  const container=document.getElementById('opts_'+qId);
+  const idx=container.querySelectorAll('[data-field="opcion"]').length;
+  const tipo=document.querySelector(`#ep_${qId} select[data-field="tipo"]`)?.value||'opcion_multiple';
+  container.insertAdjacentHTML('beforeend',evalOpcionHTML(qId,'',idx,false,tipo));
 }
+
+function evalChangeTipo(qId){
+  const tipo=document.querySelector(`#ep_${qId} select[data-field="tipo"]`)?.value||'opcion_multiple';
+  const isTexto=_EVAL_TEXTO_TIPOS.has(tipo);
+  document.getElementById('epc_'+qId).innerHTML=_evalGetOpcContent(qId,tipo,null);
+  // ocultar/mostrar footer de puntos para titulo/descripcion
+  const footer=document.getElementById('epfoot_'+qId);
+  if(footer) footer.style.display=isTexto?'none':'flex';
+  // cambiar placeholder de la pregunta
+  const textoInp=document.querySelector(`#ep_${qId} [data-field="texto"]`);
+  if(textoInp) textoInp.placeholder=tipo==='titulo'?'Título':tipo==='descripcion'?'Descripción':'Pregunta sin título';
+}
+
+function evalUpdateEscala(qId){
+  const min=parseInt(document.querySelector(`[data-qid="${qId}"][data-field="escala_min"]`)?.value)||1;
+  const max=parseInt(document.querySelector(`[data-qid="${qId}"][data-field="escala_max"]`)?.value)||5;
+  const container=document.getElementById('escala_preview_'+qId);
+  if(!container) return;
+  const prev=document.querySelector(`input[name="correct_esc_${qId}"]:checked`)?.value||null;
+  container.innerHTML=Array.from({length:max-min+1},(_,i)=>i+min).map(v=>`
+    <label style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:12px">
+      <input type="radio" name="correct_esc_${qId}" value="${v}" ${prev==v?'checked':''} style="accent-color:#22c55e" title="Respuesta correcta">
+      <span>${v}</span></label>`).join('');
+}
+
+function evalAddPregunta(q=null){
+  const qId=q?.id||('q_'+uid());
+  const tipo=q?.tipo||'opcion_multiple';
+  const isTexto=_EVAL_TEXTO_TIPOS.has(tipo);
+  const div=document.createElement('div');
+  div.id='ep_'+qId;
+  div.style.cssText='border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.07)';
+  div.innerHTML=`
+    <div style="padding:14px 16px 12px">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <input data-qid="${qId}" data-field="texto"
+          placeholder="${tipo==='titulo'?'Título':tipo==='descripcion'?'Descripción':'Pregunta sin título'}"
+          value="${(q?.texto||'').replace(/"/g,'&quot;')}"
+          style="flex:1;font-size:${isTexto?'17px':'15px'};font-weight:${isTexto?'700':'500'};border:none;border-bottom:1px solid var(--border);border-radius:0;background:transparent;padding:4px 0 6px">
+        <select data-qid="${qId}" data-field="tipo" onchange="evalChangeTipo('${qId}')" style="width:190px;flex-shrink:0;font-size:13px">
+          ${EVAL_TIPOS.map(t=>`<option value="${t.value}" ${tipo===t.value?'selected':''}>${t.label}</option>`).join('')}
+        </select>
+      </div>
+      <div id="epc_${qId}">${_evalGetOpcContent(qId,tipo,q)}</div>
+    </div>
+    <div id="epfoot_${qId}" style="border-top:1px solid var(--border);padding:8px 16px;display:${isTexto?'none':'flex'};align-items:center;gap:14px;flex-wrap:wrap;background:var(--bg2)">
+      <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap">
+        <input type="checkbox" data-qid="${qId}" data-field="requerida" ${q?.requerida!==false?'checked':''}>
+        Requerida
+      </label>
+      <div style="display:flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap">
+        <i class="fa fa-star" style="color:#f59e0b"></i> Puntos:
+        <input type="number" data-qid="${qId}" data-field="puntos" value="${q?.puntos||0}" min="0" style="width:58px;font-size:12px;text-align:center;padding:3px 6px">
+      </div>
+      <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap">
+        <input type="checkbox" data-qid="${qId}" data-field="cuenta_calificacion" ${q?.cuenta_calificacion!==false?'checked':''}>
+        Cuenta para calificación
+      </label>
+      <span style="flex:1"></span>
+      <button class="btn btn-ghost btn-sm" style="padding:4px 10px;color:var(--red)" onclick="document.getElementById('ep_${qId}').remove()"><i class="fa fa-trash"></i></button>
+    </div>`;
+  document.getElementById('eval-preguntas-list').appendChild(div);
+}
+
 async function saveEvalTemplate(){
-  const nombre = (document.getElementById('eval-tpl-nombre').value||'').trim();
-  if(!nombre){ showToast('Escribe el nombre de la evaluación','err'); return; }
-  const preguntas = [];
+  const nombre=(document.getElementById('eval-tpl-nombre').value||'').trim();
+  if(!nombre){showToast('Escribe el nombre de la evaluación','err');return;}
+  const preguntas=[];
   document.getElementById('eval-preguntas-list').querySelectorAll('[data-field="texto"]').forEach(inp=>{
-    const qId = inp.dataset.qid;
-    const texto = inp.value.trim();
-    if(!texto) return;
-    const opcionesEls = [...document.querySelectorAll(`#opts_${qId} [data-field="opcion"]`)];
-    const opciones = opcionesEls.map(i=>i.value.trim()).filter(Boolean);
-    const correctRadio = document.querySelector(`input[name="correct_${qId}"]:checked`);
-    const correctIdx = correctRadio ? parseInt(correctRadio.value) : -1;
-    const respuesta_correcta = correctIdx>=0 && opciones[correctIdx] ? opciones[correctIdx] : null;
-    preguntas.push({id:qId, texto, opciones, respuesta_correcta, requerida:true});
+    const qId=inp.dataset.qid;
+    const texto=inp.value.trim();
+    const tipo=document.querySelector(`#ep_${qId} select[data-field="tipo"]`)?.value||'opcion_multiple';
+    const requerida=document.querySelector(`[data-qid="${qId}"][data-field="requerida"]`)?.checked!==false;
+    const puntos=parseInt(document.querySelector(`[data-qid="${qId}"][data-field="puntos"]`)?.value||'0')||0;
+    const cuenta_calificacion=document.querySelector(`[data-qid="${qId}"][data-field="cuenta_calificacion"]`)?.checked!==false;
+    let opciones=[],respuesta_correcta=null,escala_min,escala_max,escala_min_label,escala_max_label;
+    if(['opcion_multiple','casillas','desplegable'].includes(tipo)){
+      opciones=[...document.querySelectorAll(`#opts_${qId} [data-field="opcion"]`)].map(i=>i.value.trim()).filter(Boolean);
+      if(tipo==='opcion_multiple'){
+        const cr=document.querySelector(`input[name="correct_${qId}"]:checked`);
+        const ci=cr?parseInt(cr.value):-1;
+        respuesta_correcta=ci>=0&&opciones[ci]?opciones[ci]:null;
+      }
+    } else if(tipo==='escala_lineal'){
+      escala_min=parseInt(document.querySelector(`[data-qid="${qId}"][data-field="escala_min"]`)?.value)||1;
+      escala_max=parseInt(document.querySelector(`[data-qid="${qId}"][data-field="escala_max"]`)?.value)||5;
+      escala_min_label=document.querySelector(`[data-qid="${qId}"][data-field="escala_min_label"]`)?.value||'';
+      escala_max_label=document.querySelector(`[data-qid="${qId}"][data-field="escala_max_label"]`)?.value||'';
+      respuesta_correcta=document.querySelector(`input[name="correct_esc_${qId}"]:checked`)?.value||null;
+    }
+    preguntas.push({id:qId,tipo,texto,opciones,respuesta_correcta,puntos,cuenta_calificacion,requerida,escala_min,escala_max,escala_min_label,escala_max_label});
   });
-  if(!preguntas.length){ showToast('Agrega al menos una pregunta','err'); return; }
-  const empresa_ids = [...document.querySelectorAll('input[name="eval-emp"]:checked')].map(cb=>cb.value);
-  const id = document.getElementById('eval-tpl-id').value || uid();
-  const ev = {
-    id, nombre,
-    descripcion: document.getElementById('eval-tpl-desc').value.trim(),
-    empresa_ids,
-    preguntas,
-    activa: true,
-    created_at: new Date().toISOString()
-  };
-  try {
-    await saveRecord('evaluaciones', ev);
-    const idx = DB.evaluaciones.findIndex(x=>x.id===id);
-    if(idx>=0) DB.evaluaciones[idx]=ev; else DB.evaluaciones.push(ev);
+  const pregsConPregunta=preguntas.filter(p=>!_EVAL_TEXTO_TIPOS.has(p.tipo));
+  if(!pregsConPregunta.length){showToast('Agrega al menos una pregunta','err');return;}
+  const empresa_ids=[...document.querySelectorAll('input[name="eval-emp"]:checked')].map(cb=>cb.value);
+  const id=document.getElementById('eval-tpl-id').value||uid();
+  const ev={id,nombre,descripcion:document.getElementById('eval-tpl-desc').value.trim(),empresa_ids,preguntas,activa:true,created_at:new Date().toISOString()};
+  try{
+    await saveRecord('evaluaciones',ev);
+    const idx=DB.evaluaciones.findIndex(x=>x.id===id);
+    if(idx>=0)DB.evaluaciones[idx]=ev;else DB.evaluaciones.push(ev);
     showToast('Evaluación guardada ✓');
     closeModal('modal-eval-template');
     renderEvalPlantillas();
-  } catch(e){ showToast('Error: '+e.message,'err'); }
+  }catch(e){showToast('Error: '+e.message,'err');}
 }
+
 async function deleteEvalTemplate(id){
   if(!confirm('¿Eliminar esta evaluación?')) return;
   await deleteRecord('evaluaciones',id);
@@ -13278,48 +13399,69 @@ function evalShareEmail(){
 
 // ── Ver respuestas ───────────────────────────────────────────
 let _currentEvalEnvId = null;
+function _evalCalcScore(preguntas, respuestas){
+  let puntosObtenidos=0, puntosTotal=0, correctas=0, totalPregs=0;
+  for(const q of preguntas){
+    if(_EVAL_TEXTO_TIPOS.has(q.tipo)) continue;
+    if(!q.cuenta_calificacion) continue;
+    totalPregs++;
+    const pts = q.puntos||0;
+    puntosTotal += pts;
+    const resp = respuestas[q.id];
+    if(q.respuesta_correcta && resp){
+      const esCorrecta = String(resp)===String(q.respuesta_correcta);
+      if(esCorrecta){ puntosObtenidos+=pts; correctas++; }
+    }
+  }
+  return {puntosObtenidos, puntosTotal, correctas, totalPregs};
+}
 function verRespuestasEval(envId){
   _currentEvalEnvId = envId;
   const env = DB.evaluacionesEnviadas.find(x=>x.id===envId)||{};
   const ev  = DB.evaluaciones.find(x=>x.id===env.evaluacion_id)||{};
   const respuestas = env.respuestas||{};
   const preguntas = ev.preguntas||[];
-  const tieneClaves = preguntas.some(q=>q.respuesta_correcta);
-  let correctas = 0;
-  const filas = preguntas.map((q,i)=>{
+  const tieneClaves = preguntas.some(q=>q.respuesta_correcta&&q.cuenta_calificacion!==false);
+  const score = _evalCalcScore(preguntas, respuestas);
+  let pregNum=0;
+  const filas = preguntas.map(q=>{
+    if(q.tipo==='titulo') return `<div style="font-size:17px;font-weight:700;padding:6px 0 2px;border-bottom:1px solid var(--border);margin-bottom:4px">${q.texto}</div>`;
+    if(q.tipo==='descripcion') return `<div style="font-size:13px;color:var(--text2);padding:2px 0 6px">${q.texto}</div>`;
+    pregNum++;
     const resp = respuestas[q.id]||null;
-    const esCorrecta = q.respuesta_correcta && resp===q.respuesta_correcta;
-    if(esCorrecta) correctas++;
-    const iconoResp = tieneClaves && resp
-      ? (esCorrecta
-          ? `<span style="color:#22c55e;font-weight:700;margin-left:6px">✓</span>`
-          : `<span style="color:#ef4444;font-weight:700;margin-left:6px">✗</span>`)
+    const cuentaCal = q.cuenta_calificacion!==false;
+    const esCorrecta = q.respuesta_correcta && resp && String(resp)===String(q.respuesta_correcta);
+    const borderColor = tieneClaves && cuentaCal && q.respuesta_correcta
+      ? (esCorrecta ? '#22c55e' : resp ? '#ef4444' : 'var(--border)')
+      : 'var(--border)';
+    const iconoResp = tieneClaves && cuentaCal && q.respuesta_correcta && resp
+      ? (esCorrecta ? `<span style="color:#22c55e;font-weight:700;margin-left:6px">✓</span>` : `<span style="color:#ef4444;font-weight:700;margin-left:6px">✗</span>`)
       : '';
-    const claveHTML = tieneClaves && q.respuesta_correcta && !esCorrecta && resp
-      ? `<div style="font-size:11px;color:#22c55e;margin-top:3px"><i class="fa fa-check"></i> Correcta: ${q.respuesta_correcta}</div>`
-      : '';
-    return `<div style="margin-bottom:12px;padding:10px 12px;background:var(--bg2);border-radius:8px;border-left:3px solid ${tieneClaves?(esCorrecta?'#22c55e':resp?'#ef4444':'var(--border)'):'var(--border)'}">
-      <div style="font-weight:600;font-size:13px;margin-bottom:6px">${i+1}. ${q.texto}</div>
+    const claveHTML = tieneClaves && cuentaCal && q.respuesta_correcta && !esCorrecta && resp
+      ? `<div style="font-size:11px;color:#22c55e;margin-top:3px"><i class="fa fa-check"></i> Correcta: ${q.respuesta_correcta}</div>` : '';
+    const puntosHTML = cuentaCal && q.puntos
+      ? `<span style="font-size:11px;color:var(--text3);float:right">${esCorrecta?q.puntos:0}/${q.puntos} pts</span>` : '';
+    const noCalHTML = !cuentaCal ? `<span style="font-size:10px;background:var(--bg2);padding:1px 6px;border-radius:8px;color:var(--text3);margin-left:6px">sin calificación</span>` : '';
+    return `<div style="margin-bottom:10px;padding:10px 12px;background:var(--bg2);border-radius:8px;border-left:3px solid ${borderColor}">
+      <div style="font-weight:600;font-size:13px;margin-bottom:6px">${pregNum}. ${q.texto}${noCalHTML}${puntosHTML}</div>
       <div style="color:var(--text2);font-size:13px;display:flex;align-items:center">
         ${resp||'<span style="color:var(--text3)">Sin respuesta</span>'}${iconoResp}
       </div>${claveHTML}
     </div>`;
   });
-  const scoreHTML = tieneClaves
-    ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border-radius:8px;margin-bottom:14px;border:1px solid var(--border)">
-        <i class="fa fa-trophy" style="color:#f59e0b;font-size:20px"></i>
+  const scoreHTML = tieneClaves && score.totalPregs>0
+    ? `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface);border-radius:8px;margin-bottom:14px;border:1px solid var(--border)">
+        <i class="fa fa-trophy" style="color:#f59e0b;font-size:22px"></i>
         <div>
-          <div style="font-weight:700;font-size:16px">${correctas} / ${preguntas.length} correctas</div>
-          <div style="font-size:12px;color:var(--text3)">${Math.round(correctas/preguntas.length*100)}% de acierto</div>
+          <div style="font-weight:700;font-size:16px">${score.puntosObtenidos} / ${score.puntosTotal} puntos</div>
+          <div style="font-size:12px;color:var(--text3)">${score.correctas} de ${score.totalPregs} preguntas correctas · ${score.puntosTotal>0?Math.round(score.puntosObtenidos/score.puntosTotal*100):0}% de acierto</div>
         </div>
       </div>` : '';
-  const html = `
-    <div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+  document.getElementById('eval-respuestas-body').innerHTML = `
+    <div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
       <div><strong>${env.candidato_nombre}</strong> — <span style="font-size:13px;color:var(--text3)">${ev.nombre||''}</span></div>
       <span style="font-size:12px;color:var(--text3)">${env.fecha_completada?new Date(env.fecha_completada).toLocaleString('es-MX'):''}</span>
-    </div>
-    ${scoreHTML}${filas.join('')}`;
-  document.getElementById('eval-respuestas-body').innerHTML = html;
+    </div>${scoreHTML}${filas.join('')}`;
   openModal('modal-eval-respuestas');
 }
 
@@ -13329,27 +13471,37 @@ function generarInformeEvalXLSX(){
   const ev  = DB.evaluaciones.find(x=>x.id===env.evaluacion_id)||{};
   const respuestas = env.respuestas||{};
   const preguntas = ev.preguntas||[];
-  const tieneClaves = preguntas.some(q=>q.respuesta_correcta);
-  let correctas = 0;
+  const score = _evalCalcScore(preguntas, respuestas);
+  const tieneClaves = preguntas.some(q=>q.respuesta_correcta&&q.cuenta_calificacion!==false);
   const rows = [
     ['Candidato', env.candidato_nombre||''],
     ['Evaluación', ev.nombre||''],
     ['Fecha completada', env.fecha_completada?new Date(env.fecha_completada).toLocaleString('es-MX'):''],
     [],
-    tieneClaves ? ['#','Pregunta','Respuesta candidato','Respuesta correcta','Resultado'] : ['#','Pregunta','Respuesta candidato'],
-    ...preguntas.map((q,i)=>{
-      const resp = respuestas[q.id]||'Sin respuesta';
-      const esCorrecta = q.respuesta_correcta && resp===q.respuesta_correcta;
-      if(esCorrecta) correctas++;
-      return tieneClaves
-        ? [i+1, q.texto, resp, q.respuesta_correcta||'', esCorrecta?'✓ Correcta':'✗ Incorrecta']
-        : [i+1, q.texto, resp];
-    }),
+    tieneClaves
+      ? ['#','Tipo','Pregunta','Respuesta candidato','Respuesta correcta','Puntos obtenidos','Total puntos','Califica']
+      : ['#','Tipo','Pregunta','Respuesta candidato'],
   ];
-  if(tieneClaves) rows.push([],['Puntaje',`${correctas} / ${preguntas.length}`,`${Math.round(correctas/preguntas.length*100)}%`]);
+  let pregNum=0;
+  preguntas.forEach(q=>{
+    if(_EVAL_TEXTO_TIPOS.has(q.tipo)){
+      rows.push(['',q.tipo==='titulo'?'[TÍTULO]':'[DESCRIPCIÓN]',q.texto,'','','','','']);
+      return;
+    }
+    pregNum++;
+    const resp = respuestas[q.id]||'Sin respuesta';
+    const cuentaCal = q.cuenta_calificacion!==false;
+    const esCorrecta = q.respuesta_correcta && String(resp)===String(q.respuesta_correcta);
+    const ptObtenidos = cuentaCal&&esCorrecta?(q.puntos||0):0;
+    if(tieneClaves)
+      rows.push([pregNum, q.tipo, q.texto, resp, q.respuesta_correcta||'—', ptObtenidos, cuentaCal?(q.puntos||0):'—', cuentaCal?'Sí':'No']);
+    else
+      rows.push([pregNum, q.tipo, q.texto, resp]);
+  });
+  if(tieneClaves) rows.push([],['','','TOTAL',`${score.correctas}/${score.totalPregs} correctas`,`${score.puntosObtenidos}/${score.puntosTotal} pts`,`${score.puntosTotal>0?Math.round(score.puntosObtenidos/score.puntosTotal*100):0}%`]);
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [{wch:20},{wch:40},{wch:30},{wch:30},{wch:16}];
+  ws['!cols'] = [{wch:6},{wch:16},{wch:44},{wch:30},{wch:30},{wch:14},{wch:12},{wch:10}];
   XLSX.utils.book_append_sheet(wb,ws,'Resultados');
   XLSX.writeFile(wb, `evaluacion_${(env.candidato_nombre||'candidato').replace(/\s/g,'_')}.xlsx`);
 }
@@ -13360,12 +13512,13 @@ async function generarInformeEvalPDF(){
   const ev  = DB.evaluaciones.find(x=>x.id===env.evaluacion_id)||{};
   const respuestas = env.respuestas||{};
   const preguntas = ev.preguntas||[];
-  const tieneClaves = preguntas.some(q=>q.respuesta_correcta);
-  let correctas = 0;
+  const score = _evalCalcScore(preguntas, respuestas);
+  const tieneClaves = preguntas.some(q=>q.respuesta_correcta&&q.cuenta_calificacion!==false);
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({unit:'mm',format:'a4'});
-  const W=210, M=18;
-  let y = M;
+  const W=210, M=18, CW=W-M*2;
+  let y=M;
+  // Encabezado
   doc.setFillColor(42,170,222); doc.rect(0,0,W,14,'F');
   doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(13);
   doc.text('Informe de Evaluación', M, 9.5);
@@ -13375,32 +13528,63 @@ async function generarInformeEvalPDF(){
   doc.setFont('helvetica','normal'); doc.setFontSize(10);
   doc.text(`Evaluación: ${ev.nombre||'—'}`, M, y); y+=5;
   doc.text(`Fecha: ${env.fecha_completada?new Date(env.fecha_completada).toLocaleString('es-MX'):'—'}`, M, y); y+=8;
-  if(tieneClaves){
-    preguntas.forEach(q=>{if(q.respuesta_correcta&&respuestas[q.id]===q.respuesta_correcta)correctas++;});
-    const pct = Math.round(correctas/preguntas.length*100);
-    doc.setFillColor(245,247,250); doc.roundedRect(M,y-4,W-M*2,12,2,2,'F');
-    doc.setFont('helvetica','bold'); doc.setFontSize(11);
-    doc.setTextColor(42,170,222); doc.text(`Puntaje: ${correctas}/${preguntas.length} correctas (${pct}%)`, M+4, y+4);
-    doc.setTextColor(40,40,40); y+=16;
+  // Score
+  if(tieneClaves && score.totalPregs>0){
+    const pct = score.puntosTotal>0?Math.round(score.puntosObtenidos/score.puntosTotal*100):0;
+    doc.setFillColor(245,247,250); doc.roundedRect(M,y-4,CW,14,2,2,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(42,170,222);
+    doc.text(`Puntaje: ${score.puntosObtenidos}/${score.puntosTotal} pts · ${score.correctas}/${score.totalPregs} correctas (${pct}%)`, M+4, y+5);
+    doc.setTextColor(40,40,40); y+=18;
   }
-  doc.setDrawColor(220,220,220);
-  preguntas.forEach((q,i)=>{
-    if(y>268){doc.addPage();y=18;}
-    const resp = respuestas[q.id]||'Sin respuesta';
-    const esCorrecta = q.respuesta_correcta && resp===q.respuesta_correcta;
-    doc.setFont('helvetica','bold'); doc.setFontSize(10);
-    doc.text(`${i+1}. ${q.texto}`, M, y, {maxWidth:W-M*2}); y+=5;
-    doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
-    if(tieneClaves && q.respuesta_correcta){
-      doc.setTextColor(esCorrecta?34:220, esCorrecta?197:38, esCorrecta?94:38);
-      doc.text(`Respuesta: ${resp} ${esCorrecta?'✓':'✗'}`, M+4, y); y+=4.5;
-      if(!esCorrecta){ doc.setTextColor(34,197,94); doc.text(`Correcta: ${q.respuesta_correcta}`, M+4, y); y+=4.5; }
-    } else {
-      doc.setTextColor(80,80,80); doc.text(`Respuesta: ${resp}`, M+4, y); y+=4.5;
+  // Preguntas
+  let pregNum=0;
+  for(const q of preguntas){
+    if(y>272){doc.addPage();y=18;}
+    if(q.tipo==='titulo'){
+      doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(40,40,40);
+      const lines = doc.splitTextToSize(q.texto||'', CW);
+      doc.text(lines, M, y); y+=lines.length*6+2;
+      doc.setDrawColor(42,170,222); doc.line(M,y,M+CW,y); y+=4;
+      continue;
     }
-    doc.setTextColor(40,40,40);
-    doc.setDrawColor(235,235,235); doc.line(M,y+1,W-M,y+1); y+=5;
-  });
+    if(q.tipo==='descripcion'){
+      doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(100,100,100);
+      const lines = doc.splitTextToSize(q.texto||'', CW);
+      doc.text(lines, M, y); y+=lines.length*5+3;
+      continue;
+    }
+    pregNum++;
+    const resp = respuestas[q.id]||'Sin respuesta';
+    const cuentaCal = q.cuenta_calificacion!==false;
+    const esCorrecta = q.respuesta_correcta && String(resp)===String(q.respuesta_correcta);
+    // Número y pregunta
+    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(40,40,40);
+    const qLines = doc.splitTextToSize(`${pregNum}. ${q.texto}`, CW);
+    if(y+qLines.length*5+14>280){doc.addPage();y=18;}
+    doc.text(qLines, M, y); y+=qLines.length*5+2;
+    // Puntos badge
+    if(q.puntos&&cuentaCal){
+      const ptsTxt=`${esCorrecta?q.puntos:0}/${q.puntos} pts`;
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(150,150,150);
+      doc.text(ptsTxt, M+CW-doc.getTextWidth(ptsTxt), y-qLines.length*5-2);
+    }
+    // Respuesta
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+    if(tieneClaves && cuentaCal && q.respuesta_correcta){
+      doc.setTextColor(esCorrecta?34:220, esCorrecta?197:38, esCorrecta?94:38);
+      const rLines = doc.splitTextToSize(`Respuesta: ${resp} ${esCorrecta?'✓':'✗'}`, CW-6);
+      doc.text(rLines, M+4, y); y+=rLines.length*4.5;
+      if(!esCorrecta){
+        doc.setTextColor(34,197,94);
+        doc.text(`Correcta: ${q.respuesta_correcta}`, M+4, y); y+=4.5;
+      }
+    } else {
+      doc.setTextColor(80,80,80);
+      const rLines = doc.splitTextToSize(`Respuesta: ${resp}`, CW-6);
+      doc.text(rLines, M+4, y); y+=rLines.length*4.5;
+    }
+    doc.setTextColor(40,40,40); doc.setDrawColor(235,235,235); doc.line(M,y+1.5,M+CW,y+1.5); y+=6;
+  }
   doc.save(`evaluacion_${(env.candidato_nombre||'candidato').replace(/\s/g,'_')}.pdf`);
 }
 
@@ -13443,27 +13627,73 @@ function _renderEvalPublica(ev, enviada){
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('evpub-nombre').textContent = ev.nombre||'Evaluación';
   document.getElementById('evpub-desc').textContent = ev.descripcion||'';
-  document.getElementById('evpub-preguntas').innerHTML = (ev.preguntas||[]).map((q,i)=>`
-    <div style="border:1px solid var(--border);border-radius:10px;padding:16px;background:var(--surface)">
-      <div style="font-weight:600;margin-bottom:10px;font-size:14px">${i+1}. ${q.texto}${q.requerida?'<span style="color:var(--red)"> *</span>':''}</div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        ${(q.opciones||[]).map(opt=>`
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);transition:background .15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-            <input type="radio" name="q_${q.id}" value="${opt.replace(/"/g,'&quot;')}" style="accent-color:var(--primary)">
-            ${opt}
-          </label>`).join('')}
-      </div>
-    </div>`).join('');
+  let pregNum = 0;
+  document.getElementById('evpub-preguntas').innerHTML = (ev.preguntas||[]).map(q=>{
+    if(q.tipo==='titulo') return `<div style="font-size:20px;font-weight:700;padding:8px 0 2px">${q.texto}</div>`;
+    if(q.tipo==='descripcion') return `<div style="font-size:14px;color:var(--text2);padding:4px 0">${q.texto}</div>`;
+    pregNum++;
+    const req = q.requerida ? '<span style="color:var(--red)"> *</span>' : '';
+    const label = `<div style="font-weight:600;margin-bottom:10px;font-size:14px">${pregNum}. ${q.texto}${req}</div>`;
+    let input = '';
+    if(q.tipo==='texto_corto'){
+      input = `<input name="q_${q.id}" placeholder="Tu respuesta..." style="width:100%;font-size:13px">`;
+    } else if(q.tipo==='parrafo'){
+      input = `<textarea name="q_${q.id}" rows="3" placeholder="Tu respuesta..." style="width:100%;font-size:13px;resize:vertical"></textarea>`;
+    } else if(q.tipo==='opcion_multiple'){
+      input = `<div style="display:flex;flex-direction:column;gap:8px">${(q.opciones||[]).map(opt=>`
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);transition:background .15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+          <input type="radio" name="q_${q.id}" value="${opt.replace(/"/g,'&quot;')}" style="accent-color:var(--primary)"> ${opt}
+        </label>`).join('')}</div>`;
+    } else if(q.tipo==='casillas'){
+      input = `<div style="display:flex;flex-direction:column;gap:8px">${(q.opciones||[]).map(opt=>`
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);transition:background .15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+          <input type="checkbox" name="q_${q.id}" value="${opt.replace(/"/g,'&quot;')}" style="accent-color:var(--primary)"> ${opt}
+        </label>`).join('')}</div>`;
+    } else if(q.tipo==='desplegable'){
+      input = `<select name="q_${q.id}" style="width:100%;font-size:13px">
+        <option value="">Selecciona una opción...</option>
+        ${(q.opciones||[]).map(opt=>`<option value="${opt.replace(/"/g,'&quot;')}">${opt}</option>`).join('')}
+      </select>`;
+    } else if(q.tipo==='escala_lineal'){
+      const min=q.escala_min||1, max=q.escala_max||5;
+      const nums = Array.from({length:max-min+1},(_,i)=>i+min);
+      input = `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">
+        ${q.escala_min_label?`<span style="font-size:12px;color:var(--text3)">${q.escala_min_label}</span>`:''}
+        ${nums.map(v=>`<label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-size:13px;min-width:36px;padding:8px 4px;border-radius:6px;border:1px solid var(--border);text-align:center" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+          <input type="radio" name="q_${q.id}" value="${v}" style="accent-color:var(--primary)"> ${v}
+        </label>`).join('')}
+        ${q.escala_max_label?`<span style="font-size:12px;color:var(--text3)">${q.escala_max_label}</span>`:''}
+      </div>`;
+    }
+    return `<div style="border:1px solid var(--border);border-radius:10px;padding:16px;background:var(--surface)">${label}${input}</div>`;
+  }).join('');
 }
+
 async function submitEvalPublica(){
   if(!_evalPubData) return;
   const {evaluacion, enviada} = _evalPubData;
   const respuestas = {};
   let allAnswered = true;
   for(const q of (evaluacion.preguntas||[])){
-    const sel = document.querySelector(`input[name="q_${q.id}"]:checked`);
-    if(q.requerida && !sel){ allAnswered=false; break; }
-    respuestas[q.id] = sel?.value||null;
+    if(_EVAL_TEXTO_TIPOS.has(q.tipo) && q.tipo!=='texto_corto' && q.tipo!=='parrafo') continue;
+    if(q.tipo==='texto_corto'||q.tipo==='parrafo'){
+      const el = document.querySelector(`[name="q_${q.id}"]`);
+      const val = el?.value?.trim()||'';
+      if(q.requerida && !val){ allAnswered=false; break; }
+      respuestas[q.id] = val||null;
+    } else if(q.tipo==='casillas'){
+      const checked = [...document.querySelectorAll(`input[name="q_${q.id}"]:checked`)].map(i=>i.value);
+      if(q.requerida && !checked.length){ allAnswered=false; break; }
+      respuestas[q.id] = checked.length ? checked.join(', ') : null;
+    } else if(q.tipo==='desplegable'){
+      const sel = document.querySelector(`select[name="q_${q.id}"]`)?.value||'';
+      if(q.requerida && !sel){ allAnswered=false; break; }
+      respuestas[q.id] = sel||null;
+    } else {
+      const el = document.querySelector(`input[name="q_${q.id}"]:checked`);
+      if(q.requerida && !el){ allAnswered=false; break; }
+      respuestas[q.id] = el?.value||null;
+    }
   }
   if(!allAnswered){ showToast('Responde todas las preguntas requeridas','err'); return; }
   const updated = {...enviada, estado:'completada', respuestas, fecha_completada:new Date().toISOString()};

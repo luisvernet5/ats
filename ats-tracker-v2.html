@@ -5914,7 +5914,6 @@ function renderCandidatosTable(){
   const _empIdC = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
   const _vacsC = _recIdC ? DB.vacantes.filter(v=>v.reclutador_id===_recIdC) : _empIdC ? DB.vacantes.filter(v=>v.empresa_id===_empIdC) : DB.vacantes;
   let list = (_recIdC||_empIdC) ? DB.candidatos.filter(c=>_vacsC.find(v=>v.id===c.vacante_id)) : DB.candidatos;
-  list = list.filter(c=>!c.descartado);
   if(q)list=list.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
   const mfCandEmp=_mfGet('flt-cand-emp');if(mfCandEmp){const vids=_vacsC.filter(v=>mfCandEmp.has(v.empresa_id||'')).map(v=>v.id);list=list.filter(c=>vids.includes(c.vacante_id));}
   const mfCandRec=_mfGet('flt-cand-rec');if(mfCandRec)list=list.filter(c=>mfCandRec.has(c.reclutador_id||''));

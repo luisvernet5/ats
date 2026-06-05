@@ -2634,8 +2634,17 @@ function exportarCSV(){
   const expEmp=document.getElementById('exp-emp');
   const expRec=document.getElementById('exp-rec');
   const expEtapa=document.getElementById('exp-etapa');
-  expEmp.innerHTML='<option value="">Todas las empresas</option>';
-  DB.empresas.forEach(e=>expEmp.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
+  const _isRhCExp=currentUserData?.rol==='rh_cliente';
+  const _rhEmpIdExp=currentUserData?.empresa_id||null;
+  if(_isRhCExp && _rhEmpIdExp){
+    const _rhEmpExp=DB.empresas.find(e=>e.id===_rhEmpIdExp)||{};
+    expEmp.innerHTML=`<option value="${_rhEmpIdExp}">${_rhEmpExp.nombre||_rhEmpIdExp}</option>`;
+    expEmp.disabled=true;
+  } else {
+    expEmp.innerHTML='<option value="">Todas las empresas</option>';
+    DB.empresas.forEach(e=>expEmp.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
+    expEmp.disabled=false;
+  }
   expRec.innerHTML='<option value="">Todos los reclutadores</option>';
   DB.reclutadores.forEach(r=>expRec.innerHTML+=`<option value="${r.id}">${r.nombre}</option>`);
   _expUpdateEtapas();

@@ -13119,14 +13119,19 @@ const EVAL_TIPOS = [
   {value:'desplegable',   icon:'fa-caret-square-down',label:'Desplegable'},
   {value:'escala_lineal', icon:'fa-sliders-h',        label:'Escala lineal'},
 ];
-const _EVAL_TEXTO_TIPOS = new Set(['titulo','descripcion','texto_corto','parrafo']);
+// Solo bloques decorativos (sin footer de puntos ni requerida)
+const _EVAL_TEXTO_TIPOS = new Set(['titulo','descripcion']);
 
 function _evalGetOpcContent(qId, tipo, q){
-  if(_EVAL_TEXTO_TIPOS.has(tipo)){
-    if(tipo==='texto_corto') return `<input disabled placeholder="Respuesta corta..." style="width:55%;font-size:13px;opacity:.6;cursor:default;margin-top:4px">`;
-    if(tipo==='parrafo') return `<textarea disabled placeholder="Respuesta larga..." rows="2" style="width:100%;font-size:13px;opacity:.6;cursor:default;resize:none;margin-top:4px"></textarea>`;
-    return '';
-  }
+  if(tipo==='titulo'||tipo==='descripcion') return '';
+  if(tipo==='texto_corto') return `
+    <div style="margin-top:8px">
+      <input disabled placeholder="El candidato escribirá su respuesta aquí..." style="width:65%;font-size:13px;opacity:.55;cursor:default;background:var(--bg2)">
+    </div>`;
+  if(tipo==='parrafo') return `
+    <div style="margin-top:8px">
+      <textarea disabled placeholder="El candidato escribirá su respuesta aquí..." rows="2" style="width:100%;font-size:13px;opacity:.55;cursor:default;resize:none;background:var(--bg2)"></textarea>
+    </div>`;
   if(tipo==='escala_lineal'){
     const min=q?.escala_min||1, max=q?.escala_max||5;
     const correcta=q?.respuesta_correcta||'';
@@ -13192,14 +13197,15 @@ function evalAddOpcion(qId){
 
 function evalChangeTipo(qId){
   const tipo=document.querySelector(`#ep_${qId} select[data-field="tipo"]`)?.value||'opcion_multiple';
-  const isTexto=_EVAL_TEXTO_TIPOS.has(tipo);
+  const isDecorativo=_EVAL_TEXTO_TIPOS.has(tipo); // solo titulo/descripcion
   document.getElementById('epc_'+qId).innerHTML=_evalGetOpcContent(qId,tipo,null);
-  // ocultar/mostrar footer de puntos para titulo/descripcion
   const footer=document.getElementById('epfoot_'+qId);
-  if(footer) footer.style.display=isTexto?'none':'flex';
-  // cambiar placeholder de la pregunta
+  if(footer) footer.style.display=isDecorativo?'none':'flex';
   const textoInp=document.querySelector(`#ep_${qId} [data-field="texto"]`);
   if(textoInp) textoInp.placeholder=tipo==='titulo'?'Título':tipo==='descripcion'?'Descripción':'Pregunta sin título';
+  // ajustar tamaño de fuente del input pregunta
+  if(textoInp) textoInp.style.fontSize=isDecorativo?'17px':'15px';
+  if(textoInp) textoInp.style.fontWeight=isDecorativo?'700':'500';
 }
 
 function evalUpdateEscala(qId){
@@ -13217,24 +13223,24 @@ function evalUpdateEscala(qId){
 function evalAddPregunta(q=null){
   const qId=q?.id||('q_'+uid());
   const tipo=q?.tipo||'opcion_multiple';
-  const isTexto=_EVAL_TEXTO_TIPOS.has(tipo);
+  const isDecorativo=_EVAL_TEXTO_TIPOS.has(tipo); // solo titulo/descripcion
   const div=document.createElement('div');
   div.id='ep_'+qId;
   div.style.cssText='border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.07)';
   div.innerHTML=`
     <div style="padding:14px 16px 12px">
-      <div style="display:flex;gap:10px;align-items:flex-start">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:2px">
         <input data-qid="${qId}" data-field="texto"
           placeholder="${tipo==='titulo'?'Título':tipo==='descripcion'?'Descripción':'Pregunta sin título'}"
           value="${(q?.texto||'').replace(/"/g,'&quot;')}"
-          style="flex:1;font-size:${isTexto?'17px':'15px'};font-weight:${isTexto?'700':'500'};border:none;border-bottom:1px solid var(--border);border-radius:0;background:transparent;padding:4px 0 6px">
-        <select data-qid="${qId}" data-field="tipo" onchange="evalChangeTipo('${qId}')" style="width:190px;flex-shrink:0;font-size:13px">
+          style="flex:1;font-size:${isDecorativo?'17px':'15px'};font-weight:${isDecorativo?'700':'500'};border:none;border-bottom:1px solid var(--border);border-radius:0;background:transparent;padding:4px 0 6px;min-width:0">
+        <select data-qid="${qId}" data-field="tipo" onchange="evalChangeTipo('${qId}')" style="width:185px;flex-shrink:0;font-size:13px;padding:6px 8px">
           ${EVAL_TIPOS.map(t=>`<option value="${t.value}" ${tipo===t.value?'selected':''}>${t.label}</option>`).join('')}
         </select>
       </div>
       <div id="epc_${qId}">${_evalGetOpcContent(qId,tipo,q)}</div>
     </div>
-    <div id="epfoot_${qId}" style="border-top:1px solid var(--border);padding:8px 16px;display:${isTexto?'none':'flex'};align-items:center;gap:14px;flex-wrap:wrap;background:var(--bg2)">
+    <div id="epfoot_${qId}" style="border-top:1px solid var(--border);padding:8px 16px;display:${isDecorativo?'none':'flex'};align-items:center;gap:14px;flex-wrap:wrap;background:var(--bg2)">
       <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap">
         <input type="checkbox" data-qid="${qId}" data-field="requerida" ${q?.requerida!==false?'checked':''}>
         Requerida

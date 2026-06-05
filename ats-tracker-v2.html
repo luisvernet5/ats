@@ -13129,10 +13129,10 @@ function evalAddPregunta(q=null){
   document.getElementById('eval-preguntas-list').appendChild(div);
 }
 function evalOpcionHTML(qId,val='',idx=0,isCorrect=false){
-  return `<div style="display:flex;gap:4px;align-items:center" id="opt_${qId}_${idx}">
-    <input type="radio" name="correct_${qId}" value="${idx}" title="Marcar como respuesta correcta" ${isCorrect?'checked':''} style="accent-color:#22c55e;flex-shrink:0;cursor:pointer">
-    <input placeholder="Opción ${idx+1}" value="${(val||'').replace(/"/g,'&quot;')}" data-qid="${qId}" data-field="opcion" style="flex:1;font-size:13px">
-    <button class="btn btn-ghost btn-sm" style="padding:2px 6px" onclick="this.parentElement.remove()"><i class="fa fa-times"></i></button>
+  return `<div style="display:flex;gap:6px;align-items:center" id="opt_${qId}_${idx}">
+    <input type="radio" name="correct_${qId}" value="${idx}" title="Marcar como respuesta correcta" ${isCorrect?'checked':''} style="width:16px;min-width:16px;max-width:16px;height:16px;padding:0;margin:0;flex-shrink:0;cursor:pointer;accent-color:#22c55e;border:none;background:transparent">
+    <input placeholder="Opción ${idx+1}" value="${(val||'').replace(/"/g,'&quot;')}" data-qid="${qId}" data-field="opcion" style="flex:1;min-width:0;font-size:13px">
+    <button class="btn btn-ghost btn-sm" style="padding:2px 8px;flex-shrink:0" onclick="this.parentElement.remove()"><i class="fa fa-times"></i></button>
   </div>`;
 }
 function evalAddOpcion(qId){

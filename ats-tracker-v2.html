@@ -13257,7 +13257,7 @@ function verRespuestasEval(envId){
     ${(ev.preguntas||[]).map((q,i)=>`
       <div style="margin-bottom:14px;padding:10px 12px;background:var(--bg2);border-radius:8px">
         <div style="font-weight:600;font-size:13px;margin-bottom:4px">${i+1}. ${q.texto}</div>
-        <div style="color:var(--text2);font-size:13px">${respuestas[q.id]||<span style="color:var(--text3)">Sin respuesta</span>}</div>
+        <div style="color:var(--text2);font-size:13px">${respuestas[q.id]||'<span style="color:var(--text3)">Sin respuesta</span>'}</div>
       </div>`).join('')}`;
   document.getElementById('eval-respuestas-body').innerHTML = html;
   openModal('modal-eval-respuestas');

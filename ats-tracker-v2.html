@@ -547,6 +547,9 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
           <i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i>
         </button>
       </div>
+      <input type="date" id="flt-cand-desde" title="Fecha inicio desde" onchange="renderCandidatosTable()" style="width:140px;font-size:13px">
+      <input type="date" id="flt-cand-hasta" title="Fecha inicio hasta" onchange="renderCandidatosTable()" style="width:140px;font-size:13px">
+      <button onclick="_candLimpiarFechas()" style="display:flex;align-items:center;gap:4px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text2);cursor:pointer;font-size:13px;white-space:nowrap">× Limpiar</button>
       <span class="sp"></span>
       <select id="cand-page-size" onchange="_candPageSize=parseInt(this.value);_candPage=1;renderCandidatosTable()" style="width:auto;min-width:130px">
         <option value="30" selected>30 registros</option>
@@ -6295,6 +6298,14 @@ function etapaCbChange(label, checked){
 /* ============================================================
    CANDIDATOS TABLE
    ============================================================ */
+function _candLimpiarFechas(){
+  const d=document.getElementById('flt-cand-desde');
+  const h=document.getElementById('flt-cand-hasta');
+  if(d) d.value='';
+  if(h) h.value='';
+  renderCandidatosTable();
+}
+
 function exportCandidatosExcel(){
   // — mismos filtros que renderCandidatosTable —
   const q = (document.getElementById('flt-cand-q')||{}).value||'';
@@ -6395,6 +6406,10 @@ function renderCandidatosTable(){
   // populate etapa checkbox dropdown
   _etapaPopulatePanel(list);
   if(window._etapaFiltroSet) list=list.filter(c=>window._etapaFiltroSet.has(c.etapa||''));
+  const _cDesde=(document.getElementById('flt-cand-desde')||{}).value||'';
+  const _cHasta=(document.getElementById('flt-cand-hasta')||{}).value||'';
+  if(_cDesde) list=list.filter(c=>(c.creado||c.f_0||'')>=_cDesde);
+  if(_cHasta) list=list.filter(c=>(c.creado||c.f_0||'')<=_cHasta);
 
   // Sort based on current vista
   if(_candVistaActual==='recientes'){

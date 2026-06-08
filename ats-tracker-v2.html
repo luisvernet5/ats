@@ -8385,20 +8385,66 @@ function hcAgregarFila(empId, semana, anio){
   tbody.appendChild(tr);
 }
 
-async function hcEditarNombreProy(proyId, empId, semana, anio){
+function hcEditarNombreProy(proyId, empId, semana, anio){
   const tr=document.getElementById('hc-tr-'+proyId);
   if(!tr) return;
   const oldName=tr.dataset.proy;
-  const newName=prompt('Nuevo nombre del proyecto:',oldName)?.trim();
-  if(!newName||newName===oldName) return;
-  const{error}=await sbClient.from('hc_plantilla')
-    .update({proyecto:newName,updated_at:new Date().toISOString()})
-    .eq('empresa_id',empId).eq('proyecto',oldName);
-  if(error){showToast('Error: '+error.message,'err');return;}
-  tr.dataset.proy=newName;
-  const span=tr.querySelector('.hc-proy-nombre');
-  if(span) span.textContent=newName;
-  showToast('Nombre actualizado ✓');
+  const oldAuth=parseInt(tr.dataset.auth||'0');
+  // mini modal
+  const ov=document.createElement('div');
+  ov.id='hc-edit-proy-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;display:flex;align-items:center;justify-content:center';
+  ov.innerHTML=`
+    <div style="background:var(--surface);border-radius:14px;padding:24px;width:min(360px,92vw);box-shadow:0 8px 40px rgba(0,0,0,.25)">
+      <div style="font-size:15px;font-weight:600;margin-bottom:18px">Editar proyecto</div>
+      <div style="display:grid;gap:12px">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Nombre del proyecto</label>
+          <input id="hc-ep-nombre" type="text" value="${oldName.replace(/"/g,'&quot;')}" style="width:100%">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Autorizado</label>
+          <input id="hc-ep-auth" type="number" min="0" value="${oldAuth}" style="width:100%">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+        <button class="btn btn-ghost" onclick="document.getElementById('hc-edit-proy-ov').remove()">Cancelar</button>
+        <button class="btn btn-primary" onclick="_hcSaveProy('${proyId}','${empId}',${semana},${anio})">Guardar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  setTimeout(()=>document.getElementById('hc-ep-nombre')?.select(),50);
+}
+
+async function _hcSaveProy(proyId, empId, semana, anio){
+  const tr=document.getElementById('hc-tr-'+proyId);
+  const ov=document.getElementById('hc-edit-proy-ov');
+  if(!tr||!ov) return;
+  const oldName=tr.dataset.proy;
+  const newName=(document.getElementById('hc-ep-nombre')?.value||'').trim();
+  const newAuth=parseInt(document.getElementById('hc-ep-auth')?.value||'0');
+  if(!newName){showToast('El nombre no puede estar vacío','err');return;}
+  const updates={updated_at:new Date().toISOString()};
+  if(newName!==oldName) updates.proyecto=newName;
+  if(newAuth!==parseInt(tr.dataset.auth||'0')) updates.plantilla_autorizada=newAuth;
+  if(Object.keys(updates).length>1){
+    const{error}=await sbClient.from('hc_plantilla')
+      .update(updates).eq('empresa_id',empId).eq('proyecto',oldName);
+    if(error){showToast('Error: '+error.message,'err');return;}
+  }
+  // actualizar DOM
+  if(newName!==oldName){
+    tr.dataset.proy=newName;
+    const span=tr.querySelector('.hc-proy-nombre');
+    if(span) span.textContent=newName;
+  }
+  if(newAuth!==parseInt(tr.dataset.auth||'0')){
+    tr.dataset.auth=newAuth;
+    tr.cells[1].textContent=newAuth;
+    recalcHCRow(proyId);
+  }
+  ov.remove();
+  showToast('Proyecto actualizado ✓');
 }
 
 function hcKeyNav(e, inp){

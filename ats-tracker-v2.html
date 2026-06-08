@@ -12733,7 +12733,18 @@ function _eseFiltered(){
       return false;
     });
   }
+  const f1 = document.getElementById('ese-fecha-desde')?.value;
+  const f2 = document.getElementById('ese-fecha-hasta')?.value;
+  if(f1) list = list.filter(e=>(e.fecha_realizado||'') >= f1);
+  if(f2) list = list.filter(e=>(e.fecha_realizado||'') <= f2);
   return list.sort((a,b)=>(b.fecha_realizado||'').localeCompare(a.fecha_realizado||''));
+}
+function _eseLimpiarFechas(){
+  const d=document.getElementById('ese-fecha-desde');
+  const h=document.getElementById('ese-fecha-hasta');
+  if(d) d.value='';
+  if(h) h.value='';
+  _eseRenderTable();
 }
 
 function _eseEstadoBadge(e){
@@ -12871,6 +12882,40 @@ async function saveESERow(id){
   _eseRenderTable();
 }
 
+function exportESEExcel(){
+  const lista = _eseFiltered();
+  if(!lista.length){ showToast('No hay registros para exportar','err'); return; }
+  const _eseEstadoLabel = e => {
+    if(e.fecha_cobrado) return 'Cobrado';
+    if(e.motivo_no_cobro) return 'No se cobró';
+    if(e.fecha_pagado) return 'Pagado';
+    return 'Pendiente';
+  };
+  const rows = lista.map((e,i)=>{
+    const cand = DB.candidatos.find(c=>c.id===e.candidato_id)||{};
+    const vac  = DB.vacantes.find(v=>v.id===cand.vacante_id)||{};
+    const emp  = DB.empresas.find(x=>x.id===vac.empresa_id)||{};
+    return [
+      i+1,
+      cand.nombre||'—',
+      emp.nombre||'—',
+      vac.titulo||vac.folio||'—',
+      e.fecha_realizado||'',
+      _eseEstadoLabel(e),
+      e.motivo_no_cobro||'',
+      e.fecha_pagado||'',
+      e.fecha_cobrado||'',
+      e.notas||''
+    ];
+  });
+  const header = ['#','Candidato','Empresa','Vacante','Fecha realizado','Estado','Motivo no cobro','Fecha pagado','Fecha cobrado','Notas'];
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  ws['!cols'] = [4,22,18,18,15,12,24,14,14,30].map(w=>({wch:w}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'ESE');
+  XLSX.writeFile(wb, `ESE_${today()}.xlsx`);
+}
+
 function renderESE(){
   const page = document.getElementById('page-ese');
   if(!page) return;
@@ -12882,7 +12927,8 @@ function renderESE(){
   if(!document.getElementById('ese-results')){
     _eseQ = '';
     page.innerHTML = `
-      <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px">
+        <button class="btn btn-ghost" onclick="exportESEExcel()"><i class="fa fa-file-excel"></i> Exportar Excel</button>
         <button class="btn btn-primary" onclick="openESEModal()"><i class="fa fa-plus"></i> Agregar ESE</button>
       </div>
       <div style="padding:20px">
@@ -12890,6 +12936,9 @@ function renderESE(){
           <input type="text" id="ese-q" placeholder="Buscar candidato..."
             oninput="_eseQ=this.value;_eseRenderTable()" style="min-width:200px">
           <div id="wrap-ese-estado" style="flex:none"><button id="btn-ese-estado" onclick="_mfOpen('ese-estado',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between"><span id="lbl-ese-estado">Todos los estados</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+          <input type="date" id="ese-fecha-desde" title="Fecha desde" onchange="_eseRenderTable()" style="width:140px;font-size:13px">
+          <input type="date" id="ese-fecha-hasta" title="Fecha hasta" onchange="_eseRenderTable()" style="width:140px;font-size:13px">
+          <button onclick="_eseLimpiarFechas()" style="display:flex;align-items:center;gap:4px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text2);cursor:pointer;font-size:13px;white-space:nowrap">× Limpiar</button>
           <span class="sp"></span>
           <span id="ese-count" style="font-size:13px;color:var(--text3)"></span>
         </div>

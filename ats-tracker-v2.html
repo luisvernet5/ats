@@ -7886,18 +7886,25 @@ let currentHCEmpId='', currentHCSemana=0, currentHCAnio=0;
 async function renderHeadCount(){
   const page = document.getElementById('page-headcount');
   if(!page) return;
-  const empOpts = DB.empresas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+  const isRhC = currentUserData?.rol === 'rh_cliente';
+  const rhEmpId = currentUserData?.empresa_id || null;
+  const empresasFiltradas = (isRhC && rhEmpId)
+    ? DB.empresas.filter(e => e.id === rhEmpId)
+    : DB.empresas;
+  const empOpts = empresasFiltradas.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+  const selHtml = (isRhC && rhEmpId)
+    ? `<select id="hc-emp-sel" onchange="loadHC()" style="min-width:220px">${empOpts}</select>`
+    : `<select id="hc-emp-sel" onchange="loadHC()" style="min-width:220px"><option value="">Selecciona una empresa...</option>${empOpts}</select>`;
   page.innerHTML=`<div style="padding:24px 28px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-      <select id="hc-emp-sel" onchange="loadHC()" style="min-width:220px">
-        <option value="">Selecciona una empresa...</option>${empOpts}
-      </select>
+      ${selHtml}
     </div>
     <input type="hidden" id="hc-semana">
     <input type="hidden" id="hc-fecha-ini">
     <input type="hidden" id="hc-fecha-fin">
     <div id="hc-content"></div>
   </div>`;
+  if(isRhC && rhEmpId) loadHC();
 }
 
 async function loadHC(){

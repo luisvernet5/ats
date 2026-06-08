@@ -558,6 +558,8 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <button id="cand-vista-folio" class="btn btn-primary btn-sm" onclick="setVistaCand('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
       <button id="cand-vista-proyecto" class="btn btn-ghost btn-sm" onclick="setVistaCand('proyecto')"><i class="fa fa-layer-group"></i> Por proyecto</button>
       <button id="cand-vista-departamento" class="btn btn-ghost btn-sm" onclick="setVistaCand('departamento')"><i class="fa fa-sitemap"></i> Por departamento</button>
+      <button id="cand-vista-recientes" class="btn btn-ghost btn-sm" onclick="setVistaCand('recientes')"><i class="fa fa-arrow-down"></i> Más recientes</button>
+      <button id="cand-vista-antiguo" class="btn btn-ghost btn-sm" onclick="setVistaCand('antiguo')"><i class="fa fa-arrow-up"></i> Más antiguo</button>
     </div>
     <div class="table-wrap" id="candidatos-table"></div>
     <div id="cand-pager" style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:12px;gap:10px;flex-wrap:wrap"></div>
@@ -6304,7 +6306,11 @@ function exportCandidatosExcel(){
 
   // — mismo orden que la vista activa —
   const vista = _candVistaActual||'folio';
-  if(vista==='folio'){
+  if(vista==='recientes'){
+    list = [...list].sort((a,b)=>(b.creado||b.f_0||'').localeCompare(a.creado||a.f_0||''));
+  } else if(vista==='antiguo'){
+    list = [...list].sort((a,b)=>(a.creado||a.f_0||'').localeCompare(b.creado||b.f_0||''));
+  } else if(vista==='folio'){
     list = [...list].sort((a,b)=>{
       const va=DB.vacantes.find(x=>x.id===a.vacante_id)||{};
       const vb=DB.vacantes.find(x=>x.id===b.vacante_id)||{};
@@ -6383,7 +6389,11 @@ function renderCandidatosTable(){
   if(window._etapaFiltroSet) list=list.filter(c=>window._etapaFiltroSet.has(c.etapa||''));
 
   // Sort based on current vista
-  if(_candVistaActual==='folio'){
+  if(_candVistaActual==='recientes'){
+    list=[...list].sort((a,b)=>(b.creado||b.f_0||'').localeCompare(a.creado||a.f_0||''));
+  } else if(_candVistaActual==='antiguo'){
+    list=[...list].sort((a,b)=>(a.creado||a.f_0||'').localeCompare(b.creado||b.f_0||''));
+  } else if(_candVistaActual==='folio'){
     list=[...list].sort((a,b)=>{
       const va=DB.vacantes.find(x=>x.id===a.vacante_id)||{};
       const vb=DB.vacantes.find(x=>x.id===b.vacante_id)||{};
@@ -9374,7 +9384,7 @@ function setCtVista(v){
 }
 function setVistaCand(v){
   _candVistaActual=v;
-  ['folio','proyecto','departamento'].forEach(k=>{const el=document.getElementById('cand-vista-'+k);if(el)el.className=`btn btn-sm ${v===k?'btn-primary':'btn-ghost'}`;});
+  ['folio','proyecto','departamento','recientes','antiguo'].forEach(k=>{const el=document.getElementById('cand-vista-'+k);if(el)el.className=`btn btn-sm ${v===k?'btn-primary':'btn-ghost'}`;});
   renderCandidatosTable();
 }
 

@@ -2041,12 +2041,43 @@ function adaptUIToRole() {
   const _perms = _permisosMap[currentUser?.id];
   if(_perms && _perms.size > 0){
     PERMISOS_SECCIONES.forEach(sec=>{
-      if(!_perms.has(sec.key)){
-        const navEl = document.getElementById('nav-'+sec.key);
-        if(navEl) navEl.style.display='none';
+      const nid = sec.navId || sec.key;
+      let navEl = document.getElementById('nav-'+nid);
+      // Si el item no existe pero está permitido, crearlo dinámicamente
+      if(!navEl && _perms.has(sec.key)){
+        navEl = _permsEnsureNavItem(sec);
       }
+      if(!navEl) return;
+      // Mostrar si está en permisos, ocultar si no
+      navEl.style.display = _perms.has(sec.key) ? '' : 'none';
     });
   }
+}
+
+function _permsEnsureNavItem(sec){
+  const nid = sec.navId || sec.key;
+  let el = document.getElementById('nav-'+nid);
+  if(el) return el;
+  const nav = document.querySelector('.sb-nav');
+  if(!nav) return null;
+  el = document.createElement('div');
+  el.className = 'nav-item';
+  el.id = 'nav-'+nid;
+  el.dataset.tooltip = sec.label;
+  el.innerHTML = `<i class="fa ${sec.icon}"></i><span class="nav-item-text"> ${sec.label}</span>`;
+  el.setAttribute('onclick', `showPage('${sec.key}')`);
+  // Crear página si no existe
+  const pageId = 'page-'+sec.key;
+  if(!document.getElementById(pageId)){
+    const pg = document.createElement('div');
+    pg.className = 'page';
+    pg.id = pageId;
+    document.querySelector('.main')?.appendChild(pg);
+  }
+  // Insertar antes del botón de logout
+  const logout = nav.lastElementChild;
+  nav.insertBefore(el, logout);
+  return el;
 }
 
 async function verResumenReclutadores(){
@@ -2654,7 +2685,7 @@ const PERMISOS_SECCIONES=[
   {key:'desercion',              label:'Deserción',               grupo:'Análisis',   icon:'fa-door-open'},
   {key:'garantias',              label:'Garantías',               grupo:'Gestión',    icon:'fa-shield-alt'},
   {key:'ese',                    label:'ESE',                     grupo:'Gestión',    icon:'fa-file-alt'},
-  {key:'candidatos-descartados', label:'Candidatos descartados',  grupo:'Gestión',    icon:'fa-user-times'},
+  {key:'candidatos-descartados', navId:'descartados',           label:'Candidatos descartados',  grupo:'Gestión',    icon:'fa-user-times'},
   {key:'config',                 label:'Configuración',           grupo:'Sistema',    icon:'fa-cog'},
 ];
 let _permisosMap={}; // userId → Set<sectionKey>

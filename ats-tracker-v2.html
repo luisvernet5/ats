@@ -10600,6 +10600,7 @@ async function _renderPermisosTab(){
       <div style="min-width:0;flex:1">
         <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nombre||'—'}</div>
         <div style="font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.email||''}</div>
+        ${u.empresa_id?(()=>{const en=DB.empresas.find(e=>e.id===u.empresa_id)?.nombre;return en?`<div style="font-size:10px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px"><i class="fa fa-building" style="opacity:.7"></i> ${en}</div>`:''})():''}
       </div>
       <span class="badge ${rolBadge(u)}" style="font-size:10px;flex-shrink:0">${u.rol}</span>
     </div>`).join('');
@@ -10653,6 +10654,7 @@ async function _permisosSelectUser(userId){
     </div>`;
   }).join('');
   const rolBadge=u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':u.rol==='facturacion'?'ba':'bg';
+  const empNombre=u.empresa_id?(DB.empresas.find(e=>e.id===u.empresa_id)?.nombre||null):null;
   detail.innerHTML=`
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
       <div style="width:42px;height:42px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:600;flex-shrink:0">
@@ -10660,7 +10662,7 @@ async function _permisosSelectUser(userId){
       </div>
       <div>
         <div style="font-size:15px;font-weight:600">${u.nombre||'—'}</div>
-        <div style="font-size:12px;color:var(--text3)">${u.email||''} · <span class="badge ${rolBadge}">${u.rol}</span></div>
+        <div style="font-size:12px;color:var(--text3)">${u.email||''} · <span class="badge ${rolBadge}">${u.rol}</span>${empNombre?` · <i class="fa fa-building" style="margin-left:4px;opacity:.6"></i> <span style="color:var(--text2)">${empNombre}</span>`:''}</div>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
         <button class="btn btn-ghost btn-sm" onclick="_permisosClearUser('${userId}')" title="Quitar permisos personalizados (usar defaults del rol)"><i class="fa fa-undo"></i> Restaurar defaults</button>

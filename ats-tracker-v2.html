@@ -551,6 +551,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
         <option value="100">100 registros</option>
         <option value="0">Todos</option>
       </select>
+      <button class="btn btn-green btn-sm" onclick="exportCandidatosExcel()" style="white-space:nowrap"><i class="fa fa-file-excel"></i> Exportar Excel</button>
       <button id="btn-cand-col-vis" class="btn btn-ghost btn-sm" onclick="openCandColPanel()"><i class="fa fa-columns"></i> Columnas</button>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">
@@ -6284,6 +6285,79 @@ function etapaCbChange(label, checked){
 /* ============================================================
    CANDIDATOS TABLE
    ============================================================ */
+function exportCandidatosExcel(){
+  // — mismos filtros que renderCandidatosTable —
+  const q = (document.getElementById('flt-cand-q')||{}).value||'';
+  const _recIdC = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
+  const _empIdC = currentUserData?.rol==='rh_cliente'  ? currentUserData?.empresa_id  : null;
+  const _vacsC  = _recIdC ? DB.vacantes.filter(v=>v.reclutador_id===_recIdC)
+                : _empIdC ? DB.vacantes.filter(v=>v.empresa_id===_empIdC)
+                : DB.vacantes;
+  let list = (_recIdC||_empIdC) ? DB.candidatos.filter(c=>_vacsC.find(v=>v.id===c.vacante_id)) : [...DB.candidatos];
+  if(!window._filtroMostrarDescartados) list = list.filter(c=>!_esCandDescartado(c));
+  if(q) list = list.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
+  const mfEmp = _mfGet('flt-cand-emp');
+  if(mfEmp){ const vids=_vacsC.filter(v=>mfEmp.has(v.empresa_id||'')).map(v=>v.id); list=list.filter(c=>vids.includes(c.vacante_id)); }
+  const mfRec = _mfGet('flt-cand-rec');
+  if(mfRec) list = list.filter(c=>mfRec.has(c.reclutador_id||''));
+  if(window._etapaFiltroSet) list = list.filter(c=>window._etapaFiltroSet.has(c.etapa||''));
+
+  // — mismo orden que la vista activa —
+  const vista = _candVistaActual||'folio';
+  if(vista==='folio'){
+    list = [...list].sort((a,b)=>{
+      const va=DB.vacantes.find(x=>x.id===a.vacante_id)||{};
+      const vb=DB.vacantes.find(x=>x.id===b.vacante_id)||{};
+      return (va.folio||'').localeCompare(vb.folio||'',undefined,{numeric:true});
+    });
+  } else {
+    list = [...list].sort((a,b)=>{
+      const va=DB.vacantes.find(x=>x.id===a.vacante_id)||{};
+      const vb=DB.vacantes.find(x=>x.id===b.vacante_id)||{};
+      if(va.empresa_id===vb.empresa_id){
+        const empA=DB.empresas.find(x=>x.id===va.empresa_id)||{};
+        const ord=empA[vista==='proyecto'?'proyectos':'departamentos']||[];
+        const ia=ord.indexOf(va[vista]??''), ib=ord.indexOf(vb[vista]??'');
+        if(ia===-1&&ib===-1) return (va.fecha_apertura||'').localeCompare(vb.fecha_apertura||'');
+        if(ia===-1) return 1; if(ib===-1) return -1;
+        if(ia!==ib) return ia-ib;
+        return (va.fecha_apertura||'').localeCompare(vb.fecha_apertura||'');
+      }
+      const empA=DB.empresas.find(x=>x.id===va.empresa_id)||{};
+      const empB=DB.empresas.find(x=>x.id===vb.empresa_id)||{};
+      return (empA.nombre||'').localeCompare(empB.nombre||'');
+    });
+  }
+
+  if(!list.length){ showToast('No hay candidatos con los filtros actuales','err'); return; }
+
+  // — columnas agrupadas según vista —
+  const vistaLabel = vista==='folio'?'Por folio':vista==='proyecto'?'Por proyecto':'Por departamento';
+  const header = ['#','Candidato','Vacante','Folio','Empresa','Reclutador',
+    vista==='proyecto'?'Proyecto':'Departamento',
+    'Fecha inicio','Etapa','Días proceso','Días cliente','Fuente','Motivo deserción','Fecha salida'];
+  const rows = list.map((c,i)=>{
+    const v  = DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+    const emp= DB.empresas.find(x=>x.id===v.empresa_id)||{};
+    const r  = DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
+    const d  = processTotal(c); const cd = clienteDays(c);
+    return [
+      i+1, c.nombre, v.nombre||'—', v.folio||'—', emp.nombre||'—', r.nombre||'—',
+      vista==='proyecto' ? (v.proyecto||'—') : (v.departamento||'—'),
+      fmt(c.creado||c.f_0),
+      c.etapa||'—', d!==null?d:'—', cd!==null?cd:'—',
+      c.fuente||'—', c.motivo_desercion||'—', fmt(c.fecha_salida)
+    ];
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  ws['!cols'] = [4,22,20,12,16,16,16,12,16,10,10,12,20,12].map(w=>({wch:w}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Candidatos');
+  XLSX.writeFile(wb, `Candidatos_${vistaLabel.replace(/ /g,'_')}_${today()}.xlsx`);
+  showToast('Archivo Excel descargado ✓');
+}
+
 function renderCandidatosTable(){
   const q=(document.getElementById('flt-cand-q')||{}).value||'';
   if(!window._etapaFiltroSet) window._etapaFiltroSet = null; // null = todas

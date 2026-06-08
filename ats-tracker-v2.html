@@ -1773,6 +1773,14 @@ async function doLogin() {
   }
 }
 
+async function _loadPermisosMap(){
+  try{
+    const {data}=await sbClient.from('permisos_usuarios').select('*');
+    _permisosMap={};
+    (data||[]).forEach(r=>{ if(r.secciones?.length) _permisosMap[r.user_id]=new Set(r.secciones); });
+  }catch(e){ _permisosMap={}; }
+}
+
 async function initSession() {
   const { data: userData } = await sbClient.from('usuarios').select('*').eq('id', currentUser.id).single();
   currentUserData = userData;
@@ -1781,6 +1789,7 @@ async function initSession() {
   }
   document.getElementById('auth-screen').style.display = 'none';
   await loadDB();
+  await _loadPermisosMap();
   adaptUIToRole();
   initSidebarState();
   document.body.style.visibility = 'visible';
@@ -2027,6 +2036,16 @@ function adaptUIToRole() {
         <i class="fa fa-sign-out-alt"></i><span class="nav-item-text"> Cerrar sesión</span>
       </button>
     </div>`;
+  }
+  // Permisos específicos por usuario (si están configurados)
+  const _perms = _permisosMap[currentUser?.id];
+  if(_perms && _perms.size > 0){
+    PERMISOS_SECCIONES.forEach(sec=>{
+      if(!_perms.has(sec.key)){
+        const navEl = document.getElementById('nav-'+sec.key);
+        if(navEl) navEl.style.display='none';
+      }
+    });
   }
 }
 
@@ -2620,6 +2639,25 @@ const DEFAULT_ETAPAS=[
   {id:'e4',label:'Validado',tipo:'cierre',color:'#22C55E'},
 ];
 const ETAPAS_SALIDA=['Desertó','No aceptó'];
+const PERMISOS_SECCIONES=[
+  {key:'dashboard',              label:'Dashboard',               grupo:'Principal',  icon:'fa-chart-pie'},
+  {key:'vacantes',               label:'Vacantes',                grupo:'Principal',  icon:'fa-briefcase'},
+  {key:'candidatos',             label:'Candidatos',              grupo:'Principal',  icon:'fa-users'},
+  {key:'pipeline',               label:'Pipeline',                grupo:'Principal',  icon:'fa-stream'},
+  {key:'evaluaciones',           label:'Evaluaciones',            grupo:'Principal',  icon:'fa-clipboard-list'},
+  {key:'empresas',               label:'Empresas cliente',        grupo:'Empresas',   icon:'fa-building'},
+  {key:'reclutadores',           label:'Reclutadores',            grupo:'Empresas',   icon:'fa-user-tie'},
+  {key:'headcount',              label:'HeadCount',               grupo:'Análisis',   icon:'fa-users'},
+  {key:'contratados',            label:'Contratados',             grupo:'Análisis',   icon:'fa-user-check'},
+  {key:'tiempos',                label:'Análisis de tiempos',     grupo:'Análisis',   icon:'fa-clock'},
+  {key:'ranking',                label:'Ranking reclutadores',    grupo:'Análisis',   icon:'fa-trophy'},
+  {key:'desercion',              label:'Deserción',               grupo:'Análisis',   icon:'fa-door-open'},
+  {key:'garantias',              label:'Garantías',               grupo:'Gestión',    icon:'fa-shield-alt'},
+  {key:'ese',                    label:'ESE',                     grupo:'Gestión',    icon:'fa-file-alt'},
+  {key:'candidatos-descartados', label:'Candidatos descartados',  grupo:'Gestión',    icon:'fa-user-times'},
+  {key:'config',                 label:'Configuración',           grupo:'Sistema',    icon:'fa-cog'},
+];
+let _permisosMap={}; // userId → Set<sectionKey>
 // Clasifica candidatos de datos históricos (antes del campo descartado)
 function _esCandDescartado(c){
   if(c.descartado===true) return true;
@@ -10383,6 +10421,9 @@ function renderConfig(){
         </button>
         <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-respaldo" onclick="switchConfigTab('respaldo')">
           <i class="fa fa-shield-alt"></i> Respaldo
+        </button>
+        <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-permisos" onclick="switchConfigTab('permisos')">
+          <i class="fa fa-lock"></i> Permisos
         </button>`:''}
       </div>
       <div id="cfg-content"></div>
@@ -10478,6 +10519,10 @@ function switchConfigTab(tab){
     renderUsuariosConfig();
   }
 
+  else if(tab==='permisos'){
+    _renderPermisosTab();
+  }
+
   else if(tab==='respaldo'){
     content.innerHTML=`
       <div style="max-width:600px">
@@ -10499,6 +10544,116 @@ function switchConfigTab(tab){
       </div>`;
   }
 }
+
+/* ── PERMISOS POR USUARIO ─────────────────────────────────── */
+async function _renderPermisosTab(){
+  const content=document.getElementById('cfg-content');
+  if(!content) return;
+  content.innerHTML='<div style="display:flex;gap:6px;align-items:center;padding:20px 0"><i class="fa fa-spinner fa-spin"></i> Cargando usuarios...</div>';
+  const {data:usuarios}=await sbClient.from('usuarios').select('*');
+  const list=(usuarios||[]).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+  const rolBadge=u=>u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':u.rol==='facturacion'?'ba':'bg';
+  const userRows=list.map(u=>`
+    <div id="perm-usr-${u.id}" onclick="_permisosSelectUser('${u.id}')"
+      style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;cursor:pointer;transition:background .12s;border:1px solid transparent">
+      <div style="width:34px;height:34px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600;flex-shrink:0">
+        ${(u.nombre||u.email||'?')[0].toUpperCase()}
+      </div>
+      <div style="min-width:0;flex:1">
+        <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nombre||'—'}</div>
+        <div style="font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.email||''}</div>
+      </div>
+      <span class="badge ${rolBadge(u)}" style="font-size:10px;flex-shrink:0">${u.rol}</span>
+    </div>`).join('');
+  content.innerHTML=`
+    <div style="display:grid;grid-template-columns:280px 1fr;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;min-height:480px">
+      <div style="border-right:1px solid var(--border);background:var(--surface)">
+        <div style="padding:12px 14px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)">Usuarios</div>
+        <div style="overflow-y:auto;max-height:480px;padding:6px">${userRows}</div>
+      </div>
+      <div id="perm-detail" style="padding:24px;background:var(--bg)">
+        <div style="color:var(--text3);font-size:13px;padding-top:40px;text-align:center">
+          <i class="fa fa-lock" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3"></i>
+          Selecciona un usuario para configurar sus permisos
+        </div>
+      </div>
+    </div>`;
+  // guardar lista para uso posterior
+  content._usuariosList = list;
+}
+
+async function _permisosSelectUser(userId){
+  const content=document.getElementById('cfg-content');
+  const list=content?._usuariosList||[];
+  const u=list.find(x=>x.id===userId);
+  if(!u) return;
+  // resaltar seleccionado
+  list.forEach(x=>{
+    const el=document.getElementById('perm-usr-'+x.id);
+    if(el){ el.style.background=x.id===userId?'var(--glow)':''; el.style.borderColor=x.id===userId?'var(--accent)':'transparent'; }
+  });
+  const detail=document.getElementById('perm-detail');
+  if(!detail) return;
+  // cargar permisos actuales del usuario
+  const {data:saved}=await sbClient.from('permisos_usuarios').select('*').eq('user_id',userId).single();
+  const savedSecs=new Set(saved?.secciones||[]);
+  const hasSaved=!!(saved?.secciones);
+  // agrupar secciones
+  const grupos=[...new Set(PERMISOS_SECCIONES.map(s=>s.grupo))];
+  const gruposHTML=grupos.map(g=>{
+    const secs=PERMISOS_SECCIONES.filter(s=>s.grupo===g);
+    return`<div style="margin-bottom:16px">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">${g}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px">
+        ${secs.map(s=>`
+          <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:13px;transition:background .12s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'">
+            <input type="checkbox" id="perm-chk-${s.key}" data-key="${s.key}" ${!hasSaved||savedSecs.has(s.key)?'checked':''} style="width:auto;padding:0;flex-shrink:0">
+            <i class="fa ${s.icon}" style="width:14px;text-align:center;color:var(--accent);font-size:12px"></i>
+            <span>${s.label}</span>
+          </label>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+  const rolBadge=u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':u.rol==='facturacion'?'ba':'bg';
+  detail.innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+      <div style="width:42px;height:42px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:600;flex-shrink:0">
+        ${(u.nombre||u.email||'?')[0].toUpperCase()}
+      </div>
+      <div>
+        <div style="font-size:15px;font-weight:600">${u.nombre||'—'}</div>
+        <div style="font-size:12px;color:var(--text3)">${u.email||''} · <span class="badge ${rolBadge}">${u.rol}</span></div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <button class="btn btn-ghost btn-sm" onclick="_permisosClearUser('${userId}')" title="Quitar permisos personalizados (usar defaults del rol)"><i class="fa fa-undo"></i> Restaurar defaults</button>
+        <button class="btn btn-primary btn-sm" onclick="_permisosGuardar('${userId}')"><i class="fa fa-save"></i> Guardar permisos</button>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:16px">
+      ${hasSaved?'<i class="fa fa-check-circle" style="color:var(--green)"></i> Permisos personalizados activos':'<i class="fa fa-info-circle"></i> Sin personalización — usando permisos por defecto del rol'}
+    </div>
+    <div style="overflow-y:auto;max-height:340px;padding-right:4px">${gruposHTML}</div>`;
+}
+
+async function _permisosGuardar(userId){
+  const chks=[...document.querySelectorAll('[id^="perm-chk-"]')];
+  const secciones=chks.filter(c=>c.checked).map(c=>c.dataset.key);
+  const {error}=await sbClient.from('permisos_usuarios')
+    .upsert({user_id:userId, secciones, updated_at:new Date().toISOString()},{onConflict:'user_id'});
+  if(error){showToast('Error: '+error.message,'err');return;}
+  _permisosMap[userId]=new Set(secciones);
+  showToast('Permisos guardados ✓');
+  _permisosSelectUser(userId); // recargar vista
+}
+
+async function _permisosClearUser(userId){
+  const {error}=await sbClient.from('permisos_usuarios').delete().eq('user_id',userId);
+  if(error){showToast('Error: '+error.message,'err');return;}
+  delete _permisosMap[userId];
+  showToast('Permisos restaurados a defaults del rol ✓');
+  _permisosSelectUser(userId);
+}
+/* ── FIN PERMISOS ─────────────────────────────────────────── */
 
 function renderUsuariosConfig(){
   const content = document.getElementById('cfg-content');

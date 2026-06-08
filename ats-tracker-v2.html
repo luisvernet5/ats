@@ -9320,7 +9320,7 @@ function _ctRender(){
       <td class="td-p">${c.nombre||'—'}</td>
       <td>${v.departamento||'—'}</td>
       <td>${v.proyecto||'—'}</td>
-      <td style="white-space:nowrap;font-size:12px">${v.fecha_apertura||'—'}</td>
+      <td style="white-space:nowrap;font-size:12px">${fmt(v.fecha_apertura)}</td>
       <td style="width:90px;min-width:90px;max-width:90px;font-size:12px">${fechaCont?fmt(fechaCont):'—'}</td>
       <td style="text-align:center">${wn?`<span style="background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:2px 7px;font-size:11px;font-family:var(--mono);font-weight:500">S${wn.week}</span>`:'—'}</td>
       <td>${diasTotal!==null?`<span class="dpill ${dClass(diasTotal)}">${diasTotal}d</span>`:'—'}</td>

@@ -3446,12 +3446,13 @@ function toggleEDCol(key){
 /* ── Candidatos column visibility ──────────────────────── */
 let _candColVis=JSON.parse(localStorage.getItem('cand_col_vis')||'{}');
 const _candColDefs=[
-  {key:'empresa',      label:'Empresa',      col:4},
-  {key:'reclutador',   label:'Reclutador',   col:5},
-  {key:'proyecto',     label:'Proyecto',     col:6},
-  {key:'departamento', label:'Departamento', col:7},
-  {key:'dias_proc',    label:'Días proceso', col:9},
-  {key:'dias_cli',     label:'Días cliente', col:10},
+  {key:'empresa',       label:'Empresa',       col:4},
+  {key:'reclutador',    label:'Reclutador',    col:5},
+  {key:'proyecto',      label:'Proyecto',      col:6},
+  {key:'departamento',  label:'Departamento',  col:7},
+  {key:'fecha_inicio',  label:'Fecha inicio',  col:8},
+  {key:'dias_proc',     label:'Días proceso',  col:10},
+  {key:'dias_cli',      label:'Días cliente',  col:11},
 ];
 function _applyCandColVis(){
   let css='';
@@ -6384,6 +6385,7 @@ function renderCandidatosTable(){
       <td>${r.nombre||'—'}</td>
       <td style="font-size:12px;color:var(--text2)">${v.proyecto||'—'}</td>
       <td style="font-size:12px;color:var(--text2)">${v.departamento||'—'}</td>
+      <td style="font-size:12px;color:var(--text2);white-space:nowrap">${fmt(c.creado||c.f_0)}</td>
       <td style="cursor:pointer;white-space:nowrap" onclick="toggleCandRow('${c.id}')"><div style="display:inline-flex;align-items:center;gap:5px">${badgeEtapa(c.etapa,v.empresa_id)}<i class="fa fa-pencil-alt" style="font-size:10px;color:var(--text3);flex-shrink:0"></i></div></td>
       <td>${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:'—'}</td>
       <td>${cd!==null?`<span class="dpill dwarn">${cd}d</span>`:'—'}</td>
@@ -6404,7 +6406,7 @@ function renderCandidatosTable(){
       </td>
     </tr>
     <tr class="vac-expand-row" id="cx-${c.id}">
-      <td colspan="11" class="cand-expand-td" style="padding:0">
+      <td colspan="12" class="cand-expand-td" style="padding:0">
         <div style="padding:14px 16px">
           <div class="sep" style="margin-top:0">Edición del proceso</div>
           <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:start">
@@ -6434,8 +6436,8 @@ function renderCandidatosTable(){
     </tr>`;
   }).join('');
   document.getElementById('candidatos-table').innerHTML=`<table>
-    <thead><tr><th style="width:36px;text-align:center">#</th><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Etapa</th><th>Días proceso</th><th>Días cliente</th><th>Acción</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos</td></tr>'}</tbody>
+    <thead><tr><th style="width:36px;text-align:center">#</th><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Fecha inicio</th><th>Etapa</th><th>Días proceso</th><th>Días cliente</th><th>Acción</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos</td></tr>'}</tbody>
   </table>`;
   _applyCandColVis();
   const _pager=document.getElementById('cand-pager');

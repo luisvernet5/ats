@@ -622,7 +622,10 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
         <button id="petab-enviados" class="btn btn-ghost btn-sm" onclick="peSetTab('enviados')"><i class="fa fa-paper-plane"></i> Enviados</button>
         <button id="petab-respuestas" class="btn btn-ghost btn-sm" onclick="peSetTab('respuestas')"><i class="fa fa-check-double"></i> Respuestas</button>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="openProcesoEvalModal()"><i class="fa fa-plus"></i> Nuevo proceso</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" id="btn-pe-refresh" onclick="peRecargarDatos()"><i class="fa fa-sync"></i> Actualizar</button>
+        <button class="btn btn-primary btn-sm" onclick="openProcesoEvalModal()"><i class="fa fa-plus"></i> Nuevo proceso</button>
+      </div>
     </div>
     <div id="pe-panel-procesos">
       <div class="table-wrap"><table class="table" id="pe-procesos-table">
@@ -14915,6 +14918,24 @@ function renderProcesosEval(){
   renderPEProcesos();
   renderPEEnviados();
   renderPERespuestas();
+}
+
+async function peRecargarDatos(){
+  const btn = document.getElementById('btn-pe-refresh');
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa fa-sync fa-spin"></i> Actualizando...'; }
+  try{
+    if(!SANDBOX_MODE){
+      const {data, error} = await sbClient.from('procesos_enviados').select('*');
+      if(error) throw new Error(error.message);
+      DB.procesosEnviados = (data||[]).map(r=>r.data||r).filter(Boolean);
+    }
+    renderProcesosEval();
+    showToast('Datos actualizados ✓');
+  } catch(e){
+    showToast('Error al actualizar: '+e.message, 'err');
+  } finally {
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa fa-sync"></i> Actualizar'; }
+  }
 }
 
 function peSetTab(tab){

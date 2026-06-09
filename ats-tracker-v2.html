@@ -595,7 +595,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     </div>
     <div id="ev-panel-plantillas">
       <div class="table-wrap"><table class="table" id="eval-plantillas-table">
-        <thead><tr><th>Nombre</th><th>Preguntas</th><th>Estado</th><th>Creada</th><th></th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Empresas</th><th>Preguntas</th><th>Estado</th><th>Creada</th><th></th></tr></thead>
         <tbody id="eval-plantillas-tbody"></tbody>
       </table></div>
     </div>
@@ -13624,12 +13624,23 @@ function renderEvalPlantillas(){
   const tbody = document.getElementById('eval-plantillas-tbody');
   if(!tbody) return;
   if(!DB.evaluaciones.length){
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin evaluaciones. Crea la primera con "+ Nueva evaluación".</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin evaluaciones. Crea la primera con "+ Nueva evaluación".</td></tr>`;
     return;
   }
-  tbody.innerHTML = DB.evaluaciones.map(e=>`
-    <tr>
-      <td><strong>${e.nombre}</strong>${e.descripcion?`<div style="font-size:11px;color:var(--text3)">${e.descripcion}</div>`:''}</td>
+  tbody.innerHTML = DB.evaluaciones.map(e=>{
+    const empIds = e.empresa_ids||[];
+    let empsHTML;
+    if(!empIds.length){
+      empsHTML = `<span style="font-size:11px;color:var(--text3);font-style:italic">Todas las empresas</span>`;
+    } else {
+      empsHTML = empIds.map(id=>{
+        const emp = DB.empresas.find(x=>x.id===id);
+        return emp ? `<span style="display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;background:var(--primary-light,#e8f0fe);color:var(--primary);border:1px solid var(--primary);margin:1px">${emp.nombre}</span>` : '';
+      }).filter(Boolean).join('');
+    }
+    return `<tr>
+      <td><strong>${e.nombre}</strong></td>
+      <td style="max-width:260px;line-height:1.6">${empsHTML}</td>
       <td style="text-align:center">${(e.preguntas||[]).length}</td>
       <td><span class="badge ${e.activa!==false?'bg':'br'}">${e.activa!==false?'Activa':'Inactiva'}</span></td>
       <td style="font-size:12px;color:var(--text3)">${e.created_at?new Date(e.created_at).toLocaleDateString('es-MX'):'—'}</td>
@@ -13638,7 +13649,8 @@ function renderEvalPlantillas(){
         <button class="btn btn-ghost btn-sm" onclick="openEvalTemplateModal('${e.id}')"><i class="fa fa-edit"></i></button>
         ${currentUserData?.rol==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteEvalTemplate('${e.id}')"><i class="fa fa-trash"></i></button>`:''}
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 function renderEvalEnviadas(){
   const tbody = document.getElementById('eval-enviadas-tbody');

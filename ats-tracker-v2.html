@@ -3050,13 +3050,15 @@ function getEmpresaEtapas(empId){
 function esColocado(c){
   if(!c) return false;
   const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
-  if(v.estado!=='Cubierta') return false;
-  // Si hay candidato designado, solo ese cuenta
+  // Si hay candidato designado, ese cuenta sin importar el estado de la vacante
   if(v.candidato_contratado) return v.candidato_contratado===c.id;
-  // Fallback: candidato en etapa de cierre
-  const etapas=getEmpresaEtapas(v.empresa_id);
-  const cierre=etapas.find(e=>e.tipo==='cierre');
-  return cierre?c.etapa===cierre.label:(c.etapa==='Validado'||c.etapa==='Contratación');
+  // Si la vacante está cubierta, verificar por etapa de cierre
+  if(v.estado==='Cubierta'){
+    const etapas=getEmpresaEtapas(v.empresa_id);
+    const cierre=etapas.find(e=>e.tipo==='cierre');
+    return cierre?c.etapa===cierre.label:(c.etapa==='Validado'||c.etapa==='Contratación');
+  }
+  return false;
 }
 
 function processTotal(c){

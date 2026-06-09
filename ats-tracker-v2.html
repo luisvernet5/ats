@@ -1032,32 +1032,22 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
         <div style="margin-top:12px">
           <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px">Número de WhatsApp</label>
           <div style="display:flex;gap:6px;align-items:center">
-            <select id="env-pe-phone-prefix" style="font-size:13px;width:auto;min-width:160px">
-              <option value="52" selected>🇲🇽 México +52</option>
-              <option value="1">🇺🇸 Estados Unidos +1</option>
-              <option value="1">🇨🇦 Canadá +1</option>
-              <option value="54">🇦🇷 Argentina +54</option>
-              <option value="55">🇧🇷 Brasil +55</option>
-              <option value="56">🇨🇱 Chile +56</option>
-              <option value="57">🇨🇴 Colombia +57</option>
-              <option value="506">🇨🇷 Costa Rica +506</option>
-              <option value="593">🇪🇨 Ecuador +593</option>
-              <option value="503">🇸🇻 El Salvador +503</option>
-              <option value="502">🇬🇹 Guatemala +502</option>
-              <option value="504">🇭🇳 Honduras +504</option>
-              <option value="505">🇳🇮 Nicaragua +505</option>
-              <option value="507">🇵🇦 Panamá +507</option>
-              <option value="595">🇵🇾 Paraguay +595</option>
-              <option value="51">🇵🇪 Perú +51</option>
-              <option value="1809">🇩🇴 Rep. Dominicana +1809</option>
-              <option value="598">🇺🇾 Uruguay +598</option>
-              <option value="58">🇻🇪 Venezuela +58</option>
-              <option value="34">🇪🇸 España +34</option>
-              <option value="44">🇬🇧 Reino Unido +44</option>
-              <option value="33">🇫🇷 Francia +33</option>
-              <option value="49">🇩🇪 Alemania +49</option>
-              <option value="39">🇮🇹 Italia +39</option>
-            </select>
+            <input type="hidden" id="env-pe-phone-prefix" value="52">
+            <div style="position:relative" id="env-pe-prefix-wrapper">
+              <button type="button" id="env-pe-prefix-btn" onclick="togglePrefixDropdown(event)" style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;white-space:nowrap;min-width:170px;color:var(--text)">
+                <span id="env-pe-prefix-label">🇲🇽 México +52</span>
+                <i class="fa fa-chevron-down" style="margin-left:auto;font-size:10px;color:var(--text3)"></i>
+              </button>
+              <div id="env-pe-prefix-panel" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:9999;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.18);width:240px">
+                <div style="padding:8px 8px 4px">
+                  <div style="display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:6px 10px">
+                    <i class="fa fa-search" style="color:var(--text3);font-size:12px"></i>
+                    <input type="text" id="env-pe-prefix-search" placeholder="Buscar país..." oninput="filterPrefixList(this.value)" style="border:none;background:transparent;outline:none;font-size:13px;flex:1;color:var(--text);width:100%">
+                  </div>
+                </div>
+                <div id="env-pe-prefix-list" style="max-height:200px;overflow-y:auto;padding:4px 6px 8px"></div>
+              </div>
+            </div>
             <input id="env-pe-phone" type="tel" placeholder="Número sin prefijo" style="flex:1;font-size:13px" oninput="this.value=this.value.replace(/\D/g,'')">
           </div>
         </div>
@@ -15319,6 +15309,73 @@ function _peLink(token){return`${location.origin}${location.pathname}?proceso=${
 
 function peCopyLink(){
   navigator.clipboard?.writeText(document.getElementById('env-pe-link').value).then(()=>showToast('Link copiado ✓')).catch(()=>{});
+}
+
+const _PE_PREFIXES=[
+  {val:"52",label:"🇲🇽 México +52"},
+  {val:"1",label:"🇺🇸 Estados Unidos +1"},
+  {val:"1",label:"🇨🇦 Canadá +1"},
+  {val:"54",label:"🇦🇷 Argentina +54"},
+  {val:"55",label:"🇧🇷 Brasil +55"},
+  {val:"56",label:"🇨🇱 Chile +56"},
+  {val:"57",label:"🇨🇴 Colombia +57"},
+  {val:"506",label:"🇨🇷 Costa Rica +506"},
+  {val:"593",label:"🇪🇨 Ecuador +593"},
+  {val:"503",label:"🇸🇻 El Salvador +503"},
+  {val:"502",label:"🇬🇹 Guatemala +502"},
+  {val:"504",label:"🇭🇳 Honduras +504"},
+  {val:"505",label:"🇳🇮 Nicaragua +505"},
+  {val:"507",label:"🇵🇦 Panamá +507"},
+  {val:"595",label:"🇵🇾 Paraguay +595"},
+  {val:"51",label:"🇵🇪 Perú +51"},
+  {val:"1809",label:"🇩🇴 Rep. Dominicana +1809"},
+  {val:"598",label:"🇺🇾 Uruguay +598"},
+  {val:"58",label:"🇻🇪 Venezuela +58"},
+  {val:"34",label:"🇪🇸 España +34"},
+  {val:"44",label:"🇬🇧 Reino Unido +44"},
+  {val:"33",label:"🇫🇷 Francia +33"},
+  {val:"49",label:"🇩🇪 Alemania +49"},
+  {val:"39",label:"🇮🇹 Italia +39"},
+];
+
+function _renderPrefixList(filter){
+  const list=document.getElementById('env-pe-prefix-list');
+  if(!list)return;
+  const f=(filter||'').toLowerCase();
+  const items=_PE_PREFIXES.filter(p=>p.label.toLowerCase().includes(f));
+  list.innerHTML=items.map(p=>`<div onclick="selectPrefix('${p.val}',this.textContent)" style="padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">${p.label}</div>`).join('')||`<div style="padding:12px;text-align:center;font-size:13px;color:var(--text3)">Sin resultados</div>`;
+}
+
+function togglePrefixDropdown(e){
+  e.stopPropagation();
+  const panel=document.getElementById('env-pe-prefix-panel');
+  if(!panel)return;
+  const open=panel.style.display!=='none';
+  panel.style.display=open?'none':'';
+  if(!open){
+    const s=document.getElementById('env-pe-prefix-search');
+    if(s){s.value='';s.focus();}
+    _renderPrefixList('');
+    setTimeout(()=>document.addEventListener('click',_closePrefixOutside,{once:true}),10);
+  }
+}
+
+function _closePrefixOutside(e){
+  const w=document.getElementById('env-pe-prefix-wrapper');
+  const panel=document.getElementById('env-pe-prefix-panel');
+  if(w&&w.contains(e.target)){
+    setTimeout(()=>document.addEventListener('click',_closePrefixOutside,{once:true}),10);
+  } else {
+    if(panel)panel.style.display='none';
+  }
+}
+
+function filterPrefixList(val){_renderPrefixList(val);}
+
+function selectPrefix(val,label){
+  document.getElementById('env-pe-phone-prefix').value=val;
+  document.getElementById('env-pe-prefix-label').textContent=label.trim();
+  document.getElementById('env-pe-prefix-panel').style.display='none';
 }
 
 function peShareWhatsapp(){

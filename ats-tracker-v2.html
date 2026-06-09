@@ -14973,12 +14973,16 @@ function renderPEEnviados(){
       <td>${scoreHTML}</td>
       <td style="font-size:12px;color:var(--text3)">${e.fecha_envio?new Date(e.fecha_envio).toLocaleDateString('es-MX'):'—'}</td>
       <td style="white-space:nowrap">
-        <button class="btn btn-ghost btn-sm" title="Copiar link" onclick="navigator.clipboard?.writeText(${JSON.stringify(link)}).then(()=>showToast('Link copiado ✓'))"><i class="fa fa-link"></i></button>
+        <button class="btn btn-ghost btn-sm" title="Copiar link" onclick="peCopyLink('${e.token}')"><i class="fa fa-link"></i> Copiar link</button>
         ${e.estado!=='pendiente'?`<button class="btn btn-ghost btn-sm" onclick="verRespuestasProceso('${e.id}')"><i class="fa fa-eye"></i> Ver</button>`:''}
         ${currentUserData?.rol==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteProcesoEnviado('${e.id}')"><i class="fa fa-trash"></i></button>`:''}
       </td>
     </tr>`;
   }).join('');
+}
+
+function peCopyLink(token){
+  navigator.clipboard?.writeText(_peLink(token)).then(()=>showToast('Link copiado ✓')).catch(()=>{});
 }
 
 function renderPERespuestas(){

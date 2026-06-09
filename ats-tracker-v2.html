@@ -13519,6 +13519,8 @@ const EVAL_TIPOS = [
   {value:'casillas',      icon:'fa-check-square',     label:'Casillas'},
   {value:'desplegable',   icon:'fa-caret-square-down',label:'Desplegable'},
   {value:'escala_lineal', icon:'fa-sliders-h',        label:'Escala lineal'},
+  {value:'fecha',         icon:'fa-calendar-alt',     label:'Fecha'},
+  {value:'hora',          icon:'fa-clock',            label:'Hora'},
 ];
 // Solo bloques decorativos (sin footer de puntos ni requerida)
 const _EVAL_TEXTO_TIPOS = new Set(['titulo','descripcion']);
@@ -13564,6 +13566,8 @@ function _evalGetOpcContent(qId, tipo, q){
     </div>
     <div style="font-size:11px;color:var(--text3);margin-top:4px"><i class="fa fa-check-circle" style="color:#22c55e"></i> Selecciona la respuesta correcta (radio verde)</div>`;
   }
+  if(tipo==='fecha') return `<div style="margin-top:8px"><input type="date" disabled style="font-size:13px;opacity:.55;cursor:default;background:var(--bg2);padding:5px 8px;border-radius:6px;border:1px solid var(--border)"></div>`;
+  if(tipo==='hora') return `<div style="margin-top:8px"><input type="time" disabled style="font-size:13px;opacity:.55;cursor:default;background:var(--bg2);padding:5px 8px;border-radius:6px;border:1px solid var(--border)"></div>`;
   // opcion_multiple / casillas / desplegable
   const opciones=q?.opciones||['',''];
   const correctIdx=q?.respuesta_correcta?opciones.indexOf(q.respuesta_correcta):-1;
@@ -13627,8 +13631,15 @@ function evalAddPregunta(q=null){
   const isDecorativo=_EVAL_TEXTO_TIPOS.has(tipo); // solo titulo/descripcion
   const div=document.createElement('div');
   div.id='ep_'+qId;
-  div.style.cssText='border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.07)';
+  div.draggable=true;
+  div.setAttribute('ondragstart','_evalDragStart(this)');
+  div.setAttribute('ondragend','_evalDragEnd(this)');
+  div.setAttribute('ondragover','_evalDragOver(event,this)');
+  div.style.cssText='border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.07);transition:opacity .15s';
   div.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:center;padding:5px;cursor:grab;color:var(--text3);border-bottom:1px solid var(--border);background:var(--bg2)" title="Arrastra para reordenar">
+      <i class="fa fa-grip-horizontal" style="font-size:12px"></i>
+    </div>
     <div style="padding:14px 16px 12px">
       <div style="display:flex;gap:10px;align-items:center;margin-bottom:2px">
         <input data-qid="${qId}" data-field="texto"
@@ -13658,6 +13669,25 @@ function evalAddPregunta(q=null){
       <button class="btn btn-ghost btn-sm" style="padding:4px 10px;color:var(--red)" onclick="document.getElementById('ep_${qId}').remove()"><i class="fa fa-trash"></i></button>
     </div>`;
   document.getElementById('eval-preguntas-list').appendChild(div);
+}
+
+let _evalDragEl=null;
+function _evalDragStart(el){
+  _evalDragEl=el;
+  setTimeout(()=>{ if(_evalDragEl) _evalDragEl.style.opacity='.4'; },0);
+}
+function _evalDragEnd(el){
+  el.style.opacity='';
+  _evalDragEl=null;
+  document.querySelectorAll('#eval-preguntas-list > div').forEach(d=>d.style.borderTop='');
+}
+function _evalDragOver(e,el){
+  e.preventDefault();
+  if(!_evalDragEl||_evalDragEl===el) return;
+  const list=document.getElementById('eval-preguntas-list');
+  const rect=el.getBoundingClientRect();
+  if(e.clientY<rect.top+rect.height/2) list.insertBefore(_evalDragEl,el);
+  else list.insertBefore(_evalDragEl,el.nextSibling);
 }
 
 async function saveEvalTemplate(){

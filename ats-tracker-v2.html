@@ -13695,6 +13695,65 @@ function renderEvalEnviadas(){
 function _evalEmpToggle(cb){
   cb.closest('label').classList.toggle('_sel', cb.checked);
 }
+function _evalImgToggle(qId){
+  const p = document.getElementById('epimgpicker_'+qId);
+  if(p) p.style.display = p.style.display==='none' ? '' : 'none';
+}
+function _evalImgSet(qId, src){
+  document.getElementById('epimgval_'+qId).value = src;
+  const sec = document.getElementById('epimgsec_'+qId);
+  const picker = document.getElementById('epimgpicker_'+qId);
+  // Rebuild preview inside sec (before picker)
+  let preview = sec.querySelector('div[data-imgpreview]');
+  if(!preview){
+    preview = document.createElement('div');
+    preview.setAttribute('data-imgpreview','1');
+    sec.insertBefore(preview, picker);
+  }
+  preview.style.cssText='position:relative;display:inline-block;margin-bottom:6px';
+  preview.innerHTML=`<img src="${src}" style="max-width:260px;max-height:180px;border-radius:8px;border:1px solid var(--border);display:block">
+    <button onclick="_evalImgRemove('${qId}')" style="position:absolute;top:-8px;right:-8px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center">×</button>`;
+  if(picker) picker.style.display='none';
+}
+function _evalImgRemove(qId){
+  document.getElementById('epimgval_'+qId).value='';
+  const sec = document.getElementById('epimgsec_'+qId);
+  const preview = sec?.querySelector('div[data-imgpreview]');
+  if(preview) preview.remove();
+}
+async function _evalImgEnsureBucket(){
+  if(_evalImgBucketReady) return;
+  await sbClient.storage.createBucket('eval-imagenes',{public:true,fileSizeLimit:5242880}).catch(()=>{});
+  _evalImgBucketReady = true;
+}
+let _evalImgBucketReady = false;
+async function _evalImgFromFile(qId, inp){
+  const file = inp.files?.[0];
+  if(!file) return;
+  const picker = document.getElementById('epimgpicker_'+qId);
+  const loadEl = document.createElement('div');
+  loadEl.style.cssText='font-size:12px;color:var(--text3);margin-top:6px;padding:4px 0';
+  loadEl.innerHTML='<i class="fa fa-spinner fa-spin"></i> Subiendo imagen...';
+  picker.appendChild(loadEl);
+  try{
+    await _evalImgEnsureBucket();
+    const ext = file.name.split('.').pop()||'jpg';
+    const path = `eval-imgs/${Date.now()}-${uid()}.${ext}`;
+    const {error} = await sbClient.storage.from('eval-imagenes').upload(path, file,{cacheControl:'3600',upsert:false});
+    if(error) throw error;
+    const {data:urlData} = sbClient.storage.from('eval-imagenes').getPublicUrl(path);
+    loadEl.remove();
+    _evalImgSet(qId, urlData.publicUrl);
+  }catch(e){
+    loadEl.style.color='var(--red)';
+    loadEl.textContent='Error al subir: '+e.message;
+  }
+}
+function _evalImgFromUrl(qId){
+  const url = (document.getElementById('epimgurl_'+qId)?.value||'').trim();
+  if(!url) return;
+  _evalImgSet(qId, url);
+}
 
 // ── Plantilla: crear / editar ────────────────────────────────
 function openEvalTemplateModal(id=null){
@@ -13862,6 +13921,24 @@ function evalAddPregunta(q=null){
           ${EVAL_TIPOS.map(t=>`<option value="${t.value}" ${tipo===t.value?'selected':''}>${t.label}</option>`).join('')}
         </select>
       </div>
+      <input type="hidden" data-qid="${qId}" data-field="imagen" id="epimgval_${qId}" value="${(q?.imagen||'').replace(/"/g,'&quot;')}">
+      <div id="epimgsec_${qId}" style="margin:8px 0 0">
+        ${q?.imagen?`<div style="position:relative;display:inline-block;margin-bottom:6px">
+          <img src="${q.imagen}" style="max-width:260px;max-height:180px;border-radius:8px;border:1px solid var(--border);display:block">
+          <button onclick="_evalImgRemove('${qId}')" style="position:absolute;top:-8px;right:-8px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
+        </div>`:''}
+        <div id="epimgpicker_${qId}" style="display:none;margin-top:6px;padding:10px 12px;border:1.5px dashed var(--border);border-radius:8px;background:var(--bg2)">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <label class="btn btn-ghost btn-sm" style="cursor:pointer"><i class="fa fa-upload"></i> Subir
+              <input type="file" accept="image/*" style="display:none" onchange="_evalImgFromFile('${qId}',this)">
+            </label>
+            <span style="font-size:12px;color:var(--text3)">o</span>
+            <input id="epimgurl_${qId}" placeholder="Pegar URL de imagen..." style="flex:1;min-width:180px;font-size:12px;padding:5px 8px">
+            <button class="btn btn-ghost btn-sm" onclick="_evalImgFromUrl('${qId}')"><i class="fa fa-link"></i> Usar URL</button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('epimgpicker_${qId}').style.display='none'"><i class="fa fa-times"></i></button>
+          </div>
+        </div>
+      </div>
       <div id="epc_${qId}">${_evalGetOpcContent(qId,tipo,q)}</div>
     </div>
     <div id="epfoot_${qId}" style="border-top:1px solid var(--border);padding:8px 16px;display:${isDecorativo?'none':'flex'};align-items:center;gap:14px;flex-wrap:wrap;background:var(--bg2)">
@@ -13878,6 +13955,7 @@ function evalAddPregunta(q=null){
         Cuenta para calificación
       </label>
       <span style="flex:1"></span>
+      <button class="btn btn-ghost btn-sm" title="Agregar imagen" onclick="_evalImgToggle('${qId}')"><i class="fa fa-image"></i></button>
       <button class="btn btn-ghost btn-sm" style="padding:4px 10px;color:var(--red)" onclick="document.getElementById('ep_${qId}').remove()"><i class="fa fa-trash"></i></button>
     </div>`;
   document.getElementById('eval-preguntas-list').appendChild(div);
@@ -13928,7 +14006,8 @@ async function saveEvalTemplate(){
       escala_max_label=document.querySelector(`[data-qid="${qId}"][data-field="escala_max_label"]`)?.value||'';
       respuesta_correcta=document.querySelector(`input[name="correct_esc_${qId}"]:checked`)?.value||null;
     }
-    preguntas.push({id:qId,tipo,texto,opciones,respuesta_correcta,puntos,cuenta_calificacion,requerida,escala_min,escala_max,escala_min_label,escala_max_label});
+    const imagen = document.getElementById('epimgval_'+qId)?.value||null;
+    preguntas.push({id:qId,tipo,texto,opciones,respuesta_correcta,puntos,cuenta_calificacion,requerida,escala_min,escala_max,escala_min_label,escala_max_label,imagen:imagen||null});
   });
   const pregsConPregunta=preguntas.filter(p=>!_EVAL_TEXTO_TIPOS.has(p.tipo));
   if(!pregsConPregunta.length){showToast('Agrega al menos una pregunta','err');return;}
@@ -14321,7 +14400,8 @@ function _renderEvalPublica(ev, enviada){
     if(q.tipo==='descripcion') return `<div style="font-size:14px;color:var(--text2);padding:4px 0">${q.texto}</div>`;
     pregNum++;
     const req = q.requerida ? '<span style="color:var(--red)"> *</span>' : '';
-    const label = `<div style="font-weight:600;margin-bottom:10px;font-size:14px">${pregNum}. ${q.texto}${req}</div>`;
+    const imgHTML = q.imagen ? `<div style="margin:8px 0 12px"><img src="${q.imagen}" style="max-width:100%;max-height:260px;border-radius:8px;border:1px solid var(--border);display:block"></div>` : '';
+    const label = `<div style="font-weight:600;margin-bottom:6px;font-size:14px">${pregNum}. ${q.texto}${req}</div>${imgHTML}`;
     let input = '';
     if(q.tipo==='texto_corto'){
       input = `<input name="q_${q.id}" placeholder="Tu respuesta..." style="width:100%;font-size:13px">`;

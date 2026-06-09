@@ -14360,8 +14360,8 @@ async function generarInformeEvalPDF(){
     const esCorrecta = q.respuesta_correcta && String(resp)===String(q.respuesta_correcta);
     // Número y pregunta
     doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(40,40,40);
-    const qLines = doc.splitTextToSize(`${pregNum}. ${q.texto}`, CW);
-    if(y+qLines.length*5+14>280){doc.addPage();y=18;}
+    const qLines = doc.splitTextToSize(`${pregNum}. ${q.texto||''}`, CW);
+    if(y+qLines.length*5+20>280){doc.addPage();y=18;}
     doc.text(qLines, M, y); y+=qLines.length*5+2;
     // Puntos badge
     if(q.puntos&&cuentaCal){
@@ -14369,19 +14369,26 @@ async function generarInformeEvalPDF(){
       doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(150,150,150);
       doc.text(ptsTxt, M+CW-doc.getTextWidth(ptsTxt), y-qLines.length*5-2);
     }
-    // Respuesta
+    // Respuesta — normalizar texto para evitar overflow por datos corruptos
+    const _pdfText = s => String(s||'').replace(/(.{1})/g,'$1​'); // insertar zero-width space entre chars para permitir wrapping
     doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
     if(tieneClaves && cuentaCal && q.respuesta_correcta){
       doc.setTextColor(esCorrecta?34:220, esCorrecta?197:38, esCorrecta?94:38);
-      const rLines = doc.splitTextToSize(`Respuesta: ${resp} ${esCorrecta?'✓':'✗'}`, CW-6);
+      const rTxt = `Respuesta: ${resp} ${esCorrecta?'✓':'✗'}`;
+      const rLines = doc.splitTextToSize(rTxt, CW-6);
+      if(y+rLines.length*4.5+8>280){doc.addPage();y=18;}
       doc.text(rLines, M+4, y); y+=rLines.length*4.5;
-      if(!esCorrecta){
+      if(!esCorrecta && q.respuesta_correcta){
         doc.setTextColor(34,197,94);
-        doc.text(`Correcta: ${q.respuesta_correcta}`, M+4, y); y+=4.5;
+        const cLines = doc.splitTextToSize(`Correcta: ${q.respuesta_correcta}`, CW-6);
+        if(y+cLines.length*4.5+6>280){doc.addPage();y=18;}
+        doc.text(cLines, M+4, y); y+=cLines.length*4.5;
       }
     } else {
       doc.setTextColor(80,80,80);
-      const rLines = doc.splitTextToSize(`Respuesta: ${resp}`, CW-6);
+      const rTxt = `Respuesta: ${resp}`;
+      const rLines = doc.splitTextToSize(rTxt, CW-6);
+      if(y+rLines.length*4.5+6>280){doc.addPage();y=18;}
       doc.text(rLines, M+4, y); y+=rLines.length*4.5;
     }
     doc.setTextColor(40,40,40); doc.setDrawColor(235,235,235); doc.line(M,y+1.5,M+CW,y+1.5); y+=6;

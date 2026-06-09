@@ -520,7 +520,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <button class="btn btn-ghost btn-sm" onclick="limpiarFiltrosVacantes()" style="white-space:nowrap;font-size:12px;padding:0 8px">× Limpiar</button>
       <span class="sp"></span>
       <button id="btn-vac-col-vis" class="btn btn-ghost btn-sm" onclick="openVacColPanel()" style="font-size:12px;padding:0 8px"><i class="fa fa-columns"></i> Columnas</button>
-      <button class="btn btn-green btn-sm" onclick="exportarCSV()" style="white-space:nowrap;font-size:12px;padding:0 8px"><i class="fa fa-file-excel"></i> Exportar Excel</button>
+      <button class="btn btn-green btn-sm" onclick="exportarVacantesExcel()" style="white-space:nowrap;font-size:12px;padding:0 8px"><i class="fa fa-file-excel"></i> Exportar Excel</button>
       <button class="btn btn-primary btn-sm" onclick="openVacanteModal()" style="white-space:nowrap;font-size:12px;padding:0 8px"><i class="fa fa-plus"></i> Nueva</button>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">
@@ -5785,6 +5785,61 @@ function renderVacantesTable(){
   _applyVacColVis();
   const _vcnt=document.getElementById('vacantes-count');
   if(_vcnt)_vcnt.innerHTML=`Mostrando <strong>${list.length}</strong> registros`;
+}
+
+function exportarVacantesExcel(){
+  // Reproducir exactamente los filtros activos
+  const q=(document.getElementById('flt-vac-q')||{}).value||'';
+  const desdeFlt=(document.getElementById('flt-vac-desde')||{}).value||'';
+  const hastaFlt=(document.getElementById('flt-vac-hasta')||{}).value||'';
+  const _recIdV=currentUserData?.rol==='reclutador'?currentUserData?.reclutador_id:null;
+  const _empIdV=currentUserData?.rol==='rh_cliente'?currentUserData?.empresa_id:null;
+  let list=_recIdV?DB.vacantes.filter(v=>v.reclutador_id===_recIdV):_empIdV?DB.vacantes.filter(v=>v.empresa_id===_empIdV):DB.vacantes;
+  if(q)list=list.filter(v=>v.nombre.toLowerCase().includes(q.toLowerCase()));
+  const mfEmp=_mfGet('flt-vac-emp');if(mfEmp)list=list.filter(v=>mfEmp.has(v.empresa_id||''));
+  const mfEst=_mfGet('flt-vac-est');if(mfEst)list=list.filter(v=>mfEst.has(v.estado||''));
+  const mfRec=_mfGet('flt-vac-rec');if(mfRec)list=list.filter(v=>mfRec.has(v.reclutador_id||''));
+  const mfProy=_mfGet('flt-vac-proy');if(mfProy)list=list.filter(v=>mfProy.has(v.proyecto||''));
+  const mfDep=_mfGet('flt-vac-dep');if(mfDep)list=list.filter(v=>mfDep.has(v.departamento||''));
+  if(desdeFlt)list=list.filter(v=>(v.fecha_apertura||'')>=desdeFlt);
+  if(hastaFlt)list=list.filter(v=>(v.fecha_apertura||'')<=hastaFlt);
+  // Aplicar el mismo orden que la vista
+  if(_vacVistaActual==='recientes')list=[...list].sort((a,b)=>(b.fecha_apertura||'').localeCompare(a.fecha_apertura||''));
+  else if(_vacVistaActual==='antiguo')list=[...list].sort((a,b)=>(a.fecha_apertura||'').localeCompare(b.fecha_apertura||''));
+  else if(_vacVistaActual==='proyecto'||_vacVistaActual==='departamento'){
+    const campo=_vacVistaActual==='proyecto'?'proyecto':'departamento';
+    list=[...list].sort((a,b)=>{
+      const eA=DB.empresas.find(x=>x.id===a.empresa_id)||{},eB=DB.empresas.find(x=>x.id===b.empresa_id)||{};
+      if(a.empresa_id===b.empresa_id){const ord=eA[campo==='proyecto'?'proyectos':'departamentos']||[];const ia=ord.indexOf(a[campo]??''),ib=ord.indexOf(b[campo]??'');if(ia===-1&&ib===-1)return(a.fecha_apertura||'').localeCompare(b.fecha_apertura||'');if(ia===-1)return 1;if(ib===-1)return -1;if(ia!==ib)return ia-ib;return(a.fecha_apertura||'').localeCompare(b.fecha_apertura||'');}
+      return(eA.nombre||'').localeCompare(eB.nombre||'');
+    });
+  } else list=[...list].sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true}));
+
+  if(!list.length){showToast('No hay vacantes para exportar','err');return;}
+
+  // Construir columnas respetando visibilidad
+  const vis=k=>_vacColVis[k]!==false;
+  const cols=[
+    {show:true,       label:'#',            val:(v,i)=>i+1},
+    {show:true,       label:'Vacante',       val:v=>v.nombre},
+    {show:vis('folio'),         label:'Folio',        val:v=>v.folio||''},
+    {show:vis('empresa'),       label:'Empresa',      val:v=>DB.empresas.find(x=>x.id===v.empresa_id)?.nombre||''},
+    {show:vis('reclutador'),    label:'Reclutador',   val:v=>DB.reclutadores.find(x=>x.id===v.reclutador_id)?.nombre||''},
+    {show:vis('proyecto'),      label:'Proyecto',     val:v=>v.proyecto||''},
+    {show:vis('departamento'),  label:'Departamento', val:v=>v.departamento||''},
+    {show:vis('apertura'),      label:'Apertura',     val:v=>fmt(v.fecha_apertura)},
+    {show:true,       label:'Estado',        val:v=>v.estado},
+    {show:vis('sla'),  label:'SLA',          val:v=>v.sla_dias?`${daysBetween(v.fecha_apertura)}/${v.sla_dias}d`:''},
+    {show:vis('dias'), label:'Días abierta', val:v=>daysBetween(v.fecha_apertura)},
+    {show:vis('cands'),label:'Cands.',       val:v=>{const cs=DB.candidatos.filter(c=>c.vacante_id===v.id);const act=cs.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length;return`${act}/${cs.length}`;}},
+  ].filter(c=>c.show);
+
+  const header=cols.map(c=>c.label);
+  const dataRows=list.map((v,i)=>cols.map(c=>c.val(v,i)));
+  const ws=XLSX.utils.aoa_to_sheet([header,...dataRows]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Vacantes');
+  XLSX.writeFile(wb,`vacantes_${today()}.xlsx`);
 }
 
 function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {

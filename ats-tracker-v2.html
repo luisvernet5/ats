@@ -589,6 +589,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <div style="display:flex;gap:6px">
         <button id="evtab-plantillas" class="btn btn-primary btn-sm" onclick="evSetTab('plantillas')"><i class="fa fa-list"></i> Plantillas</button>
         <button id="evtab-enviadas" class="btn btn-ghost btn-sm" onclick="evSetTab('enviadas')"><i class="fa fa-paper-plane"></i> Enviadas</button>
+        <button id="evtab-respuestas" class="btn btn-ghost btn-sm" onclick="evSetTab('respuestas')"><i class="fa fa-check-double"></i> Respuestas</button>
       </div>
       <button class="btn btn-primary btn-sm" id="btn-nueva-eval" onclick="openEvalTemplateModal()"><i class="fa fa-plus"></i> Nueva evaluación</button>
     </div>
@@ -602,6 +603,12 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <div class="table-wrap"><table class="table" id="eval-enviadas-table">
         <thead><tr><th>Candidato</th><th>Evaluación</th><th>Vacante</th><th>Estado</th><th>Puntaje</th><th>Enviada</th><th></th></tr></thead>
         <tbody id="eval-enviadas-tbody"></tbody>
+      </table></div>
+    </div>
+    <div id="ev-panel-respuestas" style="display:none">
+      <div class="table-wrap"><table class="table" id="eval-respuestas-table">
+        <thead><tr><th>Candidato</th><th>Evaluación</th><th>Vacante</th><th>Fecha respuesta</th><th>Calificación</th><th>Resultado</th><th></th></tr></thead>
+        <tbody id="eval-respuestas-tbody"></tbody>
       </table></div>
     </div>
   </div>
@@ -893,31 +900,25 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     <div class="mb">
       <input type="hidden" id="env-eval-id">
       <div class="fr full"><div class="fg"><label>Evaluación</label>
-        <select id="env-eval-tpl"><option value="">Seleccionar...</option></select>
-      </div></div>
-      <div class="fr full"><div class="fg"><label>Candidato *</label>
-        <input id="env-eval-cand-q" placeholder="Buscar candidato..." oninput="evalBuscarCand(this.value)" autocomplete="off">
-        <div id="env-eval-cand-list" style="border:1px solid var(--border);border-radius:6px;max-height:160px;overflow:auto;display:none;background:var(--surface)"></div>
-        <input type="hidden" id="env-eval-cand-id">
+        <select id="env-eval-tpl" onchange="generarLinkEval()"><option value="">Seleccionar...</option></select>
       </div></div>
       <div class="fr full"><div class="fg"><label>Vacante (opcional)</label>
-        <select id="env-eval-vac"><option value="">Sin vacante</option></select>
+        <select id="env-eval-vac" onchange="generarLinkEval()"><option value="">Sin vacante</option></select>
       </div></div>
       <div id="env-eval-link-box" style="display:none;margin-top:12px">
-        <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px">Link generado</label>
+        <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px">Link para compartir</label>
         <div style="display:flex;gap:6px;align-items:center">
           <input id="env-eval-link" readonly style="flex:1;font-size:12px;font-family:var(--mono);background:var(--bg2)">
           <button class="btn btn-ghost btn-sm" onclick="evalCopyLink()" title="Copiar"><i class="fa fa-copy"></i></button>
         </div>
         <div style="display:flex;gap:8px;margin-top:10px">
-          <button class="btn btn-ghost btn-sm" style="flex:1;background:#25D366;color:#fff;border:none" onclick="evalShareWhatsapp()"><i class="fab fa-whatsapp"></i> WhatsApp</button>
-          <button class="btn btn-ghost btn-sm" style="flex:1" onclick="evalShareEmail()"><i class="fa fa-envelope"></i> Email</button>
+          <button class="btn btn-ghost btn-sm" style="flex:1;background:#25D366;color:#fff;border:none;font-size:14px;padding:10px" onclick="evalShareWhatsapp()"><i class="fab fa-whatsapp"></i> Enviar por WhatsApp</button>
         </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:8px;text-align:center"><i class="fa fa-info-circle"></i> El candidato ingresará su nombre al abrir el enlace</div>
       </div>
     </div>
     <div class="mf">
       <button class="btn btn-ghost" onclick="closeModal('modal-enviar-eval')">Cerrar</button>
-      <button class="btn btn-primary" id="btn-generar-eval-link" onclick="generarLinkEval()"><i class="fa fa-link"></i> Generar link</button>
     </div>
   </div>
 </div>
@@ -950,7 +951,13 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <div style="font-size:18px;font-weight:600;margin-bottom:8px">¡Evaluación completada!</div>
       <div style="font-size:14px;color:var(--text2)">Tus respuestas han sido enviadas correctamente.</div>
     </div>
-    <div id="evpub-form">
+    <div id="evpub-name-step" style="display:none;text-align:center;padding:20px 0 30px">
+      <div style="font-size:15px;font-weight:600;margin-bottom:16px">¿Cuál es tu nombre completo?</div>
+      <input id="evpub-nombre-input" placeholder="Nombre y apellidos..." style="max-width:340px;width:100%;font-size:15px;padding:10px 14px;border-radius:8px;border:1px solid var(--border);text-align:center;margin-bottom:14px">
+      <br>
+      <button class="btn btn-primary" style="min-width:160px" onclick="_evpubIniciarForm()"><i class="fa fa-arrow-right"></i> Continuar</button>
+    </div>
+    <div id="evpub-form" style="display:none">
       <div id="evpub-preguntas" style="display:flex;flex-direction:column;gap:20px"></div>
       <div style="margin-top:24px;text-align:right">
         <button class="btn btn-primary" onclick="submitEvalPublica()"><i class="fa fa-paper-plane"></i> Enviar respuestas</button>
@@ -13541,12 +13548,53 @@ let _evalPubData  = null; // {evaluacion, enviada}
 function renderEvaluaciones(){
   renderEvalPlantillas();
   renderEvalEnviadas();
+  renderEvalRespuestas();
 }
 function evSetTab(tab){
-  document.getElementById('ev-panel-plantillas').style.display = tab==='plantillas' ? '' : 'none';
-  document.getElementById('ev-panel-enviadas').style.display   = tab==='enviadas'   ? '' : 'none';
-  document.getElementById('evtab-plantillas').className = `btn btn-sm ${tab==='plantillas'?'btn-primary':'btn-ghost'}`;
-  document.getElementById('evtab-enviadas').className   = `btn btn-sm ${tab==='enviadas'  ?'btn-primary':'btn-ghost'}`;
+  document.getElementById('ev-panel-plantillas').style.display  = tab==='plantillas'  ? '' : 'none';
+  document.getElementById('ev-panel-enviadas').style.display    = tab==='enviadas'    ? '' : 'none';
+  document.getElementById('ev-panel-respuestas').style.display  = tab==='respuestas'  ? '' : 'none';
+  document.getElementById('evtab-plantillas').className  = `btn btn-sm ${tab==='plantillas' ?'btn-primary':'btn-ghost'}`;
+  document.getElementById('evtab-enviadas').className    = `btn btn-sm ${tab==='enviadas'   ?'btn-primary':'btn-ghost'}`;
+  document.getElementById('evtab-respuestas').className  = `btn btn-sm ${tab==='respuestas' ?'btn-primary':'btn-ghost'}`;
+  if(tab==='respuestas') renderEvalRespuestas();
+}
+function renderEvalRespuestas(){
+  const tbody=document.getElementById('eval-respuestas-tbody');
+  if(!tbody) return;
+  const completadas=(DB.evaluacionesEnviadas||[]).filter(e=>e.estado==='completada')
+    .sort((a,b)=>(b.fecha_completada||'').localeCompare(a.fecha_completada||''));
+  if(!completadas.length){
+    tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Sin respuestas aún.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML=completadas.map(e=>{
+    const ev=DB.evaluaciones.find(x=>x.id===e.evaluacion_id)||{};
+    const vac=DB.vacantes.find(x=>x.id===e.vacante_id)||{};
+    const pregs=(ev.preguntas||[]).filter(q=>!['titulo','descripcion'].includes(q.tipo));
+    const tieneClaves=pregs.some(q=>q.respuesta_correcta!=null);
+    let scoreHTML='—', resultHTML='—';
+    if(tieneClaves && e.respuestas){
+      const resp=e.respuestas||{};
+      const totalPuntos=pregs.filter(q=>q.cuenta_calificacion!==false).reduce((s,q)=>s+(q.puntos||0),0);
+      const obtuvo=pregs.filter(q=>q.cuenta_calificacion!==false&&q.respuesta_correcta!=null&&resp[q.id]===q.respuesta_correcta).reduce((s,q)=>s+(q.puntos||0),0);
+      const correctas=pregs.filter(q=>q.respuesta_correcta!=null&&resp[q.id]===q.respuesta_correcta).length;
+      const total=pregs.filter(q=>q.respuesta_correcta!=null).length;
+      const pct=total?Math.round(correctas/total*100):0;
+      scoreHTML=`<span style="font-weight:700;font-size:14px;color:${pct>=70?'var(--green)':pct>=50?'var(--amber)':'var(--red)'}">${pct}%</span><span style="font-size:11px;color:var(--text3);margin-left:4px">${correctas}/${total}</span>`;
+      resultHTML=`<span class="badge ${pct>=70?'bg':pct>=50?'ba':'br'}">${pct>=70?'Aprobado':pct>=50?'Regular':'No aprobado'}</span>`;
+    }
+    const fecha=e.fecha_completada?new Date(e.fecha_completada).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+    return`<tr>
+      <td><strong>${e.candidato_nombre||'—'}</strong></td>
+      <td style="font-size:12px">${ev.nombre||'—'}</td>
+      <td style="font-size:12px;color:var(--text3)">${vac.folio||vac.nombre||'—'}</td>
+      <td style="font-size:12px;color:var(--text3)">${fecha}</td>
+      <td>${scoreHTML}</td>
+      <td>${resultHTML}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="verRespuestasEval('${e.id}')"><i class="fa fa-eye"></i> Ver</button></td>
+    </tr>`;
+  }).join('');
 }
 function renderEvalPlantillas(){
   const tbody = document.getElementById('eval-plantillas-tbody');
@@ -13898,18 +13946,15 @@ function evalSelectCand(id, nombre){
   if(cand.vacante_id) document.getElementById('env-eval-vac').value = cand.vacante_id;
 }
 async function generarLinkEval(){
-  const evalId  = document.getElementById('env-eval-tpl').value;
-  const candId  = document.getElementById('env-eval-cand-id').value;
-  const vacId   = document.getElementById('env-eval-vac').value;
-  if(!evalId){ showToast('Selecciona una evaluación','err'); return; }
-  if(!candId){ showToast('Selecciona un candidato','err'); return; }
-  const cand = DB.candidatos.find(c=>c.id===candId)||{};
+  const evalId = document.getElementById('env-eval-tpl').value;
+  const vacId  = document.getElementById('env-eval-vac').value;
+  if(!evalId){ document.getElementById('env-eval-link-box').style.display='none'; return; }
   const token = uid()+uid();
   const enviada = {
     id: uid(),
     evaluacion_id: evalId,
-    candidato_id: candId,
-    candidato_nombre: cand.nombre||'',
+    candidato_id: null,
+    candidato_nombre: '',
     vacante_id: vacId||null,
     token,
     estado: 'pendiente',
@@ -13923,7 +13968,6 @@ async function generarLinkEval(){
     const link = _evalLink(token);
     document.getElementById('env-eval-link').value = link;
     document.getElementById('env-eval-link-box').style.display = '';
-    document.getElementById('btn-generar-eval-link').style.display = 'none';
     renderEvalEnviadas();
   } catch(e){ showToast('Error: '+e.message,'err'); }
 }
@@ -14178,11 +14222,27 @@ function _showEvalPubError(msg){
   document.getElementById('evpub-preguntas').innerHTML = `<div style="color:var(--red);padding:20px;text-align:center">${msg}</div>`;
   document.getElementById('evpub-nombre').textContent = 'Evaluación';
 }
+function _evpubIniciarForm(){
+  const nombre = (document.getElementById('evpub-nombre-input')?.value||'').trim();
+  if(!nombre){ showToast('Escribe tu nombre para continuar','err'); return; }
+  window._evpubNombreIngresado = nombre;
+  document.getElementById('evpub-name-step').style.display='none';
+  document.getElementById('evpub-form').style.display='';
+}
 function _renderEvalPublica(ev, enviada){
   document.getElementById('eval-public-screen').style.display = '';
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('evpub-nombre').textContent = ev.nombre||'Evaluación';
   document.getElementById('evpub-desc').textContent = ev.descripcion||'';
+  // Si no tiene nombre asignado, pedir al candidato que lo ingrese
+  if(!enviada.candidato_nombre){
+    document.getElementById('evpub-name-step').style.display='';
+    document.getElementById('evpub-form').style.display='none';
+  } else {
+    window._evpubNombreIngresado = enviada.candidato_nombre;
+    document.getElementById('evpub-name-step').style.display='none';
+    document.getElementById('evpub-form').style.display='';
+  }
   let pregNum = 0;
   document.getElementById('evpub-preguntas').innerHTML = (ev.preguntas||[]).map(q=>{
     if(q.tipo==='titulo') return `<div style="font-size:20px;font-weight:700;padding:8px 0 2px">${q.texto}</div>`;
@@ -14256,7 +14316,8 @@ async function submitEvalPublica(){
     }
   }
   if(!allAnswered){ showToast('Responde todas las preguntas requeridas','err'); return; }
-  const updated = {...enviada, estado:'completada', respuestas, fecha_completada:new Date().toISOString()};
+  const nombreFinal = window._evpubNombreIngresado || enviada.candidato_nombre || '';
+  const updated = {...enviada, candidato_nombre:nombreFinal, estado:'completada', respuestas, fecha_completada:new Date().toISOString()};
   try {
     await sbClient.from('evaluaciones_enviadas').upsert({id:updated.id, data:updated});
     document.getElementById('evpub-form').style.display = 'none';

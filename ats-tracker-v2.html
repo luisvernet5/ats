@@ -13544,7 +13544,7 @@ function _eseLimpiarFechas(){
 function _eseEstadoBadge(e){
   if(e.fecha_cobrado) return `<span class="badge bg">Cobrado</span>`;
   if(e.motivo_no_cobro) return `<span class="badge br">No se cobró</span>`;
-  if(e.fecha_pagado) return `<span class="badge bg">Pagado</span>`;
+  if(e.fecha_pagado) return `<span class="badge bg">Pagado a proveedor</span>`;
   return `<span class="badge bx">Pendiente</span>`;
 }
 
@@ -13697,7 +13697,7 @@ function exportESEExcel(){
   const _eseEstadoLabel = e => {
     if(e.fecha_cobrado) return 'Cobrado';
     if(e.motivo_no_cobro) return 'No se cobró';
-    if(e.fecha_pagado) return 'Pagado';
+    if(e.fecha_pagado) return 'Pagado a proveedor';
     return 'Pendiente';
   };
   const rows = lista.map((e,i)=>{
@@ -13774,10 +13774,16 @@ function _eseRenderTable(){
   if(cnt) cnt.textContent = `${lista.length} registro${lista.length!==1?'s':''}`;
   res.innerHTML = lista.length === 0
     ? `<div style="text-align:center;padding:60px 0;color:var(--text3)"><i class="fa fa-file-alt" style="font-size:40px;margin-bottom:12px;display:block"></i>No hay registros ESE</div>`
-    : `<div class="table-wrap"><table id="ese-table">
+    : `<div class="table-wrap"><table id="ese-table" style="table-layout:fixed;width:100%">
+        <colgroup>
+          <col style="width:36px"><col style="width:200px"><col style="width:110px">
+          <col style="width:110px"><col style="width:130px"><col style="width:110px">
+          <col style="width:130px"><col style="width:115px"><col style="width:115px">
+          <col><col style="width:36px">
+        </colgroup>
         <thead><tr>
           <th>#</th><th>Candidato</th><th>Empresa</th><th>Folio</th><th>Vacante</th>
-          <th>Fecha realizado</th><th>Estado</th><th>Pago</th><th>Cobro</th><th>Motivo no cobro</th><th></th>
+          <th>Fecha realizado</th><th>Estado</th><th style="text-align:center">Pago</th><th style="text-align:center">Cobro</th><th>Motivo no cobro</th><th></th>
         </tr></thead>
         <tbody>${lista.map((e,i)=>_eseRow(e,i+1)).join('')}</tbody>
       </table></div>`;

@@ -13690,6 +13690,19 @@ function renderEvalEnviadas(){
   }).join('');
 }
 
+function _evalEmpToggle(cb){
+  const lbl = cb.closest('label');
+  if(cb.checked){
+    lbl.style.background  = 'var(--primary)';
+    lbl.style.color       = '#fff';
+    lbl.style.borderColor = 'var(--primary)';
+  } else {
+    lbl.style.background  = 'transparent';
+    lbl.style.color       = 'var(--text)';
+    lbl.style.borderColor = 'var(--border)';
+  }
+}
+
 // ── Plantilla: crear / editar ────────────────────────────────
 function openEvalTemplateModal(id=null){
   document.getElementById('eval-tpl-id').value = '';
@@ -13698,11 +13711,13 @@ function openEvalTemplateModal(id=null){
   document.getElementById('eval-preguntas-list').innerHTML = '';
   document.getElementById('eval-tpl-title').textContent = id ? 'Editar evaluación' : 'Nueva evaluación';
   const selectedEmpIds = id ? (DB.evaluaciones.find(x=>x.id===id)?.empresa_ids||[]) : [];
-  document.getElementById('eval-tpl-emps').innerHTML = DB.empresas.map(e=>`
-    <label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:14px;border:1px solid ${selectedEmpIds.includes(e.id)?'var(--primary)':'var(--border)'};background:${selectedEmpIds.includes(e.id)?'var(--primary-light,#e8f0fe)':'var(--surface)'};color:${selectedEmpIds.includes(e.id)?'var(--primary)':'var(--text)'}">
-      <input type="checkbox" name="eval-emp" value="${e.id}" ${selectedEmpIds.includes(e.id)?'checked':''} style="display:none" onchange="this.closest('label').style.background=this.checked?'var(--primary-light,#e8f0fe)':'var(--surface)';this.closest('label').style.color=this.checked?'var(--primary)':'var(--text)';this.closest('label').style.borderColor=this.checked?'var(--primary)':'var(--border)'">
+  document.getElementById('eval-tpl-emps').innerHTML = DB.empresas.map(e=>{
+    const sel = selectedEmpIds.includes(e.id);
+    return `<label class="_eval-emp-chip" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:3px 10px;border-radius:20px;border:1.5px solid ${sel?'var(--primary)':'var(--border)'};background:${sel?'var(--primary)':'transparent'};color:${sel?'#fff':'var(--text)'};transition:all .15s;margin:2px;user-select:none">
+      <input type="checkbox" name="eval-emp" value="${e.id}" ${sel?'checked':''} style="display:none" onchange="_evalEmpToggle(this)">
       ${e.nombre}
-    </label>`).join('');
+    </label>`;
+  }).join('');
   if(id){
     const e = DB.evaluaciones.find(x=>x.id===id)||{};
     document.getElementById('eval-tpl-id').value = id;

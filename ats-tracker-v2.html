@@ -13600,6 +13600,10 @@ function _eseRow(e, n){
               <label>Fecha de pago</label>
               <input type="date" id="ese-fp-${e.id}" value="${e.fecha_pagado||''}" style="width:100%">
             </div>
+            <div class="fg" style="margin-top:10px">
+              <label>Factura proveedor</label>
+              <input type="text" id="ese-fprov-${e.id}" value="${e.factura_proveedor||''}" placeholder="Nº de factura proveedor" style="width:100%">
+            </div>
           </div>
           <div>
             <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">Cobro</div>
@@ -13612,6 +13616,10 @@ function _eseRow(e, n){
             <div class="fg">
               <label>Fecha de cobro</label>
               <input type="date" id="ese-fc-${e.id}" value="${e.fecha_cobrado||''}" style="width:100%">
+            </div>
+            <div class="fg" style="margin-top:10px">
+              <label>Factura cliente</label>
+              <input type="text" id="ese-fcli-${e.id}" value="${e.factura_cliente||''}" placeholder="Nº de factura cliente" style="width:100%">
             </div>
           </div>
         </div>
@@ -13680,6 +13688,8 @@ async function saveESERow(id){
   rec.fecha_pagado  = pagadoCb?.checked ? (document.getElementById('ese-fp-'+id)?.value||null) : null;
   rec.fecha_cobrado = cobrCb?.checked  ? (document.getElementById('ese-fc-'+id)?.value||null) : null;
   rec.motivo_no_cobro = motivoSel==='Otro' ? (motivoTxt||'Otro') : (motivoSel||null);
+  rec.factura_proveedor = document.getElementById('ese-fprov-'+id)?.value.trim()||null;
+  rec.factura_cliente   = document.getElementById('ese-fcli-'+id)?.value.trim()||null;
   rec.notas = document.getElementById('ese-not-'+id)?.value.trim()||null;
   if(!SANDBOX_MODE){
     const {error}=await sbClient.from('ese').upsert(rec);
@@ -13714,13 +13724,15 @@ function exportESEExcel(){
       _eseEstadoLabel(e),
       e.motivo_no_cobro||'',
       e.fecha_pagado||'',
+      e.factura_proveedor||'',
       e.fecha_cobrado||'',
+      e.factura_cliente||'',
       e.notas||''
     ];
   });
-  const header = ['#','Candidato','Empresa','Folio','Vacante','Fecha realizado','Estado','Motivo no cobro','Fecha pagado','Fecha cobrado','Notas'];
+  const header = ['#','Candidato','Empresa','Folio','Vacante','Fecha realizado','Estado','Motivo no cobro','Fecha pagado','Factura proveedor','Fecha cobrado','Factura cliente','Notas'];
   const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
-  ws['!cols'] = [4,22,18,14,22,15,12,24,14,14,30].map(w=>({wch:w}));
+  ws['!cols'] = [4,22,18,14,22,15,14,24,14,18,14,18,30].map(w=>({wch:w}));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'ESE');
   XLSX.writeFile(wb, `ESE_${today()}.xlsx`);

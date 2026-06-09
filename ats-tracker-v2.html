@@ -2912,10 +2912,10 @@ const PERMISOS_SECCIONES=[
   {key:'vacantes',               label:'Vacantes',                grupo:'Principal',  icon:'fa-briefcase'},
   {key:'candidatos',             label:'Candidatos',              grupo:'Principal',  icon:'fa-users'},
   {key:'pipeline',               label:'Pipeline',                grupo:'Principal',  icon:'fa-stream'},
-  {key:'evaluaciones',           label:'Librería de Evaluaciones', grupo:'Principal',  icon:'fa-clipboard-list'},
-  {key:'procesos-eval',          label:'Procesos de Evaluación',  grupo:'Principal',  icon:'fa-tasks'},
   {key:'documentacion',          label:'Documentación',           grupo:'Principal',  icon:'fa-folder-open'},
   {key:'perfiles',               label:'Perfiles de puesto',      grupo:'Principal',  icon:'fa-id-card'},
+  {key:'evaluaciones',           label:'Librería de Evaluaciones', grupo:'Principal',  icon:'fa-clipboard-list'},
+  {key:'procesos-eval',          label:'Procesos de Evaluación',  grupo:'Principal',  icon:'fa-tasks'},
   {key:'empresas',               label:'Empresas cliente',        grupo:'Empresas',   icon:'fa-building'},
   {key:'reclutadores',           label:'Reclutadores',            grupo:'Empresas',   icon:'fa-user-tie'},
   {key:'headcount',              label:'HeadCount',               grupo:'Análisis',   icon:'fa-users'},
@@ -10896,11 +10896,11 @@ function renderConfig(){
         <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-usuarios" onclick="switchConfigTab('usuarios')">
           <i class="fa fa-users-cog"></i> Usuarios
         </button>
-        <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-respaldo" onclick="switchConfigTab('respaldo')">
-          <i class="fa fa-shield-alt"></i> Respaldo
-        </button>
         <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-permisos" onclick="switchConfigTab('permisos')">
           <i class="fa fa-lock"></i> Permisos
+        </button>
+        <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-respaldo" onclick="switchConfigTab('respaldo')">
+          <i class="fa fa-shield-alt"></i> Respaldo
         </button>`:''}
       </div>
       <div id="cfg-content"></div>

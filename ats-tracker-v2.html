@@ -13910,9 +13910,6 @@ async function deleteEvalTemplate(id){
 
 // ── Enviar evaluación ────────────────────────────────────────
 function openEnviarEvalModal(evalId=null){
-  document.getElementById('env-eval-cand-q').value = '';
-  document.getElementById('env-eval-cand-id').value = '';
-  document.getElementById('env-eval-cand-list').style.display = 'none';
   document.getElementById('env-eval-link-box').style.display = 'none';
   document.getElementById('env-eval-link').value = '';
   const tplSel = document.getElementById('env-eval-tpl');
@@ -13920,13 +13917,13 @@ function openEnviarEvalModal(evalId=null){
   DB.evaluaciones.filter(e=>e.activa!==false).forEach(e=>{
     tplSel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
   });
-  if(evalId) tplSel.value = evalId;
   const vacSel = document.getElementById('env-eval-vac');
   vacSel.innerHTML = '<option value="">Sin vacante</option>';
   DB.vacantes.filter(v=>v.estado==='Abierta').forEach(v=>{
     vacSel.innerHTML += `<option value="${v.id}">${v.folio} — ${v.nombre}</option>`;
   });
   openModal('modal-enviar-eval');
+  if(evalId){ tplSel.value = evalId; generarLinkEval(); }
 }
 function evalBuscarCand(q){
   const list = document.getElementById('env-eval-cand-list');

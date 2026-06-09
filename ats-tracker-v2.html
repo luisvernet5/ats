@@ -13544,8 +13544,20 @@ function _eseLimpiarFechas(){
 function _eseEstadoBadge(e){
   if(e.fecha_cobrado) return `<span class="badge bg">Cobrado</span>`;
   if(e.motivo_no_cobro) return `<span class="badge br">No se cobró</span>`;
-  if(e.fecha_pagado) return `<span class="badge" style="background:#fef9c3;color:#854d0e">Pagado</span>`;
+  if(e.fecha_pagado) return `<span class="badge bg">Pagado</span>`;
   return `<span class="badge bx">Pendiente</span>`;
+}
+
+function _eseToggleBtn(id, fecha, tipo){
+  const on = !!fecha;
+  return `<button onclick="eseQuickToggle('${id}','${tipo}')"
+    style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;white-space:nowrap;
+      border:1px solid ${on?'#86efac':'var(--border)'};
+      background:${on?'#dcfce7':'var(--surface2)'};
+      color:${on?'#15803d':'var(--text3)'}">
+    <i class="fa ${on?'fa-check-circle':'fa-circle-o'}"></i>
+    ${on ? _eseFmt(fecha) : '—'}
+  </button>`;
 }
 
 function _eseRow(e, n){
@@ -13565,6 +13577,8 @@ function _eseRow(e, n){
     <td style="font-size:12px;color:var(--text2)">${vac.nombre||'—'}</td>
     <td>${_eseFmt(e.fecha_realizado)}</td>
     <td>${_eseEstadoBadge(e)}</td>
+    <td onclick="event.stopPropagation()" style="text-align:center">${_eseToggleBtn(e.id, e.fecha_pagado, 'pagado')}</td>
+    <td onclick="event.stopPropagation()" style="text-align:center">${_eseToggleBtn(e.id, e.fecha_cobrado, 'cobrado')}</td>
     <td style="font-size:12px;color:var(--text3);max-width:160px">${e.motivo_no_cobro||'—'}</td>
     <td onclick="event.stopPropagation()">
       <button class="btn btn-sm" style="color:var(--red);background:none;border:none;cursor:pointer" onclick="deleteESE('${e.id}')" title="Eliminar"><i class="fa fa-trash"></i></button>
@@ -13763,7 +13777,7 @@ function _eseRenderTable(){
     : `<div class="table-wrap"><table id="ese-table">
         <thead><tr>
           <th>#</th><th>Candidato</th><th>Empresa</th><th>Folio</th><th>Vacante</th>
-          <th>Fecha realizado</th><th>Estado</th><th>Motivo no cobro</th><th></th>
+          <th>Fecha realizado</th><th>Estado</th><th>Pago</th><th>Cobro</th><th>Motivo no cobro</th><th></th>
         </tr></thead>
         <tbody>${lista.map((e,i)=>_eseRow(e,i+1)).join('')}</tbody>
       </table></div>`;

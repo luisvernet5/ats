@@ -13914,11 +13914,18 @@ async function saveEvalTemplate(){
   if(!pregsConPregunta.length){showToast('Agrega al menos una pregunta','err');return;}
   const empresa_ids=[...document.querySelectorAll('input[name="eval-emp"]:checked')].map(cb=>cb.value);
   const id=document.getElementById('eval-tpl-id').value||uid();
+  const esNueva = !DB.evaluaciones.find(x=>x.id===id);
+  const anterior = esNueva ? null : DB.evaluaciones.find(x=>x.id===id);
   const ev={id,nombre,descripcion:document.getElementById('eval-tpl-desc').value.trim(),empresa_ids,preguntas,activa:true,created_at:new Date().toISOString()};
   try{
     await saveRecord('evaluaciones',ev);
     const idx=DB.evaluaciones.findIndex(x=>x.id===id);
     if(idx>=0)DB.evaluaciones[idx]=ev;else DB.evaluaciones.push(ev);
+    const accion = esNueva ? 'Nueva evaluación' : 'Editar evaluación';
+    const detalle = esNueva
+      ? `${nombre} · ${preguntas.length} pregunta(s)`
+      : `${nombre} · ${preguntas.length} pregunta(s)${anterior?.nombre!==nombre?` · Renombrada de "${anterior.nombre}"`:''}`;
+    await logActivity(accion, 'evaluaciones', id, detalle);
     showToast('Evaluación guardada ✓');
     closeModal('modal-eval-template');
     renderEvalPlantillas();
@@ -13927,15 +13934,21 @@ async function saveEvalTemplate(){
 
 async function deleteEvalTemplate(id){
   if(!confirm('¿Eliminar esta evaluación?')) return;
+  const ev = DB.evaluaciones.find(x=>x.id===id);
   await deleteRecord('evaluaciones',id);
   DB.evaluaciones = DB.evaluaciones.filter(x=>x.id!==id);
+  await logActivity('Eliminar evaluación', 'evaluaciones', id, ev?.nombre||id);
   showToast('Evaluación eliminada');
   renderEvalPlantillas();
 }
 async function deleteEvalEnviada(id){
   if(!confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
+  const enviada = (DB.evaluacionesEnviadas||[]).find(x=>x.id===id);
+  const ev = enviada ? DB.evaluaciones.find(x=>x.id===enviada.evaluacion_id) : null;
   await deleteRecord('evaluaciones_enviadas',id);
   DB.evaluacionesEnviadas = (DB.evaluacionesEnviadas||[]).filter(x=>x.id!==id);
+  await logActivity('Eliminar respuesta evaluación', 'evaluaciones_enviadas', id,
+    `${ev?.nombre||'—'} · Candidato: ${enviada?.candidato_nombre||'—'}`);
   showToast('Registro eliminado');
   renderEvalEnviadas();
   renderEvalRespuestas();

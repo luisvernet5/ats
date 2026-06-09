@@ -348,6 +348,8 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
   .topbar-actions .btn span { display: none; }
   .topbar-actions .btn { padding: 7px 10px !important; }
 }
+._eval-emp-chip { display:inline-flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:3px 10px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--text);transition:background .15s,color .15s,border-color .15s;margin:2px;user-select:none }
+._eval-emp-chip._sel { background:var(--accent)!important;color:#fff!important;border-color:var(--accent)!important }
 </style>
 </head>
 <body style="visibility:hidden">
@@ -13691,16 +13693,7 @@ function renderEvalEnviadas(){
 }
 
 function _evalEmpToggle(cb){
-  const lbl = cb.closest('label');
-  if(cb.checked){
-    lbl.style.background  = 'var(--primary)';
-    lbl.style.color       = '#fff';
-    lbl.style.borderColor = 'var(--primary)';
-  } else {
-    lbl.style.background  = 'transparent';
-    lbl.style.color       = 'var(--text)';
-    lbl.style.borderColor = 'var(--border)';
-  }
+  cb.closest('label').classList.toggle('_sel', cb.checked);
 }
 
 // ── Plantilla: crear / editar ────────────────────────────────
@@ -13713,7 +13706,7 @@ function openEvalTemplateModal(id=null){
   const selectedEmpIds = id ? (DB.evaluaciones.find(x=>x.id===id)?.empresa_ids||[]) : [];
   document.getElementById('eval-tpl-emps').innerHTML = DB.empresas.map(e=>{
     const sel = selectedEmpIds.includes(e.id);
-    return `<label class="_eval-emp-chip" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:3px 10px;border-radius:20px;border:1.5px solid ${sel?'var(--primary)':'var(--border)'};background:${sel?'var(--primary)':'transparent'};color:${sel?'#fff':'var(--text)'};transition:all .15s;margin:2px;user-select:none">
+    return `<label class="_eval-emp-chip${sel?' _sel':''}">
       <input type="checkbox" name="eval-emp" value="${e.id}" ${sel?'checked':''} style="display:none" onchange="_evalEmpToggle(this)">
       ${e.nombre}
     </label>`;

@@ -13573,9 +13573,9 @@ function _eseRow(e, n){
     <td style="color:var(--text3);font-size:12px">${n}</td>
     <td><strong>${cand.nombre||'—'}</strong></td>
     <td style="font-size:12px;color:var(--text2)">${emp.nombre||'—'}</td>
-    <td style="font-size:12px;color:var(--text2);font-family:var(--mono)">${vac.folio||'—'}</td>
+    <td style="font-size:12px;color:var(--text2);font-family:var(--mono);white-space:nowrap">${vac.folio||'—'}</td>
     <td style="font-size:12px;color:var(--text2)">${vac.nombre||'—'}</td>
-    <td>${_eseFmt(e.fecha_realizado)}</td>
+    <td style="white-space:nowrap">${_eseFmt(e.fecha_realizado)}</td>
     <td>${_eseEstadoBadge(e)}</td>
     <td onclick="event.stopPropagation()" style="text-align:center">${_eseToggleBtn(e.id, e.fecha_pagado, 'pagado')}</td>
     <td onclick="event.stopPropagation()" style="text-align:center">${_eseToggleBtn(e.id, e.fecha_cobrado, 'cobrado')}</td>
@@ -13774,12 +13774,12 @@ function _eseRenderTable(){
   if(cnt) cnt.textContent = `${lista.length} registro${lista.length!==1?'s':''}`;
   res.innerHTML = lista.length === 0
     ? `<div style="text-align:center;padding:60px 0;color:var(--text3)"><i class="fa fa-file-alt" style="font-size:40px;margin-bottom:12px;display:block"></i>No hay registros ESE</div>`
-    : `<div class="table-wrap"><table id="ese-table" style="table-layout:fixed;width:100%">
+    : `<div class="table-wrap"><table id="ese-table">
         <colgroup>
-          <col style="width:36px"><col style="width:200px"><col style="width:110px">
-          <col style="width:110px"><col style="width:130px"><col style="width:110px">
-          <col style="width:130px"><col style="width:115px"><col style="width:115px">
-          <col><col style="width:36px">
+          <col style="width:36px"><col style="min-width:160px"><col style="width:110px">
+          <col style="width:115px"><col style="width:130px"><col style="width:110px">
+          <col style="width:140px"><col style="width:115px"><col style="width:115px">
+          <col style="width:150px"><col style="width:36px">
         </colgroup>
         <thead><tr>
           <th>#</th><th>Candidato</th><th>Empresa</th><th>Folio</th><th>Vacante</th>

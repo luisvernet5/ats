@@ -1043,7 +1043,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
   <div class="modal" style="width:680px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column">
     <div class="mh"><h3>Respuestas del proceso</h3><button class="xbtn" onclick="closeModal('modal-proceso-respuestas')"><i class="fa fa-times"></i></button></div>
     <div class="mb" id="pe-respuestas-body" style="flex:1;overflow-y:auto"></div>
-    <div class="mf">
+    <div class="mf" id="pe-resp-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-proceso-respuestas')">Cerrar</button>
     </div>
   </div>
@@ -14974,7 +14974,6 @@ function renderPEEnviados(){
       <td style="font-size:12px;color:var(--text3)">${e.fecha_envio?new Date(e.fecha_envio).toLocaleDateString('es-MX'):'—'}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-ghost btn-sm" title="Copiar link" onclick="peCopyLink('${e.token}')"><i class="fa fa-link"></i> Copiar link</button>
-        ${e.estado!=='pendiente'?`<button class="btn btn-ghost btn-sm" onclick="verRespuestasProceso('${e.id}')"><i class="fa fa-eye"></i> Ver</button>`:''}
         ${currentUserData?.rol==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteProcesoEnviado('${e.id}')"><i class="fa fa-trash"></i></button>`:''}
       </td>
     </tr>`;
@@ -15237,7 +15236,121 @@ function verRespuestasProceso(envId){
   }
   html+='</div>';
   document.getElementById('pe-respuestas-body').innerHTML=html;
+
+  // Footer: botón PDF simple o dropdown según nº de pruebas
+  const pruebas = enviado.pruebas||[];
+  const footer = document.getElementById('pe-resp-footer');
+  if(footer){
+    let pdfBtn = '';
+    if(pruebas.length <= 1){
+      pdfBtn = `<button class="btn btn-danger" onclick="exportProcesoPDF('${envId}',null)"><i class="fa fa-file-pdf"></i> Exportar PDF</button>`;
+    } else {
+      const opts = pruebas.map((p,i)=>`<button onclick="exportProcesoPDF('${envId}',${i});document.getElementById('pe-pdf-menu').style.display='none'"
+        style="width:100%;text-align:left;padding:9px 14px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--text)"
+        onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+        <i class="fa fa-file-alt" style="color:var(--text3);margin-right:6px"></i>${_esc(p.nombre)}
+      </button>`).join('');
+      pdfBtn = `<div style="position:relative;display:inline-block">
+        <button class="btn btn-danger" onclick="document.getElementById('pe-pdf-menu').style.display=document.getElementById('pe-pdf-menu').style.display==='none'?'block':'none'" style="display:flex;align-items:center;gap:6px">
+          <i class="fa fa-file-pdf"></i> Exportar PDF <i class="fa fa-chevron-up" style="font-size:10px"></i>
+        </button>
+        <div id="pe-pdf-menu" style="display:none;position:absolute;bottom:calc(100% + 6px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.18);min-width:200px;z-index:100;overflow:hidden">
+          <button onclick="exportProcesoPDF('${envId}',null);document.getElementById('pe-pdf-menu').style.display='none'"
+            style="width:100%;text-align:left;padding:9px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text)"
+            onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+            <i class="fa fa-file-pdf" style="color:#ef4444;margin-right:6px"></i> Informe completo
+          </button>
+          <div style="height:1px;background:var(--border)"></div>
+          ${opts}
+        </div>
+      </div>`;
+    }
+    footer.innerHTML = pdfBtn + `<button class="btn btn-ghost" onclick="closeModal('modal-proceso-respuestas')">Cerrar</button>`;
+  }
+
   openModal('modal-proceso-respuestas');
+}
+
+function exportProcesoPDF(envId, pruebaIdx){
+  const enviado=(DB.procesosEnviados||[]).find(x=>x.id===envId);
+  if(!enviado)return;
+  const proc=(DB.procesosEval||[]).find(x=>x.id===enviado.proceso_id)||{};
+  const pct=enviado.puntaje_final;
+  const color=pct!=null?(pct>=70?'#16a34a':pct>=50?'#d97706':'#dc2626'):'#333';
+  const res=pct!=null?(pct>=70?'Aprobado':pct>=50?'Regular':'No aprobado'):'';
+
+  const pruebas = pruebaIdx===null ? (enviado.pruebas||[]) : [(enviado.pruebas||[])[pruebaIdx]];
+
+  let body = `<div class="header">
+    <div class="title">${proc.nombre||enviado.proceso_nombre||'Proceso de Evaluación'}</div>
+    <div class="sub">Candidato: <strong>${enviado.candidato_nombre||'—'}</strong></div>
+    <div class="sub">Teléfono: ${enviado.candidato_tel||'—'} &nbsp;|&nbsp; Correo: ${enviado.candidato_email||'—'}</div>
+  </div>`;
+
+  if(pct!=null && pruebaIdx===null){
+    body += `<div class="score-box">
+      <div class="score-num" style="color:${color}">${pct.toFixed(1)}%</div>
+      <div class="score-label" style="color:${color}">${res}</div>
+      <div class="score-sub">Puntaje ponderado final</div>
+    </div>`;
+  }
+
+  for(const prueba of pruebas){
+    if(!prueba) continue;
+    const ev=(DB.evaluaciones||[]).find(x=>x.id===prueba.evaluacion_id)||{};
+    const completada=prueba.estado==='completada';
+    const ps=prueba.puntaje;
+    const pc=ps!=null?(ps>=70?'#16a34a':ps>=50?'#d97706':'#dc2626'):'#333';
+    body+=`<div class="prueba-header">
+      <span>${prueba.nombre}</span>
+      <span style="font-size:12px;color:#666">Peso: ${prueba.peso}%</span>
+      ${ps!=null?`<span style="color:${pc};font-weight:700">${ps.toFixed(1)}%</span>`:''}
+    </div>`;
+    if(completada && ev.preguntas?.length){
+      for(const q of ev.preguntas){
+        if(q.tipo==='titulo'){body+=`<div class="q-titulo">${q.texto||''}</div>`;continue;}
+        if(q.tipo==='descripcion'){body+=`<div class="q-desc">${q.texto||''}</div>`;continue;}
+        const resp=(prueba.respuestas||{})[q.id]||'—';
+        const ok=q.respuesta_correcta&&resp===q.respuesta_correcta;
+        const bad=q.respuesta_correcta&&resp!=='—'&&!ok;
+        body+=`<div class="q-item ${ok?'correct':bad?'wrong':'neutral'}">
+          <div class="q-text">${q.texto||'Pregunta'}</div>
+          <div class="q-resp">${resp}</div>
+          ${q.respuesta_correcta?`<div class="q-correct">Respuesta correcta: ${q.respuesta_correcta}</div>`:''}
+        </div>`;
+      }
+    } else if(!completada){
+      body+=`<div style="font-size:12px;color:#999;padding:8px 0">Pendiente de completar</div>`;
+    }
+  }
+
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+  <title>Informe — ${enviado.candidato_nombre||''}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;padding:32px;max-width:780px;margin:0 auto}
+    .header{margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #e5e7eb}
+    .title{font-size:18px;font-weight:700;margin-bottom:6px}
+    .sub{font-size:12px;color:#555;margin-top:2px}
+    .score-box{text-align:center;padding:16px;background:#f9fafb;border-radius:8px;margin-bottom:20px;border:1px solid #e5e7eb}
+    .score-num{font-size:36px;font-weight:700}
+    .score-label{font-size:15px;font-weight:600;margin-top:2px}
+    .score-sub{font-size:11px;color:#888;margin-top:4px}
+    .prueba-header{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;background:#f3f4f6;padding:8px 12px;border-radius:6px;margin:18px 0 8px;border-left:3px solid #6366f1}
+    .q-titulo{font-size:15px;font-weight:700;margin:14px 0 4px;border-bottom:1px solid #e5e7eb;padding-bottom:4px}
+    .q-desc{font-size:12px;color:#666;margin-bottom:8px}
+    .q-item{padding:7px 10px;border-radius:5px;margin-bottom:5px;border-left:3px solid #d1d5db;background:#fafafa}
+    .q-item.correct{border-left-color:#16a34a;background:#f0fdf4}
+    .q-item.wrong{border-left-color:#dc2626;background:#fef2f2}
+    .q-text{font-weight:500;color:#374151;margin-bottom:2px}
+    .q-resp{color:#111;font-size:12px}
+    .q-correct{font-size:11px;color:#6b7280;margin-top:2px}
+    @media print{body{padding:16px}@page{margin:1.5cm}}
+  </style></head><body>${body}</body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>w.print(),400);
 }
 
 // ── Formulario público del proceso ────────────────────────────

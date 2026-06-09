@@ -15645,13 +15645,13 @@ async function submitProcesoPrueba(){
     fecha_completada:estadoFinal==='completado'?new Date().toISOString():enviado.fecha_completada
   };
   try{
-    await sbClient.from('procesos_enviados').upsert({id:updatedEnviado.id,data:updatedEnviado});
+    const {error:uperr}=await sbClient.from('procesos_enviados').upsert({id:updatedEnviado.id,data:updatedEnviado});
+    if(uperr) throw new Error(uperr.message);
     _pepubData.enviado=updatedEnviado;
     if(estadoFinal==='completado'){
       document.getElementById('pepub-form').style.display='none';
       document.getElementById('pepub-progress').style.display='none';
       document.getElementById('pepub-completed').style.display='';
-      document.getElementById('pepub-score-final').textContent=`${puntajeFinal.toFixed(1)}%`;
     }else{
       _pepubData.evalIdx=nextIdx;
       _pepubUpdateProgress();

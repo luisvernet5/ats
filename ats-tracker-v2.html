@@ -1119,7 +1119,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     <div id="pepub-completed" style="display:none;text-align:center;padding:40px 20px">
       <i class="fa fa-check-circle" style="font-size:48px;color:var(--green);margin-bottom:16px"></i>
       <div style="font-size:18px;font-weight:600;margin-bottom:8px">¡Proceso completado!</div>
-      <div id="pepub-score-final" style="font-size:32px;font-weight:700;color:var(--primary);margin:12px 0"></div>
+
       <div style="font-size:14px;color:var(--text2)">Tus respuestas han sido enviadas correctamente.</div>
     </div>
     <div id="pepub-name-step" style="display:none;padding:8px 0 30px">
@@ -15257,7 +15257,6 @@ async function _checkProcesoPublico(){
       document.getElementById('pepub-desc').textContent='';
       document.getElementById('pepub-progress').style.display='none';
       document.getElementById('pepub-completed').style.display='';
-      document.getElementById('pepub-score-final').textContent=`${(enviado.puntaje_final||0).toFixed(1)}%`;
       return true;
     }
     // Cargar plantillas de evaluaciones

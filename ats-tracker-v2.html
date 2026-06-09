@@ -859,11 +859,24 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
         <div id="eval-tpl-emps" style="border:1px solid var(--border);border-radius:6px;padding:8px;max-height:110px;overflow-y:auto;display:flex;flex-wrap:wrap;gap:6px;background:var(--bg2)"></div>
       </div></div>
       <div style="margin-top:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <label style="font-weight:600;font-size:13px">Preguntas</label>
-          <button class="btn btn-ghost btn-sm" onclick="evalAddPregunta()"><i class="fa fa-plus"></i> Agregar pregunta</button>
+        <label style="font-weight:600;font-size:13px;display:block;margin-bottom:8px">Preguntas</label>
+        <div style="display:flex;gap:14px;align-items:flex-start">
+          <div id="eval-preguntas-list" style="display:flex;flex-direction:column;gap:10px;flex:1;min-width:0"></div>
+          <div id="eval-add-toolbar" style="position:sticky;top:12px;flex-shrink:0;display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:6px 5px;box-shadow:0 3px 16px rgba(0,0,0,.12)">
+            <div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:2px 0 4px">Agregar</div>
+            <button class="btn btn-ghost btn-sm" style="padding:7px;width:34px;height:34px;justify-content:center" title="Respuesta corta" onclick="evalAddPregunta({tipo:'texto_corto'})"><i class="fa fa-minus" style="font-size:13px"></i></button>
+            <button class="btn btn-ghost btn-sm" style="padding:7px;width:34px;height:34px;justify-content:center" title="Párrafo" onclick="evalAddPregunta({tipo:'parrafo'})"><i class="fa fa-bars" style="font-size:13px"></i></button>
+            <button class="btn btn-ghost btn-sm" style="padding:7px;width:34px;height:34px;justify-content:center" title="Varias opciones" onclick="evalAddPregunta({tipo:'opcion_multiple'})"><i class="fa fa-dot-circle" style="font-size:13px"></i></button>
+            <button class="btn btn-ghost btn-sm" style="padding:7px;width:34px;height:34px;justify-content:center" title="Casillas" onclick="evalAddPregunta({tipo:'casillas'})"><i class="fa fa-check-square" style="font-size:13px"></i></button>
+            <button class="btn btn-ghost btn-sm" style="padding:7px;width:34px;height:34px;justify-content:center" title="Desplegable" onclick="evalAddPregunta({tipo:'desplegable'})"><i class="fa fa-caret-square-down" style="font-size:13px"></i></button>
+            <button class="btn btn-ghost btn-sm" style="padding:7px;width:34px;height:34px;justify-content:center" title="Escala lineal" onclick="evalAddPregunta({tipo:'escala_lineal'})"><i class="fa fa-sliders-h" style="font-size:13px"></i></button>
+            <button class="btn btn-ghost btn-sm" style="padding:7px;width:34px;height:34px;justify-content:center" title="Fecha" onclick="evalAddPregunta({tipo:'fecha'})"><i class="fa fa-calendar-alt" style="font-size:13px"></i></button>
+            <button class="btn btn-ghost btn-sm" style="padding:7px;width:34px;height:34px;justify-content:center" title="Hora" onclick="evalAddPregunta({tipo:'hora'})"><i class="fa fa-clock" style="font-size:13px"></i></button>
+            <div style="height:1px;background:var(--border);margin:3px 2px"></div>
+            <button class="btn btn-ghost btn-sm" style="padding:7px;width:34px;height:34px;justify-content:center" title="Título" onclick="evalAddPregunta({tipo:'titulo'})"><i class="fa fa-heading" style="font-size:13px"></i></button>
+            <button class="btn btn-ghost btn-sm" style="padding:7px;width:34px;height:34px;justify-content:center" title="Descripción" onclick="evalAddPregunta({tipo:'descripcion'})"><i class="fa fa-align-left" style="font-size:13px"></i></button>
+          </div>
         </div>
-        <div id="eval-preguntas-list" style="display:flex;flex-direction:column;gap:10px"></div>
       </div>
     </div>
     <div class="mf">

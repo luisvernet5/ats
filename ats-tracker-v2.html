@@ -897,7 +897,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <div class="fr full"><div class="fg">
         <label>Banner <span style="font-size:11px;color:var(--text3)">(imagen ancha, formato Google Forms — recomendado 1600×400 px)</span></label>
         <div id="eval-banner-preview" style="display:none;margin-bottom:8px;position:relative">
-          <img id="eval-banner-img" src="" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;border:1px solid var(--border);display:block">
+          <img id="eval-banner-img" src="" style="width:100%;height:auto;border-radius:8px;border:1px solid var(--border);display:block">
           <button type="button" onclick="evalRemoveBanner()" title="Quitar banner"
             style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
         </div>
@@ -1051,7 +1051,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
 
 <!-- ===== FORMULARIO PÚBLICO EVALUACIÓN (mostrado via ?eval=TOKEN) ===== -->
 <div id="eval-public-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;overflow:auto;padding:0 0 32px">
-  <img id="evpub-banner" src="" alt="" style="display:none;width:100%;max-height:200px;object-fit:cover;object-position:center;margin-bottom:0">
+  <img id="evpub-banner" src="" alt="" style="display:none;width:100%;height:auto;display:block;margin-bottom:0">
   <div style="max-width:600px;margin:0 auto;padding:28px 16px 0">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
       <i class="fa fa-clipboard-list" style="font-size:28px;color:var(--primary)"></i>
@@ -1101,7 +1101,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
 
 <!-- ===== FORMULARIO PÚBLICO PROCESO (mostrado via ?proceso=TOKEN) ===== -->
 <div id="proceso-public-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;overflow:auto;padding:0 0 32px">
-  <img id="pepub-banner" src="" alt="" style="display:none;width:100%;max-height:200px;object-fit:cover;object-position:center">
+  <img id="pepub-banner" src="" alt="" style="display:none;width:100%;height:auto;display:block">
   <div style="max-width:600px;margin:0 auto;padding:28px 16px 0">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
       <i class="fa fa-tasks" style="font-size:28px;color:var(--primary)"></i>

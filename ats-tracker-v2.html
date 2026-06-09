@@ -422,7 +422,8 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     <div class="nav-item" onclick="showPage('pipeline')" id="nav-pipeline" data-tooltip="Pipeline"><i class="fa fa-stream"></i><span class="nav-item-text"> Pipeline</span></div>
     <div class="nav-item" onclick="showPage('vacantes')" id="nav-vacantes" data-tooltip="Vacantes"><i class="fa fa-briefcase"></i><span class="nav-item-text"> Vacantes</span></div>
     <div class="nav-item" onclick="showPage('candidatos')" id="nav-candidatos" data-tooltip="Candidatos"><i class="fa fa-users"></i><span class="nav-item-text"> Candidatos</span></div>
-    <div class="nav-item" onclick="showPage('evaluaciones')" id="nav-evaluaciones" data-tooltip="Evaluaciones"><i class="fa fa-clipboard-list"></i><span class="nav-item-text"> Evaluaciones</span></div>
+    <div class="nav-item" onclick="showPage('evaluaciones')" id="nav-evaluaciones" data-tooltip="Librería de Evaluaciones"><i class="fa fa-clipboard-list"></i><span class="nav-item-text"> Librería de Evaluaciones</span></div>
+    <div class="nav-item" onclick="showPage('procesos-eval')" id="nav-procesos-eval" data-tooltip="Procesos de Evaluación"><i class="fa fa-tasks"></i><span class="nav-item-text"> Procesos de Evaluación</span></div>
     <div class="nav-section">Reportes</div>
     <div class="nav-item" onclick="showPage('reclutadores')" id="nav-reclutadores" data-tooltip="Reclutadores"><i class="fa fa-user-tie"></i><span class="nav-item-text"> Reclutadores</span></div>
     <div class="nav-item" onclick="nav('tiempos')" id="nav-tiempos" data-tooltip="Análisis de tiempos"><i class="fa fa-clock"></i><span class="nav-item-text"> Análisis de tiempos</span></div>
@@ -611,6 +612,36 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <div class="table-wrap"><table class="table" id="eval-respuestas-table">
         <thead><tr><th>Candidato</th><th>Teléfono</th><th>Correo</th><th>Evaluación</th><th>Vacante</th><th>Fecha respuesta</th><th>Calificación</th><th>Resultado</th><th></th></tr></thead>
         <tbody id="eval-respuestas-tbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- PROCESOS DE EVALUACIÓN -->
+  <div class="page" id="page-procesos-eval">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;gap:6px">
+        <button id="petab-procesos" class="btn btn-primary btn-sm" onclick="peSetTab('procesos')"><i class="fa fa-layer-group"></i> Procesos</button>
+        <button id="petab-enviados" class="btn btn-ghost btn-sm" onclick="peSetTab('enviados')"><i class="fa fa-paper-plane"></i> Enviados</button>
+        <button id="petab-respuestas" class="btn btn-ghost btn-sm" onclick="peSetTab('respuestas')"><i class="fa fa-check-double"></i> Respuestas</button>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="openProcesoEvalModal()"><i class="fa fa-plus"></i> Nuevo proceso</button>
+    </div>
+    <div id="pe-panel-procesos">
+      <div class="table-wrap"><table class="table" id="pe-procesos-table">
+        <thead><tr><th>Nombre</th><th>Evaluaciones</th><th>Enviados</th><th>Estado</th><th>Creado</th><th></th></tr></thead>
+        <tbody id="pe-procesos-tbody"></tbody>
+      </table></div>
+    </div>
+    <div id="pe-panel-enviados" style="display:none">
+      <div class="table-wrap"><table class="table" id="pe-enviados-table">
+        <thead><tr><th>Candidato</th><th>Proceso</th><th>Vacante</th><th>Estado</th><th>Puntaje final</th><th>Enviado</th><th></th></tr></thead>
+        <tbody id="pe-enviados-tbody"></tbody>
+      </table></div>
+    </div>
+    <div id="pe-panel-respuestas" style="display:none">
+      <div class="table-wrap"><table class="table" id="pe-respuestas-table">
+        <thead><tr><th>Candidato</th><th>Teléfono</th><th>Correo</th><th>Proceso</th><th>Vacante</th><th>Fecha</th><th>Puntaje</th><th>Resultado</th><th></th></tr></thead>
+        <tbody id="pe-respuestas-tbody"></tbody>
       </table></div>
     </div>
   </div>
@@ -938,6 +969,75 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
   </div>
 </div>
 
+<!-- ===== MODAL CREAR/EDITAR PROCESO DE EVALUACIÓN ===== -->
+<div class="modal-overlay" id="modal-proceso-eval">
+  <div class="modal" style="width:660px;max-width:96vw">
+    <div class="mh"><h3 id="proceso-eval-title">Nuevo proceso de evaluación</h3><button class="xbtn" onclick="closeModal('modal-proceso-eval')"><i class="fa fa-times"></i></button></div>
+    <div class="mb">
+      <input type="hidden" id="pe-id">
+      <div class="fr full"><div class="fg"><label>Nombre del proceso *</label><input id="pe-nombre" placeholder="Ej. Proceso Evaluación Ventas 2024"></div></div>
+      <div class="fr full"><div class="fg"><label>Descripción</label><textarea id="pe-desc" rows="2" placeholder="Descripción del proceso..." style="resize:vertical"></textarea></div></div>
+      <div style="margin-top:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <label style="font-weight:600;font-size:13px">Evaluaciones del proceso *</label>
+          <div id="pe-peso-total" style="font-size:12px;font-weight:600;color:var(--text3)">Total: 0%</div>
+        </div>
+        <div id="pe-pruebas-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="pe-add-eval-select" style="flex:1;font-size:13px"><option value="">Seleccionar evaluación para agregar...</option></select>
+          <button class="btn btn-ghost btn-sm" onclick="peAddPrueba()"><i class="fa fa-plus"></i> Agregar</button>
+        </div>
+        <div id="pe-peso-warning" style="display:none;margin-top:8px;padding:6px 10px;background:#fff8e6;border-radius:6px;font-size:12px;color:#b45309"><i class="fa fa-exclamation-triangle"></i> Los pesos deben sumar exactamente 100%</div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-proceso-eval')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveProcesoEval()">Guardar proceso</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL ENVIAR PROCESO DE EVALUACIÓN ===== -->
+<div class="modal-overlay" id="modal-enviar-proceso">
+  <div class="modal" style="width:520px;max-width:96vw">
+    <div class="mh"><h3>Enviar proceso de evaluación</h3><button class="xbtn" onclick="closeModal('modal-enviar-proceso')"><i class="fa fa-times"></i></button></div>
+    <div class="mb">
+      <input type="hidden" id="env-pe-id">
+      <div class="fr full"><div class="fg"><label>Proceso</label>
+        <select id="env-pe-proc" onchange="generarLinkProceso()"><option value="">Seleccionar...</option></select>
+      </div></div>
+      <div class="fr full"><div class="fg"><label>Vacante (opcional)</label>
+        <select id="env-pe-vac" onchange="generarLinkProceso()"><option value="">Sin vacante</option></select>
+      </div></div>
+      <div id="env-pe-link-box" style="display:none;margin-top:12px">
+        <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px">Link para compartir</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input id="env-pe-link" readonly style="flex:1;font-size:12px;font-family:var(--mono);background:var(--bg2)">
+          <button class="btn btn-ghost btn-sm" onclick="peCopyLink()" title="Copiar"><i class="fa fa-copy"></i></button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-ghost btn-sm" style="flex:1;background:#25D366;color:#fff;border:none;font-size:14px;padding:10px" onclick="peShareWhatsapp()"><i class="fab fa-whatsapp"></i> Enviar por WhatsApp</button>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:8px;text-align:center"><i class="fa fa-info-circle"></i> El candidato ingresará su nombre al abrir el enlace</div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-enviar-proceso')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL VER RESPUESTAS PROCESO ===== -->
+<div class="modal-overlay" id="modal-proceso-respuestas">
+  <div class="modal" style="width:680px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column">
+    <div class="mh"><h3>Respuestas del proceso</h3><button class="xbtn" onclick="closeModal('modal-proceso-respuestas')"><i class="fa fa-times"></i></button></div>
+    <div class="mb" id="pe-respuestas-body" style="flex:1;overflow-y:auto"></div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-proceso-respuestas')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== FORMULARIO PÚBLICO EVALUACIÓN (mostrado via ?eval=TOKEN) ===== -->
 <div id="eval-public-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;overflow:auto;padding:32px 16px">
   <div style="max-width:600px;margin:0 auto">
@@ -982,6 +1082,67 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <div id="evpub-error" style="display:none;margin-top:12px;padding:10px 14px;background:#fff0f0;border-radius:8px;font-size:13px;color:var(--danger)"></div>
       <div style="margin-top:24px;text-align:right">
         <button class="btn btn-primary" onclick="submitEvalPublica()"><i class="fa fa-paper-plane"></i> Enviar respuestas</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FORMULARIO PÚBLICO PROCESO (mostrado via ?proceso=TOKEN) ===== -->
+<div id="proceso-public-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;overflow:auto;padding:32px 16px">
+  <div style="max-width:600px;margin:0 auto">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <i class="fa fa-tasks" style="font-size:28px;color:var(--primary)"></i>
+      <div>
+        <div id="pepub-nombre" style="font-size:20px;font-weight:700"></div>
+        <div id="pepub-desc" style="font-size:13px;color:var(--text2)"></div>
+      </div>
+    </div>
+    <div id="pepub-progress" style="display:none;margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-bottom:5px">
+        <span id="pepub-progress-label"></span>
+      </div>
+      <div style="height:6px;background:var(--border);border-radius:3px"><div id="pepub-progress-bar" style="height:100%;background:var(--primary);border-radius:3px;transition:width .3s;width:0%"></div></div>
+    </div>
+    <div id="pepub-completed" style="display:none;text-align:center;padding:40px 20px">
+      <i class="fa fa-check-circle" style="font-size:48px;color:var(--green);margin-bottom:16px"></i>
+      <div style="font-size:18px;font-weight:600;margin-bottom:8px">¡Proceso completado!</div>
+      <div id="pepub-score-final" style="font-size:32px;font-weight:700;color:var(--primary);margin:12px 0"></div>
+      <div style="font-size:14px;color:var(--text2)">Tus respuestas han sido enviadas correctamente.</div>
+    </div>
+    <div id="pepub-name-step" style="display:none;padding:8px 0 30px">
+      <div style="background:var(--card);border-radius:12px;padding:28px 24px;box-shadow:0 1px 6px rgba(0,0,0,.07)">
+        <div style="font-size:15px;font-weight:700;margin-bottom:6px;color:var(--text)">Antes de comenzar, ingresa tus datos</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:20px">Esta información es confidencial y solo será vista por el equipo de reclutamiento.</div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Nombre completo <span style="color:var(--danger)">*</span></label>
+            <input id="pepub-nombre-input" placeholder="Nombre y apellidos..." style="width:100%;font-size:14px;padding:10px 13px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Teléfono celular <span style="color:var(--danger)">*</span></label>
+            <input id="pepub-tel-input" type="tel" placeholder="10 dígitos..." style="width:100%;font-size:14px;padding:10px 13px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Correo electrónico <span style="color:var(--danger)">*</span></label>
+            <input id="pepub-email-input" type="email" placeholder="correo@ejemplo.com..." style="width:100%;font-size:14px;padding:10px 13px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);box-sizing:border-box">
+          </div>
+        </div>
+        <div id="pepub-step-error" style="display:none;margin-top:12px;padding:8px 12px;background:#fff0f0;border-radius:6px;font-size:13px;color:var(--danger)"></div>
+        <div style="margin-top:20px;text-align:right">
+          <button class="btn btn-primary" style="min-width:160px" onclick="_pepubIniciarForm()"><i class="fa fa-arrow-right"></i> Comenzar proceso</button>
+        </div>
+      </div>
+    </div>
+    <div id="pepub-form" style="display:none">
+      <div id="pepub-eval-header" style="background:var(--card);border-radius:10px;padding:14px 18px;margin-bottom:16px;border:1px solid var(--border)">
+        <div id="pepub-eval-nombre" style="font-size:16px;font-weight:700"></div>
+        <div id="pepub-eval-desc" style="font-size:13px;color:var(--text2);margin-top:3px"></div>
+        <div id="pepub-eval-peso" style="font-size:12px;color:var(--text3);margin-top:3px"></div>
+      </div>
+      <div id="pepub-preguntas" style="display:flex;flex-direction:column;gap:20px"></div>
+      <div id="pepub-error" style="display:none;margin-top:12px;padding:10px 14px;background:#fff0f0;border-radius:8px;font-size:13px;color:var(--danger)"></div>
+      <div style="margin-top:24px;text-align:right">
+        <button class="btn btn-primary" id="pepub-submit-btn" onclick="submitProcesoPrueba()"><i class="fa fa-arrow-right"></i> Siguiente</button>
       </div>
     </div>
   </div>
@@ -2600,6 +2761,7 @@ async function doLogout() {
   currentUserData = null;
   DB.empresas=[]; DB.vacantes=[]; DB.vacantesEliminadas=[]; DB.candidatos=[]; DB.reclutadores=[];
   DB.evaluaciones=[]; DB.evaluacionesEnviadas=[];
+  DB.procesosEval=[]; DB.procesosEnviados=[];
   document.getElementById('auth-screen').style.display = 'flex';
   const loginBtn = document.getElementById('login-btn');
   if(loginBtn){ loginBtn.disabled = false; loginBtn.textContent = 'Entrar'; }
@@ -2617,7 +2779,7 @@ async function loadDB(){
       const _rhEmpId = currentUserData?.empresa_id||null;
       console.log('[loadDB] ROL ACTUAL:', currentUserData?.rol, '| es rh_cliente:', _isRhC, '| EMPRESA ID:', _rhEmpId);
       console.log('[loadDB] currentUserData completo:', JSON.stringify(currentUserData));
-      const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand,perfiles,evals,evEnv]=await Promise.all([
+      const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand,perfiles,evals,evEnv,procEval,procEnv]=await Promise.all([
         sbClient.from('empresas').select('*'),
         (_isRhC && _rhEmpId
           ? sbClient.from('vacantes').select('*').filter('data->>empresa_id','eq',_rhEmpId)
@@ -2631,6 +2793,8 @@ async function loadDB(){
         sbClient.from('perfiles_puesto').select('*'),
         sbClient.from('evaluaciones').select('*'),
         sbClient.from('evaluaciones_enviadas').select('*'),
+        sbClient.from('procesos_evaluacion').select('*'),
+        sbClient.from('procesos_enviados').select('*'),
       ]);
       console.log('[loadDB] vacantes cargadas:', vac.data?.length, '| error:', vac.error?.message||null);
       DB.empresas=emp.data?.map(r=>r.data)||[];
@@ -2650,6 +2814,8 @@ async function loadDB(){
       DB.evaluaciones=_allEvals.filter(e=>!e.eliminada);
       DB.evaluacionesEliminadas=_allEvals.filter(e=>e.eliminada);
       DB.evaluacionesEnviadas=(evEnv.data||[]).map(r=>r.data||r).filter(Boolean);
+      DB.procesosEval=(procEval.data||[]).map(r=>r.data||r).filter(Boolean);
+      DB.procesosEnviados=(procEnv.data||[]).map(r=>r.data||r).filter(Boolean);
       _candConRefs=new Set((refs.data||[]).flatMap(r=>{
         const ids=[];
         // formato nuevo: columnas planas
@@ -2898,7 +3064,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Evaluaciones',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount',perfiles:'Perfiles de puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount',perfiles:'Perfiles de puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);
@@ -2926,6 +3092,7 @@ function renderPage(p){
   if(p==='documentacion')renderDocumentacion();
   if(p==='perfiles')renderPerfiles();
   if(p==='evaluaciones')renderEvaluaciones();
+  if(p==='procesos-eval')renderProcesosEval();
   // if(p==='basedatos')renderBaseDatos(); // desactivado temporalmente
 }
 
@@ -11411,6 +11578,11 @@ sbClient.auth.getSession().then(async ({ data: { session } }) => {
     document.body.style.visibility = 'visible';
     return;
   }
+  // Formulario público de proceso de evaluación (sin login)
+  if(await _checkProcesoPublico()) {
+    document.body.style.visibility = 'visible';
+    return;
+  }
   // Flujo legacy: token en hash (#access_token=...&type=recovery)
   if(tokenType === 'recovery' && accessToken) {
     await sbClient.auth.setSession({ access_token: accessToken, refresh_token: hashParams.get('refresh_token')||accessToken });
@@ -14642,6 +14814,542 @@ function _renderEvalPublica(ev, enviada){
     }
     return `<div style="border:1px solid var(--border);border-radius:10px;padding:16px;background:var(--surface)">${label}${input}</div>`;
   }).join('');
+}
+
+/* ============================================================
+   PROCESOS DE EVALUACIÓN
+   ============================================================ */
+let _pepubToken = null;
+let _pepubData  = null;
+let _pepubNombreIngresado = null;
+let _pepubTelIngresado    = null;
+let _pepubEmailIngresado  = null;
+
+// ── Página ───────────────────────────────────────────────────
+function renderProcesosEval(){
+  renderPEProcesos();
+  renderPEEnviados();
+  renderPERespuestas();
+}
+
+function peSetTab(tab){
+  ['procesos','enviados','respuestas'].forEach(t=>{
+    document.getElementById('pe-panel-'+t).style.display = t===tab?'':'none';
+    document.getElementById('petab-'+t).className = `btn btn-sm ${t===tab?'btn-primary':'btn-ghost'}`;
+  });
+}
+
+function renderPEProcesos(){
+  const tbody=document.getElementById('pe-procesos-tbody');
+  if(!tbody)return;
+  const list=DB.procesosEval||[];
+  if(!list.length){
+    tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin procesos. Crea el primero con "+ Nuevo proceso".</td></tr>`;
+    return;
+  }
+  tbody.innerHTML=list.map(p=>{
+    const enviados=(DB.procesosEnviados||[]).filter(e=>e.proceso_id===p.id).length;
+    const pruebasHTML=(p.pruebas||[]).map(pr=>`<span style="display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;background:var(--primary-light,#e8f0fe);color:var(--primary);border:1px solid var(--primary);margin:1px">${_esc(pr.nombre)} (${pr.peso}%)</span>`).join('')||'—';
+    return `<tr>
+      <td><strong>${_esc(p.nombre)}</strong>${p.descripcion?`<div style="font-size:11px;color:var(--text3)">${_esc(p.descripcion)}</div>`:''}</td>
+      <td style="max-width:280px;line-height:1.6">${pruebasHTML}</td>
+      <td style="text-align:center">${enviados}</td>
+      <td><span class="badge ${p.activa!==false?'bg':'br'}">${p.activa!==false?'Activo':'Inactivo'}</span></td>
+      <td style="font-size:12px;color:var(--text3)">${p.created_at?new Date(p.created_at).toLocaleDateString('es-MX'):'—'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-primary btn-sm" onclick="openEnviarProcesoModal('${p.id}')"><i class="fa fa-paper-plane"></i> Enviar</button>
+        <button class="btn btn-ghost btn-sm" onclick="openProcesoEvalModal('${p.id}')"><i class="fa fa-edit"></i></button>
+        ${currentUserData?.rol==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteProcesoEval('${p.id}')"><i class="fa fa-trash"></i></button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPEEnviados(){
+  const tbody=document.getElementById('pe-enviados-tbody');
+  if(!tbody)return;
+  const list=DB.procesosEnviados||[];
+  if(!list.length){
+    tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Ningún proceso enviado aún.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML=list.map(e=>{
+    const proc=(DB.procesosEval||[]).find(x=>x.id===e.proceso_id)||{};
+    const vac=DB.vacantes.find(x=>x.id===e.vacante_id)||{};
+    const badgeCls=e.estado==='completado'?'bg':e.estado==='en_progreso'?'bb':'bp';
+    const estadoLabel=e.estado==='completado'?'Completado':e.estado==='en_progreso'?'En progreso':'Pendiente';
+    const scoreHTML=e.puntaje_final!=null?`<span style="font-weight:600;color:${e.puntaje_final>=70?'#22c55e':e.puntaje_final>=50?'#f59e0b':'#ef4444'}">${e.puntaje_final.toFixed(1)}%</span>`:'—';
+    const link=_peLink(e.token);
+    return `<tr>
+      <td>${_esc(e.candidato_nombre||'—')}</td>
+      <td>${_esc(proc.nombre||e.proceso_nombre||'—')}</td>
+      <td>${_esc(vac.puesto||'—')}</td>
+      <td><span class="badge ${badgeCls}">${estadoLabel}</span></td>
+      <td>${scoreHTML}</td>
+      <td style="font-size:12px;color:var(--text3)">${e.fecha_envio?new Date(e.fecha_envio).toLocaleDateString('es-MX'):'—'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" title="Copiar link" onclick="navigator.clipboard?.writeText(${JSON.stringify(link)}).then(()=>showToast('Link copiado ✓'))"><i class="fa fa-link"></i></button>
+        ${e.estado!=='pendiente'?`<button class="btn btn-ghost btn-sm" onclick="verRespuestasProceso('${e.id}')"><i class="fa fa-eye"></i> Ver</button>`:''}
+        ${currentUserData?.rol==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteProcesoEnviado('${e.id}')"><i class="fa fa-trash"></i></button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPERespuestas(){
+  const tbody=document.getElementById('pe-respuestas-tbody');
+  if(!tbody)return;
+  const completados=(DB.procesosEnviados||[]).filter(e=>e.estado==='completado');
+  if(!completados.length){
+    tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin respuestas completadas aún.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML=completados.map(e=>{
+    const proc=(DB.procesosEval||[]).find(x=>x.id===e.proceso_id)||{};
+    const vac=DB.vacantes.find(x=>x.id===e.vacante_id)||{};
+    const pct=e.puntaje_final||0;
+    const resultado=pct>=70?`<span class="badge bg">Aprobado</span>`:pct>=50?`<span class="badge ba">Regular</span>`:`<span class="badge br">No aprobado</span>`;
+    return `<tr>
+      <td>${_esc(e.candidato_nombre||'—')}</td>
+      <td>${_esc(e.candidato_tel||'—')}</td>
+      <td>${_esc(e.candidato_email||'—')}</td>
+      <td>${_esc(proc.nombre||e.proceso_nombre||'—')}</td>
+      <td>${_esc(vac.puesto||'—')}</td>
+      <td style="font-size:12px;color:var(--text3)">${e.fecha_completada?new Date(e.fecha_completada).toLocaleDateString('es-MX'):'—'}</td>
+      <td><span style="font-weight:600;color:${pct>=70?'#22c55e':pct>=50?'#f59e0b':'#ef4444'}">${pct.toFixed(1)}%</span></td>
+      <td>${resultado}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="verRespuestasProceso('${e.id}')"><i class="fa fa-eye"></i> Ver</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── CRUD Procesos ─────────────────────────────────────────────
+function openProcesoEvalModal(id=null){
+  const proc=id?(DB.procesosEval||[]).find(x=>x.id===id):null;
+  document.getElementById('pe-id').value=proc?.id||'';
+  document.getElementById('proceso-eval-title').textContent=proc?'Editar proceso':'Nuevo proceso de evaluación';
+  document.getElementById('pe-nombre').value=proc?.nombre||'';
+  document.getElementById('pe-desc').value=proc?.descripcion||'';
+  const sel=document.getElementById('pe-add-eval-select');
+  sel.innerHTML='<option value="">Seleccionar evaluación para agregar...</option>'+
+    (DB.evaluaciones||[]).filter(e=>e.activa!==false).map(e=>`<option value="${e.id}">${_esc(e.nombre)}</option>`).join('');
+  const list=document.getElementById('pe-pruebas-list');
+  list.innerHTML='';
+  (proc?.pruebas||[]).forEach(pr=>_peAddPruebaItem(pr.evaluacion_id,pr.nombre,pr.peso));
+  _peUpdatePesoTotal();
+  document.getElementById('pe-peso-warning').style.display='none';
+  openModal('modal-proceso-eval');
+}
+
+function _peAddPruebaItem(evalId,nombre,peso){
+  const list=document.getElementById('pe-pruebas-list');
+  const idx=list.querySelectorAll('[data-pe-idx]').length;
+  const div=document.createElement('div');
+  div.dataset.peIdx=idx;
+  div.dataset.evalId=evalId;
+  div.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2);border-radius:8px;border:1px solid var(--border)';
+  div.innerHTML=`
+    <i class="fa fa-clipboard-list" style="color:var(--primary);flex-shrink:0"></i>
+    <span style="flex:1;font-size:13px;font-weight:500">${_esc(nombre)}</span>
+    <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+      <label style="font-size:12px;color:var(--text3)">Peso:</label>
+      <input type="number" min="1" max="100" value="${peso}" style="width:64px;font-size:13px;padding:3px 6px;border-radius:5px;border:1px solid var(--border);text-align:center" oninput="_peUpdatePesoTotal()">
+      <label style="font-size:12px;color:var(--text3)">%</label>
+    </div>
+    <button class="btn btn-danger btn-sm" style="padding:3px 8px" onclick="_peRemovePrueba(this)"><i class="fa fa-times"></i></button>`;
+  list.appendChild(div);
+}
+
+function _peUpdatePesoTotal(){
+  const total=[...document.querySelectorAll('#pe-pruebas-list input[type="number"]')].reduce((s,i)=>s+(parseInt(i.value)||0),0);
+  const el=document.getElementById('pe-peso-total');
+  if(!el)return;
+  el.textContent=`Total: ${total}%`;
+  el.style.color=total===100?'var(--green)':'var(--danger)';
+  document.getElementById('pe-peso-warning').style.display=total===100||total===0?'none':'';
+}
+
+function _peRemovePrueba(btn){
+  btn.closest('[data-pe-idx]').remove();
+  [...document.querySelectorAll('#pe-pruebas-list [data-pe-idx]')].forEach((el,i)=>el.dataset.peIdx=i);
+  _peUpdatePesoTotal();
+}
+
+function peAddPrueba(){
+  const sel=document.getElementById('pe-add-eval-select');
+  const evalId=sel.value;
+  if(!evalId)return;
+  const ev=(DB.evaluaciones||[]).find(x=>x.id===evalId);
+  if(!ev)return;
+  const existing=[...document.querySelectorAll('#pe-pruebas-list [data-eval-id]')].map(el=>el.dataset.evalId);
+  if(existing.includes(evalId)){showToast('Esta evaluación ya fue agregada');return;}
+  _peAddPruebaItem(evalId,ev.nombre,0);
+  sel.value='';
+  _peUpdatePesoTotal();
+}
+
+function saveProcesoEval(){
+  const nombre=document.getElementById('pe-nombre').value.trim();
+  if(!nombre){showToast('El nombre es requerido','err');return;}
+  const items=[...document.querySelectorAll('#pe-pruebas-list [data-pe-idx]')];
+  if(!items.length){showToast('Agrega al menos una evaluación','err');return;}
+  const pruebas=items.map(el=>({
+    evaluacion_id:el.dataset.evalId,
+    nombre:el.querySelector('span').textContent,
+    peso:parseInt(el.querySelector('input').value)||0
+  }));
+  const total=pruebas.reduce((s,p)=>s+p.peso,0);
+  if(total!==100){showToast('Los pesos deben sumar exactamente 100%','err');return;}
+  const existId=document.getElementById('pe-id').value;
+  const existing=(DB.procesosEval||[]).find(x=>x.id===existId);
+  const proc={
+    id:existId||uid(),
+    nombre,
+    descripcion:document.getElementById('pe-desc').value.trim(),
+    pruebas,
+    activa:true,
+    created_at:existing?.created_at||new Date().toISOString()
+  };
+  saveRecord('procesos_evaluacion',proc);
+  if(!DB.procesosEval)DB.procesosEval=[];
+  const idx=DB.procesosEval.findIndex(x=>x.id===proc.id);
+  if(idx>=0)DB.procesosEval[idx]=proc;else DB.procesosEval.push(proc);
+  closeModal('modal-proceso-eval');
+  renderPEProcesos();
+  showToast('Proceso guardado ✓');
+}
+
+function deleteProcesoEval(id){
+  if(!confirm('¿Eliminar este proceso de evaluación?'))return;
+  deleteRecord('procesos_evaluacion',id);
+  DB.procesosEval=(DB.procesosEval||[]).filter(x=>x.id!==id);
+  renderPEProcesos();
+  showToast('Proceso eliminado ✓');
+}
+
+function deleteProcesoEnviado(id){
+  if(!confirm('¿Eliminar este proceso enviado?'))return;
+  deleteRecord('procesos_enviados',id);
+  DB.procesosEnviados=(DB.procesosEnviados||[]).filter(x=>x.id!==id);
+  renderPEEnviados();
+  renderPERespuestas();
+  showToast('Eliminado ✓');
+}
+
+// ── Enviar proceso ────────────────────────────────────────────
+function openEnviarProcesoModal(procesoId=null){
+  const sel=document.getElementById('env-pe-proc');
+  sel.innerHTML='<option value="">Seleccionar...</option>'+
+    (DB.procesosEval||[]).filter(p=>p.activa!==false).map(p=>`<option value="${p.id}">${_esc(p.nombre)}</option>`).join('');
+  if(procesoId)sel.value=procesoId;
+  const vacSel=document.getElementById('env-pe-vac');
+  vacSel.innerHTML='<option value="">Sin vacante</option>'+
+    (DB.vacantes||[]).filter(v=>v.estado==='Abierta').map(v=>{
+      const emp=(DB.empresas||[]).find(e=>e.id===v.empresa_id)||{};
+      return `<option value="${v.id}">${_esc(v.puesto)}${emp.nombre?' — '+_esc(emp.nombre):''}`;
+    }).join('');
+  document.getElementById('env-pe-link-box').style.display='none';
+  document.getElementById('env-pe-id').value='';
+  openModal('modal-enviar-proceso');
+  if(procesoId)generarLinkProceso();
+}
+
+async function generarLinkProceso(){
+  const procesoId=document.getElementById('env-pe-proc').value;
+  const vacanteId=document.getElementById('env-pe-vac').value;
+  if(!procesoId){document.getElementById('env-pe-link-box').style.display='none';return;}
+  const proc=(DB.procesosEval||[]).find(x=>x.id===procesoId);
+  if(!proc)return;
+  const token=uid()+uid();
+  const enviado={
+    id:uid(),
+    proceso_id:procesoId,
+    proceso_nombre:proc.nombre,
+    vacante_id:vacanteId||null,
+    candidato_nombre:'',
+    candidato_tel:'',
+    candidato_email:'',
+    token,
+    estado:'pendiente',
+    pruebas:(proc.pruebas||[]).map(pr=>({...pr,estado:'pendiente',respuestas:{},puntaje:null})),
+    puntaje_final:null,
+    fecha_envio:new Date().toISOString(),
+    fecha_completada:null
+  };
+  try{
+    await saveRecord('procesos_enviados',enviado);
+    if(!DB.procesosEnviados)DB.procesosEnviados=[];
+    DB.procesosEnviados.push(enviado);
+    document.getElementById('env-pe-link').value=_peLink(token);
+    document.getElementById('env-pe-link-box').style.display='';
+    renderPEEnviados();
+  }catch(e){showToast('Error: '+e.message,'err');}
+}
+
+function _peLink(token){return`${location.origin}${location.pathname}?proceso=${token}`;}
+
+function peCopyLink(){
+  navigator.clipboard?.writeText(document.getElementById('env-pe-link').value).then(()=>showToast('Link copiado ✓')).catch(()=>{});
+}
+
+function peShareWhatsapp(){
+  const link=document.getElementById('env-pe-link').value;
+  const proc=(DB.procesosEval||[]).find(x=>x.id===document.getElementById('env-pe-proc').value)||{};
+  const msg=encodeURIComponent(`Hola, te compartimos el proceso de evaluación: "${proc.nombre||''}"\n\nPor favor complétalo en el siguiente enlace:\n${link}`);
+  window.open(`https://wa.me/?text=${msg}`,'_blank');
+}
+
+// ── Ver respuestas de proceso ──────────────────────────────────
+function verRespuestasProceso(envId){
+  const enviado=(DB.procesosEnviados||[]).find(x=>x.id===envId);
+  if(!enviado)return;
+  const proc=(DB.procesosEval||[]).find(x=>x.id===enviado.proceso_id)||{};
+  const pct=enviado.puntaje_final;
+  let html=`<div style="margin-bottom:14px">
+    <div style="font-size:15px;font-weight:700">${_esc(proc.nombre||enviado.proceso_nombre||'—')}</div>
+    <div style="font-size:13px;color:var(--text2);margin-top:4px">Candidato: <strong>${_esc(enviado.candidato_nombre||'—')}</strong></div>
+    <div style="font-size:13px;color:var(--text2)">Teléfono: ${_esc(enviado.candidato_tel||'—')} &nbsp;|&nbsp; Correo: ${_esc(enviado.candidato_email||'—')}</div>
+  </div>`;
+  if(pct!=null){
+    const color=pct>=70?'#22c55e':pct>=50?'#f59e0b':'#ef4444';
+    const res=pct>=70?'Aprobado':pct>=50?'Regular':'No aprobado';
+    html+=`<div style="background:var(--bg2);border-radius:10px;padding:16px;margin-bottom:14px;text-align:center">
+      <div style="font-size:30px;font-weight:700;color:${color}">${pct.toFixed(1)}%</div>
+      <div style="font-size:14px;font-weight:600;color:${color}">${res}</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:3px">Puntaje ponderado final</div>
+    </div>`;
+  }
+  html+='<div style="display:flex;flex-direction:column;gap:12px">';
+  for(const prueba of (enviado.pruebas||[])){
+    const ev=(DB.evaluaciones||[]).find(x=>x.id===prueba.evaluacion_id)||{};
+    const completada=prueba.estado==='completada';
+    const puntBadge=prueba.puntaje!=null?`<span style="font-weight:600;color:${prueba.puntaje>=70?'#22c55e':prueba.puntaje>=50?'#f59e0b':'#ef4444'}">${prueba.puntaje.toFixed(1)}%</span>`:'—';
+    html+=`<div style="border:1px solid var(--border);border-radius:10px;padding:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${completada?'10':'0'}px">
+        <div><span style="font-weight:600;font-size:14px">${_esc(prueba.nombre)}</span><span style="font-size:11px;color:var(--text3);margin-left:8px">Peso: ${prueba.peso}%</span></div>
+        <div style="display:flex;align-items:center;gap:8px">${puntBadge}<span class="badge ${completada?'bg':'bp'}">${completada?'Completada':'Pendiente'}</span></div>
+      </div>`;
+    if(completada&&ev.preguntas?.length){
+      html+='<div style="display:flex;flex-direction:column;gap:5px">';
+      for(const q of ev.preguntas){
+        if(q.tipo==='titulo'||q.tipo==='descripcion')continue;
+        const resp=(prueba.respuestas||{})[q.id]||'—';
+        const esCorrecta=q.respuesta_correcta&&resp===q.respuesta_correcta;
+        const esIncorrecta=q.respuesta_correcta&&resp!=='—'&&resp!==q.respuesta_correcta;
+        html+=`<div style="font-size:12px;padding:6px 10px;background:var(--bg);border-radius:6px;border-left:3px solid ${esCorrecta?'#22c55e':esIncorrecta?'#ef4444':'var(--border)'}">
+          <div style="font-weight:500;color:var(--text2)">${_esc(q.texto||'Pregunta')}</div>
+          <div style="margin-top:1px;color:var(--text)">${_esc(resp)}</div>
+          ${q.respuesta_correcta?`<div style="font-size:11px;color:var(--text3)">Respuesta correcta: ${_esc(q.respuesta_correcta)}</div>`:''}
+        </div>`;
+      }
+      html+='</div>';
+    }
+    html+='</div>';
+  }
+  html+='</div>';
+  document.getElementById('pe-respuestas-body').innerHTML=html;
+  openModal('modal-proceso-respuestas');
+}
+
+// ── Formulario público del proceso ────────────────────────────
+async function _checkProcesoPublico(){
+  const params=new URLSearchParams(location.search);
+  const token=params.get('proceso');
+  if(!token)return false;
+  _pepubToken=token;
+  document.getElementById('proceso-public-screen').style.display='';
+  document.querySelector('.sidebar')?.style.setProperty('display','none');
+  document.querySelector('.main')?.style.setProperty('display','none');
+  try{
+    const {data:rows}=await sbClient.from('procesos_enviados').select('*').filter('data->>token','eq',token).limit(1);
+    const enviado=rows?.[0]?.data||rows?.[0];
+    if(!enviado){
+      document.getElementById('proceso-public-screen').innerHTML=`<div style="max-width:500px;margin:60px auto;text-align:center"><i class="fa fa-exclamation-circle" style="font-size:48px;color:var(--danger);margin-bottom:16px"></i><div style="font-size:18px;font-weight:600">Proceso no encontrado</div><div style="font-size:14px;color:var(--text2);margin-top:8px">Este enlace no es válido o ha expirado.</div></div>`;
+      return true;
+    }
+    if(enviado.estado==='completado'){
+      document.getElementById('pepub-nombre').textContent=enviado.proceso_nombre||'Proceso de Evaluación';
+      document.getElementById('pepub-desc').textContent='';
+      document.getElementById('pepub-progress').style.display='none';
+      document.getElementById('pepub-completed').style.display='';
+      document.getElementById('pepub-score-final').textContent=`${(enviado.puntaje_final||0).toFixed(1)}%`;
+      return true;
+    }
+    // Cargar plantillas de evaluaciones
+    const evalIds=(enviado.pruebas||[]).map(p=>p.evaluacion_id).filter(Boolean);
+    let evaluaciones=[];
+    if(evalIds.length){
+      const {data:evRows}=await sbClient.from('evaluaciones').select('*').in('id',evalIds);
+      evaluaciones=(evRows||[]).map(r=>r.data||r);
+    }
+    const firstPending=(enviado.pruebas||[]).findIndex(p=>p.estado==='pendiente');
+    _pepubData={enviado,evaluaciones,evalIdx:firstPending>=0?firstPending:0};
+    document.getElementById('pepub-nombre').textContent=enviado.proceso_nombre||'Proceso de Evaluación';
+    document.getElementById('pepub-desc').textContent=`${(enviado.pruebas||[]).length} evaluacion${(enviado.pruebas||[]).length===1?'':'es'}`;
+    document.getElementById('pepub-progress').style.display='';
+    _pepubUpdateProgress();
+    if(!enviado.candidato_nombre){
+      document.getElementById('pepub-name-step').style.display='';
+      document.getElementById('pepub-form').style.display='none';
+    }else{
+      _pepubNombreIngresado=enviado.candidato_nombre;
+      _pepubTelIngresado=enviado.candidato_tel;
+      _pepubEmailIngresado=enviado.candidato_email;
+      _pepubRenderCurrentEval();
+    }
+  }catch(e){
+    document.getElementById('proceso-public-screen').innerHTML=`<div style="max-width:500px;margin:60px auto;text-align:center"><i class="fa fa-exclamation-circle" style="font-size:48px;color:var(--danger);margin-bottom:16px"></i><div style="font-size:18px;font-weight:600">Error al cargar</div><div style="font-size:14px;color:var(--text2);margin-top:8px">${_esc(e.message)}</div></div>`;
+  }
+  return true;
+}
+
+function _pepubUpdateProgress(){
+  if(!_pepubData)return;
+  const pruebas=_pepubData.enviado.pruebas||[];
+  const completadas=pruebas.filter(p=>p.estado==='completada').length;
+  const total=pruebas.length;
+  const pct=total?Math.round(completadas/total*100):0;
+  document.getElementById('pepub-progress-label').textContent=`Evaluación ${Math.min(completadas+1,total)} de ${total}`;
+  document.getElementById('pepub-progress-bar').style.width=`${pct}%`;
+}
+
+function _pepubIniciarForm(){
+  const nombre=document.getElementById('pepub-nombre-input').value.trim();
+  const tel=document.getElementById('pepub-tel-input').value.trim();
+  const email=document.getElementById('pepub-email-input').value.trim();
+  const errDiv=document.getElementById('pepub-step-error');
+  if(!nombre||!tel||!email){errDiv.textContent='Por favor completa todos los campos';errDiv.style.display='';return;}
+  errDiv.style.display='none';
+  _pepubNombreIngresado=nombre;
+  _pepubTelIngresado=tel;
+  _pepubEmailIngresado=email;
+  document.getElementById('pepub-name-step').style.display='none';
+  _pepubRenderCurrentEval();
+}
+
+function _pepubRenderCurrentEval(){
+  if(!_pepubData)return;
+  const {enviado,evaluaciones,evalIdx}=_pepubData;
+  const prueba=(enviado.pruebas||[])[evalIdx];
+  if(!prueba)return;
+  const ev=evaluaciones.find(x=>x.id===prueba.evaluacion_id)||{preguntas:[]};
+  document.getElementById('pepub-eval-nombre').textContent=_esc(prueba.nombre);
+  document.getElementById('pepub-eval-desc').textContent=ev.descripcion||'';
+  document.getElementById('pepub-eval-peso').textContent=`Peso en el proceso: ${prueba.peso}%`;
+  const isLast=evalIdx===(enviado.pruebas||[]).length-1;
+  document.getElementById('pepub-submit-btn').innerHTML=isLast?'<i class="fa fa-paper-plane"></i> Enviar respuestas':'<i class="fa fa-arrow-right"></i> Siguiente';
+  document.getElementById('pepub-preguntas').innerHTML=_renderProcesoPubPreguntas(ev.preguntas||[]);
+  document.getElementById('pepub-form').style.display='';
+  document.getElementById('pepub-error').style.display='none';
+  window.scrollTo(0,0);
+}
+
+function _renderProcesoPubPreguntas(preguntas){
+  return preguntas.map(q=>{
+    if(q.tipo==='titulo')return`<div style="font-size:16px;font-weight:700;color:var(--text);padding:6px 0;border-bottom:2px solid var(--primary);margin-bottom:4px">${_esc(q.texto||'')}</div>`;
+    if(q.tipo==='descripcion')return`<div style="font-size:13px;color:var(--text2);padding:4px 0">${_esc(q.texto||'')}</div>`;
+    const req=q.requerida?`<span style="color:var(--danger)">*</span>`:'';
+    const label=`<div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text)">${_esc(q.texto||'')} ${req}</div>`;
+    let input='';
+    if(q.tipo==='texto_corto')input=`<input name="q_${q.id}" placeholder="Respuesta corta..." style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);box-sizing:border-box">`;
+    else if(q.tipo==='parrafo')input=`<textarea name="q_${q.id}" rows="3" placeholder="Respuesta..." style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border);resize:vertical;background:var(--bg);color:var(--text);box-sizing:border-box"></textarea>`;
+    else if(q.tipo==='opcion_multiple')input=`<div>${(q.opciones||[]).map(opt=>`<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:7px;cursor:pointer;margin-bottom:4px;border:1px solid var(--border);background:var(--bg);font-size:13px"><input type="radio" name="q_${q.id}" value="${_esc(opt)}" style="accent-color:var(--primary)"> ${_esc(opt)}</label>`).join('')}</div>`;
+    else if(q.tipo==='casillas')input=`<div>${(q.opciones||[]).map(opt=>`<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:7px;cursor:pointer;margin-bottom:4px;border:1px solid var(--border);background:var(--bg);font-size:13px"><input type="checkbox" name="q_${q.id}" value="${_esc(opt)}" style="accent-color:var(--primary)"> ${_esc(opt)}</label>`).join('')}</div>`;
+    else if(q.tipo==='desplegable')input=`<select name="q_${q.id}" style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border)"><option value="">Selecciona...</option>${(q.opciones||[]).map(opt=>`<option value="${_esc(opt)}">${_esc(opt)}</option>`).join('')}</select>`;
+    else if(q.tipo==='escala_lineal'){
+      const min=q.escala_min||1,max=q.escala_max||5,nums=Array.from({length:max-min+1},(_,i)=>i+min);
+      input=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">${q.escala_min_label?`<span style="font-size:12px;color:var(--text3)">${_esc(q.escala_min_label)}</span>`:''} ${nums.map(v=>`<label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-size:13px;min-width:36px;padding:8px 4px;border-radius:6px;border:1px solid var(--border);text-align:center"><input type="radio" name="q_${q.id}" value="${v}" style="accent-color:var(--primary)"> ${v}</label>`).join('')} ${q.escala_max_label?`<span style="font-size:12px;color:var(--text3)">${_esc(q.escala_max_label)}</span>`:''}</div>`;
+    }
+    else if(q.tipo==='fecha')input=`<input type="date" name="q_${q.id}" style="font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid var(--border)">`;
+    else if(q.tipo==='hora')input=`<input type="time" name="q_${q.id}" style="font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid var(--border)">`;
+    return `<div style="border:1px solid var(--border);border-radius:10px;padding:16px;background:var(--surface)">${label}${input}</div>`;
+  }).join('');
+}
+
+async function submitProcesoPrueba(){
+  if(!_pepubData)return;
+  const {enviado,evaluaciones,evalIdx}=_pepubData;
+  const prueba=(enviado.pruebas||[])[evalIdx];
+  const ev=evaluaciones.find(x=>x.id===prueba.evaluacion_id)||{preguntas:[]};
+  const respuestas={};
+  let primerError=null;
+  for(const q of (ev.preguntas||[])){
+    if(q.tipo==='titulo'||q.tipo==='descripcion')continue;
+    if(q.tipo==='texto_corto'||q.tipo==='parrafo'||q.tipo==='fecha'||q.tipo==='hora'){
+      const el=document.querySelector(`[name="q_${q.id}"]`);
+      const val=el?.value?.trim()||'';
+      if(q.requerida&&!val){primerError=q;break;}
+      respuestas[q.id]=val||null;
+    }else if(q.tipo==='casillas'){
+      const checked=[...document.querySelectorAll(`input[name="q_${q.id}"]:checked`)].map(i=>i.value);
+      if(q.requerida&&!checked.length){primerError=q;break;}
+      respuestas[q.id]=checked.length?checked.join(', '):null;
+    }else if(q.tipo==='desplegable'){
+      const val=document.querySelector(`select[name="q_${q.id}"]`)?.value||'';
+      if(q.requerida&&!val){primerError=q;break;}
+      respuestas[q.id]=val||null;
+    }else{
+      const el=document.querySelector(`input[name="q_${q.id}"]:checked`);
+      if(q.requerida&&!el){primerError=q;break;}
+      respuestas[q.id]=el?.value||null;
+    }
+  }
+  if(primerError){
+    const errDiv=document.getElementById('pepub-error');
+    errDiv.textContent=`Por favor responde: "${primerError.texto||'pregunta requerida'}"`;
+    errDiv.style.display='';
+    return;
+  }
+  document.getElementById('pepub-error').style.display='none';
+  const btn=document.getElementById('pepub-submit-btn');
+  btn.disabled=true;btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Guardando...';
+  // Calcular puntaje de esta prueba
+  let puntaje=null;
+  const pregsConClave=(ev.preguntas||[]).filter(q=>q.respuesta_correcta&&q.cuenta_calificacion!==false);
+  if(pregsConClave.length){
+    const puntosObt=pregsConClave.filter(q=>respuestas[q.id]===q.respuesta_correcta).reduce((s,q)=>s+(q.puntos||0),0);
+    const puntosTotal=pregsConClave.reduce((s,q)=>s+(q.puntos||0),0);
+    puntaje=puntosTotal>0?Math.round(puntosObt/puntosTotal*100):Math.round(pregsConClave.filter(q=>respuestas[q.id]===q.respuesta_correcta).length/pregsConClave.length*100);
+  }
+  const updatedPruebas=(enviado.pruebas||[]).map((p,i)=>
+    i===evalIdx?{...p,estado:'completada',respuestas,puntaje,fecha_completada:new Date().toISOString()}:p
+  );
+  const nextIdx=updatedPruebas.findIndex(p=>p.estado==='pendiente');
+  let estadoFinal=nextIdx===-1?'completado':'en_progreso';
+  let puntajeFinal=null;
+  if(estadoFinal==='completado'){
+    const totalPeso=updatedPruebas.reduce((s,p)=>s+p.peso,0)||100;
+    puntajeFinal=updatedPruebas.reduce((s,p)=>s+(p.puntaje||0)*(p.peso/totalPeso),0);
+  }
+  const updatedEnviado={
+    ...enviado,
+    candidato_nombre:_pepubNombreIngresado||enviado.candidato_nombre,
+    candidato_tel:_pepubTelIngresado||enviado.candidato_tel,
+    candidato_email:_pepubEmailIngresado||enviado.candidato_email,
+    pruebas:updatedPruebas,
+    estado:estadoFinal,
+    puntaje_final:puntajeFinal,
+    fecha_completada:estadoFinal==='completado'?new Date().toISOString():enviado.fecha_completada
+  };
+  try{
+    await sbClient.from('procesos_enviados').upsert({id:updatedEnviado.id,data:updatedEnviado});
+    _pepubData.enviado=updatedEnviado;
+    if(estadoFinal==='completado'){
+      document.getElementById('pepub-form').style.display='none';
+      document.getElementById('pepub-progress').style.display='none';
+      document.getElementById('pepub-completed').style.display='';
+      document.getElementById('pepub-score-final').textContent=`${puntajeFinal.toFixed(1)}%`;
+    }else{
+      _pepubData.evalIdx=nextIdx;
+      _pepubUpdateProgress();
+      _pepubRenderCurrentEval();
+      btn.disabled=false;
+    }
+  }catch(e){
+    btn.disabled=false;btn.innerHTML='<i class="fa fa-arrow-right"></i> Siguiente';
+    const errDiv2=document.getElementById('pepub-error');
+    errDiv2.textContent='Error al guardar: '+e.message;errDiv2.style.display='';
+  }
 }
 
 async function submitEvalPublica(){

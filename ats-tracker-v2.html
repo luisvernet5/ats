@@ -14984,10 +14984,13 @@ function renderPEEnviados(){
     filterBar.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--primary-light,#e8f0fe);border-radius:8px;margin-bottom:10px;font-size:13px;color:var(--primary)">
       <i class="fa fa-filter"></i>
       Mostrando enviados de: <strong>${_esc(proc?.nombre||'—')}</strong>
-      <button onclick="peLimpiarFiltro()" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:13px;color:var(--primary);font-weight:600">× Quitar filtro</button>
+      <button onclick="peLimpiarFiltro()" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--primary);font-weight:600">× Quitar filtro</button>
+      <button onclick="exportPEEnviadosExcel()" class="btn btn-green btn-sm" style="margin-left:auto"><i class="fa fa-file-excel"></i> Exportar Excel</button>
     </div>`;
   } else {
-    filterBar.innerHTML='';
+    filterBar.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+      <button onclick="exportPEEnviadosExcel()" class="btn btn-green btn-sm"><i class="fa fa-file-excel"></i> Exportar Excel</button>
+    </div>`;
   }
 
   if(!list.length){
@@ -15018,6 +15021,56 @@ function renderPEEnviados(){
 
 function peCopyLink(token){
   navigator.clipboard?.writeText(_peLink(token)).then(()=>showToast('Link copiado ✓')).catch(()=>{});
+}
+
+function exportPEEnviadosExcel(){
+  const allList=DB.procesosEnviados||[];
+  const list=_peProcFilter ? allList.filter(e=>e.proceso_id===_peProcFilter) : allList;
+  if(!list.length){ showToast('No hay datos para exportar','err'); return; }
+
+  // Obtener columnas de pruebas: del proceso si hay filtro, o de los datos
+  let pruebasCols=[];
+  if(_peProcFilter){
+    const proc=(DB.procesosEval||[]).find(x=>x.id===_peProcFilter)||{};
+    pruebasCols=(proc.pruebas||[]).map(p=>({nombre:p.nombre,peso:p.peso}));
+  } else {
+    const seen=new Set();
+    list.forEach(e=>(e.pruebas||[]).forEach(p=>{
+      if(!seen.has(p.nombre)){ seen.add(p.nombre); pruebasCols.push({nombre:p.nombre,peso:p.peso}); }
+    }));
+  }
+
+  const header=['#','Candidato','Teléfono','Correo','Proceso','Vacante','Estado','Fecha enviado','Puntaje final (%)'];
+  pruebasCols.forEach(p=>header.push(`${p.nombre} (${p.peso}%)`));
+
+  const rows=list.map((e,i)=>{
+    const proc=(DB.procesosEval||[]).find(x=>x.id===e.proceso_id)||{};
+    const vac=DB.vacantes.find(x=>x.id===e.vacante_id)||{};
+    const estado=e.estado==='completado'?'Completado':e.estado==='en_progreso'?'En progreso':'Pendiente';
+    const row=[
+      i+1,
+      e.candidato_nombre||'—',
+      e.candidato_tel||'—',
+      e.candidato_email||'—',
+      proc.nombre||e.proceso_nombre||'—',
+      vac.nombre||vac.puesto||'—',
+      estado,
+      e.fecha_envio?new Date(e.fecha_envio).toLocaleDateString('es-MX'):'—',
+      e.puntaje_final!=null?Number(e.puntaje_final.toFixed(1)):'—'
+    ];
+    pruebasCols.forEach(ph=>{
+      const prueba=(e.pruebas||[]).find(p=>p.nombre===ph.nombre);
+      row.push(prueba?.puntaje!=null?Number(prueba.puntaje.toFixed(1)):'—');
+    });
+    return row;
+  });
+
+  const ws=XLSX.utils.aoa_to_sheet([header,...rows]);
+  ws['!cols']=[4,22,14,24,20,16,12,14,14,...pruebasCols.map(()=>22)].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new();
+  const sheetName=(_peProcFilter?(DB.procesosEval||[]).find(x=>x.id===_peProcFilter)?.nombre||'PE':'Enviados').slice(0,31);
+  XLSX.utils.book_append_sheet(wb,ws,sheetName);
+  XLSX.writeFile(wb,`PE_${today()}.xlsx`);
 }
 
 function renderPERespuestas(){

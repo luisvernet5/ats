@@ -856,9 +856,9 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
 
 <!-- ===== MODAL PLANTILLA EVALUACIÓN ===== -->
 <div class="modal-overlay" id="modal-eval-template">
-  <div class="modal" style="width:680px;max-width:96vw">
+  <div class="modal" style="width:860px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column">
     <div class="mh"><h3 id="eval-tpl-title">Nueva evaluación</h3><button class="xbtn" onclick="closeModal('modal-eval-template')"><i class="fa fa-times"></i></button></div>
-    <div class="mb">
+    <div class="mb" style="flex:1;overflow-y:auto;min-height:0">
       <input type="hidden" id="eval-tpl-id">
       <div class="fr full"><div class="fg"><label>Nombre de la evaluación *</label><input id="eval-tpl-nombre" placeholder="Ej. Evaluación Técnica Ventas"></div></div>
       <div class="fr full"><div class="fg"><label>Descripción</label><textarea id="eval-tpl-desc" rows="2" placeholder="Instrucciones o contexto para el candidato..." style="resize:vertical"></textarea></div></div>

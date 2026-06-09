@@ -1031,24 +1031,22 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
         </div>
         <div style="margin-top:12px">
           <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px">Número de WhatsApp</label>
+          <input type="hidden" id="env-pe-phone-prefix" value="52">
           <div style="display:flex;gap:6px;align-items:center">
-            <input type="hidden" id="env-pe-phone-prefix" value="52">
-            <div style="position:relative" id="env-pe-prefix-wrapper">
-              <button type="button" id="env-pe-prefix-btn" onclick="togglePrefixDropdown(event)" style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;white-space:nowrap;min-width:170px;color:var(--text)">
-                <span id="env-pe-prefix-label">México +52</span>
-                <i class="fa fa-chevron-down" style="margin-left:auto;font-size:10px;color:var(--text3)"></i>
-              </button>
-              <div id="env-pe-prefix-panel" style="display:none;position:fixed;top:0;left:0;z-index:99999;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.18);width:240px">
-                <div style="padding:8px 8px 4px">
-                  <div style="display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:6px 10px">
-                    <i class="fa fa-search" style="color:var(--text3);font-size:12px"></i>
-                    <input type="text" id="env-pe-prefix-search" placeholder="Buscar país..." oninput="filterPrefixList(this.value)" style="border:none;background:transparent;outline:none;font-size:13px;flex:1;color:var(--text);width:100%">
-                  </div>
-                </div>
-                <div id="env-pe-prefix-list" style="max-height:200px;overflow-y:auto;padding:4px 6px 8px"></div>
+            <button type="button" id="env-pe-prefix-btn" onclick="togglePrefixDropdown(event)" style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;white-space:nowrap;min-width:150px;color:var(--text)">
+              <span id="env-pe-prefix-label">México +52</span>
+              <i class="fa fa-chevron-down" style="margin-left:auto;font-size:10px;color:var(--text3)"></i>
+            </button>
+            <input id="env-pe-phone" type="tel" placeholder="Número sin prefijo" style="flex:1;font-size:13px" oninput="this.value=this.value.replace(/\D/g,'')">
+          </div>
+          <div id="env-pe-prefix-panel" style="display:none;margin-top:6px;border:1px solid var(--border);border-radius:10px;background:var(--card);box-shadow:0 2px 10px rgba(0,0,0,.1);overflow:hidden">
+            <div style="padding:8px 8px 4px;border-bottom:1px solid var(--border)">
+              <div style="display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:6px 10px">
+                <i class="fa fa-search" style="color:var(--text3);font-size:12px"></i>
+                <input type="text" id="env-pe-prefix-search" placeholder="Buscar país..." oninput="filterPrefixList(this.value)" style="border:none;background:transparent;outline:none;font-size:13px;flex:1;color:var(--text);width:100%">
               </div>
             </div>
-            <input id="env-pe-phone" type="tel" placeholder="Número sin prefijo" style="flex:1;font-size:13px" oninput="this.value=this.value.replace(/\D/g,'')">
+            <div id="env-pe-prefix-list" style="max-height:160px;overflow-y:auto;padding:4px 4px 6px"></div>
           </div>
         </div>
         <div style="display:flex;gap:8px;margin-top:10px">
@@ -15382,31 +15380,17 @@ function _renderPrefixList(filter){
 function togglePrefixDropdown(e){
   e.stopPropagation();
   const panel=document.getElementById('env-pe-prefix-panel');
-  const btn=document.getElementById('env-pe-prefix-btn');
-  if(!panel||!btn)return;
+  if(!panel)return;
   const open=panel.style.display!=='none';
   panel.style.display=open?'none':'';
   if(!open){
-    const r=btn.getBoundingClientRect();
-    panel.style.top=(r.bottom+4)+'px';
-    panel.style.left=r.left+'px';
-    panel.style.width=Math.max(r.width,240)+'px';
     const s=document.getElementById('env-pe-prefix-search');
     if(s){s.value='';s.focus();}
     _renderPrefixList('');
-    setTimeout(()=>document.addEventListener('click',_closePrefixOutside,{once:true}),10);
   }
 }
 
-function _closePrefixOutside(e){
-  const w=document.getElementById('env-pe-prefix-wrapper');
-  const panel=document.getElementById('env-pe-prefix-panel');
-  if(w&&w.contains(e.target)){
-    setTimeout(()=>document.addEventListener('click',_closePrefixOutside,{once:true}),10);
-  } else {
-    if(panel)panel.style.display='none';
-  }
-}
+function _closePrefixOutside(){}
 
 function filterPrefixList(val){_renderPrefixList(val);}
 

@@ -891,8 +891,21 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     <div class="mh"><h3 id="eval-tpl-title">Nueva evaluación</h3><button class="xbtn" onclick="closeModal('modal-eval-template')"><i class="fa fa-times"></i></button></div>
     <div class="mb" style="flex:1;overflow-y:auto;min-height:0">
       <input type="hidden" id="eval-tpl-id">
+      <input type="hidden" id="eval-tpl-banner-data">
       <div class="fr full"><div class="fg"><label>Nombre de la evaluación *</label><input id="eval-tpl-nombre" placeholder="Ej. Evaluación Técnica Ventas"></div></div>
       <div class="fr full"><div class="fg"><label>Descripción</label><textarea id="eval-tpl-desc" rows="2" placeholder="Instrucciones o contexto para el candidato..." style="resize:vertical"></textarea></div></div>
+      <div class="fr full"><div class="fg">
+        <label>Banner <span style="font-size:11px;color:var(--text3)">(imagen ancha, formato Google Forms — recomendado 1600×400 px)</span></label>
+        <div id="eval-banner-preview" style="display:none;margin-bottom:8px;position:relative">
+          <img id="eval-banner-img" src="" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;border:1px solid var(--border);display:block">
+          <button type="button" onclick="evalRemoveBanner()" title="Quitar banner"
+            style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
+        </div>
+        <label style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;padding:7px 14px;border:1px dashed var(--border);border-radius:8px;font-size:13px;color:var(--text2);background:var(--surface2)" id="eval-banner-upload-btn">
+          <i class="fa fa-image"></i> Subir banner
+          <input type="file" accept="image/*" style="display:none" onchange="evalLoadBanner(this)">
+        </label>
+      </div></div>
       <div class="fr full"><div class="fg"><label>Empresas asignadas <span style="font-size:11px;color:var(--text3)">(dejar vacío = todas)</span></label>
         <div id="eval-tpl-emps" style="border:1px solid var(--border);border-radius:6px;padding:8px;max-height:110px;overflow-y:auto;display:flex;flex-wrap:wrap;gap:6px;background:var(--bg2)"></div>
       </div></div>
@@ -1037,8 +1050,9 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
 </div>
 
 <!-- ===== FORMULARIO PÚBLICO EVALUACIÓN (mostrado via ?eval=TOKEN) ===== -->
-<div id="eval-public-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;overflow:auto;padding:32px 16px">
-  <div style="max-width:600px;margin:0 auto">
+<div id="eval-public-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;overflow:auto;padding:0 0 32px">
+  <img id="evpub-banner" src="" alt="" style="display:none;width:100%;max-height:200px;object-fit:cover;object-position:center;margin-bottom:0">
+  <div style="max-width:600px;margin:0 auto;padding:28px 16px 0">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
       <i class="fa fa-clipboard-list" style="font-size:28px;color:var(--primary)"></i>
       <div>
@@ -14120,12 +14134,42 @@ function _evalImgFromUrl(qId){
 }
 
 // ── Plantilla: crear / editar ────────────────────────────────
+function evalLoadBanner(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('eval-tpl-banner-data').value = ev.target.result;
+    document.getElementById('eval-banner-img').src = ev.target.result;
+    document.getElementById('eval-banner-preview').style.display = '';
+    document.getElementById('eval-banner-upload-btn').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+function evalRemoveBanner(){
+  document.getElementById('eval-tpl-banner-data').value = '';
+  document.getElementById('eval-banner-img').src = '';
+  document.getElementById('eval-banner-preview').style.display = 'none';
+  document.getElementById('eval-banner-upload-btn').style.display = '';
+}
+function _evalSetBanner(url){
+  if(url){
+    document.getElementById('eval-tpl-banner-data').value = url;
+    document.getElementById('eval-banner-img').src = url;
+    document.getElementById('eval-banner-preview').style.display = '';
+    document.getElementById('eval-banner-upload-btn').style.display = 'none';
+  } else {
+    evalRemoveBanner();
+  }
+}
+
 function openEvalTemplateModal(id=null){
   document.getElementById('eval-tpl-id').value = '';
   document.getElementById('eval-tpl-nombre').value = '';
   document.getElementById('eval-tpl-desc').value = '';
   document.getElementById('eval-preguntas-list').innerHTML = '';
   document.getElementById('eval-tpl-title').textContent = id ? 'Editar evaluación' : 'Nueva evaluación';
+  evalRemoveBanner();
   const selectedEmpIds = id ? (DB.evaluaciones.find(x=>x.id===id)?.empresa_ids||[]) : [];
   document.getElementById('eval-tpl-emps').innerHTML = DB.empresas.map(e=>{
     const sel = selectedEmpIds.includes(e.id);
@@ -14139,6 +14183,7 @@ function openEvalTemplateModal(id=null){
     document.getElementById('eval-tpl-id').value = id;
     document.getElementById('eval-tpl-nombre').value = e.nombre||'';
     document.getElementById('eval-tpl-desc').value = e.descripcion||'';
+    _evalSetBanner(e.banner||null);
     (e.preguntas||[]).forEach(q=>evalAddPregunta(q));
   } else {
     evalAddPregunta();
@@ -14400,7 +14445,8 @@ async function saveEvalTemplate(){
   const id=document.getElementById('eval-tpl-id').value||uid();
   const esNueva = !DB.evaluaciones.find(x=>x.id===id);
   const anterior = esNueva ? null : DB.evaluaciones.find(x=>x.id===id);
-  const ev={id,nombre,descripcion:document.getElementById('eval-tpl-desc').value.trim(),empresa_ids,preguntas,activa:true,created_at:new Date().toISOString()};
+  const banner = document.getElementById('eval-tpl-banner-data').value||null;
+  const ev={id,nombre,descripcion:document.getElementById('eval-tpl-desc').value.trim(),empresa_ids,preguntas,banner,activa:true,created_at:new Date().toISOString()};
   try{
     await saveRecord('evaluaciones',ev);
     const idx=DB.evaluaciones.findIndex(x=>x.id===id);
@@ -14778,6 +14824,11 @@ function _evpubIniciarForm(){
 function _renderEvalPublica(ev, enviada){
   document.getElementById('eval-public-screen').style.display = '';
   document.getElementById('auth-screen').style.display = 'none';
+  const bannerEl = document.getElementById('evpub-banner');
+  if(bannerEl){
+    if(ev.banner){ bannerEl.src=ev.banner; bannerEl.style.display=''; }
+    else bannerEl.style.display='none';
+  }
   document.getElementById('evpub-nombre').textContent = ev.nombre||'Evaluación';
   document.getElementById('evpub-desc').textContent = ev.descripcion||'';
   // Si no tiene nombre asignado, pedir al candidato que lo ingrese

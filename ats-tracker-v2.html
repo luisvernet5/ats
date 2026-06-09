@@ -856,7 +856,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
 
 <!-- ===== MODAL PLANTILLA EVALUACIÓN ===== -->
 <div class="modal-overlay" id="modal-eval-template">
-  <div class="modal" style="width:860px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column">
+  <div class="modal" style="width:1100px;max-width:96vw;height:90vh;max-height:90vh;display:flex;flex-direction:column">
     <div class="mh"><h3 id="eval-tpl-title">Nueva evaluación</h3><button class="xbtn" onclick="closeModal('modal-eval-template')"><i class="fa fa-times"></i></button></div>
     <div class="mb" style="flex:1;overflow-y:auto;min-height:0">
       <input type="hidden" id="eval-tpl-id">
@@ -14290,36 +14290,50 @@ async function submitEvalPublica(){
   if(!_evalPubData) return;
   const {evaluacion, enviada} = _evalPubData;
   const respuestas = {};
-  let allAnswered = true;
+  let primerError = null;
   for(const q of (evaluacion.preguntas||[])){
-    if(_EVAL_TEXTO_TIPOS.has(q.tipo) && q.tipo!=='texto_corto' && q.tipo!=='parrafo') continue;
-    if(q.tipo==='texto_corto'||q.tipo==='parrafo'){
+    // Saltar bloques decorativos
+    if(q.tipo==='titulo'||q.tipo==='descripcion') continue;
+    if(q.tipo==='texto_corto'||q.tipo==='parrafo'||q.tipo==='fecha'||q.tipo==='hora'){
       const el = document.querySelector(`[name="q_${q.id}"]`);
       const val = el?.value?.trim()||'';
-      if(q.requerida && !val){ allAnswered=false; break; }
+      if(q.requerida && !val){ primerError=q; break; }
       respuestas[q.id] = val||null;
     } else if(q.tipo==='casillas'){
       const checked = [...document.querySelectorAll(`input[name="q_${q.id}"]:checked`)].map(i=>i.value);
-      if(q.requerida && !checked.length){ allAnswered=false; break; }
+      if(q.requerida && !checked.length){ primerError=q; break; }
       respuestas[q.id] = checked.length ? checked.join(', ') : null;
     } else if(q.tipo==='desplegable'){
       const sel = document.querySelector(`select[name="q_${q.id}"]`)?.value||'';
-      if(q.requerida && !sel){ allAnswered=false; break; }
+      if(q.requerida && !sel){ primerError=q; break; }
       respuestas[q.id] = sel||null;
     } else {
+      // opcion_multiple, escala_lineal
       const el = document.querySelector(`input[name="q_${q.id}"]:checked`);
-      if(q.requerida && !el){ allAnswered=false; break; }
+      if(q.requerida && !el){ primerError=q; break; }
       respuestas[q.id] = el?.value||null;
     }
   }
-  if(!allAnswered){ showToast('Responde todas las preguntas requeridas','err'); return; }
+  if(primerError){
+    const errDiv = document.getElementById('evpub-error');
+    if(errDiv){ errDiv.textContent = `Por favor responde: "${primerError.texto||'pregunta requerida'}"`;errDiv.style.display=''; }
+    return;
+  }
+  const errDiv = document.getElementById('evpub-error');
+  if(errDiv) errDiv.style.display='none';
+  const btn = document.querySelector('#evpub-form button[onclick="submitEvalPublica()"]');
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Enviando...'; }
   const nombreFinal = window._evpubNombreIngresado || enviada.candidato_nombre || '';
   const updated = {...enviada, candidato_nombre:nombreFinal, estado:'completada', respuestas, fecha_completada:new Date().toISOString()};
   try {
     await sbClient.from('evaluaciones_enviadas').upsert({id:updated.id, data:updated});
     document.getElementById('evpub-form').style.display = 'none';
     document.getElementById('evpub-completed').style.display = '';
-  } catch(e){ showToast('Error al enviar: '+e.message,'err'); }
+  } catch(e){
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa fa-paper-plane"></i> Enviar respuestas'; }
+    const errDiv2 = document.getElementById('evpub-error');
+    if(errDiv2){ errDiv2.textContent='Error al enviar: '+e.message; errDiv2.style.display=''; }
+  }
 }
 </script>
 </body>

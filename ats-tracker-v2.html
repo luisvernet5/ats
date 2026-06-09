@@ -13613,7 +13613,10 @@ function renderEvalRespuestas(){
       <td style="font-size:12px;color:var(--text3)">${fecha}</td>
       <td>${scoreHTML}</td>
       <td>${resultHTML}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick="verRespuestasEval('${e.id}')"><i class="fa fa-eye"></i> Ver</button></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="verRespuestasEval('${e.id}')"><i class="fa fa-eye"></i> Ver</button>
+        ${currentUserData?.rol==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteEvalEnviada('${e.id}')" title="Eliminar respuesta"><i class="fa fa-trash"></i></button>`:''}
+      </td>
     </tr>`;
   }).join('');
 }
@@ -13633,7 +13636,7 @@ function renderEvalPlantillas(){
       <td style="white-space:nowrap">
         <button class="btn btn-primary btn-sm" onclick="openEnviarEvalModal('${e.id}')"><i class="fa fa-paper-plane"></i> Enviar</button>
         <button class="btn btn-ghost btn-sm" onclick="openEvalTemplateModal('${e.id}')"><i class="fa fa-edit"></i></button>
-        <button class="btn btn-danger btn-sm" onclick="deleteEvalTemplate('${e.id}')"><i class="fa fa-trash"></i></button>
+        ${currentUserData?.rol==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteEvalTemplate('${e.id}')"><i class="fa fa-trash"></i></button>`:''}
       </td>
     </tr>`).join('');
 }
@@ -13669,6 +13672,7 @@ function renderEvalEnviadas(){
       <td style="white-space:nowrap">
         ${e.estado==='completada'?`<button class="btn btn-ghost btn-sm" onclick="verRespuestasEval('${e.id}')"><i class="fa fa-eye"></i> Ver</button>`:''}
         <button class="btn btn-ghost btn-sm" onclick="evalCopyLinkById('${e.token}')" title="Copiar link"><i class="fa fa-copy"></i></button>
+        ${currentUserData?.rol==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteEvalEnviada('${e.id}')" title="Eliminar registro"><i class="fa fa-trash"></i></button>`:''}
       </td>
     </tr>`;
   }).join('');
@@ -13927,6 +13931,14 @@ async function deleteEvalTemplate(id){
   DB.evaluaciones = DB.evaluaciones.filter(x=>x.id!==id);
   showToast('Evaluación eliminada');
   renderEvalPlantillas();
+}
+async function deleteEvalEnviada(id){
+  if(!confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
+  await deleteRecord('evaluaciones_enviadas',id);
+  DB.evaluacionesEnviadas = (DB.evaluacionesEnviadas||[]).filter(x=>x.id!==id);
+  showToast('Registro eliminado');
+  renderEvalEnviadas();
+  renderEvalRespuestas();
 }
 
 // ── Enviar evaluación ────────────────────────────────────────

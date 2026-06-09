@@ -14220,6 +14220,10 @@ function _renderEvalPublica(ev, enviada){
         </label>`).join('')}
         ${q.escala_max_label?`<span style="font-size:12px;color:var(--text3)">${q.escala_max_label}</span>`:''}
       </div>`;
+    } else if(q.tipo==='fecha'){
+      input = `<input type="date" name="q_${q.id}" style="font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid var(--border)">`;
+    } else if(q.tipo==='hora'){
+      input = `<input type="time" name="q_${q.id}" style="font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid var(--border)">`;
     }
     return `<div style="border:1px solid var(--border);border-radius:10px;padding:16px;background:var(--surface)">${label}${input}</div>`;
   }).join('');

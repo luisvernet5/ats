@@ -635,7 +635,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     </div>
     <div id="pe-panel-enviados" style="display:none">
       <div class="table-wrap"><table class="table" id="pe-enviados-table">
-        <thead><tr><th>Candidato</th><th>Proceso</th><th>Vacante</th><th>Estado</th><th>Puntaje final</th><th>Fecha envío</th><th>Hora envío</th><th>Completado</th><th>Duración</th><th></th></tr></thead>
+        <thead><tr><th>Candidato</th><th>Proceso</th><th>Vacante</th><th>Estado</th><th>Puntaje final</th><th>Fecha envío</th><th>Hora envío</th><th>Fecha completado</th><th>Hora completado</th><th>Duración</th><th></th></tr></thead>
         <tbody id="pe-enviados-tbody"></tbody>
       </table></div>
     </div>
@@ -15037,7 +15037,7 @@ function renderPEEnviados(){
   }
 
   if(!list.length){
-    tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">${_peProcFilter?'Este proceso no tiene enviados aún.':'Ningún proceso enviado aún.'}</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:24px">${_peProcFilter?'Este proceso no tiene enviados aún.':'Ningún proceso enviado aún.'}</td></tr>`;
     return;
   }
   tbody.innerHTML=list.map(e=>{
@@ -15063,7 +15063,8 @@ function renderPEEnviados(){
       <td>${scoreHTML}</td>
       <td style="font-size:12px;color:var(--text3);white-space:nowrap">${fmtDate(e.fecha_envio)}</td>
       <td style="font-size:12px;color:var(--text3);white-space:nowrap">${fmtTime(e.fecha_envio)}</td>
-      <td style="font-size:12px;color:var(--text3);white-space:nowrap">${e.fecha_completada?`<span style="font-size:11px">${fmtDate(e.fecha_completada)}</span><br><span style="font-size:11px">${fmtTime(e.fecha_completada)}</span>`:'—'}</td>
+      <td style="font-size:12px;color:var(--text3);white-space:nowrap">${fmtDate(e.fecha_completada)}</td>
+      <td style="font-size:12px;color:var(--text3);white-space:nowrap">${fmtTime(e.fecha_completada)}</td>
       <td style="font-size:12px;white-space:nowrap">${fmtDur(e.fecha_envio,e.fecha_completada)}</td>
       <td style="white-space:nowrap">
         ${currentUserData?.rol==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteProcesoEnviado('${e.id}')"><i class="fa fa-trash"></i></button>`:''}

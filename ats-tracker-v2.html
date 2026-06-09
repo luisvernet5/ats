@@ -1029,6 +1029,38 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
           <input id="env-pe-link" readonly style="flex:1;font-size:12px;font-family:var(--mono);background:var(--bg2)">
           <button class="btn btn-ghost btn-sm" onclick="peCopyLink()" title="Copiar"><i class="fa fa-copy"></i></button>
         </div>
+        <div style="margin-top:12px">
+          <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px">Número de WhatsApp</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <select id="env-pe-phone-prefix" style="font-size:13px;width:auto;min-width:90px">
+              <option value="52" selected>🇲🇽 +52</option>
+              <option value="1">🇺🇸 +1</option>
+              <option value="1">🇨🇦 +1</option>
+              <option value="54">🇦🇷 +54</option>
+              <option value="55">🇧🇷 +55</option>
+              <option value="56">🇨🇱 +56</option>
+              <option value="57">🇨🇴 +57</option>
+              <option value="506">🇨🇷 +506</option>
+              <option value="593">🇪🇨 +593</option>
+              <option value="503">🇸🇻 +503</option>
+              <option value="502">🇬🇹 +502</option>
+              <option value="504">🇭🇳 +504</option>
+              <option value="505">🇳🇮 +505</option>
+              <option value="507">🇵🇦 +507</option>
+              <option value="595">🇵🇾 +595</option>
+              <option value="51">🇵🇪 +51</option>
+              <option value="1809">🇩🇴 +1809</option>
+              <option value="598">🇺🇾 +598</option>
+              <option value="58">🇻🇪 +58</option>
+              <option value="34">🇪🇸 +34</option>
+              <option value="44">🇬🇧 +44</option>
+              <option value="33">🇫🇷 +33</option>
+              <option value="49">🇩🇪 +49</option>
+              <option value="39">🇮🇹 +39</option>
+            </select>
+            <input id="env-pe-phone" type="tel" placeholder="Número sin prefijo" style="flex:1;font-size:13px" oninput="this.value=this.value.replace(/\D/g,'')">
+          </div>
+        </div>
         <div style="display:flex;gap:8px;margin-top:10px">
           <button class="btn btn-ghost btn-sm" style="flex:1;background:#25D366;color:#fff;border:none;font-size:14px;padding:10px" onclick="peShareWhatsapp()"><i class="fab fa-whatsapp"></i> Enviar por WhatsApp</button>
         </div>
@@ -15292,8 +15324,10 @@ function peCopyLink(){
 function peShareWhatsapp(){
   const link=document.getElementById('env-pe-link').value;
   const proc=(DB.procesosEval||[]).find(x=>x.id===document.getElementById('env-pe-proc').value)||{};
+  const phone=(document.getElementById('env-pe-phone')?.value||'').replace(/\D/g,'');
   const msg=encodeURIComponent(`Hola, te compartimos el proceso de evaluación: "${proc.nombre||''}"\n\nPor favor complétalo en el siguiente enlace:\n${link}`);
-  window.open(`https://wa.me/?text=${msg}`,'_blank');
+  const numero=phone.length>=10?`52${phone}`:'';
+  window.open(`https://wa.me/${numero}?text=${msg}`,'_blank');
 }
 
 // ── Ver respuestas de proceso ──────────────────────────────────

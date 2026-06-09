@@ -13722,6 +13722,42 @@ function _evalImgRemove(qId){
   const preview = sec?.querySelector('div[data-imgpreview]');
   if(preview) preview.remove();
 }
+function _evalOptImgSet(qId, idx, src){
+  const row = document.getElementById(`opt_${qId}_${idx}`);
+  if(!row) return;
+  const inp = row.querySelector('[data-field="opcion-imagen"]');
+  if(inp) inp.value = src||'';
+  const prev = document.getElementById(`opt_img_prev_${qId}_${idx}`);
+  if(!prev) return;
+  prev.innerHTML = src ? `<div style="position:relative;display:inline-block;margin-top:4px">
+    <img src="${src}" style="max-height:72px;max-width:110px;border-radius:4px;border:1px solid var(--border);display:block">
+    <button onclick="_evalOptImgRemove('${qId}',${idx})" style="position:absolute;top:-5px;right:-5px;width:16px;height:16px;border-radius:50%;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
+  </div>` : '';
+}
+function _evalOptImgRemove(qId, idx){ _evalOptImgSet(qId, idx, ''); }
+async function _evalOptImgFromFile(qId, idx, inp){
+  const file = inp.files?.[0];
+  if(!file) return;
+  const prev = document.getElementById(`opt_img_prev_${qId}_${idx}`);
+  const loadEl = document.createElement('span');
+  loadEl.style.cssText='font-size:11px;color:var(--text3);display:block;margin-top:4px';
+  loadEl.innerHTML='<i class="fa fa-spinner fa-spin"></i> Subiendo...';
+  if(prev) prev.appendChild(loadEl);
+  try{
+    await _evalImgEnsureBucket();
+    const ext=file.name.split('.').pop()||'jpg';
+    const path=`eval-opts/${Date.now()}-${uid()}.${ext}`;
+    const {error}=await sbClient.storage.from('eval-imagenes').upload(path,file,{cacheControl:'3600',upsert:false});
+    if(error) throw error;
+    const {data:urlData}=sbClient.storage.from('eval-imagenes').getPublicUrl(path);
+    loadEl.remove();
+    _evalOptImgSet(qId, idx, urlData.publicUrl);
+  }catch(e){
+    loadEl.style.color='var(--red)';
+    loadEl.textContent='Error: '+e.message;
+  }
+}
+
 async function _evalImgEnsureBucket(){
   if(_evalImgBucketReady) return;
   await sbClient.storage.createBucket('eval-imagenes',{public:true,fileSizeLimit:5242880}).catch(()=>{});
@@ -13842,9 +13878,10 @@ function _evalGetOpcContent(qId, tipo, q){
   if(tipo==='hora') return `<div style="margin-top:8px"><input type="time" disabled style="font-size:13px;opacity:.55;cursor:default;background:var(--bg2);padding:5px 8px;border-radius:6px;border:1px solid var(--border)"></div>`;
   // opcion_multiple / casillas / desplegable
   const opciones=q?.opciones||['',''];
+  const opcionesImg=q?.opciones_imagenes||[];
   const correctIdx=q?.respuesta_correcta?opciones.indexOf(q.respuesta_correcta):-1;
   return `<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px" id="opts_${qId}">
-    ${opciones.map((o,i)=>evalOpcionHTML(qId,o,i,i===correctIdx,tipo)).join('')}
+    ${opciones.map((o,i)=>evalOpcionHTML(qId,o,i,i===correctIdx,tipo,opcionesImg[i]||'')).join('')}
   </div>
   <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
     <button class="btn btn-ghost btn-sm" style="font-size:12px" onclick="evalAddOpcion('${qId}')"><i class="fa fa-plus"></i> Agregar opción</button>
@@ -13852,16 +13889,31 @@ function _evalGetOpcContent(qId, tipo, q){
   </div>`;
 }
 
-function evalOpcionHTML(qId,val='',idx=0,isCorrect=false,tipo='opcion_multiple'){
+function evalOpcionHTML(qId,val='',idx=0,isCorrect=false,tipo='opcion_multiple',imagen=''){
   const bullet = tipo==='casillas'
     ? `<input type="checkbox" disabled style="cursor:default">`
     : tipo==='desplegable'
     ? `<span style="font-size:12px;color:var(--text3);min-width:18px">${idx+1}.</span>`
     : `<input type="radio" name="correct_${qId}" value="${idx}" ${isCorrect?'checked':''} title="Respuesta correcta" style="accent-color:#22c55e;cursor:pointer">`;
-  return `<div style="display:flex;gap:6px;align-items:center" id="opt_${qId}_${idx}">
-    ${bullet}
-    <input placeholder="Opción ${idx+1}" value="${_esc(val||'')}" data-qid="${qId}" data-field="opcion" style="flex:1;min-width:0;font-size:13px">
-    <button class="btn btn-ghost btn-sm" style="padding:2px 8px;flex-shrink:0" onclick="this.parentElement.remove()"><i class="fa fa-times"></i></button>
+  const prevHTML = imagen
+    ? `<div style="position:relative;display:inline-block;margin-top:4px">
+        <img src="${imagen}" style="max-height:72px;max-width:110px;border-radius:4px;border:1px solid var(--border);display:block">
+        <button onclick="_evalOptImgRemove('${qId}',${idx})" style="position:absolute;top:-5px;right:-5px;width:16px;height:16px;border-radius:50%;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
+      </div>` : '';
+  return `<div style="display:flex;gap:6px;align-items:flex-start" id="opt_${qId}_${idx}">
+    <div style="margin-top:7px">${bullet}</div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+      <div style="display:flex;gap:4px;align-items:center">
+        <input placeholder="Opción ${idx+1}" value="${_esc(val||'')}" data-qid="${qId}" data-field="opcion" style="flex:1;min-width:0;font-size:13px">
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer;padding:3px 7px;flex-shrink:0" title="Agregar imagen a esta opción">
+          <i class="fa fa-image" style="font-size:12px"></i>
+          <input type="file" accept="image/*" style="display:none" onchange="_evalOptImgFromFile('${qId}',${idx},this)">
+        </label>
+        <button class="btn btn-ghost btn-sm" style="padding:2px 8px;flex-shrink:0" onclick="this.closest('[id^=opt_]').remove()"><i class="fa fa-times"></i></button>
+      </div>
+      <div id="opt_img_prev_${qId}_${idx}">${prevHTML}</div>
+      <input type="hidden" data-qid="${qId}" data-field="opcion-imagen" value="${_esc(imagen||'')}">
+    </div>
   </div>`;
 }
 
@@ -13992,9 +14044,14 @@ async function saveEvalTemplate(){
     const requerida=document.querySelector(`[data-qid="${qId}"][data-field="requerida"]`)?.checked!==false;
     const puntos=parseInt(document.querySelector(`[data-qid="${qId}"][data-field="puntos"]`)?.value||'0')||0;
     const cuenta_calificacion=document.querySelector(`[data-qid="${qId}"][data-field="cuenta_calificacion"]`)?.checked!==false;
-    let opciones=[],respuesta_correcta=null,escala_min,escala_max,escala_min_label,escala_max_label;
+    let opciones=[],opciones_imagenes=[],respuesta_correcta=null,escala_min,escala_max,escala_min_label,escala_max_label;
     if(['opcion_multiple','casillas','desplegable'].includes(tipo)){
-      opciones=[...document.querySelectorAll(`#opts_${qId} [data-field="opcion"]`)].map(i=>i.value.trim()).filter(Boolean);
+      const optEls=[...document.querySelectorAll(`#opts_${qId} [data-field="opcion"]`)].filter(i=>i.value.trim());
+      opciones=optEls.map(i=>i.value.trim());
+      opciones_imagenes=optEls.map(i=>{
+        const row=i.closest('[id^="opt_"]');
+        return row?.querySelector('[data-field="opcion-imagen"]')?.value||null;
+      });
       if(tipo==='opcion_multiple'){
         const cr=document.querySelector(`input[name="correct_${qId}"]:checked`);
         const ci=cr?parseInt(cr.value):-1;
@@ -14008,7 +14065,7 @@ async function saveEvalTemplate(){
       respuesta_correcta=document.querySelector(`input[name="correct_esc_${qId}"]:checked`)?.value||null;
     }
     const imagen = document.getElementById('epimgval_'+qId)?.value||null;
-    preguntas.push({id:qId,tipo,texto,opciones,respuesta_correcta,puntos,cuenta_calificacion,requerida,escala_min,escala_max,escala_min_label,escala_max_label,imagen:imagen||null});
+    preguntas.push({id:qId,tipo,texto,opciones,opciones_imagenes:opciones_imagenes.length?opciones_imagenes:null,respuesta_correcta,puntos,cuenta_calificacion,requerida,escala_min,escala_max,escala_min_label,escala_max_label,imagen:imagen||null});
   });
   const pregsConPregunta=preguntas.filter(p=>!_EVAL_TEXTO_TIPOS.has(p.tipo));
   if(!pregsConPregunta.length){showToast('Agrega al menos una pregunta','err');return;}
@@ -14410,15 +14467,27 @@ function _renderEvalPublica(ev, enviada){
     } else if(q.tipo==='parrafo'){
       input = `<textarea name="q_${q.id}" rows="3" placeholder="Tu respuesta..." style="width:100%;font-size:13px;resize:vertical"></textarea>`;
     } else if(q.tipo==='opcion_multiple'){
-      input = `<div style="display:flex;flex-direction:column;gap:8px">${(q.opciones||[]).map(opt=>`
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);transition:background .15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-          <input type="radio" name="q_${q.id}" value="${_esc(opt)}" style="accent-color:var(--primary)"> ${_esc(opt)}
-        </label>`).join('')}</div>`;
+      input = `<div style="display:flex;flex-direction:column;gap:8px">${(q.opciones||[]).map((opt,oi)=>{
+        const img=(q.opciones_imagenes||[])[oi]||null;
+        return `<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;padding:10px 12px;border-radius:8px;border:1px solid var(--border);transition:background .15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+          <input type="radio" name="q_${q.id}" value="${_esc(opt)}" style="accent-color:var(--primary);flex-shrink:0">
+          <div style="display:flex;flex-direction:column;gap:6px;flex:1">
+            ${_esc(opt)}
+            ${img?`<img src="${img}" style="max-width:200px;max-height:140px;border-radius:6px;border:1px solid var(--border);display:block">` : ''}
+          </div>
+        </label>`;
+      }).join('')}</div>`;
     } else if(q.tipo==='casillas'){
-      input = `<div style="display:flex;flex-direction:column;gap:8px">${(q.opciones||[]).map(opt=>`
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);transition:background .15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-          <input type="checkbox" name="q_${q.id}" value="${_esc(opt)}" style="accent-color:var(--primary)"> ${_esc(opt)}
-        </label>`).join('')}</div>`;
+      input = `<div style="display:flex;flex-direction:column;gap:8px">${(q.opciones||[]).map((opt,oi)=>{
+        const img=(q.opciones_imagenes||[])[oi]||null;
+        return `<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;padding:10px 12px;border-radius:8px;border:1px solid var(--border);transition:background .15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+          <input type="checkbox" name="q_${q.id}" value="${_esc(opt)}" style="accent-color:var(--primary);flex-shrink:0">
+          <div style="display:flex;flex-direction:column;gap:6px;flex:1">
+            ${_esc(opt)}
+            ${img?`<img src="${img}" style="max-width:200px;max-height:140px;border-radius:6px;border:1px solid var(--border);display:block">` : ''}
+          </div>
+        </label>`;
+      }).join('')}</div>`;
     } else if(q.tipo==='desplegable'){
       input = `<select name="q_${q.id}" style="width:100%;font-size:13px">
         <option value="">Selecciona una opción...</option>

@@ -1014,7 +1014,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
 <!-- ===== MODAL ENVIAR PROCESO DE EVALUACIÓN ===== -->
 <div class="modal-overlay" id="modal-enviar-proceso">
   <div class="modal" style="width:520px;max-width:96vw">
-    <div class="mh"><h3>Enviar proceso de evaluación</h3><button class="xbtn" onclick="closeModal('modal-enviar-proceso')"><i class="fa fa-times"></i></button></div>
+    <div class="mh"><h3>Enviar proceso de evaluación</h3><button class="xbtn" onclick="closeModal('modal-enviar-proceso');_pendingEnviado=null"><i class="fa fa-times"></i></button></div>
     <div class="mb">
       <input type="hidden" id="env-pe-id">
       <div class="fr full"><div class="fg"><label>Proceso</label>
@@ -1058,7 +1058,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       </div>
     </div>
     <div class="mf">
-      <button class="btn btn-ghost" onclick="closeModal('modal-enviar-proceso')">Cerrar</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-enviar-proceso');_pendingEnviado=null">Cerrar</button>
     </div>
   </div>
 </div>
@@ -15299,14 +15299,16 @@ function openEnviarProcesoModal(procesoId=null){
   if(procesoId)generarLinkProceso();
 }
 
-async function generarLinkProceso(){
+let _pendingEnviado=null;
+
+function generarLinkProceso(){
   const procesoId=document.getElementById('env-pe-proc').value;
   const vacanteId=document.getElementById('env-pe-vac').value;
-  if(!procesoId){document.getElementById('env-pe-link-box').style.display='none';return;}
+  if(!procesoId){document.getElementById('env-pe-link-box').style.display='none';_pendingEnviado=null;return;}
   const proc=(DB.procesosEval||[]).find(x=>x.id===procesoId);
-  if(!proc)return;
+  if(!proc){document.getElementById('env-pe-link-box').style.display='none';_pendingEnviado=null;return;}
   const token=uid()+uid();
-  const enviado={
+  _pendingEnviado={
     id:uid(),
     proceso_id:procesoId,
     proceso_nombre:proc.nombre,
@@ -15318,22 +15320,27 @@ async function generarLinkProceso(){
     estado:'pendiente',
     pruebas:(proc.pruebas||[]).map(pr=>({...pr,estado:'pendiente',respuestas:{},puntaje:null})),
     puntaje_final:null,
-    fecha_envio:new Date().toISOString(),
+    fecha_envio:null,
     fecha_completada:null
   };
-  try{
-    await saveRecord('procesos_enviados',enviado);
-    if(!DB.procesosEnviados)DB.procesosEnviados=[];
-    DB.procesosEnviados.push(enviado);
-    document.getElementById('env-pe-link').value=_peLink(token);
-    document.getElementById('env-pe-link-box').style.display='';
-    renderPEEnviados();
-  }catch(e){showToast('Error: '+e.message,'err');}
+  document.getElementById('env-pe-link').value=_peLink(token);
+  document.getElementById('env-pe-link-box').style.display='';
+}
+
+async function _guardarPendingEnviado(){
+  if(!_pendingEnviado)return;
+  _pendingEnviado.fecha_envio=new Date().toISOString();
+  await saveRecord('procesos_enviados',_pendingEnviado);
+  if(!DB.procesosEnviados)DB.procesosEnviados=[];
+  DB.procesosEnviados.push(_pendingEnviado);
+  renderPEEnviados();
+  _pendingEnviado=null;
 }
 
 function _peLink(token){return`${location.origin}${location.pathname}?proceso=${token}`;}
 
-function peCopyLink(){
+async function peCopyLink(){
+  await _guardarPendingEnviado();
   navigator.clipboard?.writeText(document.getElementById('env-pe-link').value).then(()=>showToast('Link copiado ✓')).catch(()=>{});
 }
 
@@ -15409,7 +15416,8 @@ function selectPrefix(val,label){
   document.getElementById('env-pe-prefix-panel').style.display='none';
 }
 
-function peShareWhatsapp(){
+async function peShareWhatsapp(){
+  await _guardarPendingEnviado();
   const link=document.getElementById('env-pe-link').value;
   const proc=(DB.procesosEval||[]).find(x=>x.id===document.getElementById('env-pe-proc').value)||{};
   const phone=(document.getElementById('env-pe-phone')?.value||'').replace(/\D/g,'');

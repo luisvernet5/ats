@@ -15325,8 +15325,9 @@ function peShareWhatsapp(){
   const link=document.getElementById('env-pe-link').value;
   const proc=(DB.procesosEval||[]).find(x=>x.id===document.getElementById('env-pe-proc').value)||{};
   const phone=(document.getElementById('env-pe-phone')?.value||'').replace(/\D/g,'');
+  const prefix=document.getElementById('env-pe-phone-prefix')?.value||'52';
   const msg=encodeURIComponent(`Hola, te compartimos el proceso de evaluación: "${proc.nombre||''}"\n\nPor favor complétalo en el siguiente enlace:\n${link}`);
-  const numero=phone.length>=10?`52${phone}`:'';
+  const numero=phone?`${prefix}${phone}`:'';
   window.open(`https://wa.me/${numero}?text=${msg}`,'_blank');
 }
 

@@ -13561,7 +13561,8 @@ function _eseRow(e, n){
     <td style="color:var(--text3);font-size:12px">${n}</td>
     <td><strong>${cand.nombre||'—'}</strong></td>
     <td style="font-size:12px;color:var(--text2)">${emp.nombre||'—'}</td>
-    <td style="font-size:12px;color:var(--text2)">${vac.titulo||vac.folio||'—'}</td>
+    <td style="font-size:12px;color:var(--text2);font-family:var(--mono)">${vac.folio||'—'}</td>
+    <td style="font-size:12px;color:var(--text2)">${vac.titulo||'—'}</td>
     <td>${_eseFmt(e.fecha_realizado)}</td>
     <td>${_eseEstadoBadge(e)}</td>
     <td style="font-size:12px;color:var(--text3);max-width:160px">${e.motivo_no_cobro||'—'}</td>
@@ -13693,7 +13694,8 @@ function exportESEExcel(){
       i+1,
       cand.nombre||'—',
       emp.nombre||'—',
-      vac.titulo||vac.folio||'—',
+      vac.folio||'—',
+      vac.titulo||'—',
       e.fecha_realizado||'',
       _eseEstadoLabel(e),
       e.motivo_no_cobro||'',
@@ -13702,9 +13704,9 @@ function exportESEExcel(){
       e.notas||''
     ];
   });
-  const header = ['#','Candidato','Empresa','Vacante','Fecha realizado','Estado','Motivo no cobro','Fecha pagado','Fecha cobrado','Notas'];
+  const header = ['#','Candidato','Empresa','Folio','Vacante','Fecha realizado','Estado','Motivo no cobro','Fecha pagado','Fecha cobrado','Notas'];
   const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
-  ws['!cols'] = [4,22,18,18,15,12,24,14,14,30].map(w=>({wch:w}));
+  ws['!cols'] = [4,22,18,14,22,15,12,24,14,14,30].map(w=>({wch:w}));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'ESE');
   XLSX.writeFile(wb, `ESE_${today()}.xlsx`);
@@ -13760,7 +13762,7 @@ function _eseRenderTable(){
     ? `<div style="text-align:center;padding:60px 0;color:var(--text3)"><i class="fa fa-file-alt" style="font-size:40px;margin-bottom:12px;display:block"></i>No hay registros ESE</div>`
     : `<div class="table-wrap"><table id="ese-table">
         <thead><tr>
-          <th>#</th><th>Candidato</th><th>Empresa</th><th>Vacante</th>
+          <th>#</th><th>Candidato</th><th>Empresa</th><th>Folio</th><th>Vacante</th>
           <th>Fecha realizado</th><th>Estado</th><th>Motivo no cobro</th><th></th>
         </tr></thead>
         <tbody>${lista.map((e,i)=>_eseRow(e,i+1)).join('')}</tbody>

@@ -14924,6 +14924,19 @@ function peSetTab(tab){
   });
 }
 
+let _peProcFilter = null;
+
+function peVerEnviados(procId){
+  _peProcFilter = procId;
+  peSetTab('enviados');
+  renderPEEnviados();
+}
+
+function peLimpiarFiltro(){
+  _peProcFilter = null;
+  renderPEEnviados();
+}
+
 function renderPEProcesos(){
   const tbody=document.getElementById('pe-procesos-tbody');
   if(!tbody)return;
@@ -14936,7 +14949,10 @@ function renderPEProcesos(){
     const enviados=(DB.procesosEnviados||[]).filter(e=>e.proceso_id===p.id).length;
     const pruebasHTML=(p.pruebas||[]).map(pr=>`<span style="display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;background:var(--primary-light,#e8f0fe);color:var(--primary);border:1px solid var(--primary);margin:1px">${_esc(pr.nombre)} (${pr.peso}%)</span>`).join('')||'—';
     return `<tr>
-      <td><strong>${_esc(p.nombre)}</strong>${p.descripcion?`<div style="font-size:11px;color:var(--text3)">${_esc(p.descripcion)}</div>`:''}</td>
+      <td>
+        <strong onclick="peVerEnviados('${p.id}')" style="cursor:pointer;color:var(--primary)">${_esc(p.nombre)}</strong>
+        ${p.descripcion?`<div style="font-size:11px;color:var(--text3)">${_esc(p.descripcion)}</div>`:''}
+      </td>
       <td style="max-width:280px;line-height:1.6">${pruebasHTML}</td>
       <td style="text-align:center">${enviados}</td>
       <td><span class="badge ${p.activa!==false?'bg':'br'}">${p.activa!==false?'Activo':'Inactivo'}</span></td>
@@ -14953,9 +14969,29 @@ function renderPEProcesos(){
 function renderPEEnviados(){
   const tbody=document.getElementById('pe-enviados-tbody');
   if(!tbody)return;
-  const list=DB.procesosEnviados||[];
+  const allList=DB.procesosEnviados||[];
+  const list=_peProcFilter ? allList.filter(e=>e.proceso_id===_peProcFilter) : allList;
+
+  // Indicador de filtro activo
+  let filterBar=document.getElementById('pe-enviados-filter-bar');
+  if(!filterBar){
+    filterBar=document.createElement('div');
+    filterBar.id='pe-enviados-filter-bar';
+    tbody.closest('.table-wrap')?.before(filterBar);
+  }
+  if(_peProcFilter){
+    const proc=(DB.procesosEval||[]).find(x=>x.id===_peProcFilter);
+    filterBar.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--primary-light,#e8f0fe);border-radius:8px;margin-bottom:10px;font-size:13px;color:var(--primary)">
+      <i class="fa fa-filter"></i>
+      Mostrando enviados de: <strong>${_esc(proc?.nombre||'—')}</strong>
+      <button onclick="peLimpiarFiltro()" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:13px;color:var(--primary);font-weight:600">× Quitar filtro</button>
+    </div>`;
+  } else {
+    filterBar.innerHTML='';
+  }
+
   if(!list.length){
-    tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Ningún proceso enviado aún.</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">${_peProcFilter?'Este proceso no tiene enviados aún.':'Ningún proceso enviado aún.'}</td></tr>`;
     return;
   }
   tbody.innerHTML=list.map(e=>{

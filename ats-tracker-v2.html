@@ -1949,6 +1949,30 @@ function adaptUIToRole() {
       page.id = 'page-vacantes-eliminadas';
       document.querySelector('.main').appendChild(page);
     }
+  }
+  if(rol === 'admin'){
+    const configItem = document.getElementById('nav-config');
+    const _addAdminNav = (id, label, icon, pageId) => {
+      if(!document.getElementById(id)){
+        const item = document.createElement('div');
+        item.className = 'nav-item';
+        item.id = id;
+        item.dataset.tooltip = label;
+        item.innerHTML = `<i class="fa ${icon}"></i><span class="nav-item-text"> ${label}</span>`;
+        item.setAttribute('onclick', `showPage('${pageId}')`);
+        if(configItem) configItem.parentNode.insertBefore(item, configItem);
+      }
+      if(!document.getElementById('page-'+pageId)){
+        const pg = document.createElement('div');
+        pg.className = 'page';
+        pg.id = 'page-'+pageId;
+        document.querySelector('.main').appendChild(pg);
+      }
+    };
+    _addAdminNav('nav-evaluaciones-eliminadas', 'Evaluaciones eliminadas', 'fa-clipboard-check', 'evaluaciones-eliminadas');
+    _addAdminNav('nav-perfiles-eliminados',     'Perfiles eliminados',      'fa-id-card',         'perfiles-eliminados');
+  }
+  if(currentUser?.email==='lukaarrever@gmail.com') {
     if(!document.getElementById('nav-garantias')) {
       const garantiaItem = document.createElement('div');
       garantiaItem.className = 'nav-item';
@@ -2618,9 +2642,13 @@ async function loadDB(){
       DB.ese=eseRes.data||[];
       DB.docPlantillas=docPlt.data||[];
       DB.docCandidato=docCand.data||[];
-      DB.perfilesPuesto=(perfiles.data||[]).map(r=>({id:r.id,empresa_id:r.empresa_id,...(r.data||{})}));
+      const _allPerfiles=(perfiles.data||[]).map(r=>({id:r.id,empresa_id:r.empresa_id,...(r.data||{})}));
+      DB.perfilesPuesto=_allPerfiles.filter(p=>!p.eliminado);
+      DB.perfilesEliminados=_allPerfiles.filter(p=>p.eliminado);
       DB.personal=[];
-      DB.evaluaciones=(evals.data||[]).map(r=>r.data||r).filter(Boolean);
+      const _allEvals=(evals.data||[]).map(r=>r.data||r).filter(Boolean);
+      DB.evaluaciones=_allEvals.filter(e=>!e.eliminada);
+      DB.evaluacionesEliminadas=_allEvals.filter(e=>e.eliminada);
       DB.evaluacionesEnviadas=(evEnv.data||[]).map(r=>r.data||r).filter(Boolean);
       _candConRefs=new Set((refs.data||[]).flatMap(r=>{
         const ids=[];
@@ -2696,7 +2724,9 @@ const DB={
   docCandidato:[],
   personal:[],
   evaluaciones:[],
+  evaluacionesEliminadas:[],
   evaluacionesEnviadas:[],
+  perfilesEliminados:[],
   reclutadores:[
     {id:'r1',nombre:'Ana López',email:'ana@empresa.com'},
     {id:'r2',nombre:'Carlos Méndez',email:'carlos@empresa.com'},
@@ -2890,6 +2920,8 @@ function renderPage(p){
   if(p==='activity-log')renderActivityLog();
   if(p==='config')renderConfig();
   if(p==='vacantes-eliminadas')renderVacantesEliminadas();
+  if(p==='evaluaciones-eliminadas')renderEvaluacionesEliminadas();
+  if(p==='perfiles-eliminados')renderPerfilesEliminados();
   if(p==='ese')renderESE();
   if(p==='documentacion')renderDocumentacion();
   if(p==='perfiles')renderPerfiles();
@@ -5632,6 +5664,95 @@ async function borrarVacantePermanente(vacId){
   DB.vacantesEliminadas = DB.vacantesEliminadas.filter(x=>x.id!==vacId);
   showToast('Eliminada permanentemente ✓');
   renderVacantesEliminadas();
+}
+
+function renderEvaluacionesEliminadas(){
+  const page = document.getElementById('page-evaluaciones-eliminadas');
+  if(!page) return;
+  const lista = DB.evaluacionesEliminadas||[];
+  page.innerHTML = `<div style="padding:24px 28px">
+    <h2 style="margin-bottom:16px;font-size:17px;font-weight:700">Evaluaciones eliminadas</h2>
+    ${!lista.length ? '<div style="color:var(--text3);font-size:13px">No hay evaluaciones eliminadas.</div>' :
+    `<div class="table-wrap"><table class="table">
+      <thead><tr><th>#</th><th>Nombre</th><th>Preguntas</th><th>Fecha eliminación</th><th></th></tr></thead>
+      <tbody>${lista.map((ev,i)=>{
+        const fecha = ev.fecha_eliminacion ? new Date(ev.fecha_eliminacion).toLocaleDateString('es-MX') : '—';
+        return `<tr>
+          <td style="font-size:12px;color:var(--text3)">${i+1}</td>
+          <td><strong>${_esc(ev.nombre||'—')}</strong>${ev.descripcion?`<div style="font-size:11px;color:var(--text3)">${_esc(ev.descripcion)}</div>`:''}</td>
+          <td style="text-align:center">${(ev.preguntas||[]).length}</td>
+          <td style="font-size:12px;color:var(--text3)">${fecha}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-green btn-sm" onclick="restaurarEvaluacion('${ev.id}')"><i class="fa fa-undo"></i> Restaurar</button>
+            <button class="btn btn-danger btn-sm" onclick="borrarEvaluacionPermanente('${ev.id}')"><i class="fa fa-trash"></i></button>
+          </td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`}
+  </div>`;
+}
+async function restaurarEvaluacion(id){
+  const ev = DB.evaluacionesEliminadas.find(x=>x.id===id);
+  if(!ev) return;
+  const updated = {...ev, eliminada:false, fecha_eliminacion:null};
+  await saveRecord('evaluaciones', updated);
+  DB.evaluacionesEliminadas = DB.evaluacionesEliminadas.filter(x=>x.id!==id);
+  DB.evaluaciones = [...DB.evaluaciones, updated];
+  showToast('Evaluación restaurada ✓');
+  renderEvaluacionesEliminadas();
+  renderEvalPlantillas();
+}
+async function borrarEvaluacionPermanente(id){
+  if(!confirm('¿Eliminar permanentemente? Esta acción no se puede deshacer.')) return;
+  await deleteRecord('evaluaciones', id);
+  DB.evaluacionesEliminadas = DB.evaluacionesEliminadas.filter(x=>x.id!==id);
+  showToast('Eliminada permanentemente ✓');
+  renderEvaluacionesEliminadas();
+}
+
+function renderPerfilesEliminados(){
+  const page = document.getElementById('page-perfiles-eliminados');
+  if(!page) return;
+  const lista = DB.perfilesEliminados||[];
+  page.innerHTML = `<div style="padding:24px 28px">
+    <h2 style="margin-bottom:16px;font-size:17px;font-weight:700">Perfiles de puesto eliminados</h2>
+    ${!lista.length ? '<div style="color:var(--text3);font-size:13px">No hay perfiles eliminados.</div>' :
+    `<div class="table-wrap"><table class="table">
+      <thead><tr><th>#</th><th>Puesto</th><th>Empresa</th><th>Departamento</th><th>Fecha eliminación</th><th></th></tr></thead>
+      <tbody>${lista.map((p,i)=>{
+        const emp = DB.empresas.find(x=>x.id===p.empresa_id)||{};
+        const fecha = p.fecha_eliminacion ? new Date(p.fecha_eliminacion).toLocaleDateString('es-MX') : '—';
+        return `<tr>
+          <td style="font-size:12px;color:var(--text3)">${i+1}</td>
+          <td><strong>${_esc(p.nombre_puesto||'—')}</strong></td>
+          <td style="font-size:12px">${_esc(emp.nombre||'—')}</td>
+          <td style="font-size:12px;color:var(--text3)">${_esc(p.departamento||'—')}</td>
+          <td style="font-size:12px;color:var(--text3)">${fecha}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-green btn-sm" onclick="restaurarPerfil('${p.id}')"><i class="fa fa-undo"></i> Restaurar</button>
+            <button class="btn btn-danger btn-sm" onclick="borrarPerfilPermanente('${p.id}')"><i class="fa fa-trash"></i></button>
+          </td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`}
+  </div>`;
+}
+async function restaurarPerfil(id){
+  const p = DB.perfilesEliminados.find(x=>x.id===id);
+  if(!p) return;
+  const updated = {...p, eliminado:false, fecha_eliminacion:null};
+  if(!SANDBOX_MODE) await sbClient.from('perfiles_puesto').upsert({id:updated.id, empresa_id:updated.empresa_id, data:updated});
+  DB.perfilesEliminados = DB.perfilesEliminados.filter(x=>x.id!==id);
+  DB.perfilesPuesto = [...DB.perfilesPuesto, updated];
+  showToast('Perfil restaurado ✓');
+  renderPerfilesEliminados();
+}
+async function borrarPerfilPermanente(id){
+  if(!confirm('¿Eliminar permanentemente? Esta acción no se puede deshacer.')) return;
+  if(!SANDBOX_MODE) await sbClient.from('perfiles_puesto').delete().eq('id',id);
+  DB.perfilesEliminados = DB.perfilesEliminados.filter(x=>x.id!==id);
+  showToast('Eliminado permanentemente ✓');
+  renderPerfilesEliminados();
 }
 
 function renderVacantesEliminadas(){
@@ -12669,12 +12790,14 @@ async function exportPerfilPDFBtn(){
 }
 
 async function deletePerfilPuesto(id){
-  if(!confirm('¿Eliminar este perfil de puesto?')) return;
+  if(!confirm('¿Eliminar este perfil de puesto? Podrás restaurarlo desde "Perfiles eliminados".')) return;
   const p=DB.perfilesPuesto.find(x=>x.id===id);
+  const updated={...p, eliminado:true, fecha_eliminacion:new Date().toISOString()};
   if(!SANDBOX_MODE){
-    await sbClient.from('perfiles_puesto').delete().eq('id',id);
+    await sbClient.from('perfiles_puesto').upsert({id:updated.id, empresa_id:updated.empresa_id, data:updated});
   }
   DB.perfilesPuesto=DB.perfilesPuesto.filter(x=>x.id!==id);
+  DB.perfilesEliminados=[...(DB.perfilesEliminados||[]), updated];
   logActivity('Eliminar perfil de puesto','perfiles',id,`${p?.nombre_puesto||''} — ${DB.empresas.find(e=>e.id===p?.empresa_id)?.nombre||''}`);
   showToast('Perfil eliminado');
   if(p) renderPerfilesEmpresa(p.empresa_id);
@@ -14090,10 +14213,12 @@ async function saveEvalTemplate(){
 }
 
 async function deleteEvalTemplate(id){
-  if(!confirm('¿Eliminar esta evaluación?')) return;
+  if(!confirm('¿Eliminar esta evaluación? Podrás restaurarla desde "Evaluaciones eliminadas".')) return;
   const ev = DB.evaluaciones.find(x=>x.id===id);
-  await deleteRecord('evaluaciones',id);
+  const updated = {...ev, eliminada:true, fecha_eliminacion:new Date().toISOString()};
+  await saveRecord('evaluaciones', updated);
   DB.evaluaciones = DB.evaluaciones.filter(x=>x.id!==id);
+  DB.evaluacionesEliminadas = [...(DB.evaluacionesEliminadas||[]), updated];
   await logActivity('Eliminar evaluación', 'evaluaciones', id, ev?.nombre||id);
   showToast('Evaluación eliminada');
   renderEvalPlantillas();

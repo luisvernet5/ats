@@ -3951,8 +3951,59 @@ function exportAnalytics(empId, tab) {
 }
 
 function exportarCSVEmpresa(empId){
-  document.getElementById('exp-emp').value=empId;
-  doExportDirect(empId,'','','vacantes');
+  exportarEmpresaVacantesExcel(empId);
+}
+
+function exportarEmpresaVacantesExcel(empId){
+  if(!window.XLSX){ showToast('SheetJS no cargó','err'); return; }
+  // Reproducir exactamente los filtros activos de la vista empresa
+  const mfProy=_mfGet('ed-flt-proy');
+  const mfDep=_mfGet('ed-flt-dep');
+  const mfRec=_mfGet('ed-flt-rec');
+  const desde=document.getElementById('filtroFechaDesde')?.value||'';
+  const hasta=document.getElementById('filtroFechaHasta')?.value||'';
+  let list=(_edVacsAll||DB.vacantes.filter(v=>v.empresa_id===empId));
+  if(mfProy) list=list.filter(v=>mfProy.has(v.proyecto||''));
+  if(mfDep)  list=list.filter(v=>mfDep.has(v.departamento||''));
+  if(mfRec)  list=list.filter(v=>mfRec.has(v.reclutador_id||''));
+  if(desde)  list=list.filter(v=>(v.fecha_apertura||'')>=desde);
+  if(hasta)  list=list.filter(v=>(v.fecha_apertura||'')<=hasta);
+  // Respetar el mismo orden de la vista
+  if(empresaVistaActual==='proyecto'){
+    list=[...list].sort((a,b)=>{
+      const emp=DB.empresas.find(x=>x.id===a.empresa_id)||{};
+      const ord=emp.proyectos||[];
+      const ia=ord.indexOf(a.proyecto??''), ib=ord.indexOf(b.proyecto??'');
+      if(ia===-1&&ib===-1) return(a.fecha_apertura||'').localeCompare(b.fecha_apertura||'');
+      if(ia===-1) return 1; if(ib===-1) return -1;
+      if(ia!==ib) return ia-ib;
+      return(a.fecha_apertura||'').localeCompare(b.fecha_apertura||'');
+    });
+  } else {
+    list=[...list].sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true}));
+  }
+  if(!list.length){ showToast('No hay vacantes para exportar','err'); return; }
+  // Construir columnas respetando _edColVis
+  const vis=k=>_edColVis[k]!==false;
+  const cols=[
+    {show:true,                  label:'#',            val:(v,i)=>i+1},
+    {show:true,                  label:'Vacante',       val:v=>v.nombre},
+    {show:vis('folio'),          label:'Folio',         val:v=>v.folio||''},
+    {show:vis('reclutador'),     label:'Reclutador',    val:v=>DB.reclutadores.find(x=>x.id===v.reclutador_id)?.nombre||''},
+    {show:vis('proyecto'),       label:'Proyecto',      val:v=>v.proyecto||''},
+    {show:vis('departamento'),   label:'Departamento',  val:v=>v.departamento||''},
+    {show:vis('apertura'),       label:'Apertura',      val:v=>fmt(v.fecha_apertura)},
+    {show:vis('estado'),         label:'Estado',        val:v=>v.estado},
+    {show:vis('dias'),           label:'Días abierta',  val:v=>daysBetween(v.fecha_apertura)||0},
+    {show:vis('cands'),          label:'Cands.',        val:v=>{const cs=DB.candidatos.filter(c=>c.vacante_id===v.id);const act=cs.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length;return`${act}/${cs.length}`;}},
+  ].filter(c=>c.show);
+  const emp=DB.empresas.find(x=>x.id===empId)||{};
+  const header=cols.map(c=>c.label);
+  const dataRows=list.map((v,i)=>cols.map(c=>c.val(v,i)));
+  const ws=XLSX.utils.aoa_to_sheet([header,...dataRows]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Vacantes');
+  XLSX.writeFile(wb,`vacantes_${emp.nombre||empId}_${today()}.xlsx`);
 }
 
 function doExportDirect(empId,recId,est,tipo){

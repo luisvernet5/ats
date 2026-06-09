@@ -2770,6 +2770,7 @@ let openCandRows=new Set();
    ============================================================ */
 function uid(){return Date.now().toString(36)+Math.random().toString(36).substr(2,5)}
 function today(){return new Date().toISOString().split('T')[0]}
+function _esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function fmt(d){if(!d)return'—';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`}
 function daysBetween(d1,d2){
   if(!d1)return null;
@@ -13859,7 +13860,7 @@ function evalOpcionHTML(qId,val='',idx=0,isCorrect=false,tipo='opcion_multiple')
     : `<input type="radio" name="correct_${qId}" value="${idx}" ${isCorrect?'checked':''} title="Respuesta correcta" style="accent-color:#22c55e;cursor:pointer">`;
   return `<div style="display:flex;gap:6px;align-items:center" id="opt_${qId}_${idx}">
     ${bullet}
-    <input placeholder="Opción ${idx+1}" value="${(val||'').replace(/"/g,'&quot;')}" data-qid="${qId}" data-field="opcion" style="flex:1;min-width:0;font-size:13px">
+    <input placeholder="Opción ${idx+1}" value="${_esc(val||'')}" data-qid="${qId}" data-field="opcion" style="flex:1;min-width:0;font-size:13px">
     <button class="btn btn-ghost btn-sm" style="padding:2px 8px;flex-shrink:0" onclick="this.parentElement.remove()"><i class="fa fa-times"></i></button>
   </div>`;
 }
@@ -14171,23 +14172,24 @@ function verRespuestasEval(envId){
     if(q.tipo==='descripcion') return `<div style="font-size:13px;color:var(--text2);padding:2px 0 6px">${q.texto}</div>`;
     pregNum++;
     const resp = respuestas[q.id]||null;
+    const respStr = resp ? String(resp) : null;
     const cuentaCal = q.cuenta_calificacion!==false;
-    const esCorrecta = q.respuesta_correcta && resp && String(resp)===String(q.respuesta_correcta);
+    const esCorrecta = q.respuesta_correcta && respStr && respStr===String(q.respuesta_correcta);
     const borderColor = tieneClaves && cuentaCal && q.respuesta_correcta
-      ? (esCorrecta ? '#22c55e' : resp ? '#ef4444' : 'var(--border)')
+      ? (esCorrecta ? '#22c55e' : respStr ? '#ef4444' : 'var(--border)')
       : 'var(--border)';
-    const iconoResp = tieneClaves && cuentaCal && q.respuesta_correcta && resp
+    const iconoResp = tieneClaves && cuentaCal && q.respuesta_correcta && respStr
       ? (esCorrecta ? `<span style="color:#22c55e;font-weight:700;margin-left:6px">✓</span>` : `<span style="color:#ef4444;font-weight:700;margin-left:6px">✗</span>`)
       : '';
-    const claveHTML = tieneClaves && cuentaCal && q.respuesta_correcta && !esCorrecta && resp
-      ? `<div style="font-size:11px;color:#22c55e;margin-top:3px"><i class="fa fa-check"></i> Correcta: ${q.respuesta_correcta}</div>` : '';
+    const claveHTML = tieneClaves && cuentaCal && q.respuesta_correcta && !esCorrecta && respStr
+      ? `<div style="font-size:11px;color:#22c55e;margin-top:3px"><i class="fa fa-check"></i> Correcta: ${_esc(q.respuesta_correcta)}</div>` : '';
     const puntosHTML = cuentaCal && q.puntos
       ? `<span style="font-size:11px;color:var(--text3);float:right">${esCorrecta?q.puntos:0}/${q.puntos} pts</span>` : '';
     const noCalHTML = !cuentaCal ? `<span style="font-size:10px;background:var(--bg2);padding:1px 6px;border-radius:8px;color:var(--text3);margin-left:6px">sin calificación</span>` : '';
     return `<div style="margin-bottom:10px;padding:10px 12px;background:var(--bg2);border-radius:8px;border-left:3px solid ${borderColor}">
-      <div style="font-weight:600;font-size:13px;margin-bottom:6px">${pregNum}. ${q.texto}${noCalHTML}${puntosHTML}</div>
+      <div style="font-weight:600;font-size:13px;margin-bottom:6px">${pregNum}. ${_esc(q.texto)}${noCalHTML}${puntosHTML}</div>
       <div style="color:var(--text2);font-size:13px;display:flex;align-items:center">
-        ${resp||'<span style="color:var(--text3)">Sin respuesta</span>'}${iconoResp}
+        ${respStr ? _esc(respStr) : '<span style="color:var(--text3)">Sin respuesta</span>'}${iconoResp}
       </div>${claveHTML}
     </div>`;
   });
@@ -14410,17 +14412,17 @@ function _renderEvalPublica(ev, enviada){
     } else if(q.tipo==='opcion_multiple'){
       input = `<div style="display:flex;flex-direction:column;gap:8px">${(q.opciones||[]).map(opt=>`
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);transition:background .15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-          <input type="radio" name="q_${q.id}" value="${opt.replace(/"/g,'&quot;')}" style="accent-color:var(--primary)"> ${opt}
+          <input type="radio" name="q_${q.id}" value="${_esc(opt)}" style="accent-color:var(--primary)"> ${_esc(opt)}
         </label>`).join('')}</div>`;
     } else if(q.tipo==='casillas'){
       input = `<div style="display:flex;flex-direction:column;gap:8px">${(q.opciones||[]).map(opt=>`
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);transition:background .15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-          <input type="checkbox" name="q_${q.id}" value="${opt.replace(/"/g,'&quot;')}" style="accent-color:var(--primary)"> ${opt}
+          <input type="checkbox" name="q_${q.id}" value="${_esc(opt)}" style="accent-color:var(--primary)"> ${_esc(opt)}
         </label>`).join('')}</div>`;
     } else if(q.tipo==='desplegable'){
       input = `<select name="q_${q.id}" style="width:100%;font-size:13px">
         <option value="">Selecciona una opción...</option>
-        ${(q.opciones||[]).map(opt=>`<option value="${opt.replace(/"/g,'&quot;')}">${opt}</option>`).join('')}
+        ${(q.opciones||[]).map(opt=>`<option value="${_esc(opt)}">${_esc(opt)}</option>`).join('')}
       </select>`;
     } else if(q.tipo==='escala_lineal'){
       const min=q.escala_min||1, max=q.escala_max||5;

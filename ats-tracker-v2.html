@@ -635,7 +635,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     </div>
     <div id="pe-panel-enviados" style="display:none">
       <div class="table-wrap"><table class="table" id="pe-enviados-table">
-        <thead><tr><th>Candidato</th><th>Proceso</th><th>Vacante</th><th>Estado</th><th>Puntaje final</th><th>Fecha envío</th><th>Hora envío</th><th>Fecha completado</th><th>Hora completado</th><th>Duración</th><th></th></tr></thead>
+        <thead><tr><th>Candidato</th><th>Proceso</th><th>Vacante</th><th>Estado</th><th>Puntaje final</th><th>Fecha envío</th><th>Hora envío</th><th>Fecha finalizado</th><th>Hora finalizado</th><th>Duración</th><th></th></tr></thead>
         <tbody id="pe-enviados-tbody"></tbody>
       </table></div>
     </div>
@@ -15094,7 +15094,7 @@ function exportPEEnviadosExcel(){
     }));
   }
 
-  const header=['#','Candidato','Teléfono','Correo','Proceso','Vacante','Estado','Fecha envío','Hora envío','Fecha completado','Hora completado','Duración','Puntaje final (%)'];
+  const header=['#','Candidato','Teléfono','Correo','Proceso','Vacante','Estado','Fecha envío','Hora envío','Fecha finalizado','Hora finalizado','Duración','Puntaje final (%)'];
   pruebasCols.forEach(p=>header.push(`${p.nombre} (${p.peso}%)`));
 
   const fmtDate=d=>d?new Date(d).toLocaleDateString('es-MX'):'—';

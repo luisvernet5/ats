@@ -1683,17 +1683,17 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
             <option value="Anual">Anual</option>
           </select>
         </div>
-        <div class="fg"><label>Meta</label><input id="kpi-fila-meta" placeholder="Ej. ≥95%, ≤5 días, 100 unidades"></div>
+        <div class="fg"><label>Meta</label><input id="kpi-fila-meta" placeholder="Ej. ≥95%, ≤5 días, 100 unidades" oninput="_kpiFilaAutoCalcResultado()"></div>
         <div class="fg"><label>Ponderación % *</label><input id="kpi-fila-ponderacion" type="number" min="0" max="100" step="any" placeholder="20"></div>
       </div>
       <div class="fr">
         <div class="fg">
           <label>Valor obtenido <span style="font-size:11px;color:var(--text3)">(dejar vacío si no hay dato)</span></label>
-          <input id="kpi-fila-valor" type="number" step="any" placeholder="">
+          <input id="kpi-fila-valor" type="number" step="any" placeholder="" oninput="_kpiFilaAutoCalcResultado()">
         </div>
         <div class="fg">
-          <label>Resultado % <span style="font-size:11px;color:var(--text3)">(% de cumplimiento del objetivo)</span></label>
-          <input id="kpi-fila-resultado" type="number" min="0" step="any" placeholder="">
+          <label>Resultado % <span style="font-size:11px;color:var(--text3);font-style:italic">auto-calculado desde valor y meta</span></label>
+          <input id="kpi-fila-resultado" type="number" min="0" step="any" placeholder="" style="background:var(--surface2)">
         </div>
       </div>
     </div>
@@ -13501,6 +13501,24 @@ function openKpiFilaModal(cedulaId,filaId){
 function _kpiFilaSeccionChange(){
   const val=document.getElementById('kpi-fila-seccion').value;
   document.getElementById('kpi-fila-seccion-custom-row').style.display=val==='__other__'?'':'none';
+}
+
+function _kpiFilaAutoCalcResultado(){
+  const valorStr=document.getElementById('kpi-fila-valor').value;
+  const metaStr=document.getElementById('kpi-fila-meta').value.trim();
+  const resultEl=document.getElementById('kpi-fila-resultado');
+  if(valorStr===''||metaStr===''){resultEl.value='';return;}
+  const valor=Number(valorStr);
+  if(isNaN(valor))return;
+  // Extrae el primer número del campo meta (ignora ≥ ≤ > < $ % letras)
+  const match=metaStr.replace(',','.').match(/[\d.]+/);
+  if(!match)return;
+  const metaNum=parseFloat(match[0]);
+  if(isNaN(metaNum)||metaNum===0)return;
+  // Si la meta tiene ≤ o < significa "menor es mejor" (invertir)
+  const menosEsMejor=/[≤<]/.test(metaStr);
+  const resultado=menosEsMejor?(metaNum/valor)*100:(valor/metaNum)*100;
+  resultEl.value=Math.round(resultado*100)/100;
 }
 
 async function saveKpiFilaModal(){

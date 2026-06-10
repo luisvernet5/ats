@@ -14109,8 +14109,6 @@ function exportEvaluacionPreviewPDF(evalId){
     doc.setTextColor(40,40,40);
   }
   doc.setDrawColor(42,170,222);doc.line(M,y,M+CW,y);y+=6;
-  // Preguntas
-  let pregNum=0;
   for(const q of (ev.preguntas||[])){
     if(y>268){doc.addPage();y=18;}
     if(q.tipo==='titulo'){
@@ -14128,11 +14126,10 @@ function exportEvaluacionPreviewPDF(evalId){
       doc.text(lines,M,y);y+=lines.length*5+4;
       continue;
     }
-    pregNum++;
     // Número y texto de pregunta
     const reqMark=q.requerida?' *':'';
     doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(40,40,40);
-    const qLines=doc.splitTextToSize(`${pregNum}. ${q.texto||''}${reqMark}`,CW);
+    const qLines=doc.splitTextToSize(`${q.texto||''}${reqMark}`,CW);
     if(y+qLines.length*5+16>280){doc.addPage();y=18;}
     doc.text(qLines,M,y);y+=qLines.length*5+3;
     // Input según tipo

@@ -1664,7 +1664,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       </div>
       <div class="fr">
         <div class="fg"><label>Meta clave del puesto *</label><textarea id="kpi-fila-meta-clave" rows="2" placeholder="Ej. Mantener disponibilidad de equipos al nivel óptimo"></textarea></div>
-        <div class="fg"><label>Objetivo del periodo</label><textarea id="kpi-fila-objetivo" rows="2" placeholder="Ej. Alcanzar 95% de disponibilidad operativa mensual"></textarea></div>
+        <div class="fg"><label>Objetivo del periodo</label><textarea id="kpi-fila-objetivo" rows="2" placeholder="Ej. Alcanzar 95% de disponibilidad operativa mensual" oninput="_kpiFilaAutoCalcResultado()"></textarea></div>
       </div>
       <div class="fr">
         <div class="fg"><label>Indicador</label><input id="kpi-fila-indicador" placeholder="Ej. % Disponibilidad de equipos"></div>
@@ -1683,7 +1683,6 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
             <option value="Anual">Anual</option>
           </select>
         </div>
-        <div class="fg"><label>Meta</label><input id="kpi-fila-meta" placeholder="Ej. ≥95%, ≤5 días, 100 unidades" oninput="_kpiFilaAutoCalcResultado()"></div>
         <div class="fg"><label>Ponderación % *</label><input id="kpi-fila-ponderacion" type="number" min="0" max="100" step="any" placeholder="20"></div>
       </div>
       <div class="fr">
@@ -13300,7 +13299,7 @@ function renderCedula(cedulaId){
     let secRow='';
     if(k.seccion&&k.seccion!==lastSec){
       lastSec=k.seccion;
-      secRow=`<tr><td colspan="${bonoTotal?14:13}" style="background:#1e3a5f;color:#fff;font-weight:700;font-size:11px;padding:7px 12px;text-transform:uppercase;letter-spacing:.5px">${_esc(k.seccion)}</td></tr>`;
+      secRow=`<tr><td colspan="${bonoTotal?13:12}" style="background:#1e3a5f;color:#fff;font-weight:700;font-size:11px;padding:7px 12px;text-transform:uppercase;letter-spacing:.5px">${_esc(k.seccion)}</td></tr>`;
     } else if(!k.seccion) lastSec=undefined;
 
     const acts=(k.actividades||'').split('\n').filter(Boolean).map(a=>`<div style="white-space:nowrap">• ${_esc(a.trim().replace(/^•\s*/,''))}</div>`).join('');
@@ -13313,7 +13312,6 @@ function renderCedula(cedulaId){
       <td style="font-size:11px;min-width:150px;max-width:220px;color:var(--text2)">${acts||'—'}</td>
       <td style="font-size:11px;min-width:130px;max-width:180px;font-style:italic;color:var(--text2)">${_esc(k.formula||'—')}</td>
       <td style="text-align:center;font-size:11px;white-space:nowrap">${k.periodicidad||'—'}</td>
-      <td style="text-align:center;font-weight:600;font-size:12px;white-space:nowrap">${_esc(k.meta||'—')}</td>
       <td style="text-align:center;font-weight:700;color:${color};font-size:13px">${pond}%</td>
       <td style="text-align:center;font-size:12px">${valObt!==null?valObt:'—'}</td>
       <td style="text-align:center;font-weight:700;color:${rTc};font-size:13px">${resPct!==null?resPct.toFixed(2)+'%':'—'}</td>
@@ -13326,7 +13324,7 @@ function renderCedula(cedulaId){
     </tr>`;
   }).join('');
 
-  const colSpan=bonoTotal?14:13;
+  const colSpan=bonoTotal?13:12;
   const summaryBono=bonoTotal&&sumBono>0?`
     <div class="card" style="margin-top:16px;background:linear-gradient(135deg,#1e3a5f 0%,#1a6b99 100%);color:#fff;border:none">
       <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.75;margin-bottom:12px">Resumen del bono</div>
@@ -13372,7 +13370,6 @@ function renderCedula(cedulaId){
             <th>Actividades</th>
             <th>Fórmula</th>
             <th style="text-align:center">Period.</th>
-            <th style="text-align:center">Meta</th>
             <th style="text-align:center;color:#93c5fd">Pond.%</th>
             <th style="text-align:center">Val. Obt.</th>
             <th style="text-align:center;color:#86efac">Resultado%</th>
@@ -13384,7 +13381,7 @@ function renderCedula(cedulaId){
         <tbody>
           ${rows||`<tr><td colspan="${colSpan}" style="text-align:center;color:var(--text3);padding:28px;font-style:italic">Sin KPIs. Agrega el primero con "+ Agregar KPI".</td></tr>`}
           <tr style="background:var(--surface2);border-top:2px solid var(--border2)">
-            <td colspan="8" style="text-align:right;padding-right:12px;font-weight:700;font-size:12px;color:var(--text3)">TOTALES</td>
+            <td colspan="7" style="text-align:right;padding-right:12px;font-weight:700;font-size:12px;color:var(--text3)">TOTALES</td>
             <td style="text-align:center;font-weight:800;color:${pondColor};font-size:13px">${sumPond.toFixed(0)}%${pondOk?' ✓':''}</td>
             <td></td><td></td>
             <td style="text-align:center;font-weight:700;font-size:13px;color:${sumTotalPond>0?'var(--green)':'var(--text3)'}">${sumTotalPond>0?sumTotalPond.toFixed(2)+'%':'—'}</td>
@@ -13491,7 +13488,6 @@ function openKpiFilaModal(cedulaId,filaId){
   document.getElementById('kpi-fila-actividades').value=k?.actividades||'';
   document.getElementById('kpi-fila-formula').value=k?.formula||'';
   document.getElementById('kpi-fila-periodicidad').value=k?.periodicidad||'Mensual';
-  document.getElementById('kpi-fila-meta').value=k?.meta||'';
   document.getElementById('kpi-fila-ponderacion').value=k?.ponderacion??'';
   document.getElementById('kpi-fila-valor').value=k?.valor_obtenido??'';
   // Si ya hay resultado guardado úsalo, si no recalcular desde meta+valor
@@ -13509,21 +13505,21 @@ function _kpiFilaSeccionChange(){
 
 function _kpiFilaAutoCalcResultado(){
   const valorEl=document.getElementById('kpi-fila-valor');
-  const metaEl=document.getElementById('kpi-fila-meta');
+  const objEl=document.getElementById('kpi-fila-objetivo');
   const resultEl=document.getElementById('kpi-fila-resultado');
-  if(!valorEl||!metaEl||!resultEl)return;
+  if(!valorEl||!objEl||!resultEl)return;
   const valorStr=valorEl.value.trim();
-  const metaStr=metaEl.value.trim();
-  if(valorStr===''||metaStr===''){return;}
+  const objStr=objEl.value.trim();
+  if(valorStr===''||objStr==='')return;
   const valor=Number(valorStr);
   if(isNaN(valor))return;
-  // Extrae el primer número de la meta (acepta formatos: ≥90%, ≥ 90%, 90, $500, etc.)
-  const match=metaStr.replace(/\s/g,'').replace(',','.').match(/[\d]+\.?[\d]*/);
+  // Extrae el primer número del objetivo (ej: "≥ 90%", "Alcanzar 95%", "≤ 5 días")
+  const match=objStr.replace(/\s/g,'').replace(',','.').match(/[\d]+\.?[\d]*/);
   if(!match)return;
   const metaNum=parseFloat(match[0]);
   if(isNaN(metaNum)||metaNum===0)return;
-  // ≤ o < → menor es mejor (invertir fórmula)
-  const menosEsMejor=/[≤<]/.test(metaStr);
+  // ≤ o < → menor es mejor
+  const menosEsMejor=/[≤<]/.test(objStr);
   const resultado=menosEsMejor?(metaNum/valor)*100:(valor/metaNum)*100;
   resultEl.value=Math.round(resultado*100)/100;
 }
@@ -13543,13 +13539,13 @@ async function saveKpiFilaModal(){
   let resultStr=document.getElementById('kpi-fila-resultado').value;
   // Si resultado sigue vacío, intentar calcular desde valor y meta
   if(resultStr===''&&valorStr!==''){
-    const metaS=document.getElementById('kpi-fila-meta').value.trim();
-    const mMatch=metaS.replace(',','.').match(/[\d.]+/);
+    const objS=document.getElementById('kpi-fila-objetivo').value.trim();
+    const mMatch=objS.replace(/\s/g,'').replace(',','.').match(/[\d]+\.?[\d]*/);
     if(mMatch){
       const mNum=parseFloat(mMatch[0]);
       if(!isNaN(mNum)&&mNum!==0){
         const val=Number(valorStr);
-        const menos=/[≤<]/.test(metaS);
+        const menos=/[≤<]/.test(objS);
         resultStr=String(Math.round((menos?(mNum/val)*100:(val/mNum)*100)*100)/100);
       }
     }
@@ -13563,7 +13559,6 @@ async function saveKpiFilaModal(){
     actividades:document.getElementById('kpi-fila-actividades').value.trim()||null,
     formula:document.getElementById('kpi-fila-formula').value.trim()||null,
     periodicidad:document.getElementById('kpi-fila-periodicidad').value,
-    meta:document.getElementById('kpi-fila-meta').value.trim()||null,
     ponderacion:Number(pondStr),
     valor_obtenido:valorStr!==''?Number(valorStr):null,
     resultado_pct:resultStr!==''?Number(resultStr):null
@@ -13628,7 +13623,7 @@ function exportCedulaPDF(cedulaId){
     let secRow='';
     if(k.seccion&&k.seccion!==lastSec){
       lastSec=k.seccion;
-      secRow=`<tr><td colspan="${bonoTotal?13:12}" style="background:#1e3a5f;color:#fff;font-weight:700;font-size:9px;padding:6px 10px;text-transform:uppercase;letter-spacing:.5px">${_esc(k.seccion)}</td></tr>`;
+      secRow=`<tr><td colspan="${bonoTotal?12:11}" style="background:#1e3a5f;color:#fff;font-weight:700;font-size:9px;padding:6px 10px;text-transform:uppercase;letter-spacing:.5px">${_esc(k.seccion)}</td></tr>`;
     } else if(!k.seccion) lastSec=undefined;
     const acts=(k.actividades||'').split('\n').filter(Boolean).map(a=>`• ${a.trim().replace(/^•\s*/,'')}`).join('\n');
     return`${secRow}<tr style="background:${rBg}">
@@ -13639,7 +13634,6 @@ function exportCedulaPDF(cedulaId){
       <td style="font-size:8px;white-space:pre-line;color:#555">${_esc(acts)}</td>
       <td style="font-size:8px;font-style:italic;color:#555">${_esc(k.formula||'')}</td>
       <td style="text-align:center;font-size:9px">${k.periodicidad||''}</td>
-      <td style="text-align:center;font-weight:600;font-size:9px">${_esc(k.meta||'')}</td>
       <td style="text-align:center;font-weight:700;color:#2AAADE;font-size:10px">${pond}%</td>
       <td style="text-align:center;font-size:9px">${valObt!==null?valObt:''}</td>
       <td style="text-align:center;font-weight:700;font-size:10px;color:${rTc}">${resPct!==null?resPct.toFixed(2)+'%':''}</td>
@@ -13720,7 +13714,6 @@ th{background:#1e3a5f;color:#fff;font-size:8px;font-weight:700;text-transform:up
       <th>Actividades</th>
       <th>Fórmula</th>
       <th style="text-align:center">Period.</th>
-      <th style="text-align:center">Meta</th>
       <th style="text-align:center">Pond.%</th>
       <th style="text-align:center">Val. Obt.</th>
       <th style="text-align:center">Resultado%</th>
@@ -13731,7 +13724,7 @@ th{background:#1e3a5f;color:#fff;font-size:8px;font-weight:700;text-transform:up
   <tbody>
     ${tableRows}
     <tr style="background:#f0f4f8;font-weight:700">
-      <td colspan="8" style="text-align:right;font-size:9px">TOTALES</td>
+      <td colspan="7" style="text-align:right;font-size:9px">TOTALES</td>
       <td style="text-align:center;font-size:10px;color:#2AAADE">${sumPond.toFixed(0)}%</td>
       <td></td><td></td>
       <td style="text-align:center;font-size:10px;color:#16a34a">${sumTotalPond>0?sumTotalPond.toFixed(2)+'%':''}</td>

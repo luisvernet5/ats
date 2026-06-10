@@ -13168,21 +13168,25 @@ async function deletePerfilPuesto(id){
 }
 
 /* ============================================================
-   KPIs
+   KPIs — CÉDULAS DE EVALUACIÓN
    ============================================================ */
 let _kpiCurrentEmpId=null;
+let _kpiCurrentCedulaId=null;
 
+/* --- Dashboard de empresas --- */
 function renderKpis(){
   const page=document.getElementById('page-kpis');
   if(!page)return;
   const cards=DB.empresas.map(emp=>{
-    const count=DB.kpis.filter(k=>k.empresa_id===emp.id).length;
+    const count=(DB.kpis||[]).filter(k=>k.empresa_id===emp.id).length;
+    const color=emp.color||'#2AAADE';
     return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px" onclick="renderKpisEmpresa('${emp.id}')">
       <div style="display:flex;align-items:center;gap:10px">
-        ${emp.logo?`<img src="${emp.logo}" style="width:36px;height:36px;object-fit:contain;border-radius:6px">`:`<div style="width:36px;height:36px;border-radius:6px;background:${emp.color||'#2AAADE'}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-chart-bar" style="color:${emp.color||'#2AAADE'}"></i></div>`}
+        ${emp.logo?`<img src="${emp.logo}" style="width:36px;height:36px;object-fit:contain;border-radius:6px">`:
+          `<div style="width:36px;height:36px;border-radius:6px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-chart-bar" style="color:${color}"></i></div>`}
         <div>
-          <div style="font-weight:600;font-size:14px">${emp.nombre}</div>
-          <div style="font-size:12px;color:var(--text3)">${count} KPI${count!==1?'s':''}</div>
+          <div style="font-weight:600;font-size:14px">${_esc(emp.nombre)}</div>
+          <div style="font-size:12px;color:var(--text3)">${count} cédula${count!==1?'s':''} de evaluación</div>
         </div>
       </div>
     </div>`;
@@ -13193,62 +13197,50 @@ function renderKpis(){
     </div>`;
 }
 
+/* --- Lista de cédulas por empresa --- */
 function renderKpisEmpresa(empId){
-  const page=document.getElementById('page-kpis');
-  if(!page)return;
   _kpiCurrentEmpId=empId;
-  const emp=DB.empresas.find(e=>e.id===empId)||{};
-  _kpiRenderTabla();
+  _kpiCurrentCedulaId=null;
+  _kpiRenderLista();
 }
 
-function _kpiRenderTabla(){
+function _kpiRenderLista(){
   const page=document.getElementById('page-kpis');
   if(!page||!_kpiCurrentEmpId)return;
   const empId=_kpiCurrentEmpId;
   const emp=DB.empresas.find(e=>e.id===empId)||{};
-  const kpis=DB.kpis.filter(k=>k.empresa_id===empId);
-  const accentColor=emp.color||'#2AAADE';
+  const cedulas=(DB.kpis||[]).filter(k=>k.empresa_id===empId);
+  const color=emp.color||'#2AAADE';
 
-  const kpiCards=kpis.map(k=>{
-    const historial=k.historial||[];
-    const ultimoReg=historial.length?historial[historial.length-1]:null;
-    const valorActual=ultimoReg?.valor??null;
-    const objetivo=k.valor_objetivo;
-    const pct=objetivo&&valorActual!==null?Math.min(100,Math.round(valorActual/objetivo*100)):null;
-    const pctColor=pct===null?'var(--text3)':pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)';
-    const catBadge=k.categoria?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:${accentColor}22;color:${accentColor};border:1px solid ${accentColor}44">${k.categoria}</span>`:'';
-    const perBadge=k.periodicidad?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--surface2);color:var(--text3);border:1px solid var(--border)">${k.periodicidad}</span>`:'';
-    const progressBar=objetivo&&valorActual!==null?`
-      <div style="margin-top:10px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:4px">
-          <span>Progreso</span><span style="color:${pctColor};font-weight:600">${pct}%</span>
-        </div>
-        <div style="height:6px;border-radius:3px;background:var(--border);overflow:hidden">
-          <div style="height:100%;border-radius:3px;background:${pctColor};width:${pct}%;transition:width .4s"></div>
-        </div>
-      </div>`:'';
-    const valorDisplay=valorActual!==null
-      ?`<span style="font-size:26px;font-weight:700;color:${pctColor}">${valorActual}</span><span style="font-size:13px;color:var(--text3);margin-left:4px">${k.unidad||''}</span>`
-      :`<span style="font-size:14px;color:var(--text3);font-style:italic">Sin datos</span>`;
-    const objDisplay=objetivo!==null&&objetivo!==undefined?`<div style="font-size:11px;color:var(--text3);margin-top:2px">Objetivo: ${objetivo} ${k.unidad||''}</div>`:'';
-    const histBtn=historial.length?`<button class="btn btn-ghost btn-sm" onclick="verHistorialKpi('${k.id}')" title="Ver historial"><i class="fa fa-history"></i> ${historial.length}</button>`:'';
-    return`<div class="card" style="display:flex;flex-direction:column;gap:8px">
+  const cards=cedulas.map(c=>{
+    const kpis=c.kpis||[];
+    const totalPond=kpis.reduce((s,k)=>s+(Number(k.ponderacion)||0),0);
+    const totalRes=kpis.filter(k=>k.resultado_pct!=null&&k.resultado_pct!=='')
+      .reduce((s,k)=>s+(Number(k.resultado_pct)||0)*(Number(k.ponderacion)||0)/100,0);
+    const pondOk=Math.abs(totalPond-100)<0.1;
+    const hasEval=kpis.some(k=>k.resultado_pct!=null&&k.resultado_pct!=='');
+    const pondColor=pondOk?'var(--green)':totalPond>100?'var(--red)':'var(--amber)';
+    return`<div class="card" style="cursor:pointer;border-top:3px solid ${color}" onclick="renderCedula('${c.id}')">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
         <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:4px">${_esc(k.nombre)}</div>
-          ${k.puesto?`<div style="font-size:11px;color:var(--text3);margin-bottom:3px"><i class="fa fa-briefcase" style="margin-right:3px"></i>${_esc(k.puesto)}</div>`:''}
-          <div style="display:flex;gap:4px;flex-wrap:wrap">${catBadge}${perBadge}</div>
+          <div style="font-weight:700;font-size:14px">${_esc(c.puesto||'Sin puesto')}</div>
+          ${c.area?`<div style="font-size:11px;color:var(--text3);margin-top:2px"><i class="fa fa-sitemap" style="margin-right:3px"></i>${_esc(c.area)}</div>`:''}
+          ${c.empleado_nombre?`<div style="font-size:12px;color:var(--text2);margin-top:4px"><i class="fa fa-user" style="margin-right:4px"></i>${_esc(c.empleado_nombre)}</div>`:''}
+          ${c.periodo?`<div style="font-size:11px;color:var(--text3);margin-top:2px"><i class="fa fa-calendar" style="margin-right:3px"></i>${_esc(c.periodo)}</div>`:''}
         </div>
-        <div style="display:flex;gap:4px;flex-shrink:0">
-          ${histBtn}
-          <button class="btn btn-ghost btn-sm" onclick="openKpiRegistroModal('${k.id}')" title="Registrar valor"><i class="fa fa-plus-circle"></i></button>
-          <button class="btn btn-ghost btn-sm" onclick="openKpiModal('${empId}','${k.id}')" title="Editar"><i class="fa fa-edit"></i></button>
-          <button class="btn btn-danger btn-sm" onclick="deleteKpi('${k.id}')" title="Eliminar"><i class="fa fa-trash"></i></button>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+          <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${color}22;color:${color};border:1px solid ${color}44">${kpis.length} KPI${kpis.length!==1?'s':''}</span>
+          <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--surface2);color:${pondColor}">Pond: ${totalPond.toFixed(0)}%${pondOk?' ✓':''}</span>
+          ${hasEval?`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(34,197,94,0.1);color:var(--green)">${totalRes.toFixed(1)}% resultado</span>`:''}
         </div>
       </div>
-      ${k.descripcion?`<div style="font-size:12px;color:var(--text3)">${_esc(k.descripcion)}</div>`:''}
-      <div style="margin-top:4px">${valorDisplay}${objDisplay}</div>
-      ${progressBar}
+      <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:var(--text3)">Ver cédula completa →</span>
+        <div onclick="event.stopPropagation()">
+          <button class="btn btn-ghost btn-sm" onclick="openCedulaModal('${empId}','${c.id}')"><i class="fa fa-edit"></i></button>
+          <button class="btn btn-danger btn-sm" onclick="deleteCedula('${c.id}')"><i class="fa fa-trash"></i></button>
+        </div>
+      </div>
     </div>`;
   }).join('');
 
@@ -13256,50 +13248,191 @@ function _kpiRenderTabla(){
     <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="renderKpis()"><i class="fa fa-arrow-left"></i> Empresas</button>
       <div style="display:flex;align-items:center;gap:8px">
-        ${emp.logo?`<img src="${emp.logo}" style="width:28px;height:28px;object-fit:contain;border-radius:5px">`:`<div style="width:28px;height:28px;border-radius:5px;background:${accentColor}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${accentColor};font-size:12px"></i></div>`}
-        <span style="font-size:15px;font-weight:600">${emp.nombre||''}</span>
+        ${emp.logo?`<img src="${emp.logo}" style="width:28px;height:28px;object-fit:contain;border-radius:5px">`:
+          `<div style="width:28px;height:28px;border-radius:5px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color};font-size:12px"></i></div>`}
+        <span style="font-size:15px;font-weight:600">${_esc(emp.nombre||'')}</span>
       </div>
       <span style="flex:1"></span>
-      <button class="btn btn-primary btn-sm" onclick="openKpiModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo KPI</button>
+      <button class="btn btn-primary btn-sm" onclick="openCedulaModal('${empId}',null)"><i class="fa fa-plus"></i> Nueva cédula</button>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px" id="kpi-grid">
-      ${kpiCards||`<div style="color:var(--text3);font-size:13px;padding:20px 0">Sin KPIs registrados. Crea el primero con "+ Nuevo KPI".</div>`}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px">
+      ${cards||`<div style="color:var(--text3);font-size:13px;padding:20px 0">Sin cédulas. Crea la primera con "+ Nueva cédula".</div>`}
     </div>`;
 }
 
-function openKpiModal(empId,kpiId){
-  const k=kpiId?DB.kpis.find(x=>x.id===kpiId):null;
-  document.getElementById('kpi-id').value=kpiId||'';
-  document.getElementById('kpi-empresa-id').value=empId||'';
-  document.getElementById('kpi-nombre').value=k?.nombre||'';
-  document.getElementById('kpi-descripcion').value=k?.descripcion||'';
-  document.getElementById('kpi-objetivo').value=k?.valor_objetivo??'';
-  document.getElementById('kpi-unidad').value=k?.unidad||'';
-  document.getElementById('kpi-puesto').value=k?.puesto||'';
-  document.getElementById('kpi-categoria').value=k?.categoria||'';
-  document.getElementById('kpi-periodicidad').value=k?.periodicidad||'mensual';
-  document.getElementById('kpi-modal-title').textContent=kpiId?'Editar KPI':'Nuevo KPI';
-  openModal('modal-kpi');
+/* --- Detalle de cédula --- */
+function renderCedula(cedulaId){
+  _kpiCurrentCedulaId=cedulaId;
+  const page=document.getElementById('page-kpis');
+  if(!page)return;
+  const c=DB.kpis.find(x=>x.id===cedulaId);
+  if(!c){_kpiRenderLista();return;}
+  const emp=DB.empresas.find(e=>e.id===c.empresa_id)||{};
+  const color=emp.color||'#2AAADE';
+  const kpis=c.kpis||[];
+  const bonoTotal=Number(c.bono_total)||0;
+
+  let sumPond=0,sumTotalPond=0,sumBono=0;
+  kpis.forEach(k=>{
+    const pond=Number(k.ponderacion)||0;
+    sumPond+=pond;
+    if(k.resultado_pct!=null&&k.resultado_pct!==''){
+      const res=Number(k.resultado_pct);
+      sumTotalPond+=res*pond/100;
+      if(bonoTotal)sumBono+=pond/100*(res/100)*bonoTotal;
+    }
+  });
+  const pondOk=Math.abs(sumPond-100)<0.1;
+  const pondColor=pondOk?'var(--green)':sumPond>100?'var(--red)':'var(--amber)';
+
+  let lastSec=undefined;
+  const rows=kpis.map((k,i)=>{
+    const pond=Number(k.ponderacion)||0;
+    const resPct=(k.resultado_pct!=null&&k.resultado_pct!=='')?Number(k.resultado_pct):null;
+    const valObt=(k.valor_obtenido!=null&&k.valor_obtenido!=='')?Number(k.valor_obtenido):null;
+    const totPond=resPct!==null?resPct*pond/100:null;
+    const montoKpi=(resPct!==null&&bonoTotal)?pond/100*(resPct/100)*bonoTotal:null;
+    const rBg=resPct===null?'':resPct>=90?'rgba(34,197,94,0.06)':resPct>=70?'rgba(245,158,11,0.06)':'rgba(239,68,68,0.06)';
+    const rTc=resPct===null?'var(--text3)':resPct>=90?'var(--green)':resPct>=70?'#f59e0b':'var(--red)';
+
+    let secRow='';
+    if(k.seccion&&k.seccion!==lastSec){
+      lastSec=k.seccion;
+      secRow=`<tr><td colspan="${bonoTotal?14:13}" style="background:#1e3a5f;color:#fff;font-weight:700;font-size:11px;padding:7px 12px;text-transform:uppercase;letter-spacing:.5px">${_esc(k.seccion)}</td></tr>`;
+    } else if(!k.seccion) lastSec=undefined;
+
+    const acts=(k.actividades||'').split('\n').filter(Boolean).map(a=>`<div style="white-space:nowrap">• ${_esc(a.trim().replace(/^•\s*/,''))}</div>`).join('');
+
+    return`${secRow}<tr style="background:${rBg}">
+      <td style="text-align:center;width:28px;font-weight:700;color:var(--text3);font-size:11px">${i+1}</td>
+      <td style="font-size:12px;min-width:150px;max-width:200px">${_esc(k.meta_clave||'—')}</td>
+      <td style="font-size:12px;min-width:150px;max-width:200px">${_esc(k.objetivo_periodo||'—')}</td>
+      <td style="font-size:12px;min-width:120px;max-width:180px">${_esc(k.indicador||'—')}</td>
+      <td style="font-size:11px;min-width:150px;max-width:220px;color:var(--text2)">${acts||'—'}</td>
+      <td style="font-size:11px;min-width:130px;max-width:180px;font-style:italic;color:var(--text2)">${_esc(k.formula||'—')}</td>
+      <td style="text-align:center;font-size:11px;white-space:nowrap">${k.periodicidad||'—'}</td>
+      <td style="text-align:center;font-weight:600;font-size:12px;white-space:nowrap">${_esc(k.meta||'—')}</td>
+      <td style="text-align:center;font-weight:700;color:${color};font-size:13px">${pond}%</td>
+      <td style="text-align:center;font-size:12px">${valObt!==null?valObt:'—'}</td>
+      <td style="text-align:center;font-weight:700;color:${rTc};font-size:13px">${resPct!==null?resPct.toFixed(2)+'%':'—'}</td>
+      <td style="text-align:center;font-weight:600;font-size:12px">${totPond!==null?totPond.toFixed(2)+'%':'—'}</td>
+      ${bonoTotal?`<td style="text-align:right;font-size:12px;font-weight:700;color:var(--green);white-space:nowrap">${montoKpi!==null?'$'+montoKpi.toLocaleString('es-MX',{minimumFractionDigits:2}):'—'}</td>`:''}
+      <td style="white-space:nowrap;padding:4px 8px">
+        <button class="btn btn-ghost btn-sm" onclick="openKpiFilaModal('${cedulaId}','${k.id}')"><i class="fa fa-edit"></i></button>
+        <button class="btn btn-danger btn-sm" onclick="deleteKpiFila('${cedulaId}','${k.id}')"><i class="fa fa-trash"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const colSpan=bonoTotal?14:13;
+  const summaryBono=bonoTotal&&sumBono>0?`
+    <div class="card" style="margin-top:16px;background:linear-gradient(135deg,#1e3a5f 0%,#1a6b99 100%);color:#fff;border:none">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.75;margin-bottom:12px">Resumen del bono</div>
+      <div style="display:flex;gap:32px;flex-wrap:wrap;align-items:flex-end">
+        <div><div style="font-size:11px;opacity:.7;margin-bottom:2px">Bono total disponible</div><div style="font-size:22px;font-weight:700">$${bonoTotal.toLocaleString('es-MX',{minimumFractionDigits:2})}</div></div>
+        <div style="font-size:20px;opacity:.35;align-self:center">→</div>
+        <div><div style="font-size:11px;opacity:.7;margin-bottom:2px">Bono generado por desempeño</div><div style="font-size:22px;font-weight:700">$${sumBono.toLocaleString('es-MX',{minimumFractionDigits:2})}</div></div>
+        <div><div style="font-size:11px;opacity:.7;margin-bottom:2px">Resultado ponderado</div><div style="font-size:22px;font-weight:700">${sumTotalPond.toFixed(2)}%</div></div>
+        <div><div style="font-size:11px;opacity:.7;margin-bottom:2px">% del bono generado</div><div style="font-size:22px;font-weight:700">${bonoTotal?(sumBono/bonoTotal*100).toFixed(1):'0'}%</div></div>
+      </div>
+    </div>`:'' ;
+
+  page.innerHTML=`
+    <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="renderKpisEmpresa('${c.empresa_id}')"><i class="fa fa-arrow-left"></i> Cédulas</button>
+      <div style="flex:1;min-width:0">
+        <span style="font-size:15px;font-weight:700">${_esc(c.puesto||'Sin puesto')}</span>
+        ${c.periodo?`<span style="font-size:12px;color:var(--text3);margin-left:8px">${_esc(c.periodo)}</span>`:''}
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="openCedulaModal('${c.empresa_id}','${cedulaId}')"><i class="fa fa-edit"></i> Editar</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportCedulaPDF('${cedulaId}')"><i class="fa fa-file-pdf" style="color:#ef4444"></i> PDF</button>
+      <button class="btn btn-primary btn-sm" onclick="openKpiFilaModal('${cedulaId}',null)"><i class="fa fa-plus"></i> Agregar KPI</button>
+    </div>
+    <div class="card" style="margin-bottom:14px;border-top:3px solid ${color}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;font-size:12px">
+        ${c.empleado_nombre?`<div><div style="color:var(--text3);font-size:10px;text-transform:uppercase;margin-bottom:2px">Empleado</div><div style="font-weight:600">${_esc(c.empleado_nombre)}</div></div>`:''}
+        ${c.empleado_id?`<div><div style="color:var(--text3);font-size:10px;text-transform:uppercase;margin-bottom:2px">ID Empleado</div><div style="font-weight:600">${_esc(c.empleado_id)}</div></div>`:''}
+        ${c.area?`<div><div style="color:var(--text3);font-size:10px;text-transform:uppercase;margin-bottom:2px">Área</div><div style="font-weight:600">${_esc(c.area)}</div></div>`:''}
+        ${c.jefe_inmediato?`<div><div style="color:var(--text3);font-size:10px;text-transform:uppercase;margin-bottom:2px">Jefe inmediato</div><div style="font-weight:600">${_esc(c.jefe_inmediato)}</div></div>`:''}
+        ${c.periodo?`<div><div style="color:var(--text3);font-size:10px;text-transform:uppercase;margin-bottom:2px">Periodo</div><div style="font-weight:600">${_esc(c.periodo)}</div></div>`:''}
+        ${c.fecha_fijacion?`<div><div style="color:var(--text3);font-size:10px;text-transform:uppercase;margin-bottom:2px">Fecha fijación</div><div style="font-weight:600">${fmt(c.fecha_fijacion)}</div></div>`:''}
+        ${bonoTotal?`<div><div style="color:var(--text3);font-size:10px;text-transform:uppercase;margin-bottom:2px">Bono total</div><div style="font-weight:700;color:var(--green)">$${bonoTotal.toLocaleString('es-MX',{minimumFractionDigits:2})}</div></div>`:''}
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="table" style="font-size:12px;min-width:1000px">
+        <thead>
+          <tr style="background:#1e3a5f;color:#fff;font-size:10px;text-transform:uppercase;letter-spacing:.3px">
+            <th style="text-align:center;width:28px">#</th>
+            <th>Meta clave del puesto</th>
+            <th>Objetivo del periodo</th>
+            <th>Indicador</th>
+            <th>Actividades</th>
+            <th>Fórmula</th>
+            <th style="text-align:center">Period.</th>
+            <th style="text-align:center">Meta</th>
+            <th style="text-align:center;color:#93c5fd">Pond.%</th>
+            <th style="text-align:center">Val. Obt.</th>
+            <th style="text-align:center;color:#86efac">Resultado%</th>
+            <th style="text-align:center;color:#86efac">Tot. Pond.</th>
+            ${bonoTotal?'<th style="text-align:right;color:#86efac">Monto KPI</th>':''}
+            <th style="width:70px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows||`<tr><td colspan="${colSpan}" style="text-align:center;color:var(--text3);padding:28px;font-style:italic">Sin KPIs. Agrega el primero con "+ Agregar KPI".</td></tr>`}
+          <tr style="background:var(--surface2);border-top:2px solid var(--border2)">
+            <td colspan="8" style="text-align:right;padding-right:12px;font-weight:700;font-size:12px;color:var(--text3)">TOTALES</td>
+            <td style="text-align:center;font-weight:800;color:${pondColor};font-size:13px">${sumPond.toFixed(0)}%${pondOk?' ✓':''}</td>
+            <td></td><td></td>
+            <td style="text-align:center;font-weight:700;font-size:13px;color:${sumTotalPond>0?'var(--green)':'var(--text3)'}">${sumTotalPond>0?sumTotalPond.toFixed(2)+'%':'—'}</td>
+            ${bonoTotal?`<td style="text-align:right;font-weight:700;font-size:13px;color:var(--green)">${sumBono>0?'$'+sumBono.toLocaleString('es-MX',{minimumFractionDigits:2}):'—'}</td>`:''}
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    ${summaryBono}`;
 }
 
-async function saveKpi(){
-  const nombre=document.getElementById('kpi-nombre').value.trim();
-  if(!nombre){showToast('El nombre es obligatorio','err');return;}
-  const empId=document.getElementById('kpi-empresa-id').value;
-  const existId=document.getElementById('kpi-id').value;
+/* --- Modal cédula (encabezado) --- */
+function openCedulaModal(empId,cedulaId){
+  const c=cedulaId?DB.kpis.find(x=>x.id===cedulaId):null;
+  document.getElementById('cedula-id').value=cedulaId||'';
+  document.getElementById('cedula-empresa-id').value=empId||'';
+  document.getElementById('cedula-puesto').value=c?.puesto||'';
+  document.getElementById('cedula-area').value=c?.area||'';
+  document.getElementById('cedula-empleado-nombre').value=c?.empleado_nombre||'';
+  document.getElementById('cedula-empleado-id').value=c?.empleado_id||'';
+  document.getElementById('cedula-jefe').value=c?.jefe_inmediato||'';
+  document.getElementById('cedula-periodo').value=c?.periodo||'';
+  document.getElementById('cedula-fecha').value=c?.fecha_fijacion||'';
+  document.getElementById('cedula-bono').value=c?.bono_total??'';
+  document.getElementById('cedula-modal-title').textContent=cedulaId?'Editar cédula':'Nueva cédula de evaluación';
+  openModal('modal-cedula');
+}
+
+async function saveCedula(){
+  const puesto=document.getElementById('cedula-puesto').value.trim();
+  if(!puesto){showToast('El puesto es obligatorio','err');return;}
+  const empId=document.getElementById('cedula-empresa-id').value;
+  const existId=document.getElementById('cedula-id').value;
   const isNew=!existId;
+  const prev=existId?DB.kpis.find(x=>x.id===existId):null;
+  const bonoStr=document.getElementById('cedula-bono').value;
   const obj={
     id:existId||uid(),
     empresa_id:empId,
-    nombre,
-    descripcion:document.getElementById('kpi-descripcion').value.trim()||null,
-    puesto:document.getElementById('kpi-puesto').value.trim()||null,
-    valor_objetivo:document.getElementById('kpi-objetivo').value!==''?Number(document.getElementById('kpi-objetivo').value):null,
-    unidad:document.getElementById('kpi-unidad').value.trim()||null,
-    categoria:document.getElementById('kpi-categoria').value||null,
-    periodicidad:document.getElementById('kpi-periodicidad').value,
-    historial:isNew?[]:(DB.kpis.find(x=>x.id===existId)?.historial||[]),
-    creado:isNew?new Date().toISOString():(DB.kpis.find(x=>x.id===existId)?.creado||new Date().toISOString()),
+    puesto,
+    area:document.getElementById('cedula-area').value.trim()||null,
+    empleado_nombre:document.getElementById('cedula-empleado-nombre').value.trim()||null,
+    empleado_id:document.getElementById('cedula-empleado-id').value.trim()||null,
+    jefe_inmediato:document.getElementById('cedula-jefe').value.trim()||null,
+    periodo:document.getElementById('cedula-periodo').value.trim()||null,
+    fecha_fijacion:document.getElementById('cedula-fecha').value||null,
+    bono_total:bonoStr!==''?Number(bonoStr):null,
+    kpis:isNew?[]:(prev?.kpis||[]),
+    creado:isNew?new Date().toISOString():(prev?.creado||new Date().toISOString()),
     updated_at:new Date().toISOString()
   };
   if(!SANDBOX_MODE){
@@ -13307,103 +13440,269 @@ async function saveKpi(){
     if(error){showToast('Error al guardar: '+error.message,'err');return;}
   }
   const idx=DB.kpis.findIndex(x=>x.id===obj.id);
-  if(idx>=0) DB.kpis[idx]=obj; else DB.kpis.push(obj);
-  closeModal('modal-kpi');
-  showToast('KPI guardado ✓');
-  _kpiRenderTabla();
+  if(idx>=0)DB.kpis[idx]=obj;else DB.kpis.push(obj);
+  closeModal('modal-cedula');
+  showToast('Cédula guardada ✓');
+  if(_kpiCurrentCedulaId===obj.id)renderCedula(obj.id);else _kpiRenderLista();
 }
 
-async function deleteKpi(kpiId){
-  if(!confirm('¿Eliminar este KPI? Se perderá también su historial.'))return;
+async function deleteCedula(cedulaId){
+  if(!confirm('¿Eliminar esta cédula de evaluación y todos sus KPIs?'))return;
   if(!SANDBOX_MODE){
-    const{error}=await sbClient.from('kpis').delete().eq('id',kpiId);
+    const{error}=await sbClient.from('kpis').delete().eq('id',cedulaId);
     if(error){showToast('Error al eliminar: '+error.message,'err');return;}
   }
-  DB.kpis=DB.kpis.filter(x=>x.id!==kpiId);
-  showToast('KPI eliminado');
-  _kpiRenderTabla();
+  DB.kpis=DB.kpis.filter(x=>x.id!==cedulaId);
+  showToast('Cédula eliminada');
+  _kpiRenderLista();
 }
 
-function openKpiRegistroModal(kpiId){
-  const k=DB.kpis.find(x=>x.id===kpiId);
-  if(!k)return;
-  document.getElementById('kpi-reg-id').value=kpiId;
-  document.getElementById('kpi-reg-valor').value='';
-  document.getElementById('kpi-reg-fecha').value=new Date().toISOString().slice(0,10);
-  document.getElementById('kpi-reg-notas').value='';
-  document.getElementById('kpi-reg-title').textContent=`Registrar — ${k.nombre}`;
-  openModal('modal-kpi-registro');
+/* --- Modal fila KPI --- */
+function openKpiFilaModal(cedulaId,filaId){
+  const c=DB.kpis.find(x=>x.id===cedulaId);
+  if(!c)return;
+  const k=filaId?(c.kpis||[]).find(x=>x.id===filaId):null;
+  document.getElementById('kpi-fila-cedula-id').value=cedulaId;
+  document.getElementById('kpi-fila-id').value=filaId||'';
+  const secSelect=document.getElementById('kpi-fila-seccion');
+  const secCustom=document.getElementById('kpi-fila-seccion-custom');
+  const predef=['','KPIs del Puesto','KPIs de Recursos Humanos','KPI de Desarrollo e Innovación'];
+  if(k?.seccion&&!predef.includes(k.seccion)){
+    secSelect.value='__other__';
+    secCustom.value=k.seccion;
+    document.getElementById('kpi-fila-seccion-custom-row').style.display='';
+  } else {
+    secSelect.value=k?.seccion||'';
+    secCustom.value='';
+    document.getElementById('kpi-fila-seccion-custom-row').style.display='none';
+  }
+  document.getElementById('kpi-fila-meta-clave').value=k?.meta_clave||'';
+  document.getElementById('kpi-fila-objetivo').value=k?.objetivo_periodo||'';
+  document.getElementById('kpi-fila-indicador').value=k?.indicador||'';
+  document.getElementById('kpi-fila-actividades').value=k?.actividades||'';
+  document.getElementById('kpi-fila-formula').value=k?.formula||'';
+  document.getElementById('kpi-fila-periodicidad').value=k?.periodicidad||'Mensual';
+  document.getElementById('kpi-fila-meta').value=k?.meta||'';
+  document.getElementById('kpi-fila-ponderacion').value=k?.ponderacion??'';
+  document.getElementById('kpi-fila-valor').value=k?.valor_obtenido??'';
+  document.getElementById('kpi-fila-resultado').value=k?.resultado_pct??'';
+  document.getElementById('kpi-fila-title').textContent=filaId?'Editar KPI':'Agregar KPI';
+  openModal('modal-kpi-fila');
 }
 
-async function saveKpiRegistro(){
-  const kpiId=document.getElementById('kpi-reg-id').value;
-  const valorStr=document.getElementById('kpi-reg-valor').value;
-  if(valorStr===''){showToast('Ingresa un valor','err');return;}
-  const k=DB.kpis.find(x=>x.id===kpiId);
-  if(!k)return;
-  const registro={fecha:document.getElementById('kpi-reg-fecha').value||new Date().toISOString().slice(0,10),valor:Number(valorStr),notas:document.getElementById('kpi-reg-notas').value.trim()||null};
-  const historial=[...(k.historial||[]),registro].sort((a,b)=>a.fecha.localeCompare(b.fecha));
-  const updated={...k,historial,updated_at:new Date().toISOString()};
+function _kpiFilaSeccionChange(){
+  const val=document.getElementById('kpi-fila-seccion').value;
+  document.getElementById('kpi-fila-seccion-custom-row').style.display=val==='__other__'?'':'none';
+}
+
+async function saveKpiFilaModal(){
+  const metaClave=document.getElementById('kpi-fila-meta-clave').value.trim();
+  if(!metaClave){showToast('La meta clave es obligatoria','err');return;}
+  const pondStr=document.getElementById('kpi-fila-ponderacion').value;
+  if(pondStr===''||isNaN(Number(pondStr))){showToast('La ponderación es obligatoria','err');return;}
+  const cedulaId=document.getElementById('kpi-fila-cedula-id').value;
+  const filaId=document.getElementById('kpi-fila-id').value;
+  const c=DB.kpis.find(x=>x.id===cedulaId);
+  if(!c)return;
+  const secVal=document.getElementById('kpi-fila-seccion').value;
+  const seccion=secVal==='__other__'?document.getElementById('kpi-fila-seccion-custom').value.trim():secVal;
+  const valorStr=document.getElementById('kpi-fila-valor').value;
+  const resultStr=document.getElementById('kpi-fila-resultado').value;
+  const fila={
+    id:filaId||uid(),
+    seccion:seccion||null,
+    meta_clave:metaClave,
+    objetivo_periodo:document.getElementById('kpi-fila-objetivo').value.trim()||null,
+    indicador:document.getElementById('kpi-fila-indicador').value.trim()||null,
+    actividades:document.getElementById('kpi-fila-actividades').value.trim()||null,
+    formula:document.getElementById('kpi-fila-formula').value.trim()||null,
+    periodicidad:document.getElementById('kpi-fila-periodicidad').value,
+    meta:document.getElementById('kpi-fila-meta').value.trim()||null,
+    ponderacion:Number(pondStr),
+    valor_obtenido:valorStr!==''?Number(valorStr):null,
+    resultado_pct:resultStr!==''?Number(resultStr):null
+  };
+  const kpis=[...(c.kpis||[])];
+  const fi=kpis.findIndex(x=>x.id===fila.id);
+  if(fi>=0)kpis[fi]=fila;else kpis.push(fila);
+  const updated={...c,kpis,updated_at:new Date().toISOString()};
   if(!SANDBOX_MODE){
     const{error}=await sbClient.from('kpis').upsert({id:updated.id,empresa_id:updated.empresa_id,data:updated});
     if(error){showToast('Error al guardar: '+error.message,'err');return;}
   }
-  const idx=DB.kpis.findIndex(x=>x.id===kpiId);
-  if(idx>=0) DB.kpis[idx]=updated;
-  closeModal('modal-kpi-registro');
-  showToast('Valor registrado ✓');
-  _kpiRenderTabla();
+  const idx=DB.kpis.findIndex(x=>x.id===cedulaId);
+  if(idx>=0)DB.kpis[idx]=updated;
+  closeModal('modal-kpi-fila');
+  showToast(filaId?'KPI actualizado ✓':'KPI agregado ✓');
+  renderCedula(cedulaId);
 }
 
-function verHistorialKpi(kpiId){
-  const k=DB.kpis.find(x=>x.id===kpiId);
-  if(!k)return;
-  const rows=(k.historial||[]).slice().reverse().map((r,i)=>`
-    <tr>
-      <td style="font-size:12px;color:var(--text3)">${fmt(r.fecha)}</td>
-      <td style="font-weight:600;font-size:14px">${r.valor} <span style="font-size:11px;color:var(--text3)">${k.unidad||''}</span></td>
-      <td style="font-size:12px;color:var(--text3)">${r.notas||'—'}</td>
-      <td style="white-space:nowrap">
-        <button class="btn btn-danger btn-sm" onclick="deleteKpiRegistro('${kpiId}',${(k.historial||[]).length-1-i})"><i class="fa fa-trash"></i></button>
-      </td>
-    </tr>`).join('');
-  const existing=document.getElementById('kpi-historial-overlay');
-  if(existing)existing.remove();
-  const overlay=document.createElement('div');
-  overlay.id='kpi-historial-overlay';
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2500;display:flex;align-items:center;justify-content:center;padding:20px';
-  overlay.innerHTML=`
-    <div style="background:var(--surface);border-radius:14px;max-width:560px;width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,0.3)">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
-        <div style="font-weight:600;font-size:15px">${_esc(k.nombre)} — Historial</div>
-        <button onclick="document.getElementById('kpi-historial-overlay').remove()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text2)">×</button>
-      </div>
-      <div style="overflow-y:auto;padding:16px 20px">
-        ${rows?`<table class="table"><thead><tr><th>Fecha</th><th>Valor</th><th>Notas</th><th></th></tr></thead><tbody>${rows}</tbody></table>`:'<div style="text-align:center;color:var(--text3);padding:24px">Sin registros aún.</div>'}
-      </div>
-      <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
-        <button onclick="openKpiRegistroModal('${kpiId}');document.getElementById('kpi-historial-overlay').remove()" class="btn btn-primary btn-sm"><i class="fa fa-plus"></i> Registrar valor</button>
-        <button onclick="document.getElementById('kpi-historial-overlay').remove()" class="btn btn-ghost btn-sm">Cerrar</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-}
-
-async function deleteKpiRegistro(kpiId,index){
-  if(!confirm('¿Eliminar este registro?'))return;
-  const k=DB.kpis.find(x=>x.id===kpiId);
-  if(!k)return;
-  const historial=(k.historial||[]).filter((_,i)=>i!==index);
-  const updated={...k,historial,updated_at:new Date().toISOString()};
+async function deleteKpiFila(cedulaId,filaId){
+  if(!confirm('¿Eliminar este KPI de la cédula?'))return;
+  const c=DB.kpis.find(x=>x.id===cedulaId);
+  if(!c)return;
+  const kpis=(c.kpis||[]).filter(x=>x.id!==filaId);
+  const updated={...c,kpis,updated_at:new Date().toISOString()};
   if(!SANDBOX_MODE){
     const{error}=await sbClient.from('kpis').upsert({id:updated.id,empresa_id:updated.empresa_id,data:updated});
-    if(error){showToast('Error: '+error.message,'err');return;}
+    if(error){showToast('Error al eliminar: '+error.message,'err');return;}
   }
-  const idx=DB.kpis.findIndex(x=>x.id===kpiId);
-  if(idx>=0) DB.kpis[idx]=updated;
-  showToast('Registro eliminado');
-  verHistorialKpi(kpiId);
-  _kpiRenderTabla();
+  const idx=DB.kpis.findIndex(x=>x.id===cedulaId);
+  if(idx>=0)DB.kpis[idx]=updated;
+  showToast('KPI eliminado');
+  renderCedula(cedulaId);
+}
+
+/* --- Exportar PDF cédula --- */
+function exportCedulaPDF(cedulaId){
+  const c=DB.kpis.find(x=>x.id===cedulaId);
+  if(!c){showToast('Cédula no encontrada','err');return;}
+  const emp=DB.empresas.find(e=>e.id===c.empresa_id)||{};
+  const bonoTotal=Number(c.bono_total)||0;
+  const kpis=c.kpis||[];
+  let sumPond=0,sumTotalPond=0,sumBono=0;
+  kpis.forEach(k=>{
+    const pond=Number(k.ponderacion)||0;
+    sumPond+=pond;
+    if(k.resultado_pct!=null&&k.resultado_pct!==''){
+      const res=Number(k.resultado_pct);
+      sumTotalPond+=res*pond/100;
+      if(bonoTotal)sumBono+=pond/100*(res/100)*bonoTotal;
+    }
+  });
+  let lastSec=undefined;
+  const tableRows=kpis.map((k,i)=>{
+    const pond=Number(k.ponderacion)||0;
+    const resPct=(k.resultado_pct!=null&&k.resultado_pct!=='')?Number(k.resultado_pct):null;
+    const valObt=(k.valor_obtenido!=null&&k.valor_obtenido!=='')?Number(k.valor_obtenido):null;
+    const totPond=resPct!==null?resPct*pond/100:null;
+    const montoKpi=(resPct!==null&&bonoTotal)?pond/100*(resPct/100)*bonoTotal:null;
+    const rBg=resPct===null?'white':resPct>=90?'#dcfce7':resPct>=70?'#fef9c3':'#fee2e2';
+    const rTc=resPct===null?'#999':resPct>=90?'#16a34a':resPct>=70?'#ca8a04':'#dc2626';
+    let secRow='';
+    if(k.seccion&&k.seccion!==lastSec){
+      lastSec=k.seccion;
+      secRow=`<tr><td colspan="${bonoTotal?13:12}" style="background:#1e3a5f;color:#fff;font-weight:700;font-size:9px;padding:6px 10px;text-transform:uppercase;letter-spacing:.5px">${_esc(k.seccion)}</td></tr>`;
+    } else if(!k.seccion) lastSec=undefined;
+    const acts=(k.actividades||'').split('\n').filter(Boolean).map(a=>`• ${a.trim().replace(/^•\s*/,'')}`).join('\n');
+    return`${secRow}<tr style="background:${rBg}">
+      <td style="text-align:center;font-weight:700;font-size:9px;color:#666;width:20px">${i+1}</td>
+      <td style="font-size:9px">${_esc(k.meta_clave||'')}</td>
+      <td style="font-size:9px">${_esc(k.objetivo_periodo||'')}</td>
+      <td style="font-size:9px">${_esc(k.indicador||'')}</td>
+      <td style="font-size:8px;white-space:pre-line;color:#555">${_esc(acts)}</td>
+      <td style="font-size:8px;font-style:italic;color:#555">${_esc(k.formula||'')}</td>
+      <td style="text-align:center;font-size:9px">${k.periodicidad||''}</td>
+      <td style="text-align:center;font-weight:600;font-size:9px">${_esc(k.meta||'')}</td>
+      <td style="text-align:center;font-weight:700;color:#2AAADE;font-size:10px">${pond}%</td>
+      <td style="text-align:center;font-size:9px">${valObt!==null?valObt:''}</td>
+      <td style="text-align:center;font-weight:700;font-size:10px;color:${rTc}">${resPct!==null?resPct.toFixed(2)+'%':''}</td>
+      <td style="text-align:center;font-weight:600;font-size:10px">${totPond!==null?totPond.toFixed(2)+'%':''}</td>
+      ${bonoTotal?`<td style="text-align:right;font-weight:700;color:#16a34a;font-size:9px;white-space:nowrap">${montoKpi!==null?'$'+montoKpi.toLocaleString('es-MX',{minimumFractionDigits:2}):''}</td>`:''}
+    </tr>`;
+  }).join('');
+  const bonoCH=bonoTotal?'<th style="text-align:right;padding:6px 8px;white-space:nowrap">Monto KPI</th>':'';
+  const bonoTotRow=bonoTotal?`<td style="text-align:right;font-weight:700;color:#16a34a">${sumBono>0?'$'+sumBono.toLocaleString('es-MX',{minimumFractionDigits:2}):''}</td>`:'';
+  const summarySection=bonoTotal?`
+  <div style="margin-top:20px;background:linear-gradient(135deg,#1e3a5f,#2AAADE);color:white;padding:16px 20px;border-radius:8px">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;opacity:.8;margin-bottom:10px">Resumen del Bono</div>
+    <table style="width:100%;border-collapse:collapse">
+      <tr>
+        <td style="padding:5px 12px;font-size:11px;opacity:.8">Bono total disponible</td>
+        <td style="padding:5px 12px;font-size:13px;font-weight:700;text-align:right;white-space:nowrap">$${bonoTotal.toLocaleString('es-MX',{minimumFractionDigits:2})}</td>
+        <td style="padding:5px 12px;font-size:11px;opacity:.8">Bono generado</td>
+        <td style="padding:5px 12px;font-size:13px;font-weight:700;text-align:right;white-space:nowrap">$${sumBono.toLocaleString('es-MX',{minimumFractionDigits:2})}</td>
+        <td style="padding:5px 12px;font-size:11px;opacity:.8">Resultado ponderado</td>
+        <td style="padding:5px 12px;font-size:13px;font-weight:700;text-align:right">${sumTotalPond.toFixed(2)}%</td>
+      </tr>
+    </table>
+  </div>`:'';
+  const html=`<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Cédula KPI — ${_esc(c.puesto||'')} — ${_esc(c.periodo||'')}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;padding:14px;font-size:12px}
+@page{size:A4 landscape;margin:8mm}
+@media print{body{padding:0}button{display:none}}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid #ddd;padding:4px 6px;vertical-align:top}
+th{background:#1e3a5f;color:#fff;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;text-align:left}
+</style>
+</head>
+<body>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #1e3a5f">
+  <div>
+    <div style="font-size:16px;font-weight:700;color:#1e3a5f">CÉDULA DE EVALUACIÓN — KPI</div>
+    <div style="font-size:12px;color:#555;margin-top:2px">${_esc(emp.nombre||'')}</div>
+  </div>
+  ${emp.logo?`<img src="${emp.logo}" style="height:44px;object-fit:contain">`:`<div style="font-size:18px;font-weight:700;color:#1e3a5f">${_esc(emp.nombre||'')}</div>`}
+</div>
+<table style="margin-bottom:12px">
+  <tr>
+    <td style="background:#f0f4f8;font-size:8px;font-weight:700;color:#444;white-space:nowrap">PUESTO</td>
+    <td style="font-size:10px;font-weight:600">${_esc(c.puesto||'')}</td>
+    <td style="background:#f0f4f8;font-size:8px;font-weight:700;color:#444;white-space:nowrap">ÁREA</td>
+    <td style="font-size:10px;font-weight:600">${_esc(c.area||'')}</td>
+    <td style="background:#f0f4f8;font-size:8px;font-weight:700;color:#444;white-space:nowrap">PERIODO</td>
+    <td style="font-size:10px;font-weight:600">${_esc(c.periodo||'')}</td>
+  </tr>
+  <tr>
+    <td style="background:#f0f4f8;font-size:8px;font-weight:700;color:#444;white-space:nowrap">EMPLEADO</td>
+    <td style="font-size:10px;font-weight:600">${_esc(c.empleado_nombre||'')}</td>
+    <td style="background:#f0f4f8;font-size:8px;font-weight:700;color:#444;white-space:nowrap">ID EMPLEADO</td>
+    <td style="font-size:10px;font-weight:600">${_esc(c.empleado_id||'')}</td>
+    <td style="background:#f0f4f8;font-size:8px;font-weight:700;color:#444;white-space:nowrap">JEFE INMEDIATO</td>
+    <td style="font-size:10px;font-weight:600">${_esc(c.jefe_inmediato||'')}</td>
+  </tr>
+  ${c.fecha_fijacion||bonoTotal?`<tr>
+    <td style="background:#f0f4f8;font-size:8px;font-weight:700;color:#444;white-space:nowrap">FECHA FIJACIÓN</td>
+    <td style="font-size:10px;font-weight:600">${c.fecha_fijacion?fmt(c.fecha_fijacion):''}</td>
+    <td style="background:#f0f4f8;font-size:8px;font-weight:700;color:#444;white-space:nowrap">BONO TOTAL</td>
+    <td colspan="3" style="font-size:11px;font-weight:700;color:#16a34a">${bonoTotal?'$'+bonoTotal.toLocaleString('es-MX',{minimumFractionDigits:2}):''}</td>
+  </tr>`:''}
+</table>
+<table>
+  <thead>
+    <tr>
+      <th style="width:20px;text-align:center">#</th>
+      <th>Meta clave del puesto</th>
+      <th>Objetivo del periodo</th>
+      <th>Indicador</th>
+      <th>Actividades</th>
+      <th>Fórmula</th>
+      <th style="text-align:center">Period.</th>
+      <th style="text-align:center">Meta</th>
+      <th style="text-align:center">Pond.%</th>
+      <th style="text-align:center">Val. Obt.</th>
+      <th style="text-align:center">Resultado%</th>
+      <th style="text-align:center">Tot. Pond.</th>
+      ${bonoCH}
+    </tr>
+  </thead>
+  <tbody>
+    ${tableRows}
+    <tr style="background:#f0f4f8;font-weight:700">
+      <td colspan="8" style="text-align:right;font-size:9px">TOTALES</td>
+      <td style="text-align:center;font-size:10px;color:#2AAADE">${sumPond.toFixed(0)}%</td>
+      <td></td><td></td>
+      <td style="text-align:center;font-size:10px;color:#16a34a">${sumTotalPond>0?sumTotalPond.toFixed(2)+'%':''}</td>
+      ${bonoTotRow}
+    </tr>
+  </tbody>
+</table>
+${summarySection}
+<div style="margin-top:24px;font-size:9px;color:#999;text-align:right">Generado: ${new Date().toLocaleDateString('es-MX')}</div>
+<script>window.onload=function(){window.print();}<\/script>
+</body>
+</html>`;
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const pw=window.open(url,'_blank');
+  if(!pw)showToast('Permite ventanas emergentes para exportar PDF','err');
+  else setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
 
 async function generarPDFPerfil(id){

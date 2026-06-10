@@ -15416,10 +15416,11 @@ function evalAddPregunta(q=null){
       <i class="fa fa-grip-horizontal" style="font-size:12px"></i>
     </div>
     <div style="padding:14px 16px 12px">
-      <div style="display:flex;gap:10px;align-items:center;margin-bottom:2px">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:2px">
+        <span id="eqnum_${qId}" style="font-size:15px;font-weight:700;color:var(--text3);flex-shrink:0;min-width:26px;display:${isDecorativo?'none':'inline'};text-align:right"></span>
         <input data-qid="${qId}" data-field="texto"
           placeholder="${tipo==='titulo'?'Título':tipo==='descripcion'?'Descripción':'Pregunta sin título'}"
-          value="${(q?.texto||'').replace(/"/g,'&quot;')}"
+          value="${(q?.texto||'').replace(/^\d+[\.\)]\s*/,'').replace(/"/g,'&quot;')}"
           style="flex:1;font-size:${isDecorativo?'17px':'15px'};font-weight:${isDecorativo?'700':'500'};border:none;border-bottom:1px solid var(--border);border-radius:0;background:transparent;padding:4px 0 6px;min-width:0">
         <select data-qid="${qId}" data-field="tipo" onchange="evalChangeTipo('${qId}')" style="width:185px;flex-shrink:0;font-size:13px;padding:6px 8px">
           ${EVAL_TIPOS.map(t=>`<option value="${t.value}" ${tipo===t.value?'selected':''}>${t.label}</option>`).join('')}

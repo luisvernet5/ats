@@ -14076,7 +14076,8 @@ function previewEvaluacion(evalId){
       <div style="padding:20px 24px;display:flex;flex-direction:column;gap:12px">
         ${contenido||'<div style="text-align:center;color:var(--text3);padding:32px">Sin preguntas configuradas</div>'}
       </div>
-      <div style="padding:16px 24px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
+      <div style="padding:16px 24px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <button onclick="exportEvaluacionPreviewPDF('${evalId}')" class="btn btn-ghost" style="color:var(--red)"><i class="fa fa-file-pdf"></i> Exportar PDF</button>
         <button onclick="document.getElementById('modal-eval-preview-overlay').remove()" class="btn btn-primary">Cerrar vista previa</button>
       </div>
     </div>`;

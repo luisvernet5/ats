@@ -6139,7 +6139,7 @@ function renderVacantesTable(){
       <td class="td-p" style="cursor:pointer" onclick="openVacanteDetailView('${v.id}','${v.empresa_id}')">
         ${v.nombre}
       </td>
-      <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td>
+      <td style="font-size:13px;color:var(--text2)">${v.folio||'—'}</td>
       <td><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${emp.color||'#888'};flex-shrink:0"></span>${emp.nombre||'—'}</span></td>
       <td>${rec.nombre||'—'}</td>
       <td style="font-size:12px;color:var(--text2)">${v.proyecto||''}</td>

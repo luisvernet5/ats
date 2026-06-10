@@ -1662,9 +1662,8 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <div id="kpi-fila-seccion-custom-row" style="display:none" class="fr full">
         <div class="fg"><label>Nombre de sección personalizado</label><input id="kpi-fila-seccion-custom" placeholder="Ej. KPIs Comerciales"></div>
       </div>
-      <div class="fr">
-        <div class="fg"><label>Meta clave del puesto *</label><textarea id="kpi-fila-meta-clave" rows="2" placeholder="Ej. Mantener disponibilidad de equipos al nivel óptimo"></textarea></div>
-        <div class="fg"><label>Objetivo del periodo</label><textarea id="kpi-fila-objetivo" rows="2" placeholder="Ej. Alcanzar 95% de disponibilidad operativa mensual" oninput="_kpiFilaAutoCalcResultado()"></textarea></div>
+      <div class="fr full">
+        <div class="fg"><label>Objetivo del periodo *</label><textarea id="kpi-fila-objetivo" rows="2" placeholder="Ej. Garantizar el cumplimiento de los procesos operativos del área"></textarea></div>
       </div>
       <div class="fr">
         <div class="fg"><label>Indicador</label><input id="kpi-fila-indicador" placeholder="Ej. % Disponibilidad de equipos"></div>
@@ -1683,6 +1682,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
             <option value="Anual">Anual</option>
           </select>
         </div>
+        <div class="fg"><label>Meta</label><input id="kpi-fila-meta" placeholder="Ej. ≥95%, ≤5 días, 100 unidades" oninput="_kpiFilaAutoCalcResultado()"></div>
         <div class="fg"><label>Ponderación % *</label><input id="kpi-fila-ponderacion" type="number" min="0" max="100" step="any" placeholder="20"></div>
       </div>
       <div class="fr">
@@ -13306,12 +13306,12 @@ function renderCedula(cedulaId){
 
     return`${secRow}<tr style="background:${rBg}">
       <td style="text-align:center;width:28px;font-weight:700;color:var(--text3);font-size:11px">${i+1}</td>
-      <td style="font-size:12px;min-width:150px;max-width:200px">${_esc(k.meta_clave||'—')}</td>
-      <td style="font-size:12px;min-width:150px;max-width:200px">${_esc(k.objetivo_periodo||'—')}</td>
+      <td style="font-size:12px;min-width:180px;max-width:260px">${_esc(k.objetivo_periodo||'—')}</td>
       <td style="font-size:12px;min-width:120px;max-width:180px">${_esc(k.indicador||'—')}</td>
       <td style="font-size:11px;min-width:150px;max-width:220px;color:var(--text2)">${acts||'—'}</td>
       <td style="font-size:11px;min-width:130px;max-width:180px;font-style:italic;color:var(--text2)">${_esc(k.formula||'—')}</td>
       <td style="text-align:center;font-size:11px;white-space:nowrap">${k.periodicidad||'—'}</td>
+      <td style="text-align:center;font-weight:600;font-size:12px;white-space:nowrap">${_esc(k.meta||'—')}</td>
       <td style="text-align:center;font-weight:700;color:${color};font-size:13px">${pond}%</td>
       <td style="text-align:center;font-size:12px">${valObt!==null?valObt:'—'}</td>
       <td style="text-align:center;font-weight:700;color:${rTc};font-size:13px">${resPct!==null?resPct.toFixed(2)+'%':'—'}</td>
@@ -13364,12 +13364,12 @@ function renderCedula(cedulaId){
         <thead>
           <tr style="background:#1e3a5f;color:#fff;font-size:10px;text-transform:uppercase;letter-spacing:.3px">
             <th style="text-align:center;width:28px">#</th>
-            <th>Meta clave del puesto</th>
             <th>Objetivo del periodo</th>
             <th>Indicador</th>
             <th>Actividades</th>
             <th>Fórmula</th>
             <th style="text-align:center">Period.</th>
+            <th style="text-align:center">Meta</th>
             <th style="text-align:center;color:#93c5fd">Pond.%</th>
             <th style="text-align:center">Val. Obt.</th>
             <th style="text-align:center;color:#86efac">Resultado%</th>
@@ -13482,12 +13482,12 @@ function openKpiFilaModal(cedulaId,filaId){
     secCustom.value='';
     document.getElementById('kpi-fila-seccion-custom-row').style.display='none';
   }
-  document.getElementById('kpi-fila-meta-clave').value=k?.meta_clave||'';
   document.getElementById('kpi-fila-objetivo').value=k?.objetivo_periodo||'';
   document.getElementById('kpi-fila-indicador').value=k?.indicador||'';
   document.getElementById('kpi-fila-actividades').value=k?.actividades||'';
   document.getElementById('kpi-fila-formula').value=k?.formula||'';
   document.getElementById('kpi-fila-periodicidad').value=k?.periodicidad||'Mensual';
+  document.getElementById('kpi-fila-meta').value=k?.meta||'';
   document.getElementById('kpi-fila-ponderacion').value=k?.ponderacion??'';
   document.getElementById('kpi-fila-valor').value=k?.valor_obtenido??'';
   // Si ya hay resultado guardado úsalo, si no recalcular desde meta+valor
@@ -13505,11 +13505,11 @@ function _kpiFilaSeccionChange(){
 
 function _kpiFilaAutoCalcResultado(){
   const valorEl=document.getElementById('kpi-fila-valor');
-  const objEl=document.getElementById('kpi-fila-objetivo');
+  const metaEl=document.getElementById('kpi-fila-meta');
   const resultEl=document.getElementById('kpi-fila-resultado');
-  if(!valorEl||!objEl||!resultEl)return;
+  if(!valorEl||!metaEl||!resultEl)return;
   const valorStr=valorEl.value.trim();
-  const objStr=objEl.value.trim();
+  const objStr=metaEl.value.trim();
   if(valorStr===''||objStr==='')return;
   const valor=Number(valorStr);
   if(isNaN(valor))return;
@@ -13525,8 +13525,8 @@ function _kpiFilaAutoCalcResultado(){
 }
 
 async function saveKpiFilaModal(){
-  const metaClave=document.getElementById('kpi-fila-meta-clave').value.trim();
-  if(!metaClave){showToast('La meta clave es obligatoria','err');return;}
+  const metaClave=document.getElementById('kpi-fila-objetivo').value.trim();
+  if(!metaClave){showToast('El objetivo del periodo es obligatorio','err');return;}
   const pondStr=document.getElementById('kpi-fila-ponderacion').value;
   if(pondStr===''||isNaN(Number(pondStr))){showToast('La ponderación es obligatoria','err');return;}
   const cedulaId=document.getElementById('kpi-fila-cedula-id').value;
@@ -13553,8 +13553,8 @@ async function saveKpiFilaModal(){
   const fila={
     id:filaId||uid(),
     seccion:seccion||null,
-    meta_clave:metaClave,
-    objetivo_periodo:document.getElementById('kpi-fila-objetivo').value.trim()||null,
+    objetivo_periodo:metaClave,
+    meta:document.getElementById('kpi-fila-meta').value.trim()||null,
     indicador:document.getElementById('kpi-fila-indicador').value.trim()||null,
     actividades:document.getElementById('kpi-fila-actividades').value.trim()||null,
     formula:document.getElementById('kpi-fila-formula').value.trim()||null,
@@ -13628,12 +13628,12 @@ function exportCedulaPDF(cedulaId){
     const acts=(k.actividades||'').split('\n').filter(Boolean).map(a=>`• ${a.trim().replace(/^•\s*/,'')}`).join('\n');
     return`${secRow}<tr style="background:${rBg}">
       <td style="text-align:center;font-weight:700;font-size:9px;color:#666;width:20px">${i+1}</td>
-      <td style="font-size:9px">${_esc(k.meta_clave||'')}</td>
       <td style="font-size:9px">${_esc(k.objetivo_periodo||'')}</td>
       <td style="font-size:9px">${_esc(k.indicador||'')}</td>
       <td style="font-size:8px;white-space:pre-line;color:#555">${_esc(acts)}</td>
       <td style="font-size:8px;font-style:italic;color:#555">${_esc(k.formula||'')}</td>
       <td style="text-align:center;font-size:9px">${k.periodicidad||''}</td>
+      <td style="text-align:center;font-weight:600;font-size:9px">${_esc(k.meta||'')}</td>
       <td style="text-align:center;font-weight:700;color:#2AAADE;font-size:10px">${pond}%</td>
       <td style="text-align:center;font-size:9px">${valObt!==null?valObt:''}</td>
       <td style="text-align:center;font-weight:700;font-size:10px;color:${rTc}">${resPct!==null?resPct.toFixed(2)+'%':''}</td>
@@ -13708,12 +13708,12 @@ th{background:#1e3a5f;color:#fff;font-size:8px;font-weight:700;text-transform:up
   <thead>
     <tr>
       <th style="width:20px;text-align:center">#</th>
-      <th>Meta clave del puesto</th>
       <th>Objetivo del periodo</th>
       <th>Indicador</th>
       <th>Actividades</th>
       <th>Fórmula</th>
       <th style="text-align:center">Period.</th>
+      <th style="text-align:center">Meta</th>
       <th style="text-align:center">Pond.%</th>
       <th style="text-align:center">Val. Obt.</th>
       <th style="text-align:center">Resultado%</th>

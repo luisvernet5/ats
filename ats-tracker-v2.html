@@ -4043,9 +4043,12 @@ function filtrarVacantesEmpresa(){
   if(edCount) edCount.innerHTML = `Mostrando <strong>${filtered.length}</strong> registros`;
   const filtCands = DB.candidatos.filter(c=>filtered.find(v=>v.id===c.vacante_id));
   const vacAct   = filtered.filter(v=>v.estado==='Abierta').length;
-  const validados= filtCands.filter(esColocado).length;
   const deser    = filtCands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).length;
-  const dArr     = filtCands.filter(esColocado).map(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};const fc=getFechaContratacion(v,c);return fc&&v.fecha_apertura?daysBetween(v.fecha_apertura,fc):null;}).filter(d=>d!=null&&d>0);
+  // Contratados y días prom: usar TODAS las vacantes de la empresa, no solo las abiertas/filtradas
+  const allEmpVacs = DB.vacantes.filter(v=>v.empresa_id===empId);
+  const allEmpCands = DB.candidatos.filter(c=>allEmpVacs.find(v=>v.id===c.vacante_id));
+  const validados= allEmpCands.filter(esColocado).length;
+  const dArr     = allEmpCands.filter(esColocado).map(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};const fc=getFechaContratacion(v,c);return fc&&v.fecha_apertura?daysBetween(v.fecha_apertura,fc):null;}).filter(d=>d!=null&&d>0);
   const avgDays  = dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):null;
   const kv = id => document.getElementById(id);
   if(kv('ed-kpi-abiertas'))  kv('ed-kpi-abiertas').textContent  = vacAct;

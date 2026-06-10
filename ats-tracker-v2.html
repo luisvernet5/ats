@@ -14086,6 +14086,7 @@ function previewEvaluacion(evalId){
 }
 
 function exportEvaluacionPreviewPDF(evalId){
+  try{
   const ev=DB.evaluaciones.find(x=>x.id===evalId);
   if(!ev){showToast('Evaluación no encontrada','err');return;}
   if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
@@ -14148,7 +14149,7 @@ function exportEvaluacionPreviewPDF(evalId){
         if(y+6>280){doc.addPage();y=18;}
         doc.setDrawColor(120,120,120);
         if(isCasilla){doc.rect(M+2,y-3,3.5,3.5);}
-        else{doc.circle(M+3.75,y-1.5,1.75);}
+        else{doc.ellipse(M+3.75,y-1.5,1.75,1.75);}
         const oLines=doc.splitTextToSize(opt||'',CW-10);
         doc.text(oLines,M+9,y);y+=oLines.length*4.5+1;
       }
@@ -14196,6 +14197,7 @@ function exportEvaluacionPreviewPDF(evalId){
   const fname=`evaluacion_preview_${(ev.nombre||'eval').replace(/\s+/g,'_').toLowerCase()}.pdf`;
   doc.save(fname);
   showToast('PDF generado ✓');
+  }catch(e){showToast('Error al generar PDF: '+e.message,'err');console.error(e);}
 }
 
 function renderEvalEnviadas(){

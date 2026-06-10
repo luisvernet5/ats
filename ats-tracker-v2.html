@@ -12750,6 +12750,7 @@ function _pfRenderTabla(){
       <td style="font-size:12px;color:var(--text3)">${p.departamento||'—'}</td>
       <td style="font-size:11px;color:var(--text3);white-space:nowrap">${mod}</td>
       <td style="text-align:right;white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" data-tip="Vista previa" onclick="previewPerfilPuesto('${p.id}')"><i class="fa fa-eye"></i></button>
         <button class="btn btn-ghost btn-sm" data-tip="Editar" onclick="openPerfilModal('${empId}','${p.id}')"><i class="fa fa-edit"></i></button>
         <button class="btn btn-ghost btn-sm" data-tip="Exportar PDF" onclick="generarPDFPerfil('${p.id}')"><i class="fa fa-file-pdf"></i></button>
         <button class="btn btn-ghost btn-sm" data-tip="Eliminar" style="color:var(--red)" onclick="deletePerfilPuesto('${p.id}')"><i class="fa fa-trash"></i></button>
@@ -12762,6 +12763,121 @@ function _pfRenderTabla(){
     </tr></thead>
     <tbody>${rows||`<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin perfiles${(mfP||mfD)?' que coincidan con los filtros':' registrados — agrega el primero'}</td></tr>`}</tbody>
   </table></div>`;
+}
+
+function previewPerfilPuesto(perfilId){
+  const p=DB.perfilesPuesto.find(x=>x.id===perfilId);
+  if(!p){showToast('Perfil no encontrado','err');return;}
+  const emp=DB.empresas.find(e=>e.id===p.empresa_id)||{};
+  const color=emp.color||'#2AAADE';
+  const v=f=>p[f]||'';
+
+  const sec=t=>`<div style="background:${color};color:#fff;font-weight:700;font-size:11px;text-align:center;padding:5px 10px;border-radius:4px;margin:16px 0 10px;text-transform:uppercase;letter-spacing:.05em">${t}</div>`;
+  const fld=(lbl,val)=>val?`<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">${lbl}</div><div style="font-size:13px;color:var(--text)">${_esc(String(val))}</div></div>`:'';
+  const rt=val=>val?`<div style="font-size:13px;color:var(--text);line-height:1.6">${val}</div>`:'<span style="color:var(--text3);font-size:12px">—</span>';
+  const apl=(field,lbl)=>{const val=p[field]||'No aplica';const ok=val==='Aplica';return`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:13px;color:var(--text2)">${lbl}</span><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${ok?'rgba(34,197,94,0.1)':'var(--surface2)'};color:${ok?'var(--green)':'var(--text3)'}">${val}</span></div>`;};
+
+  const planRows=p.plan_carrera||[];
+  const planHTML=planRows.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="background:var(--surface2)">
+      ${['Nivel','Puesto','Salario','Tipo','Frecuencia','Extras','Tiempo'].map(h=>`<th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--text3);text-transform:uppercase">${h}</th>`).join('')}
+    </tr></thead>
+    <tbody>${planRows.map(r=>`<tr style="border-top:1px solid var(--border)">
+      <td style="padding:6px 8px;font-weight:600">${_esc(r.nivel||'')}</td>
+      <td style="padding:6px 8px">${_esc(r.puesto||'—')}</td>
+      <td style="padding:6px 8px">${_esc(r.salario||'—')}</td>
+      <td style="padding:6px 8px">${_esc(r.tipo||'—')}</td>
+      <td style="padding:6px 8px">${_esc(r.frecuencia||'—')}</td>
+      <td style="padding:6px 8px">${_esc(r.extras||'—')}</td>
+      <td style="padding:6px 8px">${_esc(r.tiempo||'—')}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`:'<span style="color:var(--text3);font-size:12px">—</span>';
+
+  let habHTML='';
+  if(p.habilidades_modo==='diccionario'&&p.habilidades_dic?.length){
+    habHTML=`<div style="display:flex;flex-wrap:wrap;gap:6px">${p.habilidades_dic.map(h=>`<span style="padding:3px 10px;border-radius:12px;background:${color}22;color:${color};font-size:12px;border:1px solid ${color}44">${_esc(h)}</span>`).join('')}</div>`;
+  } else {
+    habHTML=rt(p.habilidades||'');
+  }
+
+  document.getElementById('modal-preview-perfil')?.remove();
+  const modal=document.createElement('div');
+  modal.className='modal-overlay open';
+  modal.id='modal-preview-perfil';
+  modal.innerHTML=`
+  <div class="modal modal-lg" style="max-width:800px;width:95vw;max-height:92vh;overflow-y:auto">
+    <div class="mh" style="border-bottom:3px solid ${color};position:sticky;top:0;z-index:10;background:var(--surface)">
+      <div style="flex:1;min-width:0">
+        <h3 style="margin:0;font-size:17px">${_esc(p.nombre_puesto||'Perfil de puesto')}</h3>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">${[p.departamento,p.proyecto].filter(Boolean).map(_esc).join(' · ')||''}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" onclick="openPerfilModal('${p.empresa_id}','${p.id}');document.getElementById('modal-preview-perfil').remove()"><i class="fa fa-edit"></i> Editar</button>
+        <button class="btn btn-ghost btn-sm" onclick="generarPDFPerfil('${p.id}')"><i class="fa fa-file-pdf" style="color:#ef4444"></i> PDF</button>
+        <button class="xbtn" onclick="document.getElementById('modal-preview-perfil').remove()"><i class="fa fa-times"></i></button>
+      </div>
+    </div>
+    <div style="padding:20px">
+      ${sec('Información del puesto')}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px">
+        ${fld('Lugar de trabajo',v('lugar_trabajo'))}
+        ${fld('Ubicación geográfica',v('ubicacion_geografica'))}
+        ${fld('Proyecto',v('proyecto'))}
+        ${fld('Departamento',v('departamento'))}
+        ${fld('Fecha elaboración',v('fecha_elaboracion')?new Date(v('fecha_elaboracion')).toLocaleDateString('es-MX'):'')}
+        ${fld('Fecha revisión',v('fecha_revision')?new Date(v('fecha_revision')).toLocaleDateString('es-MX'):'')}
+        ${fld('No. revisión',v('no_revision'))}
+        ${fld('Elaboró',v('elaboro'))}
+      </div>
+
+      ${sec('Actividades Esenciales')}
+      ${rt(p.actividades_esenciales)}
+
+      ${sec('Perfil de Puesto')}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:14px">
+        ${fld('Sexo',v('sexo'))}
+        ${fld('Edad',p.edad_ini||p.edad_fin?`${p.edad_ini||''}${p.edad_fin?` a ${p.edad_fin}`:''} años`:'')}
+        ${fld('Escolaridad',v('escolaridad'))}
+        ${fld('Experiencia previa',v('experiencia_previa'))}
+        ${fld('Idiomas',v('idiomas'))}
+      </div>
+      ${p.conocimientos_tecnicos?`<div style="margin-bottom:12px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Conocimientos técnicos</div>${rt(p.conocimientos_tecnicos)}</div>`:''}
+      ${(p.habilidades||p.habilidades_dic?.length)?`<div style="margin-bottom:12px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Habilidades</div>${habHTML}</div>`:''}
+      ${p.actitudes?`<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Actitudes</div>${rt(p.actitudes)}</div>`:''}
+
+      ${sec('Plan de Carrera y Propuesta Salarial')}
+      ${planHTML}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-top:14px">
+        ${fld('Disponibilidad para viajar',v('disponibilidad_viajar'))}
+        ${fld('Horario de trabajo',v('horario_trabajo'))}
+        ${fld('Tipo de contratación',v('tipo_contratacion'))}
+        ${fld('Prestaciones',v('prestaciones'))}
+      </div>
+
+      ${p.acompanamiento_capacitacion?sec('Acompañamiento / Capacitación')+rt(p.acompanamiento_capacitacion):''}
+
+      ${sec('Responsabilidades')}
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px">Responsabilidad en valores (Dinero)</div>
+      <div style="background:var(--surface2);border-radius:8px;padding:0 12px;margin-bottom:10px">
+        ${apl('resp_efectivo','En efectivo o token institucional')}
+        ${apl('resp_cheques','Cheques al portador')}
+        ${apl('resp_formas_valoradas','Formas valoradas (vales de despensa, gasolina, etc.)')}
+      </div>
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px">Responsabilidades en bienes</div>
+      <div style="background:var(--surface2);border-radius:8px;padding:0 12px;margin-bottom:10px">
+        ${apl('resp_mobiliario','Mobiliario')}
+        ${apl('resp_equipo_computo','Equipo de cómputo')}
+        ${apl('resp_automovil','Automóvil utilitario')}
+        ${apl('resp_telefonia','Telefonía (Radio, Celular, teléfono fijo)')}
+        ${apl('resp_documentos','Documentos e información')}
+        ${apl('resp_otros','Otros')}
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:0 12px">${apl('resp_uniforme','EPP / Uniforme')}</div>
+
+      ${p.entregables?sec('Entregables')+rt(p.entregables):''}
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
 }
 
 function openExportPerfilesModal(){

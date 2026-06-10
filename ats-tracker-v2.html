@@ -11487,9 +11487,26 @@ function removeStage(empId,stageId){
   renderStageBuilder();
 }
 async function saveStages(empId){
-  // re-read labels from inputs in case they weren't triggered
   const e=DB.empresas.find(x=>x.id===empId);if(!e)return;
-  e.etapas.forEach(s=>{const el=document.getElementById('sl-lbl-'+s.id);if(el)s.label=el.value;});
+  // Capturar nombres anteriores antes de actualizar
+  const oldLabels={};
+  e.etapas.forEach(s=>{ oldLabels[s.id]=s.label; });
+  // Leer labels actuales del DOM
+  e.etapas.forEach(s=>{const el=document.getElementById('sl-lbl-'+s.id);if(el)s.label=el.value.trim()||s.label;});
+  // Detectar renombramientos y migrar candidatos
+  const renames=[];
+  e.etapas.forEach(s=>{ if(oldLabels[s.id]&&oldLabels[s.id]!==s.label) renames.push({old:oldLabels[s.id],nuevo:s.label}); });
+  if(renames.length){
+    const candsEmpresa=DB.candidatos.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return v?.empresa_id===empId;});
+    for(const rename of renames){
+      const afectados=candsEmpresa.filter(c=>c.etapa===rename.old);
+      for(const c of afectados){
+        c.etapa=rename.nuevo;
+        await saveRecord('candidatos',c);
+      }
+    }
+    if(renames.length) showToast(`Etapas actualizadas en ${renames.reduce((s,r)=>s+ DB.candidatos.filter(c=>c.etapa===r.nuevo).length,0)} candidatos ✓`);
+  }
   await saveRecord('empresas',e);
   showToast('Etapas guardadas ✓');
   renderStageBuilder();

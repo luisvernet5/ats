@@ -13338,6 +13338,7 @@ function renderKpisHistorial(empId, empleadoKey){
     <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="renderKpisEmpresa('${empId}')"><i class="fa fa-arrow-left"></i> ${_esc(emp.nombre||'Empresa')}</button>
       <div style="flex:1;min-width:0;font-size:15px;font-weight:700">${headerLabel}</div>
+      <button class="btn btn-green btn-sm" onclick="exportKpisHistorialExcel()"><i class="fa fa-file-excel"></i> Exportar Excel</button>
       <button class="btn btn-primary btn-sm" onclick="openCedulaModal('${empId}',null,${tplArg})"><i class="fa fa-plus"></i> Nueva evaluación</button>
     </div>
     <div class="card" style="padding:0;overflow:hidden">
@@ -13364,6 +13365,117 @@ function renderKpisHistorial(empId, empleadoKey){
 function _kpiNavBack(){
   if(_kpiCurrentEmpleadoKey) renderKpisHistorial(_kpiCurrentEmpId,_kpiCurrentEmpleadoKey);
   else _kpiRenderLista();
+}
+
+/* --- Exportar historial a Excel --- */
+function exportKpisHistorialExcel(){
+  const empId=_kpiCurrentEmpId;
+  const empleadoKey=_kpiCurrentEmpleadoKey;
+  if(!empId||!empleadoKey)return;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const [nombre,puesto]=(empleadoKey||'').split('|||');
+
+  const cedulas=(DB.kpis||[]).filter(k=>
+    k.empresa_id===empId&&
+    (k.empleado_nombre||'')===(nombre||'')&&
+    (k.puesto||'')===(puesto||'')
+  );
+  const sorted=[...cedulas].sort((a,b)=>(a.fecha_fijacion||a.creado||'').localeCompare(b.fecha_fijacion||b.creado||''));
+
+  // === Hoja 1: Resumen por periodo ===
+  const resRows=[
+    [`Empresa: ${emp.nombre||''}`, '', '', '', '', ''],
+    [`Empleado: ${nombre||'Sin nombre'}`, '', `Puesto: ${puesto||''}`, '', '', ''],
+    [''],
+    ['Periodo','# KPIs','Ponderación Total','Tot. Pond. %','Bono Generado','Estado']
+  ];
+  sorted.forEach(c=>{
+    const kpis=c.kpis||[];
+    const sumPond=kpis.reduce((s,k)=>s+(Number(k.ponderacion)||0),0);
+    const bonoTotal=Number(c.bono_total)||0;
+    let sumTotPond=0,sumBono=0,evalCount=0;
+    kpis.forEach(k=>{
+      if(k.resultado_pct!=null&&k.resultado_pct!==''){
+        evalCount++;
+        const res=Number(k.resultado_pct);
+        const bonusRes=res>=100?100:0;
+        sumTotPond+=bonusRes*(Number(k.ponderacion)||0)/100;
+        if(bonoTotal)sumBono+=(Number(k.ponderacion)||0)/100*(bonusRes/100)*bonoTotal;
+      }
+    });
+    const status=kpis.length===0?'Sin KPIs':evalCount===kpis.length?'Completa':evalCount>0?'En progreso':'Sin evaluar';
+    resRows.push([
+      c.periodo||'—',
+      kpis.length,
+      sumPond+'%',
+      evalCount>0?(sumTotPond.toFixed(2)+'%'):'—',
+      evalCount>0&&bonoTotal?sumBono:0,
+      status
+    ]);
+  });
+
+  // === Hoja 2: Detalle de KPIs por periodo ===
+  const detHeader=['Periodo','Empleado','Puesto','Departamento','Proyecto','Jefe Inmediato','#','Sección','Objetivo del Periodo','Indicador','Actividades','Fórmula','Periodicidad','Meta','Pond.%','Val. Obtenido','Resultado%','Tot. Pond.%','Monto KPI'];
+  const detRows=[detHeader];
+  sorted.forEach(c=>{
+    const bonoTotal=Number(c.bono_total)||0;
+    (c.kpis||[]).forEach((k,i)=>{
+      const pond=Number(k.ponderacion)||0;
+      const resPct=(k.resultado_pct!=null&&k.resultado_pct!=='')?Number(k.resultado_pct):null;
+      const bonusRes=resPct!==null?(resPct>=100?100:0):null;
+      const totPond=bonusRes!==null?bonusRes*pond/100:null;
+      const montoKpi=(bonusRes!==null&&bonoTotal)?pond/100*(bonusRes/100)*bonoTotal:null;
+      detRows.push([
+        c.periodo||'',
+        c.empleado_nombre||'',
+        c.puesto||'',
+        c.departamento||'',
+        c.proyecto||'',
+        c.jefe_inmediato||'',
+        i+1,
+        k.seccion||'',
+        k.objetivo_periodo||'',
+        k.indicador||'',
+        (k.actividades||'').replace(/\n/g,' | '),
+        k.formula||'',
+        k.periodicidad||'',
+        k.meta||'',
+        pond,
+        k.valor_obtenido!=null&&k.valor_obtenido!==''?Number(k.valor_obtenido):'',
+        resPct!==null?resPct:'',
+        totPond!==null?totPond:'',
+        montoKpi!==null?montoKpi:''
+      ]);
+    });
+    // Fila de totales por cédula
+    const kpis=c.kpis||[];
+    const sumPond=kpis.reduce((s,k)=>s+(Number(k.ponderacion)||0),0);
+    let sumTotPond=0,sumBono=0;
+    kpis.forEach(k=>{
+      if(k.resultado_pct!=null&&k.resultado_pct!==''){
+        const res=Number(k.resultado_pct);
+        const br=res>=100?100:0;
+        sumTotPond+=br*(Number(k.ponderacion)||0)/100;
+        if(bonoTotal)sumBono+=(Number(k.ponderacion)||0)/100*(br/100)*bonoTotal;
+      }
+    });
+    detRows.push(['','','','','','','','','','','','','','TOTALES',sumPond,'','',sumTotPond,bonoTotal?sumBono:'']);
+    detRows.push([]); // separador
+  });
+
+  const wb=XLSX.utils.book_new();
+  const ws1=XLSX.utils.aoa_to_sheet(resRows);
+  const ws2=XLSX.utils.aoa_to_sheet(detRows);
+
+  // Anchos de columna aproximados
+  ws1['!cols']=[{wch:20},{wch:8},{wch:18},{wch:14},{wch:16},{wch:14}];
+  ws2['!cols']=[{wch:16},{wch:20},{wch:22},{wch:18},{wch:16},{wch:22},{wch:4},{wch:20},{wch:35},{wch:28},{wch:35},{wch:28},{wch:12},{wch:12},{wch:8},{wch:12},{wch:12},{wch:12},{wch:14}];
+
+  XLSX.utils.book_append_sheet(wb,ws1,'Historial');
+  XLSX.utils.book_append_sheet(wb,ws2,'Detalle KPIs');
+
+  const nombreArchivo=`kpis-${(nombre||puesto||'empleado').toLowerCase().replace(/\s+/g,'-')}-${emp.nombre||empId}.xlsx`;
+  XLSX.writeFile(wb,nombreArchivo);
 }
 
 /* --- Detalle de cédula --- */

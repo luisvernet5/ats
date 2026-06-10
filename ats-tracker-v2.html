@@ -3680,7 +3680,7 @@ function showEDKpiPanel(type, empId){
       const fechaCont=getFechaContratacion(v,c);
       const wn=getWeekNumber(fechaCont);
       const dias=daysBetween(v.fecha_apertura,fechaCont||today());
-      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px;width:36px">${i+1}</td><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td style="font-size:12px">${v.proyecto||'—'}</td><td style="font-family:var(--mono);font-size:12px">${fechaCont?fmt(fechaCont):'—'}</td><td style="text-align:center">${wn?`<span style="background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:2px 7px;font-size:11px;font-family:var(--mono);font-weight:500">S${wn.week}</span>`:'—'}</td><td>${dias!==null?`<span class="dpill ${dClass(dias)}">${dias}d</span>`:'—'}</td></tr>`;
+      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px;width:36px">${i+1}</td><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td style="font-size:13px;color:var(--text2)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td style="font-size:12px">${v.proyecto||'—'}</td><td style="font-size:12px">${fechaCont?fmt(fechaCont):'—'}</td><td style="text-align:center">${wn?`<span style="background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:2px 7px;font-size:11px;font-family:var(--mono);font-weight:500">S${wn.week}</span>`:'—'}</td><td>${dias!==null?`<span class="dpill ${dClass(dias)}">${dias}d</span>`:'—'}</td></tr>`;
     }).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Sin contratados</td></tr>`;
   }
   else if(type==='deserciones'){

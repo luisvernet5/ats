@@ -6561,7 +6561,8 @@ function exportDescartadosExcel(){
     const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const rec=DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
-    return[i+1,c.nombre||'',v.nombre||'',emp.nombre||'',rec.nombre||'',v.proyecto||'',v.departamento||'',c.etapa||'',c.fecha_descarte||c.fecha_salida||'',c.motivo_descarte||c.motivo_desercion||''];
+    const fechaDesc=c.fecha_descarte||c.fecha_salida||'';
+    return[i+1,c.nombre||'',v.nombre||'',emp.nombre||'',rec.nombre||'',v.proyecto||'',v.departamento||'',c.etapa||'',fechaDesc?fmt(fechaDesc):'',c.motivo_descarte||c.motivo_desercion||''];
   });
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([header,...filas]),'Descartados');

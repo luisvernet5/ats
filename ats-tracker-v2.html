@@ -14084,6 +14084,120 @@ function previewEvaluacion(evalId){
   overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
   document.body.appendChild(overlay);
 }
+
+function exportEvaluacionPreviewPDF(evalId){
+  const ev=DB.evaluaciones.find(x=>x.id===evalId);
+  if(!ev){showToast('Evaluación no encontrada','err');return;}
+  if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const W=210,M=18,CW=W-M*2;
+  let y=M;
+  // Encabezado
+  doc.setFillColor(42,170,222);doc.rect(0,0,W,14,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(13);
+  doc.text('Vista previa de evaluación',M,9.5);
+  doc.setTextColor(40,40,40);y=22;
+  doc.setFont('helvetica','bold');doc.setFontSize(14);
+  const titleLines=doc.splitTextToSize(ev.nombre||'Sin nombre',CW);
+  doc.text(titleLines,M,y);y+=titleLines.length*7+2;
+  if(ev.descripcion){
+    doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(100,100,100);
+    const dLines=doc.splitTextToSize(ev.descripcion,CW);
+    doc.text(dLines,M,y);y+=dLines.length*5+4;
+    doc.setTextColor(40,40,40);
+  }
+  doc.setDrawColor(42,170,222);doc.line(M,y,M+CW,y);y+=6;
+  // Preguntas
+  let pregNum=0;
+  for(const q of (ev.preguntas||[])){
+    if(y>268){doc.addPage();y=18;}
+    if(q.tipo==='titulo'){
+      doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(40,40,40);
+      const lines=doc.splitTextToSize(q.texto||'',CW);
+      if(y+lines.length*6+6>280){doc.addPage();y=18;}
+      doc.text(lines,M,y);y+=lines.length*6+1;
+      doc.setDrawColor(42,170,222);doc.line(M,y,M+CW,y);y+=5;
+      continue;
+    }
+    if(q.tipo==='descripcion'){
+      doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(100,100,100);
+      const lines=doc.splitTextToSize(q.texto||'',CW);
+      if(y+lines.length*5+4>280){doc.addPage();y=18;}
+      doc.text(lines,M,y);y+=lines.length*5+4;
+      continue;
+    }
+    pregNum++;
+    // Número y texto de pregunta
+    const reqMark=q.requerida?' *':'';
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(40,40,40);
+    const qLines=doc.splitTextToSize(`${pregNum}. ${q.texto||''}${reqMark}`,CW);
+    if(y+qLines.length*5+16>280){doc.addPage();y=18;}
+    doc.text(qLines,M,y);y+=qLines.length*5+3;
+    // Input según tipo
+    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(80,80,80);
+    if(q.tipo==='texto_corto'){
+      doc.setDrawColor(180,180,180);doc.line(M+2,y+3,M+CW-2,y+3);y+=8;
+    } else if(q.tipo==='parrafo'){
+      doc.setDrawColor(180,180,180);
+      [0,6,12].forEach(off=>{doc.line(M+2,y+off,M+CW-2,y+off);});
+      y+=20;
+    } else if(q.tipo==='opcion_multiple'||q.tipo==='casillas'){
+      const isCasilla=q.tipo==='casillas';
+      for(const opt of (q.opciones||[])){
+        if(y+6>280){doc.addPage();y=18;}
+        doc.setDrawColor(120,120,120);
+        if(isCasilla){doc.rect(M+2,y-3,3.5,3.5);}
+        else{doc.circle(M+3.75,y-1.5,1.75);}
+        const oLines=doc.splitTextToSize(opt||'',CW-10);
+        doc.text(oLines,M+9,y);y+=oLines.length*4.5+1;
+      }
+      y+=2;
+    } else if(q.tipo==='desplegable'){
+      doc.setDrawColor(180,180,180);doc.rect(M+2,y-4,CW-4,8);
+      doc.text('Selecciona una opción...',M+5,y);y+=12;
+    } else if(q.tipo==='escala_lineal'){
+      const min=q.escala_min||1,max=q.escala_max||5;
+      const nums=Array.from({length:max-min+1},(_,i)=>i+min);
+      const boxW=(CW-4)/nums.length;
+      if(q.escala_min_label){
+        doc.setFontSize(8);doc.setTextColor(120,120,120);
+        doc.text(q.escala_min_label,M+2,y);
+      }
+      nums.forEach((v,i)=>{
+        const bx=M+2+i*boxW;
+        doc.setDrawColor(160,160,160);doc.rect(bx,y-4,boxW-1,8);
+        doc.setFontSize(9);doc.setTextColor(60,60,60);
+        doc.text(String(v),bx+(boxW-1)/2-doc.getTextWidth(String(v))/2,y);
+      });
+      if(q.escala_max_label){
+        doc.setFontSize(8);doc.setTextColor(120,120,120);
+        doc.text(q.escala_max_label,M+2,y+8);
+      }
+      y+=14;
+    } else if(q.tipo==='fecha'){
+      doc.setDrawColor(180,180,180);doc.rect(M+2,y-4,40,7);
+      doc.text('dd/mm/aaaa',M+4,y);y+=11;
+    } else if(q.tipo==='hora'){
+      doc.setDrawColor(180,180,180);doc.rect(M+2,y-4,24,7);
+      doc.text('hh:mm',M+4,y);y+=11;
+    }
+    doc.setDrawColor(235,235,235);doc.line(M,y,M+CW,y);y+=5;
+    doc.setTextColor(40,40,40);
+  }
+  // Pie de página en todas las páginas
+  const totalPages=doc.getNumberOfPages();
+  for(let p=1;p<=totalPages;p++){
+    doc.setPage(p);
+    doc.setFontSize(8);doc.setTextColor(160,160,160);
+    doc.text(`Vernet Asociados · ${ev.nombre} · Vista previa`,M,292);
+    doc.text(`${p}/${totalPages}`,W-M,292,{align:'right'});
+  }
+  const fname=`evaluacion_preview_${(ev.nombre||'eval').replace(/\s+/g,'_').toLowerCase()}.pdf`;
+  doc.save(fname);
+  showToast('PDF generado ✓');
+}
+
 function renderEvalEnviadas(){
   const tbody = document.getElementById('eval-enviadas-tbody');
   if(!tbody) return;

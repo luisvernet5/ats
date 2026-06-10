@@ -3526,7 +3526,8 @@ function openEmpresaDetail(empId){
   const validados=allCands.filter(esColocado).length;
   const desertores=allCands.filter(_esCandDesercion).length;
   const etapas=getEmpresaEtapas(empId);
-  const daysArr=allCands.filter(esColocado).map(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};const fc=getFechaContratacion(v,c);return fc&&v.fecha_apertura?daysBetween(v.fecha_apertura,fc):null;}).filter(d=>d!=null&&d>0);
+  const _vacsConFecha=vacs.filter(v=>v.fecha_apertura);
+  const daysArr=_vacsConFecha.map(v=>{const fc=_vacCierreDate(v);return daysBetween(v.fecha_apertura,fc||today())||0;});
   const avgDays=daysArr.length?Math.round(daysArr.reduce((a,b)=>a+b,0)/daysArr.length):null;
 
   _edVacsAll = vacs.filter(v=>v.estado==='Abierta');
@@ -4051,7 +4052,8 @@ function filtrarVacantesEmpresa(){
   const allEmpVacs = DB.vacantes.filter(v=>v.empresa_id===empId);
   const allEmpCands = DB.candidatos.filter(c=>allEmpVacs.find(v=>v.id===c.vacante_id));
   const validados= allEmpCands.filter(esColocado).length;
-  const dArr     = allEmpCands.filter(esColocado).map(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};const fc=getFechaContratacion(v,c);return fc&&v.fecha_apertura?daysBetween(v.fecha_apertura,fc):null;}).filter(d=>d!=null&&d>0);
+  const _allVacsConFecha=allEmpVacs.filter(v=>v.fecha_apertura);
+  const dArr=_allVacsConFecha.map(v=>{const fc=_vacCierreDate(v);return daysBetween(v.fecha_apertura,fc||today())||0;});
   const avgDays  = dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):null;
   const kv = id => document.getElementById(id);
   if(kv('ed-kpi-abiertas'))  kv('ed-kpi-abiertas').textContent  = vacAct;

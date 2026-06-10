@@ -15715,7 +15715,7 @@ function verRespuestasEval(envId){
       ? `<span style="font-size:11px;color:var(--text3);float:right">${esCorrecta?q.puntos:0}/${q.puntos} pts</span>` : '';
     const noCalHTML = !cuentaCal ? `<span style="font-size:10px;background:var(--bg2);padding:1px 6px;border-radius:8px;color:var(--text3);margin-left:6px">sin calificación</span>` : '';
     return `<div style="margin-bottom:10px;padding:10px 12px;background:var(--bg2);border-radius:8px;border-left:3px solid ${borderColor}">
-      <div style="font-weight:600;font-size:13px;margin-bottom:6px">${pregNum}. ${_esc(q.texto)}${noCalHTML}${puntosHTML}</div>
+      <div style="font-weight:600;font-size:13px;margin-bottom:6px">${pregNum}. ${_esc((q.texto||'').replace(/^\d+[\.\)]\s*/,''))}${noCalHTML}${puntosHTML}</div>
       <div style="color:var(--text2);font-size:13px;display:flex;align-items:center">
         ${respStr ? _esc(respStr) : '<span style="color:var(--text3)">Sin respuesta</span>'}${iconoResp}
       </div>${claveHTML}
@@ -15831,7 +15831,7 @@ async function generarInformeEvalPDF(){
     const esCorrecta = q.respuesta_correcta && String(resp)===String(q.respuesta_correcta);
     // Número y pregunta
     doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(40,40,40);
-    const qLines = doc.splitTextToSize(`${pregNum}. ${q.texto||''}`, CW);
+    const qLines = doc.splitTextToSize(`${pregNum}. ${(q.texto||'').replace(/^\d+[\.\)]\s*/,'')}`, CW);
     if(y+qLines.length*5+20>280){doc.addPage();y=18;}
     doc.text(qLines, M, y); y+=qLines.length*5+2;
     // Puntos badge
@@ -15943,7 +15943,7 @@ function _renderEvalPublica(ev, enviada){
     pregNum++;
     const req = q.requerida ? '<span style="color:var(--red)"> *</span>' : '';
     const imgHTML = q.imagen ? `<div style="margin:8px 0 12px"><img src="${q.imagen}" style="max-width:100%;max-height:260px;border-radius:8px;border:1px solid var(--border);display:block"></div>` : '';
-    const label = `<div style="font-weight:600;margin-bottom:6px;font-size:14px">${pregNum}. ${q.texto}${req}</div>${imgHTML}`;
+    const label = `<div style="font-weight:600;margin-bottom:6px;font-size:14px">${pregNum}. ${(q.texto||'').replace(/^\d+[\.\)]\s*/,'')}${req}</div>${imgHTML}`;
     let input = '';
     if(q.tipo==='texto_corto'){
       input = `<input name="q_${q.id}" placeholder="Tu respuesta..." style="width:100%;font-size:13px">`;
@@ -16751,7 +16751,8 @@ function _renderProcesoPubPreguntas(preguntas){
     num++;
     const req=q.requerida?`<span style="color:var(--danger)"> *</span>`:'';
     const imgHTML=q.imagen?`<div style="margin:8px 0 12px"><img src="${q.imagen}" style="max-width:100%;max-height:260px;border-radius:8px;border:1px solid var(--border);display:block"></div>`:'';
-    const label=`<div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text)">${num}. ${_esc(q.texto||'')}${req}</div>${imgHTML}`;
+    const textoLimpio=(q.texto||'').replace(/^\d+[\.\)]\s*/,'');
+    const label=`<div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text)">${num}. ${_esc(textoLimpio)}${req}</div>${imgHTML}`;
     let input='';
     if(q.tipo==='texto_corto')
       input=`<input name="q_${q.id}" placeholder="Respuesta corta..." style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);box-sizing:border-box">`;

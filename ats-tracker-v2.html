@@ -13279,8 +13279,9 @@ function renderCedula(cedulaId){
     sumPond+=pond;
     if(k.resultado_pct!=null&&k.resultado_pct!==''){
       const res=Number(k.resultado_pct);
-      sumTotalPond+=res*pond/100;
-      if(bonoTotal)sumBono+=pond/100*(res/100)*bonoTotal;
+      const bonusResAcc=res>=100?100:0;
+      sumTotalPond+=bonusResAcc*pond/100;
+      if(bonoTotal)sumBono+=pond/100*(bonusResAcc/100)*bonoTotal;
     }
   });
   const pondOk=Math.abs(sumPond-100)<0.1;
@@ -13291,8 +13292,10 @@ function renderCedula(cedulaId){
     const pond=Number(k.ponderacion)||0;
     const resPct=(k.resultado_pct!=null&&k.resultado_pct!=='')?Number(k.resultado_pct):null;
     const valObt=(k.valor_obtenido!=null&&k.valor_obtenido!=='')?Number(k.valor_obtenido):null;
-    const totPond=resPct!==null?resPct*pond/100:null;
-    const montoKpi=(resPct!==null&&bonoTotal)?pond/100*(resPct/100)*bonoTotal:null;
+    // bonusRes: >=100 → tope 100%, <100 → fuera de rango = 0 (sin bono)
+    const bonusRes=resPct!==null?(resPct>=100?100:0):null;
+    const totPond=bonusRes!==null?bonusRes*pond/100:null;
+    const montoKpi=(bonusRes!==null&&bonoTotal)?pond/100*(bonusRes/100)*bonoTotal:null;
     const rBg=resPct===null?'':resPct>=90?'rgba(34,197,94,0.06)':resPct>=70?'rgba(245,158,11,0.06)':'rgba(239,68,68,0.06)';
     const rTc=resPct===null?'var(--text3)':resPct>=90?'var(--green)':resPct>=70?'#f59e0b':'var(--red)';
 
@@ -13622,8 +13625,9 @@ function exportCedulaPDF(cedulaId){
     sumPond+=pond;
     if(k.resultado_pct!=null&&k.resultado_pct!==''){
       const res=Number(k.resultado_pct);
-      sumTotalPond+=res*pond/100;
-      if(bonoTotal)sumBono+=pond/100*(res/100)*bonoTotal;
+      const bonusResAcc=res>=100?100:0;
+      sumTotalPond+=bonusResAcc*pond/100;
+      if(bonoTotal)sumBono+=pond/100*(bonusResAcc/100)*bonoTotal;
     }
   });
   let lastSec=undefined;
@@ -13631,8 +13635,9 @@ function exportCedulaPDF(cedulaId){
     const pond=Number(k.ponderacion)||0;
     const resPct=(k.resultado_pct!=null&&k.resultado_pct!=='')?Number(k.resultado_pct):null;
     const valObt=(k.valor_obtenido!=null&&k.valor_obtenido!=='')?Number(k.valor_obtenido):null;
-    const totPond=resPct!==null?resPct*pond/100:null;
-    const montoKpi=(resPct!==null&&bonoTotal)?pond/100*(resPct/100)*bonoTotal:null;
+    const bonusRes=resPct!==null?(resPct>=100?100:0):null;
+    const totPond=bonusRes!==null?bonusRes*pond/100:null;
+    const montoKpi=(bonusRes!==null&&bonoTotal)?pond/100*(bonusRes/100)*bonoTotal:null;
     const rBg=resPct===null?'white':resPct>=90?'#dcfce7':resPct>=70?'#fef9c3':'#fee2e2';
     const rTc=resPct===null?'#999':resPct>=90?'#16a34a':resPct>=70?'#ca8a04':'#dc2626';
     let secRow='';

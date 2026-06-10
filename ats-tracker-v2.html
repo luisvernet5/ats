@@ -14086,115 +14086,50 @@ function previewEvaluacion(evalId){
 }
 
 function exportEvaluacionPreviewPDF(evalId){
-  try{
   const ev=DB.evaluaciones.find(x=>x.id===evalId);
   if(!ev){showToast('Evaluación no encontrada','err');return;}
-  if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
-  const {jsPDF}=window.jspdf;
-  const doc=new jsPDF({unit:'mm',format:'a4'});
-  const W=210,M=18,CW=W-M*2;
-  let y=M;
-  // Encabezado
-  doc.setFillColor(42,170,222);doc.rect(0,0,W,14,'F');
-  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(13);
-  doc.text('Vista previa de evaluación',M,9.5);
-  doc.setTextColor(40,40,40);y=22;
-  doc.setFont('helvetica','bold');doc.setFontSize(14);
-  const titleLines=doc.splitTextToSize(ev.nombre||'Sin nombre',CW);
-  doc.text(titleLines,M,y);y+=titleLines.length*7+2;
-  if(ev.descripcion){
-    doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(100,100,100);
-    const dLines=doc.splitTextToSize(ev.descripcion,CW);
-    doc.text(dLines,M,y);y+=dLines.length*5+4;
-    doc.setTextColor(40,40,40);
-  }
-  doc.setDrawColor(42,170,222);doc.line(M,y,M+CW,y);y+=6;
-  for(const q of (ev.preguntas||[])){
-    if(y>268){doc.addPage();y=18;}
-    if(q.tipo==='titulo'){
-      doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(40,40,40);
-      const lines=doc.splitTextToSize(q.texto||'',CW);
-      if(y+lines.length*6+6>280){doc.addPage();y=18;}
-      doc.text(lines,M,y);y+=lines.length*6+1;
-      doc.setDrawColor(42,170,222);doc.line(M,y,M+CW,y);y+=5;
-      continue;
-    }
-    if(q.tipo==='descripcion'){
-      doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(100,100,100);
-      const lines=doc.splitTextToSize(q.texto||'',CW);
-      if(y+lines.length*5+4>280){doc.addPage();y=18;}
-      doc.text(lines,M,y);y+=lines.length*5+4;
-      continue;
-    }
-    // Número y texto de pregunta
-    const reqMark=q.requerida?' *':'';
-    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(40,40,40);
-    const qLines=doc.splitTextToSize(`${q.texto||''}${reqMark}`,CW);
-    if(y+qLines.length*5+16>280){doc.addPage();y=18;}
-    doc.text(qLines,M,y);y+=qLines.length*5+3;
-    // Input según tipo
-    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(80,80,80);
-    if(q.tipo==='texto_corto'){
-      doc.setDrawColor(180,180,180);doc.line(M+2,y+3,M+CW-2,y+3);y+=8;
-    } else if(q.tipo==='parrafo'){
-      doc.setDrawColor(180,180,180);
-      [0,6,12].forEach(off=>{doc.line(M+2,y+off,M+CW-2,y+off);});
-      y+=20;
-    } else if(q.tipo==='opcion_multiple'||q.tipo==='casillas'){
-      const isCasilla=q.tipo==='casillas';
-      for(const opt of (q.opciones||[])){
-        if(y+6>280){doc.addPage();y=18;}
-        doc.setDrawColor(120,120,120);
-        if(isCasilla){doc.rect(M+2,y-3,3.5,3.5);}
-        else{doc.ellipse(M+3.75,y-1.5,1.75,1.75);}
-        const oLines=doc.splitTextToSize(opt||'',CW-10);
-        doc.text(oLines,M+9,y);y+=oLines.length*4.5+1;
-      }
-      y+=2;
-    } else if(q.tipo==='desplegable'){
-      doc.setDrawColor(180,180,180);doc.rect(M+2,y-4,CW-4,8);
-      doc.text('Selecciona una opción...',M+5,y);y+=12;
-    } else if(q.tipo==='escala_lineal'){
+  const preguntas=ev.preguntas||[];
+  const questionsHtml=preguntas.map(q=>{
+    if(q.tipo==='titulo')return`<div style="font-size:15px;font-weight:700;color:#111;padding:6px 0 4px;border-bottom:2px solid #2aaade;margin-bottom:4px">${_esc(q.texto||'')}</div>`;
+    if(q.tipo==='descripcion')return`<div style="font-size:13px;color:#555;padding:3px 0 6px">${_esc(q.texto||'')}</div>`;
+    const req=q.requerida?'<span style="color:#e53e3e"> *</span>':'';
+    const lbl=`<div style="font-size:13px;font-weight:600;margin-bottom:10px;color:#111">${_esc(q.texto||'')}${req}</div>`;
+    let inp='';
+    if(q.tipo==='texto_corto')inp=`<input disabled placeholder="Respuesta corta..." style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid #ddd;background:#f9f9f9;box-sizing:border-box">`;
+    else if(q.tipo==='parrafo')inp=`<textarea disabled rows="3" placeholder="Respuesta..." style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid #ddd;resize:none;background:#f9f9f9;box-sizing:border-box"></textarea>`;
+    else if(q.tipo==='opcion_multiple')inp=`<div>${(q.opciones||[]).map(opt=>`<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:7px;margin-bottom:4px;border:1px solid #e0e0e0;background:#fff;font-size:13px"><input type="radio" disabled style="width:15px;height:15px;flex-shrink:0"> ${_esc(opt)}</label>`).join('')}</div>`;
+    else if(q.tipo==='casillas')inp=`<div>${(q.opciones||[]).map(opt=>`<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:7px;margin-bottom:4px;border:1px solid #e0e0e0;background:#fff;font-size:13px"><input type="checkbox" disabled style="width:15px;height:15px;flex-shrink:0"> ${_esc(opt)}</label>`).join('')}</div>`;
+    else if(q.tipo==='desplegable')inp=`<select disabled style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid #ddd;background:#f9f9f9"><option>Selecciona una opción...</option>${(q.opciones||[]).map(opt=>`<option>${_esc(opt)}</option>`).join('')}</select>`;
+    else if(q.tipo==='escala_lineal'){
       const min=q.escala_min||1,max=q.escala_max||5;
       const nums=Array.from({length:max-min+1},(_,i)=>i+min);
-      const boxW=(CW-4)/nums.length;
-      if(q.escala_min_label){
-        doc.setFontSize(8);doc.setTextColor(120,120,120);
-        doc.text(q.escala_min_label,M+2,y);
-      }
-      nums.forEach((v,i)=>{
-        const bx=M+2+i*boxW;
-        doc.setDrawColor(160,160,160);doc.rect(bx,y-4,boxW-1,8);
-        doc.setFontSize(9);doc.setTextColor(60,60,60);
-        doc.text(String(v),bx+(boxW-1)/2-doc.getTextWidth(String(v))/2,y);
-      });
-      if(q.escala_max_label){
-        doc.setFontSize(8);doc.setTextColor(120,120,120);
-        doc.text(q.escala_max_label,M+2,y+8);
-      }
-      y+=14;
-    } else if(q.tipo==='fecha'){
-      doc.setDrawColor(180,180,180);doc.rect(M+2,y-4,40,7);
-      doc.text('dd/mm/aaaa',M+4,y);y+=11;
-    } else if(q.tipo==='hora'){
-      doc.setDrawColor(180,180,180);doc.rect(M+2,y-4,24,7);
-      doc.text('hh:mm',M+4,y);y+=11;
+      inp=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">${q.escala_min_label?`<span style="font-size:12px;color:#888">${_esc(q.escala_min_label)}</span>`:''}${nums.map(v=>`<label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:13px;min-width:36px;padding:8px 4px;border-radius:6px;border:1px solid #e0e0e0;text-align:center;background:#fff"><input type="radio" disabled> ${v}</label>`).join('')}${q.escala_max_label?`<span style="font-size:12px;color:#888">${_esc(q.escala_max_label)}</span>`:''}</div>`;
     }
-    doc.setDrawColor(235,235,235);doc.line(M,y,M+CW,y);y+=5;
-    doc.setTextColor(40,40,40);
-  }
-  // Pie de página en todas las páginas
-  const totalPages=doc.getNumberOfPages();
-  for(let p=1;p<=totalPages;p++){
-    doc.setPage(p);
-    doc.setFontSize(8);doc.setTextColor(160,160,160);
-    doc.text(`Vernet Asociados · ${ev.nombre} · Vista previa`,M,292);
-    doc.text(`${p}/${totalPages}`,W-M,292,{align:'right'});
-  }
-  const fname=`evaluacion_preview_${(ev.nombre||'eval').replace(/\s+/g,'_').toLowerCase()}.pdf`;
-  doc.save(fname);
-  showToast('PDF generado ✓');
-  }catch(e){showToast('Error al generar PDF: '+e.message,'err');console.error(e);}
+    else if(q.tipo==='fecha')inp=`<input type="date" disabled style="font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid #ddd;background:#f9f9f9">`;
+    else if(q.tipo==='hora')inp=`<input type="time" disabled style="font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid #ddd;background:#f9f9f9">`;
+    return`<div style="border:1px solid #e0e0e0;border-radius:10px;padding:16px;background:#f8f9fa">${lbl}${inp}</div>`;
+  }).join('');
+  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${_esc(ev.nombre)}</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fff;color:#111}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none!important}}</style>
+</head><body>
+<div style="background:#2aaade;color:#fff;padding:11px 28px;font-size:13px;font-weight:700;letter-spacing:.3px">Vista previa de evaluación</div>
+<div style="max-width:720px;margin:0 auto;padding:28px">
+${ev.banner?`<img src="${ev.banner}" style="width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin-bottom:20px;display:block">`:''}
+<h1 style="font-size:20px;font-weight:700;margin-bottom:${ev.descripcion?'10px':'20px'}">${_esc(ev.nombre)}</h1>
+${ev.descripcion?`<p style="font-size:13px;color:#555;margin-bottom:20px">${_esc(ev.descripcion)}</p>`:''}
+<hr style="border:none;border-top:2px solid #2aaade;margin-bottom:20px">
+<div style="display:flex;flex-direction:column;gap:12px">${questionsHtml}</div>
+</div>
+<div class="no-print" style="position:fixed;bottom:20px;right:20px">
+  <button onclick="window.print()" style="background:#2aaade;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer">&#128196; Imprimir / Guardar PDF</button>
+</div>
+<script>window.onload=function(){setTimeout(function(){window.print();},600);};<\/script>
+</body></html>`;
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const pw=window.open(url,'_blank');
+  if(!pw)showToast('Permite ventanas emergentes en este sitio para exportar PDF','err');
+  else setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
 
 function renderEvalEnviadas(){

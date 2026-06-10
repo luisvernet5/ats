@@ -7679,6 +7679,7 @@ function renderTiemposEmpresa(){
   const grpDep=`<button id="te-grp-departamento" onclick="setTeGrupo('departamento')" class="btn btn-sm ${_teGrupo==='departamento'?'btn-primary':'btn-ghost'}">Por departamento</button>`;
   const vProy=`<button id="te-vista-proyectos" onclick="setTeVista('proyectos')" class="btn btn-sm ${_teVista==='proyectos'?'btn-primary':'btn-ghost'}"><i class="fa fa-th-large"></i> Proyectos</button>`;
   const vHist=`<button id="te-vista-historico" onclick="setTeVista('historico')" class="btn btn-sm ${_teVista==='historico'?'btn-primary':'btn-ghost'}"><i class="fa fa-history"></i> Histórico</button>`;
+  const vDesgl=`<button onclick="showTeDesglose()" class="btn btn-sm btn-ghost" data-tip="Ver desglose del cálculo"><i class="fa fa-calculator"></i> Ver cálculo</button>`;
   content.innerHTML=`
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:18px">
       <select id="te-empresa" onchange="renderTiemposEmpresa()" style="${selBase};min-width:160px;max-width:220px">${empOptsAll}</select>
@@ -7690,7 +7691,7 @@ function renderTiemposEmpresa(){
       ${mesBtns}
       <select id="te-grupo-sel" onchange="setTeGrupoSel(this.value)" style="${selBase};min-width:180px;max-width:320px">${groupOptsHTML}</select>
       <span style="flex:1"></span>
-      ${vProy}${vHist}
+      ${vProy}${vHist}${sep}${vDesgl}
     </div>
     <div id="te-kpis" style="margin-bottom:20px"></div>
     <div id="te-main"></div>`;
@@ -7724,11 +7725,13 @@ function _teApplyFilters(){
   let items=filtered.map(mkItem);
   if(_teGrupoSel)items=items.filter(x=>(x.v[_teGrupo]||sinLabel)===_teGrupoSel);
   const avg=arr=>arr.length?Math.round(arr.reduce((a,b)=>a+b,0)/arr.length):0;
-  const totT=avg(items.map(x=>x.diasTotales));
-  const totC=avg(items.map(x=>x.diasCliente));
-  const totI=avg(items.map(x=>x.diasInternos));
-  const abiertas=items.filter(x=>x.abierta).length;
-  const cubiertas=items.length-abiertas;
+  const itemsForAvg=items.filter(x=>x.v.estado!=='Cancelada');
+  const canceladas=items.filter(x=>x.v.estado==='Cancelada').length;
+  const totT=avg(itemsForAvg.map(x=>x.diasTotales));
+  const totC=avg(itemsForAvg.map(x=>x.diasCliente));
+  const totI=avg(itemsForAvg.map(x=>x.diasInternos));
+  const abiertas=items.filter(x=>x.abierta&&x.v.estado!=='Cancelada').length;
+  const cubiertas=items.filter(x=>x.v.estado==='Cubierta').length;
   const periodoLabel=_teGrupoSel?_teGrupoSel:(_teMes?'período':'año seleccionado');
   kpisEl.innerHTML=`
     <div class="g4">
@@ -7736,8 +7739,9 @@ function _teApplyFilters(){
         <div class="card-title">Vacantes en período</div>
         <div class="card-value">${items.length}</div>
         <div class="card-sub" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
-          <span class="badge bg">${cubiertas} cubiertas</span>
-          <span class="badge bb">${abiertas} abiertas</span>
+          ${cubiertas?`<span class="badge bg">${cubiertas} cubiertas</span>`:''}
+          ${abiertas?`<span class="badge bb">${abiertas} abiertas</span>`:''}
+          ${canceladas?`<span class="badge br" style="font-size:10px">${canceladas} canceladas</span>`:''}
         </div>
       </div>
       <div class="card"><div class="card-title">Prom. días proceso total</div><div class="card-value"><span class="dpill ${dClass(totT)}" style="font-size:22px">${totT||'—'}d</span></div><div class="card-sub">apertura → cierre (o hoy)</div></div>
@@ -7767,10 +7771,11 @@ function _buildTeProyectos(items,sinLabel){
   });
   const thS='padding:7px 12px;text-align:left;font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-top:1px solid var(--border)';
   return Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0])).map(([key,its])=>{
-    const aT=avg(its.map(x=>x.diasTotales));
-    const aC=avg(its.map(x=>x.diasCliente));
-    const aI=avg(its.map(x=>x.diasInternos));
-    const ab=its.filter(x=>x.abierta).length;
+    const itsForAvg=its.filter(x=>x.v.estado!=='Cancelada');
+    const aT=avg(itsForAvg.map(x=>x.diasTotales));
+    const aC=avg(itsForAvg.map(x=>x.diasCliente));
+    const aI=avg(itsForAvg.map(x=>x.diasInternos));
+    const ab=its.filter(x=>x.abierta&&x.v.estado!=='Cancelada').length;
     const sorted=[...its].sort((a,b)=>(a.v.fecha_apertura||'').localeCompare(b.v.fecha_apertura||''));
     const rows=sorted.map((item,i)=>{
       const est=item.v.estado==='Cubierta'?`<span class="badge bg" style="font-size:10px">Cubierta</span>`:item.v.estado==='Cancelada'?`<span class="badge br" style="font-size:10px">Cancelada</span>`:`<span class="badge bb" style="font-size:10px">Abierta</span>`;
@@ -7829,11 +7834,12 @@ function _buildTeHistorico(allItems){
   if(!monthKeys.length)return`<div style="text-align:center;padding:32px;color:var(--text3)">Sin datos históricos</div>`;
   const rows=monthKeys.map(mk=>{
     const{items,yr,mo}=byMonth[mk];
-    const aT=avg(items.map(x=>x.diasTotales));
-    const aC=avg(items.map(x=>x.diasCliente));
-    const aI=avg(items.map(x=>x.diasInternos));
-    const ab=items.filter(x=>x.abierta).length;
-    const cu=items.length-ab;
+    const itsForAvg=items.filter(x=>x.v.estado!=='Cancelada');
+    const aT=avg(itsForAvg.map(x=>x.diasTotales));
+    const aC=avg(itsForAvg.map(x=>x.diasCliente));
+    const aI=avg(itsForAvg.map(x=>x.diasInternos));
+    const ab=items.filter(x=>x.abierta&&x.v.estado!=='Cancelada').length;
+    const cu=items.filter(x=>x.v.estado==='Cubierta').length;
     const isActive=yr===_teAnio&&mo===_teMes;
     return`<tr onclick="setTeAnio(${yr});setTeMes(${mo});setTeVista('proyectos')" style="cursor:pointer${isActive?';background:var(--glow)':''}" title="Ver proyectos de ${MESES[mo]} ${yr}">
       <td class="td-p" style="padding:10px 14px">${MESES[mo]} ${yr}</td>
@@ -7864,6 +7870,136 @@ function _buildTeHistorico(allItems){
         <tbody>${rows}</tbody>
       </table>
     </div>`;
+}
+function showTeDesglose(){
+  const empId=document.getElementById('te-empresa')?.value||'';
+  if(!empId)return;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const allVacs=DB.vacantes.filter(v=>v.empresa_id===empId&&v.fecha_apertura);
+  const sinLabel='(Sin '+(_teGrupo==='proyecto'?'proyecto':'departamento')+')';
+  const mkItem=v=>{
+    const fechaCierre=_vacCierreDate(v);
+    const abierta=v.estado==='Abierta'||!fechaCierre;
+    const diasTotales=daysBetween(v.fecha_apertura,fechaCierre||today())||0;
+    const hired=DB.candidatos.find(c=>c.vacante_id===v.id&&esColocado(c));
+    const diasCliente=hired?(clienteDays(hired)||0):0;
+    const diasInternos=Math.max(0,diasTotales-diasCliente);
+    const rec=DB.reclutadores.find(r=>r.id===v.reclutador_id)||{};
+    return{v,fechaCierre,abierta,diasTotales,diasCliente,diasInternos,rec};
+  };
+  const filtered=allVacs.filter(v=>{
+    const[yr,mo]=v.fecha_apertura.split('-').map(Number);
+    if(yr!==_teAnio)return false;
+    if(_teMes!==0&&mo!==_teMes)return false;
+    return true;
+  });
+  let items=filtered.map(mkItem);
+  if(_teGrupoSel)items=items.filter(x=>(x.v[_teGrupo]||sinLabel)===_teGrupoSel);
+  const included=items.filter(x=>x.v.estado!=='Cancelada');
+  const cancelled=items.filter(x=>x.v.estado==='Cancelada');
+  const avg=arr=>arr.length?Math.round(arr.reduce((a,b)=>a+b,0)/arr.length):0;
+  const MESES_CORTO=['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const periodoStr=_teMes?`${MESES_CORTO[_teMes]} ${_teAnio}`:String(_teAnio);
+  const grupoStr=_teGrupoSel?` · ${_teGrupoSel}`:(_teGrupo==='proyecto'?' · Todos los proyectos':' · Todos los departamentos');
+  const colorHex=emp.color||'#2AAADE';
+  const thS='padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);background:var(--surface2)';
+  const tdS='padding:7px 10px;font-size:12px;border-bottom:1px solid var(--border2)';
+  const buildTable=(its,showTotals=true)=>{
+    if(!its.length)return`<div style="padding:10px 14px;color:var(--text3);font-size:12px;font-style:italic">Sin vacantes</div>`;
+    const rows=its.map((item,i)=>{
+      const cierre=item.fechaCierre?fmt(item.fechaCierre):`<span style="color:var(--accent);font-size:11px">En curso</span>`;
+      const est=item.v.estado==='Cubierta'?`<span class="badge bg" style="font-size:10px">Cubierta</span>`:item.v.estado==='Cancelada'?`<span class="badge br" style="font-size:10px">Cancelada</span>`:`<span class="badge bb" style="font-size:10px">Abierta</span>`;
+      return`<tr>
+        <td style="${tdS};color:var(--text3);width:24px;text-align:center">${i+1}</td>
+        <td style="${tdS}">${_esc(item.v.nombre)}</td>
+        <td style="${tdS}">${est}</td>
+        <td style="${tdS}">${fmt(item.v.fecha_apertura)}</td>
+        <td style="${tdS}">${cierre}</td>
+        <td style="${tdS};text-align:center"><span class="dpill ${dClass(item.diasTotales)}">${item.diasTotales}d</span></td>
+        <td style="${tdS};text-align:center"><span class="dpill dwarn">${item.diasCliente}d</span></td>
+        <td style="${tdS};text-align:center"><span class="dpill ${dClass(item.diasInternos)}">${item.diasInternos}d</span></td>
+      </tr>`;
+    }).join('');
+    const totRow=showTotals&&its.length?`<tr style="background:var(--surface2)">
+      <td style="${tdS}" colspan="5"><strong style="font-size:11px;color:var(--text2)">Promedio (${its.length} vac.) = Suma ÷ ${its.length}</strong></td>
+      <td style="${tdS};text-align:center"><span class="dpill ${dClass(avg(its.map(x=>x.diasTotales)))}"><strong>${avg(its.map(x=>x.diasTotales))}d</strong></span></td>
+      <td style="${tdS};text-align:center"><span class="dpill dwarn"><strong>${avg(its.map(x=>x.diasCliente))}d</strong></span></td>
+      <td style="${tdS};text-align:center"><span class="dpill ${dClass(avg(its.map(x=>x.diasInternos)))}"><strong>${avg(its.map(x=>x.diasInternos))}d</strong></span></td>
+    </tr>`:'';
+    return`<div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
+      <table style="width:100%;border-collapse:collapse;min-width:580px">
+        <thead><tr>
+          <th style="${thS};width:24px;text-align:center">#</th>
+          <th style="${thS}">Vacante</th>
+          <th style="${thS}">Estado</th>
+          <th style="${thS}">Apertura</th>
+          <th style="${thS}">Cierre</th>
+          <th style="${thS};text-align:center">Días total</th>
+          <th style="${thS};text-align:center">Días cliente</th>
+          <th style="${thS};text-align:center">Días neto</th>
+        </tr></thead>
+        <tbody>${rows}${totRow}</tbody>
+      </table>
+    </div>`;
+  };
+  let bodyHTML='';
+  if(_teGrupoSel){
+    bodyHTML=buildTable(included);
+  } else {
+    const groups={};
+    included.forEach(item=>{const g=item.v[_teGrupo]||sinLabel;if(!groups[g])groups[g]=[];groups[g].push(item);});
+    const cancelledByGroup={};
+    cancelled.forEach(item=>{const g=item.v[_teGrupo]||sinLabel;if(!cancelledByGroup[g])cancelledByGroup[g]=[];cancelledByGroup[g].push(item);});
+    const allKeys=[...new Set([...Object.keys(groups),...Object.keys(cancelledByGroup)])].sort();
+    if(!allKeys.length){
+      bodyHTML=`<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Sin vacantes en el período seleccionado</div>`;
+    } else {
+      bodyHTML=allKeys.map(g=>{
+        const gInc=groups[g]||[];
+        const gCan=(cancelledByGroup[g]||[]).length;
+        const noteExcl=gCan?`<div style="margin:4px 0 8px;font-size:11px;color:#e05252"><i class="fa fa-ban" style="margin-right:3px"></i>${gCan} cancelada(s) excluida(s) del promedio</div>`:'';
+        return`<div style="margin-bottom:20px">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">
+            <i class="fa fa-${_teGrupo==='proyecto'?'folder':'sitemap'}" style="opacity:.4;font-size:11px;margin-right:4px"></i>${_esc(g)}
+            <span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:6px">${gInc.length} incluida${gInc.length!==1?'s':''}${gCan?' · '+gCan+' excluida':''}</span>
+          </div>
+          ${noteExcl}${buildTable(gInc)}
+        </div>`;
+      }).join('');
+    }
+  }
+  const cancelledSection=cancelled.length?`
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+      <div style="font-size:12px;font-weight:600;color:var(--text3);margin-bottom:8px">
+        <i class="fa fa-ban" style="color:#e05252;margin-right:4px"></i>Excluidas del promedio — ${cancelled.length} cancelada${cancelled.length!==1?'s':''} (no representan proceso completado)
+      </div>
+      ${buildTable(cancelled,false)}
+    </div>`:'';
+  const formulaNote=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text2)">
+    <div style="font-weight:600;margin-bottom:6px;color:var(--text)"><i class="fa fa-calculator" style="color:${colorHex};margin-right:5px"></i>Fórmula de cálculo</div>
+    <div style="margin-bottom:3px"><strong>Días totales</strong>: desde la fecha de apertura hasta la fecha de cierre (o hoy si la vacante sigue abierta)</div>
+    <div style="margin-bottom:3px"><strong>Días cliente</strong>: tiempo de validación del cliente (envío → aceptación)</div>
+    <div style="margin-bottom:3px"><strong>Días neto (internos)</strong>: días totales − días cliente</div>
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border2);color:var(--text3);font-size:11px"><i class="fa fa-info-circle" style="margin-right:3px"></i>Las vacantes <strong>canceladas</strong> se muestran pero no se incluyen en el cálculo del promedio.</div>
+  </div>`;
+  document.getElementById('modal-te-desglose')?.remove();
+  const modal=document.createElement('div');
+  modal.id='modal-te-desglose';
+  modal.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;overflow-y:auto';
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:var(--rl);width:100%;max-width:860px;padding:20px;position:relative;margin:auto">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px;gap:12px">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:var(--text)">Desglose de cálculo</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${_esc(emp.nombre||'')} · ${periodoStr}${grupoStr}</div>
+      </div>
+      <button onclick="document.getElementById('modal-te-desglose').remove()" class="btn btn-ghost btn-sm" style="flex-shrink:0"><i class="fa fa-times"></i></button>
+    </div>
+    ${formulaNote}
+    ${bodyHTML}
+    ${cancelledSection}
+  </div>`;
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
 }
 function _renderTiemposCharts(){
   const recL=DB.reclutadores.map(r=>r.nombre.split(' ')[0]);

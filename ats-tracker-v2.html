@@ -16722,28 +16722,52 @@ function _pepubRenderCurrentEval(){
   document.getElementById('pepub-preguntas').innerHTML=_renderProcesoPubPreguntas(ev.preguntas||[]);
   document.getElementById('pepub-form').style.display='';
   document.getElementById('pepub-error').style.display='none';
-  window.scrollTo(0,0);
+  const _pepubScreen=document.getElementById('proceso-public-screen');
+  if(_pepubScreen)_pepubScreen.scrollTo({top:0,behavior:'instant'});
 }
 
 function _renderProcesoPubPreguntas(preguntas){
+  let num=0;
   return preguntas.map(q=>{
     if(q.tipo==='titulo')return`<div style="font-size:16px;font-weight:700;color:var(--text);padding:6px 0;border-bottom:2px solid var(--primary);margin-bottom:4px">${_esc(q.texto||'')}</div>`;
     if(q.tipo==='descripcion')return`<div style="font-size:13px;color:var(--text2);padding:4px 0">${_esc(q.texto||'')}</div>`;
-    const req=q.requerida?`<span style="color:var(--danger)">*</span>`:'';
-    const label=`<div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text)">${_esc(q.texto||'')} ${req}</div>`;
+    num++;
+    const req=q.requerida?`<span style="color:var(--danger)"> *</span>`:'';
+    const imgHTML=q.imagen?`<div style="margin:8px 0 12px"><img src="${q.imagen}" style="max-width:100%;max-height:260px;border-radius:8px;border:1px solid var(--border);display:block"></div>`:'';
+    const label=`<div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text)">${num}. ${_esc(q.texto||'')}${req}</div>${imgHTML}`;
     let input='';
-    if(q.tipo==='texto_corto')input=`<input name="q_${q.id}" placeholder="Respuesta corta..." style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);box-sizing:border-box">`;
-    else if(q.tipo==='parrafo')input=`<textarea name="q_${q.id}" rows="3" placeholder="Respuesta..." style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border);resize:vertical;background:var(--bg);color:var(--text);box-sizing:border-box"></textarea>`;
-    else if(q.tipo==='opcion_multiple')input=`<div>${(q.opciones||[]).map(opt=>`<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:7px;cursor:pointer;margin-bottom:4px;border:1px solid var(--border);background:var(--bg);font-size:13px"><input type="radio" name="q_${q.id}" value="${_esc(opt)}" style="accent-color:var(--primary)"> ${_esc(opt)}</label>`).join('')}</div>`;
-    else if(q.tipo==='casillas')input=`<div>${(q.opciones||[]).map(opt=>`<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:7px;cursor:pointer;margin-bottom:4px;border:1px solid var(--border);background:var(--bg);font-size:13px"><input type="checkbox" name="q_${q.id}" value="${_esc(opt)}" style="accent-color:var(--primary)"> ${_esc(opt)}</label>`).join('')}</div>`;
-    else if(q.tipo==='desplegable')input=`<select name="q_${q.id}" style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border)"><option value="">Selecciona...</option>${(q.opciones||[]).map(opt=>`<option value="${_esc(opt)}">${_esc(opt)}</option>`).join('')}</select>`;
+    if(q.tipo==='texto_corto')
+      input=`<input name="q_${q.id}" placeholder="Respuesta corta..." style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);box-sizing:border-box">`;
+    else if(q.tipo==='parrafo')
+      input=`<textarea name="q_${q.id}" rows="3" placeholder="Respuesta..." style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border);resize:vertical;background:var(--bg);color:var(--text);box-sizing:border-box"></textarea>`;
+    else if(q.tipo==='opcion_multiple')
+      input=`<div style="display:flex;flex-direction:column;gap:6px">${(q.opciones||[]).map((opt,oi)=>{
+        const img=(q.opciones_imagenes||[])[oi]||null;
+        return`<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:7px;cursor:pointer;border:1px solid var(--border);background:var(--bg);font-size:13px">
+          <input type="radio" name="q_${q.id}" value="${_esc(opt)}" style="accent-color:var(--primary);flex-shrink:0">
+          <div style="display:flex;flex-direction:column;gap:6px;flex:1">${_esc(opt)}${img?`<img src="${img}" style="max-width:200px;max-height:140px;border-radius:6px;border:1px solid var(--border);display:block">`:''}
+          </div></label>`;
+      }).join('')}</div>`;
+    else if(q.tipo==='casillas')
+      input=`<div style="display:flex;flex-direction:column;gap:6px">${(q.opciones||[]).map((opt,oi)=>{
+        const img=(q.opciones_imagenes||[])[oi]||null;
+        return`<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:7px;cursor:pointer;border:1px solid var(--border);background:var(--bg);font-size:13px">
+          <input type="checkbox" name="q_${q.id}" value="${_esc(opt)}" style="accent-color:var(--primary);flex-shrink:0">
+          <div style="display:flex;flex-direction:column;gap:6px;flex:1">${_esc(opt)}${img?`<img src="${img}" style="max-width:200px;max-height:140px;border-radius:6px;border:1px solid var(--border);display:block">`:''}
+          </div></label>`;
+      }).join('')}</div>`;
+    else if(q.tipo==='desplegable')
+      input=`<select name="q_${q.id}" style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border)"><option value="">Selecciona...</option>${(q.opciones||[]).map(opt=>`<option value="${_esc(opt)}">${_esc(opt)}</option>`).join('')}</select>`;
     else if(q.tipo==='escala_lineal'){
       const min=q.escala_min||1,max=q.escala_max||5,nums=Array.from({length:max-min+1},(_,i)=>i+min);
-      input=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">${q.escala_min_label?`<span style="font-size:12px;color:var(--text3)">${_esc(q.escala_min_label)}</span>`:''} ${nums.map(v=>`<label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-size:13px;min-width:36px;padding:8px 4px;border-radius:6px;border:1px solid var(--border);text-align:center"><input type="radio" name="q_${q.id}" value="${v}" style="accent-color:var(--primary)"> ${v}</label>`).join('')} ${q.escala_max_label?`<span style="font-size:12px;color:var(--text3)">${_esc(q.escala_max_label)}</span>`:''}</div>`;
+      input=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">
+        ${q.escala_min_label?`<span style="font-size:12px;color:var(--text3)">${_esc(q.escala_min_label)}</span>`:''}
+        ${nums.map(v=>`<label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-size:13px;min-width:36px;padding:8px 4px;border-radius:6px;border:1px solid var(--border);text-align:center"><input type="radio" name="q_${q.id}" value="${v}" style="accent-color:var(--primary)"> ${v}</label>`).join('')}
+        ${q.escala_max_label?`<span style="font-size:12px;color:var(--text3)">${_esc(q.escala_max_label)}</span>`:''}</div>`;
     }
     else if(q.tipo==='fecha')input=`<input type="date" name="q_${q.id}" style="font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid var(--border)">`;
     else if(q.tipo==='hora')input=`<input type="time" name="q_${q.id}" style="font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid var(--border)">`;
-    return `<div style="border:1px solid var(--border);border-radius:10px;padding:16px;background:var(--surface)">${label}${input}</div>`;
+    return`<div style="border:1px solid var(--border);border-radius:10px;padding:16px;background:var(--surface)">${label}${input}</div>`;
   }).join('');
 }
 

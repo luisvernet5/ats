@@ -13497,6 +13497,8 @@ function openKpiFilaModal(cedulaId,filaId){
   document.getElementById('kpi-fila-resultado').value=k?.resultado_pct??'';
   document.getElementById('kpi-fila-title').textContent=filaId?'Editar KPI':'Agregar KPI';
   openModal('modal-kpi-fila');
+  // Recalcular al abrir (el oninput no se dispara con asignación por código)
+  setTimeout(_kpiFilaAutoCalcResultado, 0);
 }
 
 function _kpiFilaSeccionChange(){
@@ -13534,7 +13536,20 @@ async function saveKpiFilaModal(){
   const secVal=document.getElementById('kpi-fila-seccion').value;
   const seccion=secVal==='__other__'?document.getElementById('kpi-fila-seccion-custom').value.trim():secVal;
   const valorStr=document.getElementById('kpi-fila-valor').value;
-  const resultStr=document.getElementById('kpi-fila-resultado').value;
+  let resultStr=document.getElementById('kpi-fila-resultado').value;
+  // Si resultado sigue vacío, intentar calcular desde valor y meta
+  if(resultStr===''&&valorStr!==''){
+    const metaS=document.getElementById('kpi-fila-meta').value.trim();
+    const mMatch=metaS.replace(',','.').match(/[\d.]+/);
+    if(mMatch){
+      const mNum=parseFloat(mMatch[0]);
+      if(!isNaN(mNum)&&mNum!==0){
+        const val=Number(valorStr);
+        const menos=/[≤<]/.test(metaS);
+        resultStr=String(Math.round((menos?(mNum/val)*100:(val/mNum)*100)*100)/100);
+      }
+    }
+  }
   const fila={
     id:filaId||uid(),
     seccion:seccion||null,

@@ -2943,7 +2943,7 @@ const DEFAULT_ETAPAS=[
   {id:'e3',label:'Entrevista cliente',tipo:'cliente',color:'#F59E0B'},
   {id:'e4',label:'Validado',tipo:'cierre',color:'#22C55E'},
 ];
-const ETAPAS_SALIDA=['Desertó','No aceptó'];
+const ETAPAS_SALIDA=['Desertó','No aceptó','Descartado'];
 const PERMISOS_SECCIONES=[
   {key:'dashboard',              label:'Dashboard',               grupo:'Principal',  icon:'fa-chart-pie'},
   {key:'vacantes',               label:'Vacantes',                grupo:'Principal',  icon:'fa-briefcase'},
@@ -2968,6 +2968,7 @@ const PERMISOS_SECCIONES=[
 let _permisosMap={}; // userId → Set<sectionKey>
 // Clasifica candidatos de datos históricos (antes del campo descartado)
 function _esCandDescartado(c){
+  if(c.etapa==='Descartado') return true;
   if(c.descartado===true) return true;
   if(c.etapa==='Desertó'&&c.activo===false){
     const mot=c.motivo_descarte||c.motivo_desercion||'';
@@ -2976,6 +2977,7 @@ function _esCandDescartado(c){
   return false;
 }
 function _esCandDesercion(c){
+  if(c.etapa==='Descartado') return false;
   if(c.etapa==='No aceptó') return true;
   if(c.etapa==='Desertó'&&c.activo===false&&c.descartado!==true){
     const mot=c.motivo_descarte||c.motivo_desercion||'';
@@ -3140,6 +3142,7 @@ function renderPage(p){
    BADGES
    ============================================================ */
 function badgeEtapa(etapa,empId){
+  if(etapa==='Descartado')return`<span class="badge" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80">${etapa}</span>`;
   if(ETAPAS_SALIDA.includes(etapa))return`<span class="badge br">${etapa}</span>`;
   const etapas=getEmpresaEtapas(empId);
   const e=etapas.find(x=>x.label===etapa);
@@ -3688,7 +3691,8 @@ function showEDKpiPanel(type, empId){
       const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
       const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
       const dias=processTotal(c);
-      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px;width:36px">${i+1}</td><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td><span class="badge br">${c.etapa}</span></td><td style="font-size:12px;color:var(--text2)">${c.motivo_desercion||'—'}</td><td style="font-family:var(--mono);font-size:12px">${c.fecha_salida?fmt(c.fecha_salida):'—'}</td><td>${dias!==null?`<span class="dpill ${dClass(dias)}">${dias}d</span>`:'—'}</td></tr>`;
+      const etBadge=c.etapa==='Descartado'?`<span class="badge" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80">${c.etapa}</span>`:`<span class="badge br">${c.etapa}</span>`;
+      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px;width:36px">${i+1}</td><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td>${etBadge}</td><td style="font-size:12px;color:var(--text2)">${c.motivo_desercion||'—'}</td><td style="font-family:var(--mono);font-size:12px">${c.fecha_salida?fmt(c.fecha_salida):'—'}</td><td>${dias!==null?`<span class="dpill ${dClass(dias)}">${dias}d</span>`:'—'}</td></tr>`;
     }).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Sin deserciones registradas</td></tr>`;
   }
 
@@ -6442,7 +6446,7 @@ async function confirmarSalidaCand(){
   if(!motivo){showToast('Selecciona un motivo','err');return;}
   const ci=DB.candidatos.findIndex(x=>x.id===candId);
   if(ci<0)return;
-  DB.candidatos[ci].etapa=tipo==='descarte'?'Desertó':'No aceptó';
+  DB.candidatos[ci].etapa=tipo==='descarte'?'Descartado':'No aceptó';
   DB.candidatos[ci].motivo_desercion=motivo;
   DB.candidatos[ci].obs_des=document.getElementById('salida-obs').value;
   DB.candidatos[ci].fecha_salida=document.getElementById('salida-fecha').value||today();

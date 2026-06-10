@@ -1622,6 +1622,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
         <div class="fg"><label>Valor objetivo</label><input id="kpi-objetivo" type="number" step="any" placeholder="100"></div>
         <div class="fg"><label>Unidad</label><input id="kpi-unidad" placeholder="%, días, candidatos, pesos..."></div>
       </div>
+      <div class="fr full"><div class="fg"><label>Puesto de trabajo</label><input id="kpi-puesto" placeholder="Ej. Técnico electromecánico, Operador PTAR..."></div></div>
       <div class="fr">
         <div class="fg"><label>Categoría</label>
           <select id="kpi-categoria">
@@ -13201,6 +13202,7 @@ function _kpiRenderTabla(){
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:4px">${_esc(k.nombre)}</div>
+          ${k.puesto?`<div style="font-size:11px;color:var(--text3);margin-bottom:3px"><i class="fa fa-briefcase" style="margin-right:3px"></i>${_esc(k.puesto)}</div>`:''}
           <div style="display:flex;gap:4px;flex-wrap:wrap">${catBadge}${perBadge}</div>
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">
@@ -13239,6 +13241,7 @@ function openKpiModal(empId,kpiId){
   document.getElementById('kpi-descripcion').value=k?.descripcion||'';
   document.getElementById('kpi-objetivo').value=k?.valor_objetivo??'';
   document.getElementById('kpi-unidad').value=k?.unidad||'';
+  document.getElementById('kpi-puesto').value=k?.puesto||'';
   document.getElementById('kpi-categoria').value=k?.categoria||'';
   document.getElementById('kpi-periodicidad').value=k?.periodicidad||'mensual';
   document.getElementById('kpi-modal-title').textContent=kpiId?'Editar KPI':'Nuevo KPI';
@@ -13256,6 +13259,7 @@ async function saveKpi(){
     empresa_id:empId,
     nombre,
     descripcion:document.getElementById('kpi-descripcion').value.trim()||null,
+    puesto:document.getElementById('kpi-puesto').value.trim()||null,
     valor_objetivo:document.getElementById('kpi-objetivo').value!==''?Number(document.getElementById('kpi-objetivo').value):null,
     unidad:document.getElementById('kpi-unidad').value.trim()||null,
     categoria:document.getElementById('kpi-categoria').value||null,

@@ -673,6 +673,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
   <div class="page" id="page-ese"></div>
   <div class="page" id="page-documentacion"></div>
   <div class="page" id="page-perfiles"></div>
+  <div class="page" id="page-kpis"></div>
 
   <!-- BASE DE DATOS -->
   <div class="page" id="page-basedatos"></div>
@@ -1608,6 +1609,66 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
   </div>
 </div>
 
+<!-- ===== MODAL KPI ===== -->
+<div class="modal-overlay" id="modal-kpi">
+  <div class="modal" style="max-width:520px">
+    <div class="mh"><h3 id="kpi-modal-title">Nuevo KPI</h3><button class="xbtn" onclick="closeModal('modal-kpi')"><i class="fa fa-times"></i></button></div>
+    <div class="mb">
+      <input type="hidden" id="kpi-id">
+      <input type="hidden" id="kpi-empresa-id">
+      <div class="fr full"><div class="fg"><label>Nombre del KPI *</label><input id="kpi-nombre" placeholder="Ej. Tasa de retención, Tiempo de contratación..."></div></div>
+      <div class="fr full"><div class="fg"><label>Descripción</label><textarea id="kpi-descripcion" rows="2" placeholder="Describe qué mide este indicador..."></textarea></div></div>
+      <div class="fr">
+        <div class="fg"><label>Valor objetivo</label><input id="kpi-objetivo" type="number" step="any" placeholder="100"></div>
+        <div class="fg"><label>Unidad</label><input id="kpi-unidad" placeholder="%, días, candidatos, pesos..."></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Categoría</label>
+          <select id="kpi-categoria">
+            <option value="">Sin categoría</option>
+            <option>Reclutamiento</option>
+            <option>Retención</option>
+            <option>Tiempo</option>
+            <option>Calidad</option>
+            <option>Costos</option>
+            <option>Satisfacción</option>
+            <option>Productividad</option>
+          </select>
+        </div>
+        <div class="fg"><label>Periodicidad</label>
+          <select id="kpi-periodicidad">
+            <option value="mensual">Mensual</option>
+            <option value="semanal">Semanal</option>
+            <option value="trimestral">Trimestral</option>
+            <option value="anual">Anual</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-kpi')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveKpi()"><i class="fa fa-save"></i> Guardar KPI</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL REGISTRO KPI ===== -->
+<div class="modal-overlay" id="modal-kpi-registro">
+  <div class="modal" style="max-width:420px">
+    <div class="mh"><h3 id="kpi-reg-title">Registrar valor</h3><button class="xbtn" onclick="closeModal('modal-kpi-registro')"><i class="fa fa-times"></i></button></div>
+    <div class="mb">
+      <input type="hidden" id="kpi-reg-id">
+      <div class="fr full"><div class="fg"><label>Valor actual *</label><input id="kpi-reg-valor" type="number" step="any" placeholder="0"></div></div>
+      <div class="fr full"><div class="fg"><label>Fecha</label><input id="kpi-reg-fecha" type="date"></div></div>
+      <div class="fr full"><div class="fg"><label>Notas</label><textarea id="kpi-reg-notas" rows="2" placeholder="Observaciones sobre este período..."></textarea></div></div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-kpi-registro')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveKpiRegistro()"><i class="fa fa-save"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== MODAL USUARIO ===== -->
 <div class="modal-overlay" id="modal-usuario">
   <div class="modal" style="width:500px">
@@ -2240,6 +2301,22 @@ function adaptUIToRole() {
     }
   }
 
+  // KPIs — visible para admin y reclutador
+  if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-kpis')){
+    const navEl=document.querySelector('.sb-nav');
+    if(navEl){
+      const kpiItem=document.createElement('div');
+      kpiItem.className='nav-item';
+      kpiItem.id='nav-kpis';
+      kpiItem.dataset.tooltip='KPIs';
+      kpiItem.innerHTML='<i class="fa fa-chart-bar"></i><span class="nav-item-text"> KPIs</span>';
+      kpiItem.setAttribute('onclick',"showPage('kpis')");
+      const anchor=document.getElementById('nav-procesos-eval')||document.getElementById('nav-candidatos');
+      if(anchor) anchor.parentNode.insertBefore(kpiItem,anchor.nextSibling);
+      else navEl.appendChild(kpiItem);
+    }
+  }
+
   // ESE — visible solo para admin y reclutador
   if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-ese')){
     const navEl = document.querySelector('.sb-nav');
@@ -2320,7 +2397,7 @@ function adaptUIToRole() {
     const refItem=document.getElementById('nav-perfiles');
     if(!refItem)return;
     let anchor=refItem;
-    ['nav-evaluaciones','nav-procesos-eval','nav-garantias','nav-ese'].forEach(id=>{
+    ['nav-evaluaciones','nav-procesos-eval','nav-kpis','nav-garantias','nav-ese'].forEach(id=>{
       const el=document.getElementById(id);
       if(el){anchor.parentNode.insertBefore(el,anchor.nextSibling);anchor=el;}
     });
@@ -2826,7 +2903,7 @@ async function loadDB(){
       const _rhEmpId = currentUserData?.empresa_id||null;
       console.log('[loadDB] ROL ACTUAL:', currentUserData?.rol, '| es rh_cliente:', _isRhC, '| EMPRESA ID:', _rhEmpId);
       console.log('[loadDB] currentUserData completo:', JSON.stringify(currentUserData));
-      const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand,perfiles,evals,evEnv,procEval,procEnv]=await Promise.all([
+      const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand,perfiles,evals,evEnv,procEval,procEnv,kpisRes]=await Promise.all([
         sbClient.from('empresas').select('*'),
         (_isRhC && _rhEmpId
           ? sbClient.from('vacantes').select('*').filter('data->>empresa_id','eq',_rhEmpId)
@@ -2842,6 +2919,7 @@ async function loadDB(){
         sbClient.from('evaluaciones_enviadas').select('*'),
         sbClient.from('procesos_evaluacion').select('*'),
         sbClient.from('procesos_enviados').select('*'),
+        sbClient.from('kpis').select('*'),
       ]);
       console.log('[loadDB] vacantes cargadas:', vac.data?.length, '| error:', vac.error?.message||null);
       DB.empresas=emp.data?.map(r=>r.data)||[];
@@ -2863,6 +2941,7 @@ async function loadDB(){
       DB.evaluacionesEnviadas=(evEnv.data||[]).map(r=>r.data||r).filter(Boolean);
       DB.procesosEval=(procEval.data||[]).map(r=>r.data||r).filter(Boolean);
       DB.procesosEnviados=(procEnv.data||[]).map(r=>r.data||r).filter(Boolean);
+      DB.kpis=(kpisRes.data||[]).map(r=>r.data||r).filter(Boolean);
       _candConRefs=new Set((refs.data||[]).flatMap(r=>{
         const ids=[];
         // formato nuevo: columnas planas
@@ -2940,6 +3019,7 @@ const DB={
   evaluacionesEliminadas:[],
   evaluacionesEnviadas:[],
   perfilesEliminados:[],
+  kpis:[],
   reclutadores:[
     {id:'r1',nombre:'Ana López',email:'ana@empresa.com'},
     {id:'r2',nombre:'Carlos Méndez',email:'carlos@empresa.com'},
@@ -3145,6 +3225,7 @@ function renderPage(p){
   if(p==='perfiles')renderPerfiles();
   if(p==='evaluaciones')renderEvaluaciones();
   if(p==='procesos-eval')renderProcesosEval();
+  if(p==='kpis')renderKpis();
   // if(p==='basedatos')renderBaseDatos(); // desactivado temporalmente
 }
 
@@ -13049,6 +13130,242 @@ async function deletePerfilPuesto(id){
   logActivity('Eliminar perfil de puesto','perfiles',id,`${p?.nombre_puesto||''} — ${DB.empresas.find(e=>e.id===p?.empresa_id)?.nombre||''}`);
   showToast('Perfil eliminado');
   if(p) renderPerfilesEmpresa(p.empresa_id);
+}
+
+/* ============================================================
+   KPIs
+   ============================================================ */
+let _kpiCurrentEmpId=null;
+
+function renderKpis(){
+  const page=document.getElementById('page-kpis');
+  if(!page)return;
+  const cards=DB.empresas.map(emp=>{
+    const count=DB.kpis.filter(k=>k.empresa_id===emp.id).length;
+    return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px" onclick="renderKpisEmpresa('${emp.id}')">
+      <div style="display:flex;align-items:center;gap:10px">
+        ${emp.logo?`<img src="${emp.logo}" style="width:36px;height:36px;object-fit:contain;border-radius:6px">`:`<div style="width:36px;height:36px;border-radius:6px;background:${emp.color||'#2AAADE'}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-chart-bar" style="color:${emp.color||'#2AAADE'}"></i></div>`}
+        <div>
+          <div style="font-weight:600;font-size:14px">${emp.nombre}</div>
+          <div style="font-size:12px;color:var(--text3)">${count} KPI${count!==1?'s':''}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  page.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">
+      ${cards||'<div style="color:var(--text3);font-size:13px">Sin empresas registradas</div>'}
+    </div>`;
+}
+
+function renderKpisEmpresa(empId){
+  const page=document.getElementById('page-kpis');
+  if(!page)return;
+  _kpiCurrentEmpId=empId;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  _kpiRenderTabla();
+}
+
+function _kpiRenderTabla(){
+  const page=document.getElementById('page-kpis');
+  if(!page||!_kpiCurrentEmpId)return;
+  const empId=_kpiCurrentEmpId;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const kpis=DB.kpis.filter(k=>k.empresa_id===empId);
+  const accentColor=emp.color||'#2AAADE';
+
+  const kpiCards=kpis.map(k=>{
+    const historial=k.historial||[];
+    const ultimoReg=historial.length?historial[historial.length-1]:null;
+    const valorActual=ultimoReg?.valor??null;
+    const objetivo=k.valor_objetivo;
+    const pct=objetivo&&valorActual!==null?Math.min(100,Math.round(valorActual/objetivo*100)):null;
+    const pctColor=pct===null?'var(--text3)':pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)';
+    const catBadge=k.categoria?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:${accentColor}22;color:${accentColor};border:1px solid ${accentColor}44">${k.categoria}</span>`:'';
+    const perBadge=k.periodicidad?`<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--surface2);color:var(--text3);border:1px solid var(--border)">${k.periodicidad}</span>`:'';
+    const progressBar=objetivo&&valorActual!==null?`
+      <div style="margin-top:10px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:4px">
+          <span>Progreso</span><span style="color:${pctColor};font-weight:600">${pct}%</span>
+        </div>
+        <div style="height:6px;border-radius:3px;background:var(--border);overflow:hidden">
+          <div style="height:100%;border-radius:3px;background:${pctColor};width:${pct}%;transition:width .4s"></div>
+        </div>
+      </div>`:'';
+    const valorDisplay=valorActual!==null
+      ?`<span style="font-size:26px;font-weight:700;color:${pctColor}">${valorActual}</span><span style="font-size:13px;color:var(--text3);margin-left:4px">${k.unidad||''}</span>`
+      :`<span style="font-size:14px;color:var(--text3);font-style:italic">Sin datos</span>`;
+    const objDisplay=objetivo!==null&&objetivo!==undefined?`<div style="font-size:11px;color:var(--text3);margin-top:2px">Objetivo: ${objetivo} ${k.unidad||''}</div>`:'';
+    const histBtn=historial.length?`<button class="btn btn-ghost btn-sm" onclick="verHistorialKpi('${k.id}')" title="Ver historial"><i class="fa fa-history"></i> ${historial.length}</button>`:'';
+    return`<div class="card" style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:4px">${_esc(k.nombre)}</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">${catBadge}${perBadge}</div>
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          ${histBtn}
+          <button class="btn btn-ghost btn-sm" onclick="openKpiRegistroModal('${k.id}')" title="Registrar valor"><i class="fa fa-plus-circle"></i></button>
+          <button class="btn btn-ghost btn-sm" onclick="openKpiModal('${empId}','${k.id}')" title="Editar"><i class="fa fa-edit"></i></button>
+          <button class="btn btn-danger btn-sm" onclick="deleteKpi('${k.id}')" title="Eliminar"><i class="fa fa-trash"></i></button>
+        </div>
+      </div>
+      ${k.descripcion?`<div style="font-size:12px;color:var(--text3)">${_esc(k.descripcion)}</div>`:''}
+      <div style="margin-top:4px">${valorDisplay}${objDisplay}</div>
+      ${progressBar}
+    </div>`;
+  }).join('');
+
+  page.innerHTML=`
+    <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="renderKpis()"><i class="fa fa-arrow-left"></i> Empresas</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        ${emp.logo?`<img src="${emp.logo}" style="width:28px;height:28px;object-fit:contain;border-radius:5px">`:`<div style="width:28px;height:28px;border-radius:5px;background:${accentColor}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${accentColor};font-size:12px"></i></div>`}
+        <span style="font-size:15px;font-weight:600">${emp.nombre||''}</span>
+      </div>
+      <span style="flex:1"></span>
+      <button class="btn btn-primary btn-sm" onclick="openKpiModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo KPI</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px" id="kpi-grid">
+      ${kpiCards||`<div style="color:var(--text3);font-size:13px;padding:20px 0">Sin KPIs registrados. Crea el primero con "+ Nuevo KPI".</div>`}
+    </div>`;
+}
+
+function openKpiModal(empId,kpiId){
+  const k=kpiId?DB.kpis.find(x=>x.id===kpiId):null;
+  document.getElementById('kpi-id').value=kpiId||'';
+  document.getElementById('kpi-empresa-id').value=empId||'';
+  document.getElementById('kpi-nombre').value=k?.nombre||'';
+  document.getElementById('kpi-descripcion').value=k?.descripcion||'';
+  document.getElementById('kpi-objetivo').value=k?.valor_objetivo??'';
+  document.getElementById('kpi-unidad').value=k?.unidad||'';
+  document.getElementById('kpi-categoria').value=k?.categoria||'';
+  document.getElementById('kpi-periodicidad').value=k?.periodicidad||'mensual';
+  document.getElementById('kpi-modal-title').textContent=kpiId?'Editar KPI':'Nuevo KPI';
+  openModal('modal-kpi');
+}
+
+async function saveKpi(){
+  const nombre=document.getElementById('kpi-nombre').value.trim();
+  if(!nombre){showToast('El nombre es obligatorio','err');return;}
+  const empId=document.getElementById('kpi-empresa-id').value;
+  const existId=document.getElementById('kpi-id').value;
+  const isNew=!existId;
+  const obj={
+    id:existId||uid(),
+    empresa_id:empId,
+    nombre,
+    descripcion:document.getElementById('kpi-descripcion').value.trim()||null,
+    valor_objetivo:document.getElementById('kpi-objetivo').value!==''?Number(document.getElementById('kpi-objetivo').value):null,
+    unidad:document.getElementById('kpi-unidad').value.trim()||null,
+    categoria:document.getElementById('kpi-categoria').value||null,
+    periodicidad:document.getElementById('kpi-periodicidad').value,
+    historial:isNew?[]:(DB.kpis.find(x=>x.id===existId)?.historial||[]),
+    creado:isNew?new Date().toISOString():(DB.kpis.find(x=>x.id===existId)?.creado||new Date().toISOString()),
+    updated_at:new Date().toISOString()
+  };
+  if(!SANDBOX_MODE){
+    const{error}=await sbClient.from('kpis').upsert({id:obj.id,empresa_id:obj.empresa_id,data:obj});
+    if(error){showToast('Error al guardar: '+error.message,'err');return;}
+  }
+  const idx=DB.kpis.findIndex(x=>x.id===obj.id);
+  if(idx>=0) DB.kpis[idx]=obj; else DB.kpis.push(obj);
+  closeModal('modal-kpi');
+  showToast('KPI guardado ✓');
+  _kpiRenderTabla();
+}
+
+async function deleteKpi(kpiId){
+  if(!confirm('¿Eliminar este KPI? Se perderá también su historial.'))return;
+  if(!SANDBOX_MODE){
+    const{error}=await sbClient.from('kpis').delete().eq('id',kpiId);
+    if(error){showToast('Error al eliminar: '+error.message,'err');return;}
+  }
+  DB.kpis=DB.kpis.filter(x=>x.id!==kpiId);
+  showToast('KPI eliminado');
+  _kpiRenderTabla();
+}
+
+function openKpiRegistroModal(kpiId){
+  const k=DB.kpis.find(x=>x.id===kpiId);
+  if(!k)return;
+  document.getElementById('kpi-reg-id').value=kpiId;
+  document.getElementById('kpi-reg-valor').value='';
+  document.getElementById('kpi-reg-fecha').value=new Date().toISOString().slice(0,10);
+  document.getElementById('kpi-reg-notas').value='';
+  document.getElementById('kpi-reg-title').textContent=`Registrar — ${k.nombre}`;
+  openModal('modal-kpi-registro');
+}
+
+async function saveKpiRegistro(){
+  const kpiId=document.getElementById('kpi-reg-id').value;
+  const valorStr=document.getElementById('kpi-reg-valor').value;
+  if(valorStr===''){showToast('Ingresa un valor','err');return;}
+  const k=DB.kpis.find(x=>x.id===kpiId);
+  if(!k)return;
+  const registro={fecha:document.getElementById('kpi-reg-fecha').value||new Date().toISOString().slice(0,10),valor:Number(valorStr),notas:document.getElementById('kpi-reg-notas').value.trim()||null};
+  const historial=[...(k.historial||[]),registro].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const updated={...k,historial,updated_at:new Date().toISOString()};
+  if(!SANDBOX_MODE){
+    const{error}=await sbClient.from('kpis').upsert({id:updated.id,empresa_id:updated.empresa_id,data:updated});
+    if(error){showToast('Error al guardar: '+error.message,'err');return;}
+  }
+  const idx=DB.kpis.findIndex(x=>x.id===kpiId);
+  if(idx>=0) DB.kpis[idx]=updated;
+  closeModal('modal-kpi-registro');
+  showToast('Valor registrado ✓');
+  _kpiRenderTabla();
+}
+
+function verHistorialKpi(kpiId){
+  const k=DB.kpis.find(x=>x.id===kpiId);
+  if(!k)return;
+  const rows=(k.historial||[]).slice().reverse().map((r,i)=>`
+    <tr>
+      <td style="font-size:12px;color:var(--text3)">${fmt(r.fecha)}</td>
+      <td style="font-weight:600;font-size:14px">${r.valor} <span style="font-size:11px;color:var(--text3)">${k.unidad||''}</span></td>
+      <td style="font-size:12px;color:var(--text3)">${r.notas||'—'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-danger btn-sm" onclick="deleteKpiRegistro('${kpiId}',${(k.historial||[]).length-1-i})"><i class="fa fa-trash"></i></button>
+      </td>
+    </tr>`).join('');
+  const existing=document.getElementById('kpi-historial-overlay');
+  if(existing)existing.remove();
+  const overlay=document.createElement('div');
+  overlay.id='kpi-historial-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2500;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML=`
+    <div style="background:var(--surface);border-radius:14px;max-width:560px;width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,0.3)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-weight:600;font-size:15px">${_esc(k.nombre)} — Historial</div>
+        <button onclick="document.getElementById('kpi-historial-overlay').remove()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text2)">×</button>
+      </div>
+      <div style="overflow-y:auto;padding:16px 20px">
+        ${rows?`<table class="table"><thead><tr><th>Fecha</th><th>Valor</th><th>Notas</th><th></th></tr></thead><tbody>${rows}</tbody></table>`:'<div style="text-align:center;color:var(--text3);padding:24px">Sin registros aún.</div>'}
+      </div>
+      <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
+        <button onclick="openKpiRegistroModal('${kpiId}');document.getElementById('kpi-historial-overlay').remove()" class="btn btn-primary btn-sm"><i class="fa fa-plus"></i> Registrar valor</button>
+        <button onclick="document.getElementById('kpi-historial-overlay').remove()" class="btn btn-ghost btn-sm">Cerrar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function deleteKpiRegistro(kpiId,index){
+  if(!confirm('¿Eliminar este registro?'))return;
+  const k=DB.kpis.find(x=>x.id===kpiId);
+  if(!k)return;
+  const historial=(k.historial||[]).filter((_,i)=>i!==index);
+  const updated={...k,historial,updated_at:new Date().toISOString()};
+  if(!SANDBOX_MODE){
+    const{error}=await sbClient.from('kpis').upsert({id:updated.id,empresa_id:updated.empresa_id,data:updated});
+    if(error){showToast('Error: '+error.message,'err');return;}
+  }
+  const idx=DB.kpis.findIndex(x=>x.id===kpiId);
+  if(idx>=0) DB.kpis[idx]=updated;
+  showToast('Registro eliminado');
+  verHistorialKpi(kpiId);
+  _kpiRenderTabla();
 }
 
 async function generarPDFPerfil(id){

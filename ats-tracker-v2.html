@@ -14043,11 +14043,45 @@ function renderEvalPlantillas(){
       <td><span class="badge ${e.activa!==false?'bg':'br'}">${e.activa!==false?'Activa':'Inactiva'}</span></td>
       <td style="font-size:12px;color:var(--text3)">${e.created_at?new Date(e.created_at).toLocaleDateString('es-MX'):'—'}</td>
       <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="previewEvaluacion('${e.id}')" title="Vista previa"><i class="fa fa-eye"></i></button>
         <button class="btn btn-ghost btn-sm" onclick="openEvalTemplateModal('${e.id}')"><i class="fa fa-edit"></i></button>
         ${currentUserData?.rol==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteEvalTemplate('${e.id}')"><i class="fa fa-trash"></i></button>`:''}
       </td>
     </tr>`;
   }).join('');
+}
+
+function previewEvaluacion(evalId){
+  const ev=DB.evaluaciones.find(x=>x.id===evalId);
+  if(!ev)return;
+  const preguntas=ev.preguntas||[];
+  const nPregs=preguntas.filter(q=>!['titulo','descripcion'].includes(q.tipo)).length;
+  const contenido=_renderProcesoPubPreguntas(preguntas);
+  const existing=document.getElementById('modal-eval-preview-overlay');
+  if(existing)existing.remove();
+  const overlay=document.createElement('div');
+  overlay.id='modal-eval-preview-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:3000;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:32px 16px';
+  overlay.innerHTML=`
+    <div style="background:var(--bg);border-radius:16px;max-width:700px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.35);margin:auto">
+      ${ev.banner?`<img src="${ev.banner}" style="width:100%;max-height:180px;object-fit:cover;border-radius:16px 16px 0 0;display:block">`:''}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--border);background:var(--surface);border-radius:${ev.banner?'0':'16px 16px'} 0 0;position:sticky;top:0;z-index:1">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--text)">${_esc(ev.nombre)}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">${nPregs} pregunta${nPregs!==1?'s':''} · Vista previa del candidato</div>
+        </div>
+        <button onclick="document.getElementById('modal-eval-preview-overlay').remove()" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--text2);line-height:1;padding:4px 8px;border-radius:6px">×</button>
+      </div>
+      ${ev.descripcion?`<div style="padding:16px 24px 0;font-size:14px;color:var(--text2)">${_esc(ev.descripcion)}</div>`:''}
+      <div style="padding:20px 24px;display:flex;flex-direction:column;gap:12px">
+        ${contenido||'<div style="text-align:center;color:var(--text3);padding:32px">Sin preguntas configuradas</div>'}
+      </div>
+      <div style="padding:16px 24px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
+        <button onclick="document.getElementById('modal-eval-preview-overlay').remove()" class="btn btn-primary">Cerrar vista previa</button>
+      </div>
+    </div>`;
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  document.body.appendChild(overlay);
 }
 function renderEvalEnviadas(){
   const tbody = document.getElementById('eval-enviadas-tbody');

@@ -4046,7 +4046,7 @@ function filtrarVacantesEmpresa(){
   if(edCount) edCount.innerHTML = `Mostrando <strong>${filtered.length}</strong> registros`;
   const filtCands = DB.candidatos.filter(c=>filtered.find(v=>v.id===c.vacante_id));
   const vacAct   = filtered.filter(v=>v.estado==='Abierta').length;
-  const deser    = filtCands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).length;
+  const deser    = allEmpCands.filter(_esCandDesercion).length;
   // Contratados y días prom: usar TODAS las vacantes de la empresa, no solo las abiertas/filtradas
   const allEmpVacs = DB.vacantes.filter(v=>v.empresa_id===empId);
   const allEmpCands = DB.candidatos.filter(c=>allEmpVacs.find(v=>v.id===c.vacante_id));

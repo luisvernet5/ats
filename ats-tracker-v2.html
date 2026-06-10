@@ -2903,7 +2903,7 @@ async function loadDB(){
       const _rhEmpId = currentUserData?.empresa_id||null;
       console.log('[loadDB] ROL ACTUAL:', currentUserData?.rol, '| es rh_cliente:', _isRhC, '| EMPRESA ID:', _rhEmpId);
       console.log('[loadDB] currentUserData completo:', JSON.stringify(currentUserData));
-      const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand,perfiles,evals,evEnv,procEval,procEnv,kpisRes]=await Promise.all([
+      const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand,perfiles,evals,evEnv,procEval,procEnv]=await Promise.all([
         sbClient.from('empresas').select('*'),
         (_isRhC && _rhEmpId
           ? sbClient.from('vacantes').select('*').filter('data->>empresa_id','eq',_rhEmpId)
@@ -2919,7 +2919,6 @@ async function loadDB(){
         sbClient.from('evaluaciones_enviadas').select('*'),
         sbClient.from('procesos_evaluacion').select('*'),
         sbClient.from('procesos_enviados').select('*'),
-        sbClient.from('kpis').select('*'),
       ]);
       console.log('[loadDB] vacantes cargadas:', vac.data?.length, '| error:', vac.error?.message||null);
       DB.empresas=emp.data?.map(r=>r.data)||[];
@@ -2941,7 +2940,8 @@ async function loadDB(){
       DB.evaluacionesEnviadas=(evEnv.data||[]).map(r=>r.data||r).filter(Boolean);
       DB.procesosEval=(procEval.data||[]).map(r=>r.data||r).filter(Boolean);
       DB.procesosEnviados=(procEnv.data||[]).map(r=>r.data||r).filter(Boolean);
-      DB.kpis=(kpisRes.data||[]).map(r=>r.data||r).filter(Boolean);
+      // Cargar KPIs por separado — la tabla puede no existir aún
+      try{const kpisRes=await sbClient.from('kpis').select('*');DB.kpis=(kpisRes.data||[]).map(r=>r.data||r).filter(Boolean);}catch(e){DB.kpis=[];}
       _candConRefs=new Set((refs.data||[]).flatMap(r=>{
         const ids=[];
         // formato nuevo: columnas planas
@@ -3196,7 +3196,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount',perfiles:'Perfiles de puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',kpis:'KPIs',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount',perfiles:'Perfiles de puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);

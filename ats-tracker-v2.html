@@ -1609,63 +1609,97 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
   </div>
 </div>
 
-<!-- ===== MODAL KPI ===== -->
-<div class="modal-overlay" id="modal-kpi">
-  <div class="modal" style="max-width:520px">
-    <div class="mh"><h3 id="kpi-modal-title">Nuevo KPI</h3><button class="xbtn" onclick="closeModal('modal-kpi')"><i class="fa fa-times"></i></button></div>
+<!-- ===== MODAL CÉDULA KPI ===== -->
+<div class="modal-overlay" id="modal-cedula">
+  <div class="modal" style="max-width:580px">
+    <div class="mh"><h3 id="cedula-modal-title">Nueva cédula de evaluación</h3><button class="xbtn" onclick="closeModal('modal-cedula')"><i class="fa fa-times"></i></button></div>
     <div class="mb">
-      <input type="hidden" id="kpi-id">
-      <input type="hidden" id="kpi-empresa-id">
-      <div class="fr full"><div class="fg"><label>Nombre del KPI *</label><input id="kpi-nombre" placeholder="Ej. Tasa de retención, Tiempo de contratación..."></div></div>
-      <div class="fr full"><div class="fg"><label>Descripción</label><textarea id="kpi-descripcion" rows="2" placeholder="Describe qué mide este indicador..."></textarea></div></div>
+      <input type="hidden" id="cedula-id">
+      <input type="hidden" id="cedula-empresa-id">
       <div class="fr">
-        <div class="fg"><label>Valor objetivo</label><input id="kpi-objetivo" type="number" step="any" placeholder="100"></div>
-        <div class="fg"><label>Unidad</label><input id="kpi-unidad" placeholder="%, días, candidatos, pesos..."></div>
+        <div class="fg"><label>Puesto de trabajo *</label><input id="cedula-puesto" placeholder="Ej. Técnico electromecánico, Operador PTAR..."></div>
+        <div class="fg"><label>Área</label><input id="cedula-area" placeholder="Ej. Producción, RRHH, Operaciones..."></div>
       </div>
-      <div class="fr full"><div class="fg"><label>Puesto de trabajo</label><input id="kpi-puesto" placeholder="Ej. Técnico electromecánico, Operador PTAR..."></div></div>
       <div class="fr">
-        <div class="fg"><label>Categoría</label>
-          <select id="kpi-categoria">
-            <option value="">Sin categoría</option>
-            <option>Reclutamiento</option>
-            <option>Retención</option>
-            <option>Tiempo</option>
-            <option>Calidad</option>
-            <option>Costos</option>
-            <option>Satisfacción</option>
-            <option>Productividad</option>
-          </select>
-        </div>
-        <div class="fg"><label>Periodicidad</label>
-          <select id="kpi-periodicidad">
-            <option value="mensual">Mensual</option>
-            <option value="semanal">Semanal</option>
-            <option value="trimestral">Trimestral</option>
-            <option value="anual">Anual</option>
-          </select>
-        </div>
+        <div class="fg"><label>Nombre del evaluado</label><input id="cedula-empleado-nombre" placeholder="Nombre completo"></div>
+        <div class="fg"><label>ID / Número de empleado</label><input id="cedula-empleado-id" placeholder="EMP-001"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Jefe inmediato</label><input id="cedula-jefe" placeholder="Nombre del jefe directo"></div>
+        <div class="fg"><label>Periodo</label><input id="cedula-periodo" placeholder="Ej. Enero - Junio 2025"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Fecha fijación de metas</label><input id="cedula-fecha" type="date"></div>
+        <div class="fg"><label>Bono total a distribuir ($)</label><input id="cedula-bono" type="number" step="any" min="0" placeholder="0.00"></div>
       </div>
     </div>
     <div class="mf">
-      <button class="btn btn-ghost" onclick="closeModal('modal-kpi')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveKpi()"><i class="fa fa-save"></i> Guardar KPI</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-cedula')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveCedula()"><i class="fa fa-save"></i> Guardar</button>
     </div>
   </div>
 </div>
 
-<!-- ===== MODAL REGISTRO KPI ===== -->
-<div class="modal-overlay" id="modal-kpi-registro">
-  <div class="modal" style="max-width:420px">
-    <div class="mh"><h3 id="kpi-reg-title">Registrar valor</h3><button class="xbtn" onclick="closeModal('modal-kpi-registro')"><i class="fa fa-times"></i></button></div>
+<!-- ===== MODAL KPI FILA ===== -->
+<div class="modal-overlay" id="modal-kpi-fila">
+  <div class="modal" style="max-width:700px">
+    <div class="mh"><h3 id="kpi-fila-title">Agregar KPI</h3><button class="xbtn" onclick="closeModal('modal-kpi-fila')"><i class="fa fa-times"></i></button></div>
     <div class="mb">
-      <input type="hidden" id="kpi-reg-id">
-      <div class="fr full"><div class="fg"><label>Valor actual *</label><input id="kpi-reg-valor" type="number" step="any" placeholder="0"></div></div>
-      <div class="fr full"><div class="fg"><label>Fecha</label><input id="kpi-reg-fecha" type="date"></div></div>
-      <div class="fr full"><div class="fg"><label>Notas</label><textarea id="kpi-reg-notas" rows="2" placeholder="Observaciones sobre este período..."></textarea></div></div>
+      <input type="hidden" id="kpi-fila-cedula-id">
+      <input type="hidden" id="kpi-fila-id">
+      <div class="fr full">
+        <div class="fg">
+          <label>Sección <span style="font-size:11px;color:var(--text3)">(opcional — agrupa filas en la cédula)</span></label>
+          <select id="kpi-fila-seccion" onchange="_kpiFilaSeccionChange()">
+            <option value="">Sin sección</option>
+            <option>KPIs del Puesto</option>
+            <option>KPIs de Recursos Humanos</option>
+            <option>KPI de Desarrollo e Innovación</option>
+            <option value="__other__">Otra sección...</option>
+          </select>
+        </div>
+      </div>
+      <div id="kpi-fila-seccion-custom-row" style="display:none" class="fr full">
+        <div class="fg"><label>Nombre de sección personalizado</label><input id="kpi-fila-seccion-custom" placeholder="Ej. KPIs Comerciales"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Meta clave del puesto *</label><textarea id="kpi-fila-meta-clave" rows="2" placeholder="Ej. Mantener disponibilidad de equipos al nivel óptimo"></textarea></div>
+        <div class="fg"><label>Objetivo del periodo</label><textarea id="kpi-fila-objetivo" rows="2" placeholder="Ej. Alcanzar 95% de disponibilidad operativa mensual"></textarea></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Indicador</label><input id="kpi-fila-indicador" placeholder="Ej. % Disponibilidad de equipos"></div>
+        <div class="fg"><label>Fórmula de medición</label><input id="kpi-fila-formula" placeholder="Ej. (Horas disponibles / Horas totales) × 100"></div>
+      </div>
+      <div class="fr full">
+        <div class="fg"><label>Actividades relacionadas <span style="font-size:11px;color:var(--text3)">(una por línea)</span></label><textarea id="kpi-fila-actividades" rows="3" placeholder="Supervisión diaria de equipos&#10;Reportes de mantenimiento&#10;Capacitación al personal operativo"></textarea></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Periodicidad</label>
+          <select id="kpi-fila-periodicidad">
+            <option value="Mensual">Mensual</option>
+            <option value="Bimestral">Bimestral</option>
+            <option value="Trimestral">Trimestral</option>
+            <option value="Semestral">Semestral</option>
+            <option value="Anual">Anual</option>
+          </select>
+        </div>
+        <div class="fg"><label>Meta</label><input id="kpi-fila-meta" placeholder="Ej. ≥95%, ≤5 días, 100 unidades"></div>
+        <div class="fg"><label>Ponderación % *</label><input id="kpi-fila-ponderacion" type="number" min="0" max="100" step="any" placeholder="20"></div>
+      </div>
+      <div class="fr">
+        <div class="fg">
+          <label>Valor obtenido <span style="font-size:11px;color:var(--text3)">(dejar vacío si no hay dato)</span></label>
+          <input id="kpi-fila-valor" type="number" step="any" placeholder="">
+        </div>
+        <div class="fg">
+          <label>Resultado % <span style="font-size:11px;color:var(--text3)">(% de cumplimiento del objetivo)</span></label>
+          <input id="kpi-fila-resultado" type="number" min="0" step="any" placeholder="">
+        </div>
+      </div>
     </div>
     <div class="mf">
-      <button class="btn btn-ghost" onclick="closeModal('modal-kpi-registro')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveKpiRegistro()"><i class="fa fa-save"></i> Guardar</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-kpi-fila')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveKpiFilaModal()"><i class="fa fa-save"></i> Guardar KPI</button>
     </div>
   </div>
 </div>

@@ -1616,9 +1616,8 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     <div class="mb">
       <input type="hidden" id="cedula-id">
       <input type="hidden" id="cedula-empresa-id">
-      <div class="fr">
+      <div class="fr full">
         <div class="fg"><label>Puesto de trabajo *</label><input id="cedula-puesto" placeholder="Ej. Técnico electromecánico, Operador PTAR..."></div>
-        <div class="fg"><label>Área</label><input id="cedula-area" placeholder="Ej. Producción, RRHH, Operaciones..."></div>
       </div>
       <div class="fr">
         <div class="fg"><label>Nombre del evaluado</label><input id="cedula-empleado-nombre" placeholder="Nombre completo"></div>
@@ -13353,7 +13352,6 @@ function renderCedula(cedulaId){
     <div class="card" style="margin-bottom:14px;border-top:3px solid ${color}">
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;font-size:12px">
         ${c.empleado_nombre?`<div><div style="color:var(--text3);font-size:10px;text-transform:uppercase;margin-bottom:2px">Empleado</div><div style="font-weight:600">${_esc(c.empleado_nombre)}</div></div>`:''}
-        ${c.area?`<div><div style="color:var(--text3);font-size:10px;text-transform:uppercase;margin-bottom:2px">Área</div><div style="font-weight:600">${_esc(c.area)}</div></div>`:''}
         ${c.departamento?`<div><div style="color:var(--text3);font-size:10px;text-transform:uppercase;margin-bottom:2px">Departamento</div><div style="font-weight:600">${_esc(c.departamento)}</div></div>`:''}
         ${c.proyecto?`<div><div style="color:var(--text3);font-size:10px;text-transform:uppercase;margin-bottom:2px">Proyecto</div><div style="font-weight:600">${_esc(c.proyecto)}</div></div>`:''}
         ${c.jefe_inmediato?`<div><div style="color:var(--text3);font-size:10px;text-transform:uppercase;margin-bottom:2px">Jefe inmediato</div><div style="font-weight:600">${_esc(c.jefe_inmediato)}</div></div>`:''}
@@ -13405,7 +13403,6 @@ function openCedulaModal(empId,cedulaId){
   document.getElementById('cedula-id').value=cedulaId||'';
   document.getElementById('cedula-empresa-id').value=empId||'';
   document.getElementById('cedula-puesto').value=c?.puesto||'';
-  document.getElementById('cedula-area').value=c?.area||'';
   document.getElementById('cedula-empleado-nombre').value=c?.empleado_nombre||'';
   document.getElementById('cedula-jefe').value=c?.jefe_inmediato||'';
   document.getElementById('cedula-periodo').value=c?.periodo||'';
@@ -13435,7 +13432,6 @@ async function saveCedula(){
     id:existId||uid(),
     empresa_id:empId,
     puesto,
-    area:document.getElementById('cedula-area').value.trim()||null,
     empleado_nombre:document.getElementById('cedula-empleado-nombre').value.trim()||null,
     departamento:document.getElementById('cedula-departamento').value||null,
     proyecto:document.getElementById('cedula-proyecto').value||null,

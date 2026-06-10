@@ -13494,11 +13494,12 @@ function openKpiFilaModal(cedulaId,filaId){
   document.getElementById('kpi-fila-meta').value=k?.meta||'';
   document.getElementById('kpi-fila-ponderacion').value=k?.ponderacion??'';
   document.getElementById('kpi-fila-valor').value=k?.valor_obtenido??'';
-  document.getElementById('kpi-fila-resultado').value=k?.resultado_pct??'';
+  // Si ya hay resultado guardado úsalo, si no recalcular desde meta+valor
+  const resGuardado=k?.resultado_pct!=null&&k?.resultado_pct!==''?String(k.resultado_pct):'';
+  document.getElementById('kpi-fila-resultado').value=resGuardado;
+  if(!resGuardado) _kpiFilaAutoCalcResultado();
   document.getElementById('kpi-fila-title').textContent=filaId?'Editar KPI':'Agregar KPI';
   openModal('modal-kpi-fila');
-  // Recalcular al abrir (el oninput no se dispara con asignación por código)
-  setTimeout(_kpiFilaAutoCalcResultado, 0);
 }
 
 function _kpiFilaSeccionChange(){
@@ -13507,18 +13508,21 @@ function _kpiFilaSeccionChange(){
 }
 
 function _kpiFilaAutoCalcResultado(){
-  const valorStr=document.getElementById('kpi-fila-valor').value;
-  const metaStr=document.getElementById('kpi-fila-meta').value.trim();
+  const valorEl=document.getElementById('kpi-fila-valor');
+  const metaEl=document.getElementById('kpi-fila-meta');
   const resultEl=document.getElementById('kpi-fila-resultado');
-  if(valorStr===''||metaStr===''){resultEl.value='';return;}
+  if(!valorEl||!metaEl||!resultEl)return;
+  const valorStr=valorEl.value.trim();
+  const metaStr=metaEl.value.trim();
+  if(valorStr===''||metaStr===''){return;}
   const valor=Number(valorStr);
   if(isNaN(valor))return;
-  // Extrae el primer número del campo meta (ignora ≥ ≤ > < $ % letras)
-  const match=metaStr.replace(',','.').match(/[\d.]+/);
+  // Extrae el primer número de la meta (acepta formatos: ≥90%, ≥ 90%, 90, $500, etc.)
+  const match=metaStr.replace(/\s/g,'').replace(',','.').match(/[\d]+\.?[\d]*/);
   if(!match)return;
   const metaNum=parseFloat(match[0]);
   if(isNaN(metaNum)||metaNum===0)return;
-  // Si la meta tiene ≤ o < significa "menor es mejor" (invertir)
+  // ≤ o < → menor es mejor (invertir fórmula)
   const menosEsMejor=/[≤<]/.test(metaStr);
   const resultado=menosEsMejor?(metaNum/valor)*100:(valor/metaNum)*100;
   resultEl.value=Math.round(resultado*100)/100;

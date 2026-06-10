@@ -3684,15 +3684,14 @@ function showEDKpiPanel(type, empId){
     }).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Sin contratados</td></tr>`;
   }
   else if(type==='deserciones'){
-    const list=allCands.filter(c=>ETAPAS_SALIDA.includes(c.etapa));
+    const list=allCands.filter(_esCandDesercion);
     title=`Deserciones — ${list.length} registro${list.length!==1?'s':''}`;
     thead=`<tr><th>#</th><th>Candidato</th><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Etapa salida</th><th>Motivo</th><th>Fecha</th><th>Días proceso</th></tr>`;
     tbody=list.map((c,i)=>{
       const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
       const rec=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
       const dias=processTotal(c);
-      const etBadge=c.etapa==='Descartado'?`<span class="badge" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80">${c.etapa}</span>`:`<span class="badge br">${c.etapa}</span>`;
-      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px;width:36px">${i+1}</td><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td>${etBadge}</td><td style="font-size:12px;color:var(--text2)">${c.motivo_desercion||'—'}</td><td style="font-family:var(--mono);font-size:12px">${c.fecha_salida?fmt(c.fecha_salida):'—'}</td><td>${dias!==null?`<span class="dpill ${dClass(dias)}">${dias}d</span>`:'—'}</td></tr>`;
+      return`<tr><td style="text-align:center;color:var(--text3);font-size:12px;width:36px">${i+1}</td><td class="td-p">${c.nombre}</td><td>${v.nombre||'—'}</td><td style="font-size:13px;color:var(--text2)">${v.folio||'—'}</td><td>${rec.nombre||'—'}</td><td><span class="badge br">${c.etapa}</span></td><td style="font-size:12px;color:var(--text2)">${c.motivo_desercion||'—'}</td><td style="font-size:12px">${c.fecha_salida?fmt(c.fecha_salida):'—'}</td><td>${dias!==null?`<span class="dpill ${dClass(dias)}">${dias}d</span>`:'—'}</td></tr>`;
     }).join('')||`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Sin deserciones registradas</td></tr>`;
   }
 

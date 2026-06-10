@@ -3524,7 +3524,7 @@ function openEmpresaDetail(empId){
   const allCands=DB.candidatos.filter(c=>vacs.find(v=>v.id===c.vacante_id));
   const vacAct=vacs.filter(v=>v.estado==='Abierta').length;
   const validados=allCands.filter(esColocado).length;
-  const desertores=allCands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).length;
+  const desertores=allCands.filter(_esCandDesercion).length;
   const etapas=getEmpresaEtapas(empId);
   const daysArr=allCands.filter(esColocado).map(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};const fc=getFechaContratacion(v,c);return fc&&v.fecha_apertura?daysBetween(v.fecha_apertura,fc):null;}).filter(d=>d!=null&&d>0);
   const avgDays=daysArr.length?Math.round(daysArr.reduce((a,b)=>a+b,0)/daysArr.length):null;

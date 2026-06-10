@@ -13302,22 +13302,22 @@ function renderCedula(cedulaId){
       secRow=`<tr><td colspan="${bonoTotal?13:12}" style="background:#1e3a5f;color:#fff;font-weight:700;font-size:11px;padding:7px 12px;text-transform:uppercase;letter-spacing:.5px">${_esc(k.seccion)}</td></tr>`;
     } else if(!k.seccion) lastSec=undefined;
 
-    const acts=(k.actividades||'').split('\n').filter(Boolean).map(a=>`<div style="white-space:nowrap">• ${_esc(a.trim().replace(/^•\s*/,''))}</div>`).join('');
+    const acts=(k.actividades||'').split('\n').filter(Boolean).map(a=>`<div>• ${_esc(a.trim().replace(/^•\s*/,''))}</div>`).join('');
 
-    return`${secRow}<tr style="background:${rBg}">
-      <td style="text-align:center;width:28px;font-weight:700;color:var(--text3);font-size:11px">${i+1}</td>
-      <td style="font-size:12px;min-width:180px;max-width:260px">${_esc(k.objetivo_periodo||'—')}</td>
-      <td style="font-size:12px;min-width:120px;max-width:180px">${_esc(k.indicador||'—')}</td>
-      <td style="font-size:11px;min-width:150px;max-width:220px;color:var(--text2)">${acts||'—'}</td>
-      <td style="font-size:11px;min-width:130px;max-width:180px;font-style:italic;color:var(--text2)">${_esc(k.formula||'—')}</td>
-      <td style="text-align:center;font-size:11px;white-space:nowrap">${k.periodicidad||'—'}</td>
-      <td style="text-align:center;font-weight:600;font-size:12px;white-space:nowrap">${_esc(k.meta||'—')}</td>
+    return`${secRow}<tr style="background:${rBg};vertical-align:top">
+      <td style="text-align:center;font-weight:700;color:var(--text3);font-size:11px;padding-top:8px">${i+1}</td>
+      <td style="font-size:12px;word-break:break-word;overflow-wrap:break-word">${_esc(k.objetivo_periodo||'—')}</td>
+      <td style="font-size:12px;word-break:break-word;overflow-wrap:break-word">${_esc(k.indicador||'—')}</td>
+      <td style="font-size:11px;color:var(--text2);word-break:break-word;overflow-wrap:break-word">${acts||'—'}</td>
+      <td style="font-size:11px;font-style:italic;color:var(--text2);word-break:break-word;overflow-wrap:break-word">${_esc(k.formula||'—')}</td>
+      <td style="text-align:center;font-size:11px">${k.periodicidad||'—'}</td>
+      <td style="text-align:center;font-weight:600;font-size:12px;word-break:break-word">${_esc(k.meta||'—')}</td>
       <td style="text-align:center;font-weight:700;color:${color};font-size:13px">${pond}%</td>
       <td style="text-align:center;font-size:12px">${valObt!==null?valObt:'—'}</td>
       <td style="text-align:center;font-weight:700;color:${rTc};font-size:13px">${resPct!==null?resPct.toFixed(2)+'%':'—'}</td>
       <td style="text-align:center;font-weight:600;font-size:12px">${totPond!==null?totPond.toFixed(2)+'%':'—'}</td>
-      ${bonoTotal?`<td style="text-align:right;font-size:12px;font-weight:700;color:var(--green);white-space:nowrap">${montoKpi!==null?'$'+montoKpi.toLocaleString('es-MX',{minimumFractionDigits:2}):'—'}</td>`:''}
-      <td style="white-space:nowrap;padding:4px 8px">
+      ${bonoTotal?`<td style="text-align:right;font-size:12px;font-weight:700;color:var(--green)">${montoKpi!==null?'$'+montoKpi.toLocaleString('es-MX',{minimumFractionDigits:2}):'—'}</td>`:''}
+      <td style="padding:4px 8px;white-space:nowrap">
         <button class="btn btn-ghost btn-sm" onclick="openKpiFilaModal('${cedulaId}','${k.id}')"><i class="fa fa-edit"></i></button>
         <button class="btn btn-danger btn-sm" onclick="deleteKpiFila('${cedulaId}','${k.id}')"><i class="fa fa-trash"></i></button>
       </td>
@@ -13360,10 +13360,25 @@ function renderCedula(cedulaId){
       </div>
     </div>
     <div style="overflow-x:auto">
-      <table class="table" style="font-size:12px;min-width:1000px">
+      <table class="table" style="font-size:12px;min-width:1300px;table-layout:fixed;width:100%">
+        <colgroup>
+          <col style="width:32px">
+          <col style="width:200px">
+          <col style="width:160px">
+          <col style="width:200px">
+          <col style="width:160px">
+          <col style="width:72px">
+          <col style="width:80px">
+          <col style="width:60px">
+          <col style="width:68px">
+          <col style="width:80px">
+          <col style="width:72px">
+          ${bonoTotal?'<col style="width:90px">':''}
+          <col style="width:70px">
+        </colgroup>
         <thead>
           <tr style="background:#1e3a5f;color:#fff;font-size:10px;text-transform:uppercase;letter-spacing:.3px">
-            <th style="text-align:center;width:28px">#</th>
+            <th style="text-align:center">#</th>
             <th>Objetivo del periodo</th>
             <th>Indicador</th>
             <th>Actividades</th>
@@ -13375,7 +13390,7 @@ function renderCedula(cedulaId){
             <th style="text-align:center;color:#86efac">Resultado%</th>
             <th style="text-align:center;color:#86efac">Tot. Pond.</th>
             ${bonoTotal?'<th style="text-align:right;color:#86efac">Monto KPI</th>':''}
-            <th style="width:70px"></th>
+            <th></th>
           </tr>
         </thead>
         <tbody>

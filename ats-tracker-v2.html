@@ -6866,6 +6866,7 @@ function _mfOnChange(id){
   else if(id.startsWith('log-flt-')){logPaginaActual=1;filtrarLog();}
   else if(id==='ed-flt-proy'||id==='ed-flt-dep'||id==='ed-flt-rec') filtrarVacantesEmpresa();
   else if(id==='pf-flt-proy'||id==='pf-flt-dep') _pfRenderTabla();
+  else if(id==='procpe-proy'||id==='procpe-dep') _procpeRenderTabla(_procEmpId);
 }
 
 function _mfReset(...ids){
@@ -17408,25 +17409,9 @@ function renderProcedimientosEmpresa(empId){
   _procEmpId=empId;_procPerfilId=null;
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const color=emp.color||'#2AAADE';
-  const perfiles=DB.perfilesPuesto.filter(p=>p.empresa_id===empId);
-
-  const rows=perfiles.map((p,i)=>{
-    const cnt=(DB.procedimientos||[]).filter(x=>x.perfil_id===p.id).length;
-    return`<tr style="cursor:pointer" onclick="renderProcedimientosPerfil('${empId}','${p.id}')">
-      <td style="font-size:12px;color:var(--text3);text-align:center;width:36px">${i+1}</td>
-      <td style="font-weight:500">${_esc(p.nombre_puesto||'—')}</td>
-      <td style="font-size:12px;color:var(--text3)">${_esc(p.proyecto||'—')}</td>
-      <td style="font-size:12px;color:var(--text3)">${_esc(p.departamento||'—')}</td>
-      <td style="text-align:center">
-        ${cnt>0
-          ?`<span style="font-size:12px;padding:2px 10px;border-radius:20px;background:${color}22;color:${color};font-weight:600">${cnt} procedimiento${cnt!==1?'s':''}</span>`
-          :`<span style="font-size:12px;color:var(--text3)">Sin procedimientos</span>`}
-      </td>
-      <td style="text-align:right;white-space:nowrap">
-        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();renderProcedimientosPerfil('${empId}','${p.id}')" data-tip="Ver procedimientos"><i class="fa fa-list-alt"></i> Gestionar</button>
-      </td>
-    </tr>`;
-  }).join('');
+  const todosPerfiles=DB.perfilesPuesto.filter(p=>p.empresa_id===empId);
+  const proyOpts=[...new Set(todosPerfiles.map(p=>p.proyecto).filter(Boolean))].sort().map(v=>({value:v,label:v}));
+  const depOpts=[...new Set(todosPerfiles.map(p=>p.departamento).filter(Boolean))].sort().map(v=>({value:v,label:v}));
 
   page.innerHTML=`
     <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -17436,19 +17421,62 @@ function renderProcedimientosEmpresa(empId){
         <span style="font-size:15px;font-weight:600">${_esc(emp.nombre||'')}</span>
       </div>
     </div>
-    ${perfiles.length===0
+    ${todosPerfiles.length===0
       ?`<div style="text-align:center;padding:60px 0;color:var(--text3)"><i class="fa fa-id-card" style="font-size:40px;margin-bottom:12px;display:block"></i>Esta empresa no tiene perfiles de puesto creados.<br><span style="font-size:13px">Crea perfiles en la sección <strong>Perfiles de puesto</strong> primero.</span></div>`
-      :`<div class="table-wrap"><table>
-        <thead><tr>
-          <th style="width:36px;text-align:center">#</th>
-          <th>Nombre del puesto</th>
-          <th>Proyecto</th>
-          <th>Departamento</th>
-          <th style="text-align:center">Procedimientos</th>
-          <th></th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div>`}`;
+      :`<div class="fbar" style="margin-bottom:14px">
+          <div id="wrap-procpe-proy" style="flex:none"><button id="btn-procpe-proy" onclick="_mfOpen('procpe-proy',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:110px;max-width:220px;justify-content:space-between"><span id="lbl-procpe-proy" style="overflow:hidden;text-overflow:ellipsis">Proyecto</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3);flex-shrink:0"></i></button></div>
+          <div id="wrap-procpe-dep" style="flex:none"><button id="btn-procpe-dep" onclick="_mfOpen('procpe-dep',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:130px;max-width:220px;justify-content:space-between"><span id="lbl-procpe-dep" style="overflow:hidden;text-overflow:ellipsis">Departamento</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3);flex-shrink:0"></i></button></div>
+          <span id="procpe-count" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+        <div id="procpe-tabla-wrap"></div>`}`;
+
+  if(todosPerfiles.length>0){
+    _mfReset('procpe-proy','procpe-dep');
+    _mfPopulate('procpe-proy',proyOpts,'Proyecto');
+    _mfPopulate('procpe-dep',depOpts,'Departamento');
+    _procpeRenderTabla(empId);
+  }
+}
+
+function _procpeRenderTabla(empId){
+  const wrap=document.getElementById('procpe-tabla-wrap');
+  if(!wrap)return;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const color=emp.color||'#2AAADE';
+  const todosPerfiles=DB.perfilesPuesto.filter(p=>p.empresa_id===empId);
+  const mfP=_mfGet('procpe-proy'),mfD=_mfGet('procpe-dep');
+  const perfiles=todosPerfiles.filter(p=>{
+    if(mfP&&!mfP.has(p.proyecto||''))return false;
+    if(mfD&&!mfD.has(p.departamento||''))return false;
+    return true;
+  });
+  const cnt=document.getElementById('procpe-count');
+  if(cnt)cnt.textContent=`${perfiles.length} perfil${perfiles.length!==1?'es':''}`;
+  const rows=perfiles.map((p,i)=>{
+    const c=(DB.procedimientos||[]).filter(x=>x.perfil_id===p.id).length;
+    return`<tr style="cursor:pointer" onclick="renderProcedimientosPerfil('${empId}','${p.id}')">
+      <td style="font-size:12px;color:var(--text3);text-align:center;width:36px">${i+1}</td>
+      <td style="font-weight:500">${_esc(p.nombre_puesto||'—')}</td>
+      <td style="font-size:12px;color:var(--text3)">${_esc(p.proyecto||'—')}</td>
+      <td style="font-size:12px;color:var(--text3)">${_esc(p.departamento||'—')}</td>
+      <td style="text-align:center">
+        ${c>0
+          ?`<span style="font-size:12px;padding:2px 10px;border-radius:20px;background:${color}22;color:${color};font-weight:600">${c} procedimiento${c!==1?'s':''}</span>`
+          :`<span style="font-size:12px;color:var(--text3)">Sin procedimientos</span>`}
+      </td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();renderProcedimientosPerfil('${empId}','${p.id}')" data-tip="Ver procedimientos"><i class="fa fa-list-alt"></i> Gestionar</button>
+      </td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML=`<div class="table-wrap"><table>
+    <thead><tr>
+      <th style="width:36px;text-align:center">#</th>
+      <th>Nombre del puesto</th><th>Proyecto</th><th>Departamento</th>
+      <th style="text-align:center">Procedimientos</th><th></th>
+    </tr></thead>
+    <tbody>${rows||`<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin perfiles que coincidan con los filtros</td></tr>`}</tbody>
+  </table></div>`;
 }
 
 /* --- Nivel 3: procedimientos del perfil --- */

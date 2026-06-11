@@ -2130,7 +2130,10 @@ async function initSession() {
   document.body.style.visibility = 'visible';
   _renderDashboardSkeleton();
 
-  // Phase 1: critical tables only (fast) → render dashboard
+  // Start ALL queries simultaneously (same total time as before).
+  // Only await critical ones — dashboard renders as soon as they finish
+  // without waiting for the slower secondary tables.
+  const _secondaryPromise = loadDBSecondary();
   await loadDBCritical();
 
   if(currentUserData?.rol === 'facturacion') {
@@ -2147,9 +2150,7 @@ async function initSession() {
       renderDashboard();
     }
   }
-
-  // Phase 2: secondary tables in background — non-blocking
-  loadDBSecondary();
+  // _secondaryPromise already running in background
 }
 
 function adaptUIToRole() {
@@ -3030,10 +3031,11 @@ async function loadDBSecondary(){
 // Full reload — used by recargarDatosActivos and sandbox toggle
 async function loadDB(){
   _dbSecondaryLoaded=false;
+  const _sec=loadDBSecondary();   // all queries start at the same time
   await loadDBCritical();
   updateSandboxUI();
   renderDashboard();
-  await loadDBSecondary();
+  await _sec;
 }
 
 async function _migrarFirmasEntrevistador(){

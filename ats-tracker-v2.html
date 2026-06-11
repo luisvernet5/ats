@@ -17364,98 +17364,150 @@ async function submitEvalPublica(){
 
 /* ============================================================
    PROCEDIMIENTOS (SOPs)
+   Nivel 1: dashboard de empresas
+   Nivel 2: perfiles de puesto de la empresa
+   Nivel 3: procedimientos del perfil seleccionado
    ============================================================ */
-let _procQ='';
-let _procAreaSel='';
-let _procCategoriaSel='';
+let _procEmpId=null;
+let _procPerfilId=null;
 
+/* --- Nivel 1: dashboard de empresas --- */
 function renderProcedimientos(){
   const page=document.getElementById('page-procedimientos');
   if(!page)return;
-  _procQ='';_procAreaSel='';_procCategoriaSel='';
+  _procEmpId=null;_procPerfilId=null;
+  const rol=currentUserData?.rol||'admin';
+  let empresas=DB.empresas;
+  if(rol==='rh_cliente'){
+    const eId=currentUserData?.empresa_id;
+    empresas=DB.empresas.filter(e=>e.id===eId);
+    if(empresas.length===1){renderProcedimientosEmpresa(empresas[0].id);return;}
+  }
+  const cards=empresas.map(emp=>{
+    const count=(DB.procedimientos||[]).filter(p=>p.empresa_id===emp.id).length;
+    const color=emp.color||'#2AAADE';
+    return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px" onclick="renderProcedimientosEmpresa('${emp.id}')">
+      <div style="display:flex;align-items:center;gap:10px">
+        ${emp.logo?`<img src="${emp.logo}" style="width:36px;height:36px;object-fit:contain;border-radius:6px">`:`<div style="width:36px;height:36px;border-radius:6px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
+        <div>
+          <div style="font-weight:600;font-size:14px">${_esc(emp.nombre)}</div>
+          <div style="font-size:12px;color:var(--text3)">${count} procedimiento${count!==1?'s':''}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  page.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">
+    ${cards||'<div style="color:var(--text3);font-size:13px">Sin empresas registradas</div>'}
+  </div>`;
+}
+
+/* --- Nivel 2: perfiles de puesto de la empresa --- */
+function renderProcedimientosEmpresa(empId){
+  const page=document.getElementById('page-procedimientos');
+  if(!page)return;
+  _procEmpId=empId;_procPerfilId=null;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const color=emp.color||'#2AAADE';
+  const perfiles=DB.perfilesPuesto.filter(p=>p.empresa_id===empId);
+
+  const rows=perfiles.map((p,i)=>{
+    const cnt=(DB.procedimientos||[]).filter(x=>x.perfil_id===p.id).length;
+    return`<tr style="cursor:pointer" onclick="renderProcedimientosPerfil('${empId}','${p.id}')">
+      <td style="font-size:12px;color:var(--text3);text-align:center;width:36px">${i+1}</td>
+      <td style="font-weight:500">${_esc(p.nombre_puesto||'—')}</td>
+      <td style="font-size:12px;color:var(--text3)">${_esc(p.proyecto||'—')}</td>
+      <td style="font-size:12px;color:var(--text3)">${_esc(p.departamento||'—')}</td>
+      <td style="text-align:center">
+        ${cnt>0
+          ?`<span style="font-size:12px;padding:2px 10px;border-radius:20px;background:${color}22;color:${color};font-weight:600">${cnt} procedimiento${cnt!==1?'s':''}</span>`
+          :`<span style="font-size:12px;color:var(--text3)">Sin procedimientos</span>`}
+      </td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();renderProcedimientosPerfil('${empId}','${p.id}')" data-tip="Ver procedimientos"><i class="fa fa-list-alt"></i> Gestionar</button>
+      </td>
+    </tr>`;
+  }).join('');
+
   page.innerHTML=`
-    <div style="padding:20px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-        <h2 style="margin:0;font-size:18px;font-weight:700">Procedimientos</h2>
-        <button class="btn btn-primary" onclick="openProcModal()"><i class="fa fa-plus"></i> Nuevo procedimiento</button>
+    <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="renderProcedimientos()"><i class="fa fa-arrow-left"></i> Empresas</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        ${emp.logo?`<img src="${emp.logo}" style="width:26px;height:26px;object-fit:contain;border-radius:4px">`:`<div style="width:26px;height:26px;border-radius:4px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color};font-size:12px"></i></div>`}
+        <span style="font-size:15px;font-weight:600">${_esc(emp.nombre||'')}</span>
       </div>
-      <div class="fbar" style="margin-bottom:16px">
-        <input type="text" id="proc-q" placeholder="Buscar procedimiento..." oninput="_procQ=this.value;_procRender()" style="min-width:200px">
-        <select id="proc-area" onchange="_procAreaSel=this.value;_procRender()" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:13px">
-          <option value="">Todas las áreas</option>
-        </select>
-        <select id="proc-cat" onchange="_procCategoriaSel=this.value;_procRender()" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:13px">
-          <option value="">Todas las categorías</option>
-        </select>
-        <span class="sp"></span>
-        <span id="proc-count" style="font-size:13px;color:var(--text3)"></span>
-      </div>
-      <div id="proc-list"></div>
     </div>
+    ${perfiles.length===0
+      ?`<div style="text-align:center;padding:60px 0;color:var(--text3)"><i class="fa fa-id-card" style="font-size:40px;margin-bottom:12px;display:block"></i>Esta empresa no tiene perfiles de puesto creados.<br><span style="font-size:13px">Crea perfiles en la sección <strong>Perfiles de puesto</strong> primero.</span></div>`
+      :`<div class="table-wrap"><table>
+        <thead><tr>
+          <th style="width:36px;text-align:center">#</th>
+          <th>Nombre del puesto</th>
+          <th>Proyecto</th>
+          <th>Departamento</th>
+          <th style="text-align:center">Procedimientos</th>
+          <th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`}`;
+}
+
+/* --- Nivel 3: procedimientos del perfil --- */
+function renderProcedimientosPerfil(empId,perfilId){
+  const page=document.getElementById('page-procedimientos');
+  if(!page)return;
+  _procEmpId=empId;_procPerfilId=perfilId;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const perfil=DB.perfilesPuesto.find(p=>p.id===perfilId)||{};
+  const color=emp.color||'#2AAADE';
+  const procs=(DB.procedimientos||[]).filter(p=>p.perfil_id===perfilId);
+
+  const cards=procs.length===0
+    ?`<div style="text-align:center;padding:60px 0;color:var(--text3)"><i class="fa fa-list-alt" style="font-size:40px;margin-bottom:12px;display:block"></i>Sin procedimientos — agrega el primero</div>`
+    :`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px">${procs.map(p=>_procCard(p,color)).join('')}</div>`;
+
+  page.innerHTML=`
+    <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="renderProcedimientosEmpresa('${empId}')"><i class="fa fa-arrow-left"></i> ${_esc(emp.nombre||'Empresa')}</button>
+      <span style="font-size:15px;font-weight:600">${_esc(perfil.nombre_puesto||'Perfil')}</span>
+      ${perfil.departamento?`<span style="font-size:12px;padding:2px 10px;border-radius:20px;background:${color}22;color:${color}">${_esc(perfil.departamento)}</span>`:''}
+      <span style="flex:1"></span>
+      <button class="btn btn-primary btn-sm" onclick="openProcModal()"><i class="fa fa-plus"></i> Nuevo procedimiento</button>
+    </div>
+    <div id="proc-list">${cards}</div>
     ${_procModalHTML()}`;
-  _procRefreshFilters();
-  _procRender();
 }
 
-function _procRefreshFilters(){
-  const areas=[...new Set(DB.procedimientos.map(p=>p.area).filter(Boolean))].sort();
-  const cats=[...new Set(DB.procedimientos.map(p=>p.categoria).filter(Boolean))].sort();
-  const areaEl=document.getElementById('proc-area');
-  const catEl=document.getElementById('proc-cat');
-  if(areaEl){
-    const prev=areaEl.value;
-    areaEl.innerHTML='<option value="">Todas las áreas</option>'+areas.map(a=>`<option value="${a}">${a}</option>`).join('');
-    if(prev)areaEl.value=prev;
-  }
-  if(catEl){
-    const prev=catEl.value;
-    catEl.innerHTML='<option value="">Todas las categorías</option>'+cats.map(c=>`<option value="${c}">${c}</option>`).join('');
-    if(prev)catEl.value=prev;
-  }
-}
-
-function _procFiltered(){
-  let list=DB.procedimientos||[];
-  if(_procQ){const q=_procQ.toLowerCase();list=list.filter(p=>(p.titulo||'').toLowerCase().includes(q)||(p.descripcion||'').toLowerCase().includes(q)||(p.area||'').toLowerCase().includes(q));}
-  if(_procAreaSel)list=list.filter(p=>p.area===_procAreaSel);
-  if(_procCategoriaSel)list=list.filter(p=>p.categoria===_procCategoriaSel);
-  return list;
-}
-
-function _procRender(){
-  const el=document.getElementById('proc-list');
-  const cnt=document.getElementById('proc-count');
-  if(!el)return;
-  const list=_procFiltered();
-  if(cnt)cnt.textContent=`${list.length} procedimiento${list.length!==1?'s':''}`;
-  if(!list.length){
-    el.innerHTML=`<div style="text-align:center;padding:60px 0;color:var(--text3)"><i class="fa fa-list-alt" style="font-size:40px;margin-bottom:12px;display:block"></i>No hay procedimientos${(_procQ||_procAreaSel||_procCategoriaSel)?' que coincidan con la búsqueda':''}</div>`;
-    return;
-  }
-  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px">${list.map(p=>_procCard(p)).join('')}</div>`;
-}
-
-function _procCard(p){
-  const color=p.color||'#2AAADE';
+function _procCard(p,color){
+  color=color||'#2AAADE';
   return`<div class="card" style="display:flex;flex-direction:column;gap:10px;padding:18px">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;line-height:1.3">${_esc(p.titulo||'Sin título')}</div>
         <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px">
-          ${p.area?`<span style="font-size:11px;padding:2px 9px;border-radius:20px;background:${color}22;color:${color};font-weight:600">${_esc(p.area)}</span>`:''}
-          ${p.categoria?`<span style="font-size:11px;padding:2px 9px;border-radius:20px;background:var(--surface2);color:var(--text2);border:1px solid var(--border)">${_esc(p.categoria)}</span>`:''}
+          ${p.categoria?`<span style="font-size:11px;padding:2px 9px;border-radius:20px;background:${color}22;color:${color};font-weight:600">${_esc(p.categoria)}</span>`:''}
           ${p.version?`<span style="font-size:11px;padding:2px 9px;border-radius:20px;background:var(--surface2);color:var(--text3)">v${_esc(p.version)}</span>`:''}
         </div>
       </div>
       <div style="display:flex;gap:4px;flex-shrink:0">
         <button class="btn btn-ghost btn-sm" onclick="openProcModal('${p.id}')" title="Editar"><i class="fa fa-pencil"></i></button>
-        <button class="btn btn-ghost btn-sm" onclick="deleteProcedimiento('${p.id}')" title="Eliminar" style="color:var(--danger,#ef4444)"><i class="fa fa-trash"></i></button>
+        <button class="btn btn-ghost btn-sm" onclick="deleteProcedimiento('${p.id}')" title="Eliminar" style="color:var(--red,#ef4444)"><i class="fa fa-trash"></i></button>
       </div>
     </div>
     ${p.descripcion?`<div style="font-size:13px;color:var(--text2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${_esc(p.descripcion)}</div>`:''}
     ${p.archivo_url?`<a href="${_esc(p.archivo_url)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--accent);text-decoration:none;display:inline-flex;align-items:center;gap:5px"><i class="fa fa-paperclip"></i> Ver archivo adjunto</a>`:''}
-    <div style="font-size:11px;color:var(--text3);margin-top:2px">${p.fecha_creacion?'Creado: '+p.fecha_creacion:''}</div>
+    ${p.fecha_creacion?`<div style="font-size:11px;color:var(--text3);margin-top:2px">Creado: ${p.fecha_creacion}</div>`:''}
   </div>`;
+}
+
+function _procRenderList(){
+  const el=document.getElementById('proc-list');
+  if(!el||!_procPerfilId)return;
+  const emp=DB.empresas.find(e=>e.id===_procEmpId)||{};
+  const color=emp.color||'#2AAADE';
+  const procs=(DB.procedimientos||[]).filter(p=>p.perfil_id===_procPerfilId);
+  el.innerHTML=procs.length===0
+    ?`<div style="text-align:center;padding:60px 0;color:var(--text3)"><i class="fa fa-list-alt" style="font-size:40px;margin-bottom:12px;display:block"></i>Sin procedimientos — agrega el primero</div>`
+    :`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px">${procs.map(p=>_procCard(p,color)).join('')}</div>`;
 }
 
 function _procModalHTML(){
@@ -17473,23 +17525,17 @@ function _procModalHTML(){
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Área responsable</label>
-            <input type="text" id="proc-area-input" placeholder="Ej. Reclutamiento, RH..." style="width:100%">
-          </div>
-          <div>
             <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Categoría</label>
             <input type="text" id="proc-categoria-input" placeholder="Ej. Selección, Onboarding..." style="width:100%">
           </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div>
             <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Versión</label>
             <input type="text" id="proc-version" placeholder="Ej. 1.0" style="width:100%">
           </div>
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Fecha</label>
-            <input type="date" id="proc-fecha" style="width:100%">
-          </div>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Fecha</label>
+          <input type="date" id="proc-fecha" style="width:200px">
         </div>
         <div>
           <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Descripción</label>
@@ -17516,10 +17562,9 @@ function openProcModal(id){
   if(!m)return;
   if(err)err.style.display='none';
   if(id){
-    const p=DB.procedimientos.find(x=>x.id===id)||{};
+    const p=(DB.procedimientos||[]).find(x=>x.id===id)||{};
     document.getElementById('proc-id').value=id;
     document.getElementById('proc-titulo').value=p.titulo||'';
-    document.getElementById('proc-area-input').value=p.area||'';
     document.getElementById('proc-categoria-input').value=p.categoria||'';
     document.getElementById('proc-version').value=p.version||'';
     document.getElementById('proc-fecha').value=p.fecha_creacion||'';
@@ -17529,7 +17574,6 @@ function openProcModal(id){
   }else{
     document.getElementById('proc-id').value='';
     document.getElementById('proc-titulo').value='';
-    document.getElementById('proc-area-input').value='';
     document.getElementById('proc-categoria-input').value='';
     document.getElementById('proc-version').value='';
     document.getElementById('proc-fecha').value=new Date().toISOString().slice(0,10);
@@ -17553,7 +17597,8 @@ async function saveProcedimiento(){
   const id=document.getElementById('proc-id')?.value||'';
   const data={
     titulo,
-    area:(document.getElementById('proc-area-input')?.value||'').trim(),
+    empresa_id:_procEmpId,
+    perfil_id:_procPerfilId,
     categoria:(document.getElementById('proc-categoria-input')?.value||'').trim(),
     version:(document.getElementById('proc-version')?.value||'').trim(),
     fecha_creacion:document.getElementById('proc-fecha')?.value||'',
@@ -17563,16 +17608,16 @@ async function saveProcedimiento(){
   try{
     if(id){
       await sbClient.from('procedimientos').update({data}).eq('id',id);
-      const idx=DB.procedimientos.findIndex(p=>p.id===id);
+      const idx=(DB.procedimientos||[]).findIndex(p=>p.id===id);
       if(idx>=0)DB.procedimientos[idx]={id,...data};
     }else{
       const newId=crypto.randomUUID();
       await sbClient.from('procedimientos').insert({id:newId,data});
+      if(!DB.procedimientos)DB.procedimientos=[];
       DB.procedimientos.push({id:newId,...data});
     }
     closeProcModal();
-    _procRefreshFilters();
-    _procRender();
+    _procRenderList();
     showToast(id?'Procedimiento actualizado':'Procedimiento creado','ok');
   }catch(e){
     if(err){err.textContent='Error al guardar: '+(e?.message||e);err.style.display='';}
@@ -17583,9 +17628,8 @@ async function deleteProcedimiento(id){
   if(!confirm('¿Eliminar este procedimiento?'))return;
   try{
     await sbClient.from('procedimientos').delete().eq('id',id);
-    DB.procedimientos=DB.procedimientos.filter(p=>p.id!==id);
-    _procRefreshFilters();
-    _procRender();
+    DB.procedimientos=(DB.procedimientos||[]).filter(p=>p.id!==id);
+    _procRenderList();
     showToast('Procedimiento eliminado','ok');
   }catch(e){
     showToast('Error al eliminar: '+(e?.message||e),'err');

@@ -222,6 +222,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
 .ed-kpi-l{font-size:10px;color:var(--text3)}
 .ed-kpi-panel{background:var(--surface);border:1px solid var(--border2);border-radius:var(--rl);padding:16px 18px;margin-bottom:18px;animation:fadeInDown .18s ease}
 @keyframes fadeInDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes skeletonPulse{0%,100%{opacity:.5}50%{opacity:1}}
 
 /* VACANTE EXPAND ROW */
 .vac-expand-row{display:none}
@@ -2121,26 +2122,34 @@ async function initSession() {
   if(!currentUserData) {
     currentUserData = { rol: 'admin', nombre: currentUser.email };
   }
+  // Show app frame immediately — don't block on secondary data
   document.getElementById('auth-screen').style.display = 'none';
-  await loadDB();
   await _loadPermisosMap();
   adaptUIToRole();
   initSidebarState();
   document.body.style.visibility = 'visible';
+  _renderDashboardSkeleton();
+
+  // Phase 1: critical tables only (fast) → render dashboard
+  await loadDBCritical();
+
   if(currentUserData?.rol === 'facturacion') {
     showPage('garantias');
-    return;
-  }
-  const lastPage = sessionStorage.getItem('lastPage');
-  if(lastPage === 'empresa-detail'){
-    const lastEmpId = sessionStorage.getItem('lastEmpId');
-    if(lastEmpId) openEmpresaDetail(lastEmpId);
-    else renderDashboard();
-  } else if(lastPage){
-    showPage(lastPage);
   } else {
-    renderDashboard();
+    const lastPage = sessionStorage.getItem('lastPage');
+    if(lastPage === 'empresa-detail'){
+      const lastEmpId = sessionStorage.getItem('lastEmpId');
+      if(lastEmpId) openEmpresaDetail(lastEmpId);
+      else renderDashboard();
+    } else if(lastPage){
+      showPage(lastPage);
+    } else {
+      renderDashboard();
+    }
   }
+
+  // Phase 2: secondary tables in background — non-blocking
+  loadDBSecondary();
 }
 
 function adaptUIToRole() {
@@ -2925,74 +2934,107 @@ async function doLogout() {
   if(loginBtn){ loginBtn.disabled = false; loginBtn.textContent = 'Entrar'; }
 }
 
-async function loadDB(){
+function _renderDashboardSkeleton(){
+  const sk='background:var(--border);border-radius:6px;animation:skeletonPulse 1.4s ease-in-out infinite';
+  document.getElementById('dash-kpis').innerHTML=[...Array(4)].map(()=>`
+    <div class="card">
+      <div style="height:11px;width:55%;${sk};margin-bottom:10px"></div>
+      <div style="height:28px;width:38%;${sk};margin-bottom:8px"></div>
+      <div style="height:10px;width:65%;${sk}"></div>
+    </div>`).join('');
+  document.getElementById('dash-empresas').innerHTML=`
+    <div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:20px 0;color:var(--text3);font-size:13px">
+      <i class="fa fa-circle-o-notch fa-spin"></i> Cargando datos…
+    </div>`;
+}
+
+let _dbSecondaryLoaded=false;
+
+async function loadDBCritical(){
   try{
     if(SANDBOX_MODE){
       DB.empresas=JSON.parse(localStorage.getItem('sandbox_empresas')||'[]');
       DB.vacantes=JSON.parse(localStorage.getItem('sandbox_vacantes')||'[]');
       DB.candidatos=JSON.parse(localStorage.getItem('sandbox_candidatos')||'[]');
       DB.reclutadores=JSON.parse(localStorage.getItem('sandbox_reclutadores')||'[]');
-    }else{
-      const _isRhC = currentUserData?.rol?.toLowerCase()==='rh_cliente';
-      const _rhEmpId = currentUserData?.empresa_id||null;
-      console.log('[loadDB] ROL ACTUAL:', currentUserData?.rol, '| es rh_cliente:', _isRhC, '| EMPRESA ID:', _rhEmpId);
-      console.log('[loadDB] currentUserData completo:', JSON.stringify(currentUserData));
-      const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand,perfiles,evals,evEnv,procEval,procEnv]=await Promise.all([
-        sbClient.from('empresas').select('*'),
-        (_isRhC && _rhEmpId
-          ? sbClient.from('vacantes').select('*').filter('data->>empresa_id','eq',_rhEmpId)
-          : sbClient.from('vacantes').select('*')),
-        sbClient.from('candidatos').select('*'),
-        sbClient.from('reclutadores').select('*'),
-        sbClient.from('referencias').select('*'),
-        sbClient.from('ese').select('*'),
-        sbClient.from('doc_plantillas').select('*'),
-        sbClient.from('doc_candidato').select('*'),
-        sbClient.from('perfiles_puesto').select('*'),
-        sbClient.from('evaluaciones').select('*'),
-        sbClient.from('evaluaciones_enviadas').select('*'),
-        sbClient.from('procesos_evaluacion').select('*'),
-        sbClient.from('procesos_enviados').select('*'),
-      ]);
-      console.log('[loadDB] vacantes cargadas:', vac.data?.length, '| error:', vac.error?.message||null);
-      DB.empresas=emp.data?.map(r=>r.data)||[];
-      const _allVacs=vac.data?.map(r=>r.data)||[];
-      DB.vacantes=_allVacs.filter(v=>v.estado!=='Eliminada');
-      DB.vacantesEliminadas=_allVacs.filter(v=>v.estado==='Eliminada');
-      DB.candidatos=cand.data?.map(r=>r.data)||[];
-      DB.reclutadores=rec.data?.map(r=>r.data)||[];
-      DB.ese=eseRes.data||[];
-      DB.docPlantillas=docPlt.data||[];
-      DB.docCandidato=docCand.data||[];
-      const _allPerfiles=(perfiles.data||[]).map(r=>({id:r.id,empresa_id:r.empresa_id,...(r.data||{})}));
-      DB.perfilesPuesto=_allPerfiles.filter(p=>!p.eliminado);
-      DB.perfilesEliminados=_allPerfiles.filter(p=>p.eliminado);
-      DB.personal=[];
-      const _allEvals=(evals.data||[]).map(r=>r.data||r).filter(Boolean);
-      DB.evaluaciones=_allEvals.filter(e=>!e.eliminada);
-      DB.evaluacionesEliminadas=_allEvals.filter(e=>e.eliminada);
-      DB.evaluacionesEnviadas=(evEnv.data||[]).map(r=>r.data||r).filter(Boolean);
-      DB.procesosEval=(procEval.data||[]).map(r=>r.data||r).filter(Boolean);
-      DB.procesosEnviados=(procEnv.data||[]).map(r=>r.data||r).filter(Boolean);
-      // Cargar KPIs por separado — la tabla puede no existir aún
-      try{const kpisRes=await sbClient.from('kpis').select('*');DB.kpis=(kpisRes.data||[]).map(r=>r.data||r).filter(Boolean);}catch(e){DB.kpis=[];}
-      _candConRefs=new Set((refs.data||[]).flatMap(r=>{
-        const ids=[];
-        // formato nuevo: columnas planas
-        if(r.candidato_id&&(r.nombre_contacto||r.empresa||r.telefono||'').trim())ids.push(r.candidato_id);
-        // formato antiguo: datos dentro de columna data (JSONB)
-        const d=r.data;if(d?.candidato_id&&(d.nombre_contacto||d.empresa||d.telefono||'').trim())ids.push(d.candidato_id);
-        return ids;
-      }));
+      if(!DB.empresas.length&&!DB.reclutadores.length)seedData();
+      updateSandboxUI();
+      return;
     }
-  }catch(e){
-    console.error('Error:',e);
-  }finally{
+    const _isRhC=currentUserData?.rol?.toLowerCase()==='rh_cliente';
+    const _rhEmpId=currentUserData?.empresa_id||null;
+    const [emp,vac,cand,rec]=await Promise.all([
+      sbClient.from('empresas').select('*'),
+      (_isRhC&&_rhEmpId
+        ?sbClient.from('vacantes').select('*').filter('data->>empresa_id','eq',_rhEmpId)
+        :sbClient.from('vacantes').select('*')),
+      sbClient.from('candidatos').select('*'),
+      sbClient.from('reclutadores').select('*'),
+    ]);
+    DB.empresas=emp.data?.map(r=>r.data)||[];
+    const _allVacs=vac.data?.map(r=>r.data)||[];
+    DB.vacantes=_allVacs.filter(v=>v.estado!=='Eliminada');
+    DB.vacantesEliminadas=_allVacs.filter(v=>v.estado==='Eliminada');
+    DB.candidatos=cand.data?.map(r=>r.data)||[];
+    DB.reclutadores=rec.data?.map(r=>r.data)||[];
     if(!DB.empresas.length&&!DB.reclutadores.length)seedData();
-    updateSandboxUI();
-    renderDashboard();
-    _migrarFirmasEntrevistador();
+  }catch(e){
+    console.error('[loadDBCritical]',e);
   }
+}
+
+async function loadDBSecondary(){
+  if(SANDBOX_MODE){_dbSecondaryLoaded=true;return;}
+  try{
+    const [refs,eseRes,docPlt,docCand,perfiles,evals,evEnv,procEval,procEnv]=await Promise.all([
+      sbClient.from('referencias').select('*'),
+      sbClient.from('ese').select('*'),
+      sbClient.from('doc_plantillas').select('*'),
+      sbClient.from('doc_candidato').select('*'),
+      sbClient.from('perfiles_puesto').select('*'),
+      sbClient.from('evaluaciones').select('*'),
+      sbClient.from('evaluaciones_enviadas').select('*'),
+      sbClient.from('procesos_evaluacion').select('*'),
+      sbClient.from('procesos_enviados').select('*'),
+    ]);
+    DB.ese=eseRes.data||[];
+    DB.docPlantillas=docPlt.data||[];
+    DB.docCandidato=docCand.data||[];
+    const _allPerfiles=(perfiles.data||[]).map(r=>({id:r.id,empresa_id:r.empresa_id,...(r.data||{})}));
+    DB.perfilesPuesto=_allPerfiles.filter(p=>!p.eliminado);
+    DB.perfilesEliminados=_allPerfiles.filter(p=>p.eliminado);
+    DB.personal=[];
+    const _allEvals=(evals.data||[]).map(r=>r.data||r).filter(Boolean);
+    DB.evaluaciones=_allEvals.filter(e=>!e.eliminada);
+    DB.evaluacionesEliminadas=_allEvals.filter(e=>e.eliminada);
+    DB.evaluacionesEnviadas=(evEnv.data||[]).map(r=>r.data||r).filter(Boolean);
+    DB.procesosEval=(procEval.data||[]).map(r=>r.data||r).filter(Boolean);
+    DB.procesosEnviados=(procEnv.data||[]).map(r=>r.data||r).filter(Boolean);
+    try{const kpisRes=await sbClient.from('kpis').select('*');DB.kpis=(kpisRes.data||[]).map(r=>r.data||r).filter(Boolean);}catch(e){DB.kpis=[];}
+    _candConRefs=new Set((refs.data||[]).flatMap(r=>{
+      const ids=[];
+      if(r.candidato_id&&(r.nombre_contacto||r.empresa||r.telefono||'').trim())ids.push(r.candidato_id);
+      const d=r.data;if(d?.candidato_id&&(d.nombre_contacto||d.empresa||d.telefono||'').trim())ids.push(d.candidato_id);
+      return ids;
+    }));
+    _dbSecondaryLoaded=true;
+    _migrarFirmasEntrevistador();
+    // Re-render current page if it depends on secondary data
+    const curPage=document.querySelector('.page.active')?.id?.replace('page-','');
+    const secondaryPages=['perfiles','evaluaciones','documentacion','ese','bd-personal','kpis','evaluaciones-eliminadas','perfiles-eliminados'];
+    if(curPage&&secondaryPages.includes(curPage))renderPage(curPage);
+  }catch(e){
+    console.error('[loadDBSecondary]',e);
+  }
+}
+
+// Full reload — used by recargarDatosActivos and sandbox toggle
+async function loadDB(){
+  _dbSecondaryLoaded=false;
+  await loadDBCritical();
+  updateSandboxUI();
+  renderDashboard();
+  await loadDBSecondary();
 }
 
 async function _migrarFirmasEntrevistador(){
@@ -3240,6 +3282,13 @@ function showPage(p){
   setTimeout(()=>renderPage(p),0);
 }
 function renderPage(p){
+  // Pages that need secondary data — show spinner if it's still loading
+  const _secondaryPages=['ese','documentacion','perfiles','evaluaciones','procesos-eval','kpis','evaluaciones-eliminadas','perfiles-eliminados'];
+  if(!_dbSecondaryLoaded&&_secondaryPages.includes(p)){
+    const el=document.getElementById('page-'+p);
+    if(el)el.innerHTML=`<div style="text-align:center;padding:60px;color:var(--text3);font-size:13px"><i class="fa fa-circle-o-notch fa-spin" style="font-size:28px;margin-bottom:14px;display:block;opacity:.4"></i>Cargando datos…</div>`;
+    return;
+  }
   if(p==='dashboard')renderDashboard();
   if(p==='empresas')renderEmpresas();
   if(p==='pipeline')renderPipeline();

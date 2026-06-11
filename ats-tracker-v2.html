@@ -2411,9 +2411,9 @@ function adaptUIToRole() {
       </button>
     </div>`;
   }
-  // Permisos específicos por usuario (si están configurados)
+  // Permisos específicos por usuario — admin siempre ve todo
   const _perms = _permisosMap[currentUser?.id];
-  if(_perms && _perms.size > 0){
+  if(_perms && _perms.size > 0 && rol !== 'admin'){
     PERMISOS_SECCIONES.forEach(sec=>{
       const nid = sec.navId || sec.key;
       let navEl = document.getElementById('nav-'+nid);
@@ -2936,6 +2936,7 @@ async function loadDB(){
     }else{
       const _isRhC=currentUserData?.rol?.toLowerCase()==='rh_cliente';
       const _rhEmpId=currentUserData?.empresa_id||null;
+      console.log('[loadDB] iniciando — rol:',currentUserData?.rol,'| rhEmp:',_rhEmpId);
       const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand,perfiles,evals,evEnv,procEval,procEnv]=await Promise.all([
         sbClient.from('empresas').select('*'),
         (_isRhC&&_rhEmpId
@@ -2972,6 +2973,7 @@ async function loadDB(){
       DB.evaluacionesEnviadas=(evEnv.data||[]).map(r=>r.data||r).filter(Boolean);
       DB.procesosEval=(procEval.data||[]).map(r=>r.data||r).filter(Boolean);
       DB.procesosEnviados=(procEnv.data||[]).map(r=>r.data||r).filter(Boolean);
+      console.log('[loadDB] empresas:',emp.data?.length,'vacantes:',vac.data?.length,'candidatos:',cand.data?.length,'error emp:',emp.error?.message||null);
       try{const kpisRes=await sbClient.from('kpis').select('*');DB.kpis=(kpisRes.data||[]).map(r=>r.data||r).filter(Boolean);}catch(e){DB.kpis=[];}
       _candConRefs=new Set((refs.data||[]).flatMap(r=>{
         const ids=[];
@@ -2981,7 +2983,8 @@ async function loadDB(){
       }));
     }
   }catch(e){
-    console.error('loadDB error:',e);
+    console.error('[loadDB] ERROR CRÍTICO:',e?.message||e);
+    showToast('Error al cargar datos: '+(e?.message||'revisa la consola'),'err');
   }finally{
     if(!DB.empresas.length&&!DB.reclutadores.length)seedData();
     updateSandboxUI();

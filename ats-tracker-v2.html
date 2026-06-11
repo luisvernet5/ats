@@ -2122,25 +2122,31 @@ async function initSession() {
     currentUserData = { rol: 'admin', nombre: currentUser.email };
   }
   document.getElementById('auth-screen').style.display = 'none';
-  await loadDB();
   await _loadPermisosMap();
   adaptUIToRole();
   initSidebarState();
   document.body.style.visibility = 'visible';
+
+  // Phase 1: only critical tables → render immediately
+  await loadDBCritical();
+
   if(currentUserData?.rol === 'facturacion') {
     showPage('garantias');
-    return;
-  }
-  const lastPage = sessionStorage.getItem('lastPage');
-  if(lastPage === 'empresa-detail'){
-    const lastEmpId = sessionStorage.getItem('lastEmpId');
-    if(lastEmpId) openEmpresaDetail(lastEmpId);
-    else renderDashboard();
-  } else if(lastPage){
-    showPage(lastPage);
   } else {
-    renderDashboard();
+    const lastPage = sessionStorage.getItem('lastPage');
+    if(lastPage === 'empresa-detail'){
+      const lastEmpId = sessionStorage.getItem('lastEmpId');
+      if(lastEmpId) openEmpresaDetail(lastEmpId);
+      else renderDashboard();
+    } else if(lastPage){
+      showPage(lastPage);
+    } else {
+      renderDashboard();
+    }
   }
+
+  // Phase 2: secondary tables in background — non-blocking
+  loadDBSecondary();
 }
 
 function adaptUIToRole() {
@@ -2926,71 +2932,88 @@ async function doLogout() {
 }
 
 
-async function loadDB(){
+async function loadDBCritical(){
   try{
     if(SANDBOX_MODE){
       DB.empresas=JSON.parse(localStorage.getItem('sandbox_empresas')||'[]');
       DB.vacantes=JSON.parse(localStorage.getItem('sandbox_vacantes')||'[]');
       DB.candidatos=JSON.parse(localStorage.getItem('sandbox_candidatos')||'[]');
       DB.reclutadores=JSON.parse(localStorage.getItem('sandbox_reclutadores')||'[]');
-    }else{
-      const _isRhC=currentUserData?.rol?.toLowerCase()==='rh_cliente';
-      const _rhEmpId=currentUserData?.empresa_id||null;
-      console.log('[loadDB] iniciando — rol:',currentUserData?.rol,'| rhEmp:',_rhEmpId);
-      const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand,perfiles,evals,evEnv,procEval,procEnv]=await Promise.all([
-        sbClient.from('empresas').select('*'),
-        (_isRhC&&_rhEmpId
-          ?sbClient.from('vacantes').select('*').filter('data->>empresa_id','eq',_rhEmpId)
-          :sbClient.from('vacantes').select('*')),
-        sbClient.from('candidatos').select('*'),
-        sbClient.from('reclutadores').select('*'),
-        sbClient.from('referencias').select('*'),
-        sbClient.from('ese').select('*'),
-        sbClient.from('doc_plantillas').select('*'),
-        sbClient.from('doc_candidato').select('*'),
-        sbClient.from('perfiles_puesto').select('*'),
-        sbClient.from('evaluaciones').select('*'),
-        sbClient.from('evaluaciones_enviadas').select('*'),
-        sbClient.from('procesos_evaluacion').select('*'),
-        sbClient.from('procesos_enviados').select('*'),
-      ]);
-      DB.empresas=emp.data?.map(r=>r.data)||[];
-      const _allVacs=vac.data?.map(r=>r.data)||[];
-      DB.vacantes=_allVacs.filter(v=>v.estado!=='Eliminada');
-      DB.vacantesEliminadas=_allVacs.filter(v=>v.estado==='Eliminada');
-      DB.candidatos=cand.data?.map(r=>r.data)||[];
-      DB.reclutadores=rec.data?.map(r=>r.data)||[];
-      DB.ese=eseRes.data||[];
-      DB.docPlantillas=docPlt.data||[];
-      DB.docCandidato=docCand.data||[];
-      const _allPerfiles=(perfiles.data||[]).map(r=>({id:r.id,empresa_id:r.empresa_id,...(r.data||{})}));
-      DB.perfilesPuesto=_allPerfiles.filter(p=>!p.eliminado);
-      DB.perfilesEliminados=_allPerfiles.filter(p=>p.eliminado);
-      DB.personal=[];
-      const _allEvals=(evals.data||[]).map(r=>r.data||r).filter(Boolean);
-      DB.evaluaciones=_allEvals.filter(e=>!e.eliminada);
-      DB.evaluacionesEliminadas=_allEvals.filter(e=>e.eliminada);
-      DB.evaluacionesEnviadas=(evEnv.data||[]).map(r=>r.data||r).filter(Boolean);
-      DB.procesosEval=(procEval.data||[]).map(r=>r.data||r).filter(Boolean);
-      DB.procesosEnviados=(procEnv.data||[]).map(r=>r.data||r).filter(Boolean);
-      console.log('[loadDB] empresas:',emp.data?.length,'vacantes:',vac.data?.length,'candidatos:',cand.data?.length,'error emp:',emp.error?.message||null);
-      try{const kpisRes=await sbClient.from('kpis').select('*');DB.kpis=(kpisRes.data||[]).map(r=>r.data||r).filter(Boolean);}catch(e){DB.kpis=[];}
-      _candConRefs=new Set((refs.data||[]).flatMap(r=>{
-        const ids=[];
-        if(r.candidato_id&&(r.nombre_contacto||r.empresa||r.telefono||'').trim())ids.push(r.candidato_id);
-        const d=r.data;if(d?.candidato_id&&(d.nombre_contacto||d.empresa||d.telefono||'').trim())ids.push(d.candidato_id);
-        return ids;
-      }));
+      if(!DB.empresas.length&&!DB.reclutadores.length)seedData();
+      updateSandboxUI();
+      return;
     }
-  }catch(e){
-    console.error('[loadDB] ERROR CRÍTICO:',e?.message||e);
-    showToast('Error al cargar datos: '+(e?.message||'revisa la consola'),'err');
-  }finally{
+    const _isRhC=currentUserData?.rol?.toLowerCase()==='rh_cliente';
+    const _rhEmpId=currentUserData?.empresa_id||null;
+    const [emp,vac,cand,rec]=await Promise.all([
+      sbClient.from('empresas').select('*'),
+      (_isRhC&&_rhEmpId
+        ?sbClient.from('vacantes').select('*').filter('data->>empresa_id','eq',_rhEmpId)
+        :sbClient.from('vacantes').select('*')),
+      sbClient.from('candidatos').select('*'),
+      sbClient.from('reclutadores').select('*'),
+    ]);
+    DB.empresas=emp.data?.map(r=>r.data)||[];
+    const _allVacs=vac.data?.map(r=>r.data)||[];
+    DB.vacantes=_allVacs.filter(v=>v.estado!=='Eliminada');
+    DB.vacantesEliminadas=_allVacs.filter(v=>v.estado==='Eliminada');
+    DB.candidatos=cand.data?.map(r=>r.data)||[];
+    DB.reclutadores=rec.data?.map(r=>r.data)||[];
     if(!DB.empresas.length&&!DB.reclutadores.length)seedData();
-    updateSandboxUI();
-    renderDashboard();
-    _migrarFirmasEntrevistador();
+  }catch(e){
+    console.error('[loadDBCritical]',e?.message||e);
   }
+}
+
+async function loadDBSecondary(){
+  if(SANDBOX_MODE)return;
+  try{
+    const [refs,eseRes,docPlt,docCand,perfiles,evals,evEnv,procEval,procEnv]=await Promise.all([
+      sbClient.from('referencias').select('*'),
+      sbClient.from('ese').select('*'),
+      sbClient.from('doc_plantillas').select('*'),
+      sbClient.from('doc_candidato').select('*'),
+      sbClient.from('perfiles_puesto').select('*'),
+      sbClient.from('evaluaciones').select('*'),
+      sbClient.from('evaluaciones_enviadas').select('*'),
+      sbClient.from('procesos_evaluacion').select('*'),
+      sbClient.from('procesos_enviados').select('*'),
+    ]);
+    DB.ese=eseRes.data||[];
+    DB.docPlantillas=docPlt.data||[];
+    DB.docCandidato=docCand.data||[];
+    const _allPerfiles=(perfiles.data||[]).map(r=>({id:r.id,empresa_id:r.empresa_id,...(r.data||{})}));
+    DB.perfilesPuesto=_allPerfiles.filter(p=>!p.eliminado);
+    DB.perfilesEliminados=_allPerfiles.filter(p=>p.eliminado);
+    DB.personal=[];
+    const _allEvals=(evals.data||[]).map(r=>r.data||r).filter(Boolean);
+    DB.evaluaciones=_allEvals.filter(e=>!e.eliminada);
+    DB.evaluacionesEliminadas=_allEvals.filter(e=>e.eliminada);
+    DB.evaluacionesEnviadas=(evEnv.data||[]).map(r=>r.data||r).filter(Boolean);
+    DB.procesosEval=(procEval.data||[]).map(r=>r.data||r).filter(Boolean);
+    DB.procesosEnviados=(procEnv.data||[]).map(r=>r.data||r).filter(Boolean);
+    try{const kpisRes=await sbClient.from('kpis').select('*');DB.kpis=(kpisRes.data||[]).map(r=>r.data||r).filter(Boolean);}catch(e){DB.kpis=[];}
+    _candConRefs=new Set((refs.data||[]).flatMap(r=>{
+      const ids=[];
+      if(r.candidato_id&&(r.nombre_contacto||r.empresa||r.telefono||'').trim())ids.push(r.candidato_id);
+      const d=r.data;if(d?.candidato_id&&(d.nombre_contacto||d.empresa||d.telefono||'').trim())ids.push(d.candidato_id);
+      return ids;
+    }));
+    _migrarFirmasEntrevistador();
+    const curPage=document.querySelector('.page.active')?.id?.replace('page-','');
+    const secondaryPages=['perfiles','evaluaciones','documentacion','ese','bd-personal','kpis','evaluaciones-eliminadas','perfiles-eliminados'];
+    if(curPage&&secondaryPages.includes(curPage))renderPage(curPage);
+  }catch(e){
+    console.error('[loadDBSecondary]',e?.message||e);
+  }
+}
+
+// Full reload — used by recargarDatosActivos and sandbox toggle
+async function loadDB(){
+  await loadDBCritical();
+  updateSandboxUI();
+  renderDashboard();
+  await loadDBSecondary();
 }
 
 async function _migrarFirmasEntrevistador(){

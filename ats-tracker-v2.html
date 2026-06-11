@@ -17812,6 +17812,7 @@ async function saveProcSubido(editId){
     if(bar)bar.style.width='30%';
     if(lbl)lbl.textContent='Subiendo archivo...';
     try{
+      await sbClient.storage.createBucket('procedimientos',{public:true}).catch(()=>{});
       const ext=file.name.split('.').pop();
       const newId=editId||crypto.randomUUID();
       const path=`${_procEmpId}/${_procPerfilId}/${newId}.${ext}`;

@@ -2122,35 +2122,34 @@ async function initSession() {
   if(!currentUserData) {
     currentUserData = { rol: 'admin', nombre: currentUser.email };
   }
-  // Show app frame immediately — don't block on secondary data
   document.getElementById('auth-screen').style.display = 'none';
-  await _loadPermisosMap();
+
+  // Fire all network requests in parallel — same as before but secondary
+  // no longer blocks the dashboard from appearing.
+  const _permsPromise    = _loadPermisosMap();
+  const _secondaryPromise = loadDBSecondary();   // non-blocking background load
+  await loadDBCritical();                         // only 4 tables needed for dashboard
+  await _permsPromise;                            // usually finishes first
+
   adaptUIToRole();
   initSidebarState();
   document.body.style.visibility = 'visible';
-  _renderDashboardSkeleton();
-
-  // Start ALL queries simultaneously (same total time as before).
-  // Only await critical ones — dashboard renders as soon as they finish
-  // without waiting for the slower secondary tables.
-  const _secondaryPromise = loadDBSecondary();
-  await loadDBCritical();
 
   if(currentUserData?.rol === 'facturacion') {
     showPage('garantias');
-  } else {
-    const lastPage = sessionStorage.getItem('lastPage');
-    if(lastPage === 'empresa-detail'){
-      const lastEmpId = sessionStorage.getItem('lastEmpId');
-      if(lastEmpId) openEmpresaDetail(lastEmpId);
-      else renderDashboard();
-    } else if(lastPage){
-      showPage(lastPage);
-    } else {
-      renderDashboard();
-    }
+    return;
   }
-  // _secondaryPromise already running in background
+  const lastPage = sessionStorage.getItem('lastPage');
+  if(lastPage === 'empresa-detail'){
+    const lastEmpId = sessionStorage.getItem('lastEmpId');
+    if(lastEmpId) openEmpresaDetail(lastEmpId);
+    else renderDashboard();
+  } else if(lastPage){
+    showPage(lastPage);
+  } else {
+    renderDashboard();
+  }
+  // _secondaryPromise continues in background, re-renders current page when done
 }
 
 function adaptUIToRole() {
@@ -2935,19 +2934,6 @@ async function doLogout() {
   if(loginBtn){ loginBtn.disabled = false; loginBtn.textContent = 'Entrar'; }
 }
 
-function _renderDashboardSkeleton(){
-  const sk='background:var(--border);border-radius:6px;animation:skeletonPulse 1.4s ease-in-out infinite';
-  document.getElementById('dash-kpis').innerHTML=[...Array(4)].map(()=>`
-    <div class="card">
-      <div style="height:11px;width:55%;${sk};margin-bottom:10px"></div>
-      <div style="height:28px;width:38%;${sk};margin-bottom:8px"></div>
-      <div style="height:10px;width:65%;${sk}"></div>
-    </div>`).join('');
-  document.getElementById('dash-empresas').innerHTML=`
-    <div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:20px 0;color:var(--text3);font-size:13px">
-      <i class="fa fa-circle-o-notch fa-spin"></i> Cargando datos…
-    </div>`;
-}
 
 let _dbSecondaryLoaded=false;
 

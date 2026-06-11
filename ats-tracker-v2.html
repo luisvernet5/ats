@@ -17366,7 +17366,7 @@ async function submitEvalPublica(){
    PROCEDIMIENTOS (SOPs)
    Nivel 1: dashboard de empresas
    Nivel 2: perfiles de puesto de la empresa
-   Nivel 3: procedimientos del perfil seleccionado
+   Nivel 3: procedimientos del perfil (crear / subir)
    ============================================================ */
 let _procEmpId=null;
 let _procPerfilId=null;
@@ -17459,43 +17459,57 @@ function renderProcedimientosPerfil(empId,perfilId){
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const perfil=DB.perfilesPuesto.find(p=>p.id===perfilId)||{};
   const color=emp.color||'#2AAADE';
-  const procs=(DB.procedimientos||[]).filter(p=>p.perfil_id===perfilId);
-
-  const cards=procs.length===0
-    ?`<div style="text-align:center;padding:60px 0;color:var(--text3)"><i class="fa fa-list-alt" style="font-size:40px;margin-bottom:12px;display:block"></i>Sin procedimientos — agrega el primero</div>`
-    :`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px">${procs.map(p=>_procCard(p,color)).join('')}</div>`;
-
   page.innerHTML=`
     <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="renderProcedimientosEmpresa('${empId}')"><i class="fa fa-arrow-left"></i> ${_esc(emp.nombre||'Empresa')}</button>
       <span style="font-size:15px;font-weight:600">${_esc(perfil.nombre_puesto||'Perfil')}</span>
       ${perfil.departamento?`<span style="font-size:12px;padding:2px 10px;border-radius:20px;background:${color}22;color:${color}">${_esc(perfil.departamento)}</span>`:''}
       <span style="flex:1"></span>
-      <button class="btn btn-primary btn-sm" onclick="openProcModal()"><i class="fa fa-plus"></i> Nuevo procedimiento</button>
+      <button class="btn btn-ghost btn-sm" onclick="openProcSubirModal()" style="border:1px solid var(--border)"><i class="fa fa-upload"></i> Subir documento</button>
+      <button class="btn btn-primary btn-sm" onclick="openProcCrearModal()"><i class="fa fa-plus"></i> Crear procedimiento</button>
     </div>
-    <div id="proc-list">${cards}</div>
-    ${_procModalHTML()}`;
+    <div id="proc-list"></div>
+    <div id="proc-modal-crear"></div>
+    <div id="proc-modal-subir"></div>
+    <div id="proc-modal-preview"></div>`;
+  _procRenderList();
 }
 
+/* --- Cards --- */
 function _procCard(p,color){
   color=color||'#2AAADE';
+  const esSubido=p.tipo==='subido';
+  const tipoBadge=esSubido
+    ?`<span style="font-size:10px;padding:2px 8px;border-radius:20px;background:#F59E0B22;color:#F59E0B;font-weight:600;letter-spacing:.04em">DOCUMENTO</span>`
+    :`<span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${color}22;color:${color};font-weight:600;letter-spacing:.04em">ESTRUCTURADO</span>`;
+  const pasos=p.secuencia||[];
+  const meta=esSubido
+    ?`<div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:5px"><i class="fa fa-file-pdf" style="color:#E05252"></i>${_esc(p.archivo_nombre||'Archivo adjunto')}</div>`
+    :`<div style="font-size:12px;color:var(--text3)">${pasos.length} paso${pasos.length!==1?'s':''} en secuencia</div>`;
+  const previewBtn=esSubido
+    ?`<a href="${_esc(p.archivo_url||'#')}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" title="Abrir archivo"><i class="fa fa-external-link"></i></a>`
+    :`<button class="btn btn-ghost btn-sm" onclick="previewProcedimiento('${p.id}')" title="Vista previa"><i class="fa fa-eye"></i></button>`;
+  const editFn=esSubido?`openProcSubirModal('${p.id}')`:`openProcCrearModal('${p.id}')`;
   return`<div class="card" style="display:flex;flex-direction:column;gap:10px;padding:18px">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
       <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;line-height:1.3">${_esc(p.titulo||'Sin título')}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px">
-          ${p.categoria?`<span style="font-size:11px;padding:2px 9px;border-radius:20px;background:${color}22;color:${color};font-weight:600">${_esc(p.categoria)}</span>`:''}
-          ${p.version?`<span style="font-size:11px;padding:2px 9px;border-radius:20px;background:var(--surface2);color:var(--text3)">v${_esc(p.version)}</span>`:''}
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;line-height:1.3">${_esc(p.titulo||'Sin título')}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+          ${tipoBadge}
+          ${p.version?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--surface2);color:var(--text3)">v${_esc(p.version)}</span>`:''}
         </div>
       </div>
-      <div style="display:flex;gap:4px;flex-shrink:0">
-        <button class="btn btn-ghost btn-sm" onclick="openProcModal('${p.id}')" title="Editar"><i class="fa fa-pencil"></i></button>
+      <div style="display:flex;gap:3px;flex-shrink:0">
+        ${previewBtn}
+        <button class="btn btn-ghost btn-sm" onclick="${editFn}" title="Editar"><i class="fa fa-pencil"></i></button>
         <button class="btn btn-ghost btn-sm" onclick="deleteProcedimiento('${p.id}')" title="Eliminar" style="color:var(--red,#ef4444)"><i class="fa fa-trash"></i></button>
       </div>
     </div>
-    ${p.descripcion?`<div style="font-size:13px;color:var(--text2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${_esc(p.descripcion)}</div>`:''}
-    ${p.archivo_url?`<a href="${_esc(p.archivo_url)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--accent);text-decoration:none;display:inline-flex;align-items:center;gap:5px"><i class="fa fa-paperclip"></i> Ver archivo adjunto</a>`:''}
-    ${p.fecha_creacion?`<div style="font-size:11px;color:var(--text3);margin-top:2px">Creado: ${p.fecha_creacion}</div>`:''}
+    ${p.objetivo?`<div style="font-size:13px;color:var(--text2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${_esc(p.objetivo)}</div>`:''}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px">
+      ${meta}
+      ${p.fecha_elaboracion?`<span style="font-size:11px;color:var(--text3)">${p.fecha_elaboracion}</span>`:''}
+    </div>
   </div>`;
 }
 
@@ -17506,104 +17520,172 @@ function _procRenderList(){
   const color=emp.color||'#2AAADE';
   const procs=(DB.procedimientos||[]).filter(p=>p.perfil_id===_procPerfilId);
   el.innerHTML=procs.length===0
-    ?`<div style="text-align:center;padding:60px 0;color:var(--text3)"><i class="fa fa-list-alt" style="font-size:40px;margin-bottom:12px;display:block"></i>Sin procedimientos — agrega el primero</div>`
+    ?`<div style="text-align:center;padding:60px 0;color:var(--text3)"><i class="fa fa-list-alt" style="font-size:40px;margin-bottom:12px;display:block"></i>Sin procedimientos — crea uno o sube un documento</div>`
     :`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px">${procs.map(p=>_procCard(p,color)).join('')}</div>`;
 }
 
-function _procModalHTML(){
-  return`<div id="proc-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center">
-    <div style="background:var(--surface);border-radius:14px;padding:28px;width:min(520px,95vw);box-shadow:0 8px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto">
+/* ============================================================
+   MODAL: CREAR PROCEDIMIENTO (estructurado)
+   ============================================================ */
+function openProcCrearModal(id){
+  const wrap=document.getElementById('proc-modal-crear');
+  if(!wrap)return;
+  const p=id?(DB.procedimientos||[]).find(x=>x.id===id)||{}:{};
+  const secuencia=p.secuencia||[{responsable:'',titulo_bloque:'',actividades:''}];
+  const today=new Date().toISOString().slice(0,10);
+  wrap.innerHTML=`
+  <div id="pmc-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px">
+    <div style="background:var(--surface);border-radius:14px;padding:28px;width:min(680px,100%);box-shadow:0 8px 40px rgba(0,0,0,.25)">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-        <h3 id="proc-modal-title" style="margin:0;font-size:16px">Nuevo procedimiento</h3>
-        <button onclick="closeProcModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3)">×</button>
+        <h3 style="margin:0;font-size:16px">${id?'Editar':'Nuevo'} procedimiento</h3>
+        <button onclick="closeProcCrearModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3)">×</button>
       </div>
-      <input type="hidden" id="proc-id">
-      <div style="display:grid;gap:14px">
+      <input type="hidden" id="pmc-id" value="${id||''}">
+      <div style="display:grid;gap:16px">
+
         <div>
-          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Título *</label>
-          <input type="text" id="proc-titulo" placeholder="Nombre del procedimiento" style="width:100%">
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Título del procedimiento *</label>
+          <input type="text" id="pmc-titulo" placeholder="Ej. Orden y limpieza de barra" style="width:100%" value="${_esc(p.titulo||'')}">
         </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 80px;gap:12px">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Fecha de elaboración</label>
+            <input type="date" id="pmc-fecha-elab" style="width:100%" value="${p.fecha_elaboracion||today}">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Fecha de revisión</label>
+            <input type="date" id="pmc-fecha-rev" style="width:100%" value="${p.fecha_revision||today}">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Cambios</label>
+            <input type="number" id="pmc-cambios" min="0" style="width:100%" value="${p.cambios??0}">
+          </div>
+        </div>
+
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Categoría</label>
-            <input type="text" id="proc-categoria-input" placeholder="Ej. Selección, Onboarding..." style="width:100%">
+            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Versión</label>
+            <input type="text" id="pmc-version" placeholder="Ej. 1.0" style="width:100%" value="${_esc(p.version||'')}">
           </div>
           <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Versión</label>
-            <input type="text" id="proc-version" placeholder="Ej. 1.0" style="width:100%">
+            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Categoría</label>
+            <input type="text" id="pmc-categoria" placeholder="Ej. Higiene, Seguridad..." style="width:100%" value="${_esc(p.categoria||'')}">
           </div>
         </div>
+
         <div>
-          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Fecha</label>
-          <input type="date" id="proc-fecha" style="width:200px">
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Objetivo</label>
+          <textarea id="pmc-objetivo" rows="3" placeholder="Describe el objetivo del procedimiento..." style="width:100%;resize:vertical;font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">${_esc(p.objetivo||'')}</textarea>
         </div>
+
         <div>
-          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Descripción</label>
-          <textarea id="proc-descripcion" placeholder="Describe el procedimiento, pasos, objetivos..." rows="5" style="width:100%;resize:vertical;font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)"></textarea>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Alcance</label>
+          <input type="text" id="pmc-alcance" placeholder="Ej. Ayudante de barra, Todo el personal..." style="width:100%" value="${_esc(p.alcance||'')}">
         </div>
+
         <div>
-          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">URL de archivo adjunto</label>
-          <input type="url" id="proc-archivo" placeholder="https://..." style="width:100%">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <label style="font-size:12px;font-weight:600;color:var(--text2)">Secuencia de actividades</label>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="procAddPaso()"><i class="fa fa-plus"></i> Agregar paso</button>
+          </div>
+          <div id="pmc-pasos" style="display:flex;flex-direction:column;gap:12px">
+            ${secuencia.map((s,i)=>_procPasoHTML(i,s)).join('')}
+          </div>
         </div>
-        <div id="proc-modal-err" style="display:none;background:#FEE2E2;color:#DC2626;padding:9px 12px;border-radius:7px;font-size:13px"></div>
+
+        <div id="pmc-err" style="display:none;background:#FEE2E2;color:#DC2626;padding:9px 12px;border-radius:7px;font-size:13px"></div>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px">
-          <button class="btn btn-ghost" onclick="closeProcModal()">Cancelar</button>
-          <button class="btn btn-primary" onclick="saveProcedimiento()"><i class="fa fa-save"></i> Guardar</button>
+          <button class="btn btn-ghost" onclick="closeProcCrearModal()">Cancelar</button>
+          <button class="btn btn-primary" onclick="saveProcCreado()"><i class="fa fa-save"></i> Guardar</button>
         </div>
+      </div>
+    </div>
+  </div>`;
+  setTimeout(()=>document.getElementById('pmc-titulo')?.focus(),80);
+}
+
+function _procPasoHTML(idx,s){
+  s=s||{};
+  return`<div class="pmc-paso" data-idx="${idx}" style="border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--surface2)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="background:var(--accent);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${idx+1}</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text)">Paso ${idx+1}</span>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" style="color:var(--red,#ef4444)" onclick="procRemovePaso(this)"><i class="fa fa-trash"></i> Eliminar</button>
+    </div>
+    <div style="display:grid;gap:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text3);display:block;margin-bottom:3px">RESPONSABLE</label>
+          <input type="text" class="pmc-resp" placeholder="Ej. Ayudante de barra" style="width:100%;font-size:13px" value="${_esc(s.responsable||'')}">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text3);display:block;margin-bottom:3px">TÍTULO DEL BLOQUE</label>
+          <input type="text" class="pmc-tbloque" placeholder="Ej. Orden del lugar" style="width:100%;font-size:13px" value="${_esc(s.titulo_bloque||'')}">
+        </div>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--text3);display:block;margin-bottom:3px">DETALLE DE ACTIVIDADES <span style="font-weight:400;font-style:italic">(una por línea)</span></label>
+        <textarea class="pmc-acts" rows="4" placeholder="Colocar el cristal en las cajoneras...&#10;Ordenar las copas conforme a su tamaño..." style="width:100%;resize:vertical;font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)">${_esc((s.actividades||[]).join('\n'))}</textarea>
       </div>
     </div>
   </div>`;
 }
 
-function openProcModal(id){
-  const m=document.getElementById('proc-modal');
-  const tit=document.getElementById('proc-modal-title');
-  const err=document.getElementById('proc-modal-err');
-  if(!m)return;
-  if(err)err.style.display='none';
-  if(id){
-    const p=(DB.procedimientos||[]).find(x=>x.id===id)||{};
-    document.getElementById('proc-id').value=id;
-    document.getElementById('proc-titulo').value=p.titulo||'';
-    document.getElementById('proc-categoria-input').value=p.categoria||'';
-    document.getElementById('proc-version').value=p.version||'';
-    document.getElementById('proc-fecha').value=p.fecha_creacion||'';
-    document.getElementById('proc-descripcion').value=p.descripcion||'';
-    document.getElementById('proc-archivo').value=p.archivo_url||'';
-    if(tit)tit.textContent='Editar procedimiento';
-  }else{
-    document.getElementById('proc-id').value='';
-    document.getElementById('proc-titulo').value='';
-    document.getElementById('proc-categoria-input').value='';
-    document.getElementById('proc-version').value='';
-    document.getElementById('proc-fecha').value=new Date().toISOString().slice(0,10);
-    document.getElementById('proc-descripcion').value='';
-    document.getElementById('proc-archivo').value='';
-    if(tit)tit.textContent='Nuevo procedimiento';
-  }
-  m.style.display='flex';
-  setTimeout(()=>document.getElementById('proc-titulo')?.focus(),80);
+function procAddPaso(){
+  const container=document.getElementById('pmc-pasos');
+  if(!container)return;
+  const idx=container.querySelectorAll('.pmc-paso').length;
+  const div=document.createElement('div');
+  div.innerHTML=_procPasoHTML(idx,{});
+  container.appendChild(div.firstElementChild);
 }
 
-function closeProcModal(){
-  const m=document.getElementById('proc-modal');
-  if(m)m.style.display='none';
+function procRemovePaso(btn){
+  const paso=btn.closest('.pmc-paso');
+  if(!paso)return;
+  const container=document.getElementById('pmc-pasos');
+  if(container.querySelectorAll('.pmc-paso').length<=1){showToast('Debe haber al menos un paso','err');return;}
+  paso.remove();
+  container.querySelectorAll('.pmc-paso').forEach((el,i)=>{
+    el.dataset.idx=i;
+    const badge=el.querySelector('span[style*="border-radius:50%"]');
+    const label=el.querySelector('span[style*="font-weight:600"]');
+    if(badge)badge.textContent=i+1;
+    if(label)label.textContent=`Paso ${i+1}`;
+  });
 }
 
-async function saveProcedimiento(){
-  const titulo=(document.getElementById('proc-titulo')?.value||'').trim();
-  const err=document.getElementById('proc-modal-err');
+function closeProcCrearModal(){
+  const w=document.getElementById('proc-modal-crear');
+  if(w)w.innerHTML='';
+}
+
+async function saveProcCreado(){
+  const titulo=(document.getElementById('pmc-titulo')?.value||'').trim();
+  const err=document.getElementById('pmc-err');
   if(!titulo){if(err){err.textContent='El título es obligatorio.';err.style.display='';}return;}
-  const id=document.getElementById('proc-id')?.value||'';
+  const pasos=[];
+  document.querySelectorAll('#pmc-pasos .pmc-paso').forEach((el,i)=>{
+    const acts=(el.querySelector('.pmc-acts')?.value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+    pasos.push({no:i+1,responsable:(el.querySelector('.pmc-resp')?.value||'').trim(),titulo_bloque:(el.querySelector('.pmc-tbloque')?.value||'').trim(),actividades:acts});
+  });
+  const id=document.getElementById('pmc-id')?.value||'';
   const data={
+    tipo:'creado',
     titulo,
     empresa_id:_procEmpId,
     perfil_id:_procPerfilId,
-    categoria:(document.getElementById('proc-categoria-input')?.value||'').trim(),
-    version:(document.getElementById('proc-version')?.value||'').trim(),
-    fecha_creacion:document.getElementById('proc-fecha')?.value||'',
-    descripcion:(document.getElementById('proc-descripcion')?.value||'').trim(),
-    archivo_url:(document.getElementById('proc-archivo')?.value||'').trim(),
+    fecha_elaboracion:document.getElementById('pmc-fecha-elab')?.value||'',
+    fecha_revision:document.getElementById('pmc-fecha-rev')?.value||'',
+    cambios:parseInt(document.getElementById('pmc-cambios')?.value||'0')||0,
+    version:(document.getElementById('pmc-version')?.value||'').trim(),
+    categoria:(document.getElementById('pmc-categoria')?.value||'').trim(),
+    objetivo:(document.getElementById('pmc-objetivo')?.value||'').trim(),
+    alcance:(document.getElementById('pmc-alcance')?.value||'').trim(),
+    secuencia:pasos,
   };
   try{
     if(id){
@@ -17616,7 +17698,7 @@ async function saveProcedimiento(){
       if(!DB.procedimientos)DB.procedimientos=[];
       DB.procedimientos.push({id:newId,...data});
     }
-    closeProcModal();
+    closeProcCrearModal();
     _procRenderList();
     showToast(id?'Procedimiento actualizado':'Procedimiento creado','ok');
   }catch(e){
@@ -17624,6 +17706,247 @@ async function saveProcedimiento(){
   }
 }
 
+/* ============================================================
+   MODAL: SUBIR DOCUMENTO
+   ============================================================ */
+function openProcSubirModal(id){
+  const wrap=document.getElementById('proc-modal-subir');
+  if(!wrap)return;
+  const p=id?(DB.procedimientos||[]).find(x=>x.id===id)||{}:{};
+  wrap.innerHTML=`
+  <div id="pms-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:flex;align-items:center;justify-content:center">
+    <div style="background:var(--surface);border-radius:14px;padding:28px;width:min(480px,95vw);box-shadow:0 8px 40px rgba(0,0,0,.25)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <h3 style="margin:0;font-size:16px">${id?'Editar':'Subir'} documento</h3>
+        <button onclick="closeProcSubirModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3)">×</button>
+      </div>
+      <input type="hidden" id="pms-id" value="${id||''}">
+      <div style="display:grid;gap:14px">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Título del procedimiento *</label>
+          <input type="text" id="pms-titulo" placeholder="Nombre del procedimiento" style="width:100%" value="${_esc(p.titulo||'')}">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Versión</label>
+            <input type="text" id="pms-version" placeholder="Ej. 1.0" style="width:100%" value="${_esc(p.version||'')}">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Fecha</label>
+            <input type="date" id="pms-fecha" style="width:100%" value="${p.fecha_elaboracion||new Date().toISOString().slice(0,10)}">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px">Archivo (PDF, Word, etc.)</label>
+          <label id="pms-dropzone" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:2px dashed var(--border);border-radius:10px;padding:24px;cursor:pointer;text-align:center;transition:border-color .15s" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="procHandleDrop(event)">
+            <i class="fa fa-cloud-upload" style="font-size:28px;color:var(--text3)"></i>
+            <span style="font-size:13px;color:var(--text2)">Arrastra el archivo o <span style="color:var(--accent);font-weight:600">haz clic para seleccionar</span></span>
+            <span style="font-size:11px;color:var(--text3)">PDF, DOC, DOCX, XLSX — máx. 20 MB</span>
+            <input type="file" id="pms-file" accept=".pdf,.doc,.docx,.xlsx,.xls,.ppt,.pptx" style="display:none" onchange="procPreviewFile(this)">
+          </label>
+          <div id="pms-file-preview" style="margin-top:8px;font-size:13px;color:var(--text2);display:none"></div>
+        </div>
+        ${p.archivo_url?`<div style="font-size:13px;color:var(--text2)">Archivo actual: <a href="${_esc(p.archivo_url)}" target="_blank" style="color:var(--accent)">${_esc(p.archivo_nombre||'ver archivo')}</a></div>`:''}
+        <div id="pms-progress" style="display:none">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:4px" id="pms-progress-label">Subiendo...</div>
+          <div style="height:6px;background:var(--border);border-radius:3px"><div id="pms-progress-bar" style="height:100%;background:var(--accent);border-radius:3px;width:0%;transition:width .3s"></div></div>
+        </div>
+        <div id="pms-err" style="display:none;background:#FEE2E2;color:#DC2626;padding:9px 12px;border-radius:7px;font-size:13px"></div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px">
+          <button class="btn btn-ghost" onclick="closeProcSubirModal()">Cancelar</button>
+          <button class="btn btn-primary" id="pms-save-btn" onclick="saveProcSubido('${id||''}')"><i class="fa fa-save"></i> Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  setTimeout(()=>document.getElementById('pms-titulo')?.focus(),80);
+}
+
+function procPreviewFile(input){
+  const f=input.files[0];
+  if(!f)return;
+  const el=document.getElementById('pms-file-preview');
+  if(el){
+    el.style.display='';
+    el.innerHTML=`<i class="fa fa-file" style="color:var(--accent)"></i> <strong>${_esc(f.name)}</strong> <span style="color:var(--text3)">(${(f.size/1024/1024).toFixed(1)} MB)</span>`;
+  }
+  const dz=document.getElementById('pms-dropzone');
+  if(dz)dz.style.borderColor='var(--accent)';
+}
+
+function procHandleDrop(e){
+  e.preventDefault();
+  const f=e.dataTransfer.files[0];
+  if(!f)return;
+  const inp=document.getElementById('pms-file');
+  if(inp){
+    const dt=new DataTransfer();dt.items.add(f);inp.files=dt.files;
+    procPreviewFile(inp);
+  }
+  const dz=document.getElementById('pms-dropzone');
+  if(dz)dz.style.borderColor='var(--accent)';
+}
+
+function closeProcSubirModal(){
+  const w=document.getElementById('proc-modal-subir');
+  if(w)w.innerHTML='';
+}
+
+async function saveProcSubido(editId){
+  const titulo=(document.getElementById('pms-titulo')?.value||'').trim();
+  const err=document.getElementById('pms-err');
+  if(!titulo){if(err){err.textContent='El título es obligatorio.';err.style.display='';}return;}
+  const fileInput=document.getElementById('pms-file');
+  const file=fileInput?.files[0];
+  const existing=editId?(DB.procedimientos||[]).find(x=>x.id===editId):null;
+  if(!file&&!existing?.archivo_url){if(err){err.textContent='Selecciona un archivo.';err.style.display='';}return;}
+  const btn=document.getElementById('pms-save-btn');
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Guardando...';}
+  let archivo_url=existing?.archivo_url||'';
+  let archivo_nombre=existing?.archivo_nombre||'';
+  if(file){
+    const progress=document.getElementById('pms-progress');
+    const bar=document.getElementById('pms-progress-bar');
+    const lbl=document.getElementById('pms-progress-label');
+    if(progress)progress.style.display='';
+    if(bar)bar.style.width='30%';
+    if(lbl)lbl.textContent='Subiendo archivo...';
+    try{
+      const ext=file.name.split('.').pop();
+      const newId=editId||crypto.randomUUID();
+      const path=`${_procEmpId}/${_procPerfilId}/${newId}.${ext}`;
+      const{error:upErr}=await sbClient.storage.from('procedimientos').upload(path,file,{upsert:true});
+      if(upErr)throw upErr;
+      if(bar)bar.style.width='80%';
+      const{data:urlData}=sbClient.storage.from('procedimientos').getPublicUrl(path);
+      archivo_url=urlData.publicUrl+'?t='+Date.now();
+      archivo_nombre=file.name;
+      if(bar)bar.style.width='100%';
+    }catch(e){
+      if(err){err.textContent='Error al subir archivo: '+(e?.message||e)+'. Verifica que el bucket "procedimientos" exista en Supabase Storage.';err.style.display='';}
+      if(btn){btn.disabled=false;btn.innerHTML='<i class="fa fa-save"></i> Guardar';}
+      return;
+    }
+  }
+  const id=editId||crypto.randomUUID();
+  const data={
+    tipo:'subido',
+    titulo,
+    empresa_id:_procEmpId,
+    perfil_id:_procPerfilId,
+    version:(document.getElementById('pms-version')?.value||'').trim(),
+    fecha_elaboracion:document.getElementById('pms-fecha')?.value||'',
+    archivo_url,
+    archivo_nombre,
+  };
+  try{
+    if(editId){
+      await sbClient.from('procedimientos').update({data}).eq('id',editId);
+      const idx=(DB.procedimientos||[]).findIndex(p=>p.id===editId);
+      if(idx>=0)DB.procedimientos[idx]={id:editId,...data};
+    }else{
+      await sbClient.from('procedimientos').insert({id,data});
+      if(!DB.procedimientos)DB.procedimientos=[];
+      DB.procedimientos.push({id,...data});
+    }
+    closeProcSubirModal();
+    _procRenderList();
+    showToast(editId?'Documento actualizado':'Documento subido','ok');
+  }catch(e){
+    if(err){err.textContent='Error al guardar: '+(e?.message||e);err.style.display='';}
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="fa fa-save"></i> Guardar';}
+  }
+}
+
+/* ============================================================
+   VISTA PREVIA (procedimiento estructurado)
+   ============================================================ */
+function previewProcedimiento(id){
+  const p=(DB.procedimientos||[]).find(x=>x.id===id);
+  if(!p)return;
+  const emp=DB.empresas.find(e=>e.id===p.empresa_id)||{};
+  const color=emp.color||'#2AAADE';
+  const perfil=DB.perfilesPuesto.find(x=>x.id===p.perfil_id)||{};
+  const wrap=document.getElementById('proc-modal-preview');
+  if(!wrap)return;
+  const secuencia=p.secuencia||[];
+  const headerBg=color;
+  const rows=secuencia.map(s=>{
+    const acts=(s.actividades||[]);
+    return`<tr>
+      <td style="border:1px solid #ccc;padding:8px 10px;text-align:center;font-weight:700;font-size:13px;vertical-align:top;width:44px">${s.no||''}</td>
+      <td style="border:1px solid #ccc;padding:8px 10px;font-size:13px;vertical-align:top;width:130px">${_esc(s.responsable||'')}</td>
+      <td style="border:1px solid #ccc;padding:8px 10px;font-size:13px;vertical-align:top">
+        ${s.titulo_bloque?`<div style="font-weight:700;margin-bottom:6px">${_esc(s.titulo_bloque)}</div>`:''}
+        <ol style="margin:0;padding-left:18px">${acts.map(a=>`<li style="margin-bottom:4px">${_esc(a)}</li>`).join('')}</ol>
+      </td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML=`
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2100;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px">
+    <div style="background:#fff;border-radius:10px;width:min(760px,100%);box-shadow:0 8px 40px rgba(0,0,0,.3);overflow:hidden;color:#111">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px;background:var(--surface);border-bottom:1px solid var(--border)">
+        <span style="font-size:14px;font-weight:600;color:var(--text)">Vista previa del procedimiento</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="imprimirProcedimiento('${id}')"><i class="fa fa-print"></i> Imprimir</button>
+          <button class="btn btn-ghost btn-sm" onclick="closeProcPreview()"><i class="fa fa-times"></i></button>
+        </div>
+      </div>
+      <div id="proc-preview-body" style="padding:24px 28px;font-family:Arial,sans-serif">
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:12px">
+          <tr>
+            <td rowspan="3" style="border:1px solid #ccc;padding:8px;width:80px;text-align:center">
+              ${emp.logo?`<img src="${emp.logo}" style="max-width:70px;max-height:50px;object-fit:contain">`:`<div style="font-size:10px;color:#666;font-weight:700">${_esc(emp.nombre||'')}</div>`}
+            </td>
+            <td style="border:1px solid #ccc;padding:8px 12px;text-align:center;font-weight:700;font-size:13px;text-transform:uppercase;background:${headerBg}22">PROCEDIMIENTO</td>
+            <td style="border:1px solid #ccc;padding:6px 12px">Fecha elaboración: <strong>${p.fecha_elaboracion||'—'}</strong></td>
+          </tr>
+          <tr>
+            <td style="border:1px solid #ccc;padding:8px 12px;text-align:center;font-weight:600;font-size:13px">${_esc(p.titulo||'')}</td>
+            <td style="border:1px solid #ccc;padding:6px 12px">Fecha revisión: <strong>${p.fecha_revision||'—'}</strong></td>
+          </tr>
+          <tr>
+            <td style="border:1px solid #ccc;padding:6px 12px;font-size:11px;color:#666">${_esc(perfil.nombre_puesto||'')}</td>
+            <td style="border:1px solid #ccc;padding:6px 12px">Cambios: <strong>${p.cambios??0}</strong></td>
+          </tr>
+        </table>
+        ${p.objetivo?`<p style="margin:0 0 6px"><strong>OBJETIVO:</strong></p><p style="margin:0 0 16px;padding-left:12px;font-size:13px">${_esc(p.objetivo)}</p>`:''}
+        ${p.alcance?`<p style="margin:0 0 6px"><strong>ALCANCE:</strong></p><p style="margin:0 0 16px;padding-left:12px;font-size:13px">${_esc(p.alcance)}</p>`:''}
+        ${secuencia.length?`
+        <p style="margin:0 0 10px"><strong>SECUENCIA:</strong></p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="background:${headerBg};color:#fff">
+            <th style="border:1px solid #ccc;padding:8px 10px;text-align:center;width:44px">NO.</th>
+            <th style="border:1px solid #ccc;padding:8px 10px;width:130px">RESPONSABLE</th>
+            <th style="border:1px solid #ccc;padding:8px 10px">DETALLE DE ACTIVIDADES</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function closeProcPreview(){
+  const w=document.getElementById('proc-modal-preview');
+  if(w)w.innerHTML='';
+}
+
+function imprimirProcedimiento(id){
+  const body=document.getElementById('proc-preview-body');
+  if(!body)return;
+  const p=(DB.procedimientos||[]).find(x=>x.id===id)||{};
+  const emp=DB.empresas.find(e=>e.id===p.empresa_id)||{};
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${_esc(p.titulo||'Procedimiento')}</title>
+  <style>body{font-family:Arial,sans-serif;padding:28px;color:#111}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:7px 10px}ol{margin:0;padding-left:18px}li{margin-bottom:4px}@media print{button{display:none}}</style>
+  </head><body>${body.innerHTML}<script>window.onload=function(){window.print();}<\/script></body></html>`;
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const pw=window.open(url,'_blank');
+  if(pw){setTimeout(()=>URL.revokeObjectURL(url),60000);}
+}
+
+/* --- Eliminar --- */
 async function deleteProcedimiento(id){
   if(!confirm('¿Eliminar este procedimiento?'))return;
   try{

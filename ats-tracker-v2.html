@@ -12528,7 +12528,7 @@ async function exportRefLaboralesPDF() {
       const sel=card.querySelector(`input[name="ref-lab-${n}-${key}"]:checked`)?.value||'';
       if(ci%2===0){doc.setFillColor(250,250,252);doc.rect(M,y,CW,5.5,'F');}
       doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(30);doc.text(comp,M+1,y+3.5);
-      _REF_NIV.forEach((niv,i)=>{if(niv===sel){doc.setFont('helvetica','bold');doc.setTextColor(42,170,222);doc.text('✓',M+cW+i*nW+nW/2,y+3.5,{align:'center'});doc.setFont('helvetica','normal');doc.setTextColor(30);}});
+      _REF_NIV.forEach((niv,i)=>{if(niv===sel){doc.setFillColor(42,170,222);doc.circle(M+cW+i*nW+nW/2,y+2.75,2.2,'F');}});
       y+=5.5;
     });
     const obs=g(`ref-lab-${n}-obs`);
@@ -12727,7 +12727,7 @@ async function exportRefNuimCamPDF(){
       doc.setDrawColor(150);doc.line(tblX+ncW,y,tblX+ncW,y+rH);
       NIVS.forEach((niv,i)=>{
         if(i>0)doc.line(tblX+ncW+i*ratW,y,tblX+ncW+i*ratW,y+rH);
-        if(niv===sel){doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.text('X',tblX+ncW+(i+0.5)*ratW,y+rH/2+1.1,{align:'center'});doc.setFont('helvetica','normal');doc.setFontSize(6);}
+        if(niv===sel){doc.setFillColor(42,170,222);doc.circle(tblX+ncW+(i+0.5)*ratW,y+rH/2,1.8,'F');}
       });
       y+=rH;
     });

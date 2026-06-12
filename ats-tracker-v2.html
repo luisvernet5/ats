@@ -3156,13 +3156,13 @@ function getWeekNumber(dateStr){
   return{week:Math.ceil(((thu-yearStart)/86400000+1)/7),year:thu.getFullYear()};
 }
 function getFechaContratacion(v, contratado){
+  if(contratado&&contratado.id){
+    const etapas=getEmpresaEtapas(v.empresa_id);
+    const finalIdx=etapas.findIndex(e=>e.tipo==='cierre');
+    if(finalIdx>=0 && contratado['f_'+finalIdx]) return contratado['f_'+finalIdx];
+    for(let i=etapas.length-1;i>=0;i--){ if(contratado['f_'+i]) return contratado['f_'+i]; }
+  }
   if(v.fecha_cierre) return v.fecha_cierre;
-  if(!contratado||!contratado.id) return null;
-  const etapas=getEmpresaEtapas(v.empresa_id);
-  const finalIdx=etapas.findIndex(e=>e.tipo==='cierre');
-  if(finalIdx>=0 && contratado['f_'+finalIdx]) return contratado['f_'+finalIdx];
-  // fallback: last non-null f_X
-  for(let i=etapas.length-1;i>=0;i--){ if(contratado['f_'+i]) return contratado['f_'+i]; }
   return null;
 }
 function showToast(msg,t='ok'){const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${t==='ok'?'tok':'terr'} show`;setTimeout(()=>el.className='toast',2800)}

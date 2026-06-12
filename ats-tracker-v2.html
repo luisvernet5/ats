@@ -181,6 +181,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
 .rtag.sel{background:rgba(239,68,68,.12);color:var(--red);border-color:rgba(239,68,68,.3)}
 .rtag:hover{color:var(--text2)}
 .rec-av{width:32px;height:32px;border-radius:50%;background:var(--glow);border:1px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--accent);font-family:var(--mono)}
+.sw{position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0}.sw input{opacity:0;width:0;height:0}.sw-sl{position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:20px;transition:.25s}.sw-sl:before{content:'';position:absolute;width:14px;height:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.25s}.sw input:checked+.sw-sl{background:var(--accent)}.sw input:checked+.sw-sl:before{transform:translateX(16px)}
 .toast{position:fixed;bottom:24px;right:24px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:12px 18px;font-size:13px;z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;max-width:320px}
 .toast.show{transform:translateY(0);opacity:1}
 .tok{border-left:3px solid var(--green)}.terr{border-left:3px solid var(--red)}
@@ -579,6 +580,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
   <!-- RECLUTADORES -->
   <div class="page" id="page-reclutadores">
     <div class="g3" id="rec-cards"></div>
+    <div id="rec-inactivos-section"></div>
   </div>
 
   <!-- RECLUTADOR DETAIL -->
@@ -5538,6 +5540,15 @@ async function saveReclutador(){
   setTimeout(()=>renderConfig(),100);
 }
 
+async function toggleReclutadorActivo(id, activo){
+  const ri=DB.reclutadores.findIndex(x=>x.id===id);
+  if(ri<0)return;
+  DB.reclutadores[ri].activo=activo;
+  await saveRecord('reclutadores',DB.reclutadores[ri]);
+  showToast(activo?'Reclutador activado ✓':'Reclutador marcado como inactivo ✓');
+  switchConfigTab('reclutadores');
+}
+
 async function deleteReclutador(id){
   const r=DB.reclutadores.find(x=>x.id===id);
   if(!r)return;
@@ -7397,29 +7408,43 @@ async function saveCandEtapa(cid){
 /* ============================================================
    RECLUTADORES
    ============================================================ */
+function _recCard(r){
+  const vacs=DB.vacantes.filter(v=>v.reclutador_id===r.id);
+  const vacAct=vacs.filter(v=>v.estado==='Abierta').length;
+  const cands=DB.candidatos.filter(c=>c.reclutador_id===r.id);
+  const val=cands.filter(esColocado).length;
+  const des=cands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).length;
+  const dArr=cands.filter(c=>esColocado(c)&&processTotal(c)).map(c=>processTotal(c));
+  const avg=dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):null;
+  const ini=r.nombre.split(' ').map(n=>n[0]).join('').substr(0,2).toUpperCase();
+  return`<div class="card" style="cursor:pointer" onclick="openReclutadorDetail('${r.id}')">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div class="rec-av">${ini}</div>
+      <div><div style="font-weight:500;font-size:14px">${r.nombre}</div><div style="font-size:11px;color:var(--text3)">${r.email||'—'}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Vacantes abiertas</div><div style="font-size:18px;font-weight:600;font-family:var(--mono)">${vacAct}</div></div>
+      <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Contratados</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--green)">${val}</div></div>
+      <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Días prom.</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--amber)">${avg||'—'}</div></div>
+      <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Deserciones</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--red)">${des}</div></div>
+    </div>
+  </div>`;
+}
+
 function renderReclutadores(){
-  document.getElementById('rec-cards').innerHTML=DB.reclutadores.map(r=>{
-    const vacs=DB.vacantes.filter(v=>v.reclutador_id===r.id);
-    const vacAct=vacs.filter(v=>v.estado==='Abierta').length;
-    const cands=DB.candidatos.filter(c=>c.reclutador_id===r.id);
-    const val=cands.filter(esColocado).length;
-    const des=cands.filter(c=>ETAPAS_SALIDA.includes(c.etapa)).length;
-    const dArr=cands.filter(c=>esColocado(c)&&processTotal(c)).map(c=>processTotal(c));
-    const avg=dArr.length?Math.round(dArr.reduce((a,b)=>a+b,0)/dArr.length):null;
-    const ini=r.nombre.split(' ').map(n=>n[0]).join('').substr(0,2).toUpperCase();
-    return`<div class="card" style="cursor:pointer" onclick="openReclutadorDetail('${r.id}')">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-        <div class="rec-av">${ini}</div>
-        <div><div style="font-weight:500;font-size:14px">${r.nombre}</div><div style="font-size:11px;color:var(--text3)">${r.email||'—'}</div></div>
+  const activos=DB.reclutadores.filter(r=>r.activo!==false);
+  const inactivos=DB.reclutadores.filter(r=>r.activo===false);
+  document.getElementById('rec-cards').innerHTML=activos.map(_recCard).join('')||'<div style="color:var(--text3);font-size:13px">Sin reclutadores activos.</div>';
+  const sec=document.getElementById('rec-inactivos-section');
+  if(!sec) return;
+  if(!inactivos.length){ sec.innerHTML=''; return; }
+  sec.innerHTML=`
+    <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--border)">
+      <div style="font-size:14px;font-weight:600;color:var(--text3);margin-bottom:14px;display:flex;align-items:center;gap:8px">
+        <i class="fa fa-user-slash" style="color:var(--red)"></i> Reclutadores inactivos
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Vacantes abiertas</div><div style="font-size:18px;font-weight:600;font-family:var(--mono)">${vacAct}</div></div>
-        <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Contratados</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--green)">${val}</div></div>
-        <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Días prom.</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--amber)">${avg||'—'}</div></div>
-        <div style="background:var(--surface2);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3)">Deserciones</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--red)">${des}</div></div>
-      </div>
+      <div class="g3">${inactivos.map(_recCard).join('')}</div>
     </div>`;
-  }).join('');
 }
 
 function openReclutadorDetail(recId) {
@@ -11535,10 +11560,16 @@ function switchConfigTab(tab){
 
   if(tab==='reclutadores'){
     const rows = DB.reclutadores.map((r,i)=>`
-      <tr>
+      <tr style="${r.activo===false?'opacity:.55':''}">
         <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
         <td class="td-p">${r.nombre||'—'}</td>
         <td>${r.email||'—'}</td>
+        <td style="text-align:center">
+          <label class="sw" title="${r.activo===false?'Inactivo — clic para activar':'Activo — clic para desactivar'}">
+            <input type="checkbox" ${r.activo!==false?'checked':''} onchange="toggleReclutadorActivo('${r.id}',this.checked)">
+            <span class="sw-sl"></span>
+          </label>
+        </td>
         <td>
           <button class="btn btn-ghost btn-sm" onclick="editReclutador('${r.id}')" title="Editar">
             <i class="fa fa-pen"></i>
@@ -11549,9 +11580,9 @@ function switchConfigTab(tab){
         </td>
       </tr>`).join('');
     content.innerHTML=`
-      <div class="table-wrap" style="max-width:700px">
+      <div class="table-wrap" style="max-width:750px">
         <table>
-          <thead><tr><th style="width:36px;text-align:center">#</th><th>Nombre</th><th>Email</th><th>Acción</th></tr></thead>
+          <thead><tr><th style="width:36px;text-align:center">#</th><th>Nombre</th><th>Email</th><th style="text-align:center">Activo</th><th>Acción</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>

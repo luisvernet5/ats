@@ -3735,7 +3735,7 @@ function openEmpresaDetail(empId){
         <div class="ed-kpi ed-kpi-btn" id="ed-kpi-chip-abiertas" onclick="showEDKpiPanel('abiertas','${empId}')"><div class="ed-kpi-v" id="ed-kpi-abiertas" style="color:${e.color||'var(--accent)'}">${vacAct}</div><div class="ed-kpi-l">Abiertas</div></div>
         <div class="ed-kpi ed-kpi-btn" id="ed-kpi-chip-total" onclick="showEDKpiPanel('total','${empId}')"><div class="ed-kpi-v" id="ed-kpi-total">${vacs.length}</div><div class="ed-kpi-l">Total vac.</div></div>
         <div class="ed-kpi ed-kpi-btn" id="ed-kpi-chip-contratados" onclick="showEDKpiPanel('contratados','${empId}')"><div class="ed-kpi-v" id="ed-kpi-validados" style="color:var(--green)">${validados}</div><div class="ed-kpi-l">Contratados</div></div>
-        <div class="ed-kpi" title="Promedio de días para cubrir una vacante"><div class="ed-kpi-v" id="ed-kpi-avgdays" style="color:var(--amber)">${avgDays||'—'}</div><div class="ed-kpi-l">Días prom.</div></div>
+        <div class="ed-kpi ed-kpi-btn" title="Ver análisis de tiempos" onclick="showPage('tiempos');setTimeout(()=>goToEmpresaTiempos('${empId}'),120)"><div class="ed-kpi-v" id="ed-kpi-avgdays" style="color:var(--amber)">${avgDays||'—'}</div><div class="ed-kpi-l">Días prom.</div></div>
         <div class="ed-kpi ed-kpi-btn" id="ed-kpi-chip-deserciones" onclick="showEDKpiPanel('deserciones','${empId}')"><div class="ed-kpi-v" id="ed-kpi-deser" style="color:var(--red)">${desertores}</div><div class="ed-kpi-l">Deserciones</div></div>
       </div>
     </div>

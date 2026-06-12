@@ -2149,6 +2149,13 @@ async function initSession() {
   if(!currentUserData) {
     currentUserData = { rol: 'admin', nombre: currentUser.email };
   }
+  if(currentUserData.activo === false){
+    await sbClient.auth.signOut();
+    document.getElementById('auth-screen').style.display = 'flex';
+    const errEl = document.getElementById('login-error');
+    if(errEl){ errEl.textContent='Tu cuenta ha sido desactivada. Contacta al administrador.'; errEl.style.display='block'; }
+    return;
+  }
   document.getElementById('auth-screen').style.display = 'none';
   await loadDB();
   await _loadPermisosMap();
@@ -5538,6 +5545,13 @@ async function saveReclutador(){
   showToast('Reclutador agregado ✓');
   closeModal('modal-reclutador');
   setTimeout(()=>renderConfig(),100);
+}
+
+async function toggleUsuarioActivo(id, activo){
+  const { error } = await sbClient.from('usuarios').update({ activo }).eq('id', id);
+  if(error){ showToast('Error: '+error.message,'err'); loadUsuarios(); return; }
+  showToast(activo ? 'Usuario activado ✓' : 'Usuario desactivado ✓');
+  loadUsuarios();
 }
 
 async function toggleReclutadorActivo(id, activo){
@@ -11995,23 +12009,27 @@ async function loadUsuarios() {
     const emp = DB.empresas.find(e=>e.id===u.empresa_id)||{};
     const rec = DB.reclutadores.find(r=>r.id===u.reclutador_id)||{};
     const rolBadge = u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':'bg';
-    return `<tr>
+    const esSelf = u.id === currentUser?.id;
+    return `<tr style="${u.activo===false?'opacity:.55':''}">
       <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
       <td class="td-p">${u.nombre||'—'}</td>
       <td>${u.email||'—'}</td>
       <td><span class="badge ${rolBadge}">${u.rol}</span></td>
       <td>${u.rol==='rh_cliente'?emp.nombre||u.empresa_id||'—':u.rol==='reclutador'?rec.nombre||u.reclutador_id||'—':'—'}</td>
+      <td style="text-align:center">
+        ${esSelf ? '<span style="font-size:11px;color:var(--text3)">—</span>' : `<label class="sw" title="${u.activo===false?'Inactivo':'Activo'}"><input type="checkbox" ${u.activo!==false?'checked':''} onchange="toggleUsuarioActivo('${u.id}',this.checked)"><span class="sw-sl"></span></label>`}
+      </td>
       <td>
         <button class="btn btn-ghost btn-sm" onclick="openUsuarioModal('${u.id}')"><i class="fa fa-edit"></i></button>
         <button class="btn btn-ghost btn-sm" onclick="enviarResetPassword('${u.email}')" title="Resetear contraseña"><i class="fa fa-key"></i></button>
-        ${u.id !== currentUser?.id ? `<button class="btn btn-danger btn-sm" onclick="eliminarUsuario('${u.id}')"><i class="fa fa-trash"></i></button>` : '<span style="font-size:11px;color:var(--text3)">tú</span>'}
+        ${!esSelf ? `<button class="btn btn-danger btn-sm" onclick="eliminarUsuario('${u.id}')"><i class="fa fa-trash"></i></button>` : '<span style="font-size:11px;color:var(--text3)">tú</span>'}
       </td>
     </tr>`;
   }).join('');
   const tableEl = document.getElementById('usuarios-table');
   if(tableEl) tableEl.innerHTML = `<table>
-    <thead><tr><th style="width:36px;text-align:center">#</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Asignado a</th><th>Acción</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin usuarios registrados</td></tr>'}</tbody>
+    <thead><tr><th style="width:36px;text-align:center">#</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Asignado a</th><th style="text-align:center">Activo</th><th>Acción</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Sin usuarios registrados</td></tr>'}</tbody>
   </table>`;
   const _ucnt = document.getElementById('usuarios-count');
   if(_ucnt) _ucnt.innerHTML = `Mostrando <strong>${list.length}</strong> registros`;

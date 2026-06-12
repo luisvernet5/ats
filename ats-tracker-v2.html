@@ -2151,6 +2151,7 @@ async function initSession() {
   }
   if(currentUserData.activo === false){
     await sbClient.auth.signOut();
+    document.body.style.visibility = 'visible';
     document.getElementById('auth-screen').style.display = 'flex';
     const errEl = document.getElementById('login-error');
     if(errEl){ errEl.textContent='Tu cuenta ha sido desactivada. Contacta al administrador.'; errEl.style.display='block'; }

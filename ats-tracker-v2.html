@@ -10379,10 +10379,12 @@ function renderContratados(){
       <button id="btn-ct-col-vis" class="btn btn-ghost btn-sm" onclick="openCtColPanel()"><i class="fa fa-columns"></i> Columnas</button>
       <button class="btn btn-green btn-sm" onclick="exportContratados()"><i class="fa fa-file-csv"></i> Exportar Excel</button>
     </div>
-    <div style="display:flex;gap:6px;margin-bottom:10px">
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
       <button id="ct-vista-folio" class="btn btn-ghost btn-sm${_ctVistaActual==='folio'?' btn-active':''}" onclick="setCtVista('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
       <button id="ct-vista-proyecto" class="btn btn-ghost btn-sm${_ctVistaActual==='proyecto'?' btn-active':''}" onclick="setCtVista('proyecto')"><i class="fa fa-layer-group"></i> Por proyecto</button>
       <button id="ct-vista-departamento" class="btn btn-ghost btn-sm${_ctVistaActual==='departamento'?' btn-active':''}" onclick="setCtVista('departamento')"><i class="fa fa-sitemap"></i> Por departamento</button>
+      <button id="ct-vista-recientes" class="btn btn-ghost btn-sm${_ctVistaActual==='recientes'?' btn-active':''}" onclick="setCtVista('recientes')"><i class="fa fa-arrow-down"></i> Más recientes</button>
+      <button id="ct-vista-antiguo" class="btn btn-ghost btn-sm${_ctVistaActual==='antiguo'?' btn-active':''}" onclick="setCtVista('antiguo')"><i class="fa fa-arrow-up"></i> Más antiguo</button>
     </div>
     <div id="ct-table-wrap"></div>
     <div id="ct-pager" style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:12px;color:#9ca3af;gap:10px;flex-wrap:wrap"></div>
@@ -10440,6 +10442,18 @@ function _ctRender(){
   // Aplicar orden según vista activa
   if(_ctVistaActual==='proyecto') list=_ctSortByEmpConfig(list,'proyecto');
   else if(_ctVistaActual==='departamento') list=_ctSortByEmpConfig(list,'departamento');
+  else if(_ctVistaActual==='recientes') list=[...list].sort((a,b)=>{
+    const va=DB.vacantes.find(x=>x.id===a.vacante_id)||{};
+    const vb=DB.vacantes.find(x=>x.id===b.vacante_id)||{};
+    const fa=getFechaContratacion(va,a)||''; const fb=getFechaContratacion(vb,b)||'';
+    return fb.localeCompare(fa);
+  });
+  else if(_ctVistaActual==='antiguo') list=[...list].sort((a,b)=>{
+    const va=DB.vacantes.find(x=>x.id===a.vacante_id)||{};
+    const vb=DB.vacantes.find(x=>x.id===b.vacante_id)||{};
+    const fa=getFechaContratacion(va,a)||''; const fb=getFechaContratacion(vb,b)||'';
+    return fa.localeCompare(fb);
+  });
   else list=[...list].sort((a,b)=>{
     const va=DB.vacantes.find(x=>x.id===a.vacante_id)||{};
     const vb=DB.vacantes.find(x=>x.id===b.vacante_id)||{};
@@ -10519,7 +10533,7 @@ function ctIrPagina(n){
 
 function setCtVista(v){
   _ctVistaActual=v;
-  ['folio','proyecto','departamento'].forEach(k=>{const el=document.getElementById('ct-vista-'+k);if(el)el.className=`btn btn-sm ${v===k?'btn-primary':'btn-ghost'}`;});
+  ['folio','proyecto','departamento','recientes','antiguo'].forEach(k=>{const el=document.getElementById('ct-vista-'+k);if(el)el.className=`btn btn-sm ${v===k?'btn-primary':'btn-ghost'}`;});
   const page=document.getElementById('page-contratados');
   if(page) page._ctPage=1;
   _ctRender();
@@ -10540,7 +10554,13 @@ function ctSetPageSize(n){
 
 function exportContratados(){
   const page = document.getElementById('page-contratados');
-  const candsVis = page?._ctFiltered || DB.candidatos.filter(c=>!c.descartado && esColocado(c));
+  let candsVis = page?._ctFiltered || DB.candidatos.filter(c=>!c.descartado && esColocado(c));
+  // Aplicar el mismo orden que la vista activa
+  if(_ctVistaActual==='proyecto') candsVis=_ctSortByEmpConfig(candsVis,'proyecto');
+  else if(_ctVistaActual==='departamento') candsVis=_ctSortByEmpConfig(candsVis,'departamento');
+  else if(_ctVistaActual==='recientes') candsVis=[...candsVis].sort((a,b)=>{const va=DB.vacantes.find(x=>x.id===a.vacante_id)||{};const vb=DB.vacantes.find(x=>x.id===b.vacante_id)||{};return (getFechaContratacion(vb,b)||'').localeCompare(getFechaContratacion(va,a)||'');});
+  else if(_ctVistaActual==='antiguo') candsVis=[...candsVis].sort((a,b)=>{const va=DB.vacantes.find(x=>x.id===a.vacante_id)||{};const vb=DB.vacantes.find(x=>x.id===b.vacante_id)||{};return (getFechaContratacion(va,a)||'').localeCompare(getFechaContratacion(vb,b)||'');});
+  else candsVis=[...candsVis].sort((a,b)=>{const va=DB.vacantes.find(x=>x.id===a.vacante_id)||{};const vb=DB.vacantes.find(x=>x.id===b.vacante_id)||{};return (va.folio||'').localeCompare(vb.folio||'',undefined,{numeric:true});});
   const header = ['#','Vacante','Folio','Empresa','Reclutador','Contratado','Departamento','Proyecto','Apertura','Fecha contratación','Semana','Días proceso','Días cliente'];
   const rows = candsVis.map((c,i)=>{
     const v = DB.vacantes.find(x=>x.id===c.vacante_id)||{};

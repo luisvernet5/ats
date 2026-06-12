@@ -2588,15 +2588,17 @@ async function cargarResumen(){
   const content = document.getElementById('resumen-content');
   if(!content) return;
   content.innerHTML='<div style="color:var(--text3)">Cargando...</div>';
+  try{
 
   let query = sbClient.from('activity_log').select('*').order('created_at',{ascending:false});
   if(f1) query = query.gte('created_at', f1+'T00:00:00');
   if(f2) query = query.lte('created_at', f2+'T23:59:59');
-  const { data: logs } = await query;
+  const { data: logs, error: logErr } = await query;
+  if(logErr) throw logErr;
   if(!logs?.length){ content.innerHTML='<div style="color:var(--text3)">Sin actividad en ese período.</div>'; return; }
 
   // Obtener roles de usuarios
-  const { data: usuarios } = await sbClient.from('usuarios').select('email, rol').catch(()=>({data:[]}));
+  const { data: usuarios } = await sbClient.from('usuarios').select('email, rol');
   const rolByEmail = {};
   (usuarios||[]).forEach(u=>{ if(u.email) rolByEmail[u.email.toLowerCase()]=u.rol; });
 
@@ -2631,6 +2633,9 @@ async function cargarResumen(){
   content._dataRec = all.filter(r=>r.rol==='reclutador'||r.rol==='admin');
   content._dataRH  = all.filter(r=>r.rol==='rh_cliente');
   _renderResumenCards();
+  }catch(e){
+    if(content) content.innerHTML=`<div style="color:var(--red);font-size:13px;padding:16px 0">Error al cargar: ${e?.message||e}</div>`;
+  }
 }
 
 function exportarResumen(){

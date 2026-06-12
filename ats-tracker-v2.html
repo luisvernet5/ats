@@ -1547,6 +1547,10 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <div id="cierre-con-cand">
         <div class="sep">Selecciona el candidato contratado</div>
         <div id="cierre-candidatos-list" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div class="fg" style="margin-top:14px">
+          <label>Fecha de contratación</label>
+          <input type="date" id="cierre-fecha-contratacion">
+        </div>
       </div>
       <div id="cierre-sin-cand" style="display:none">
         <div class="sep">Motivo de cierre sin candidato</div>
@@ -1566,6 +1570,24 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     <div class="mf">
       <button class="btn btn-ghost" onclick="closeModal('modal-cierre-vacante')">Cancelar</button>
       <button class="btn btn-danger" onclick="confirmarCierreVacante()"><i class="fa fa-times-circle"></i> Cerrar vacante</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL EDITAR FECHA CIERRE ===== -->
+<div class="modal-overlay" id="modal-editar-fecha-cierre">
+  <div class="modal" style="width:360px">
+    <div class="mh"><h3>Editar fecha de contratación</h3><button class="xbtn" onclick="closeModal('modal-editar-fecha-cierre')"><i class="fa fa-times"></i></button></div>
+    <div class="mb">
+      <input type="hidden" id="efc-vac-id">
+      <div class="fg">
+        <label>Fecha de contratación</label>
+        <input type="date" id="efc-fecha">
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-editar-fecha-cierre')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarFechaCierre()"><i class="fa fa-save"></i> Guardar</button>
     </div>
   </div>
 </div>
@@ -4003,9 +4025,10 @@ const _vacColDefs=[
   {key:'proyecto',     label:'Proyecto',     col:6},
   {key:'departamento', label:'Departamento', col:7},
   {key:'apertura',     label:'Apertura',     col:8},
-  {key:'sla',          label:'SLA',          col:10},
-  {key:'dias',         label:'Días',         col:11},
-  {key:'cands',        label:'Cands.',       col:12},
+  {key:'fecha_cierre', label:'F. Cierre',    col:10},
+  {key:'sla',          label:'SLA',          col:11},
+  {key:'dias',         label:'Días',         col:12},
+  {key:'cands',        label:'Cands.',       col:13},
 ];
 function _applyVacColVis(){
   let css='';
@@ -5949,6 +5972,7 @@ function abrirCierreVacante(vacId){
     list.innerHTML='<div style="color:var(--text3);font-size:13px;padding:12px">No hay candidatos activos en esta vacante.</div>';
   }
   switchCierreTab('con');
+  document.getElementById('cierre-fecha-contratacion').value=today();
   document.getElementById('cierre-motivo').value='';
   document.getElementById('cierre-obs').value='';
   openModal('modal-cierre-vacante');
@@ -5971,11 +5995,19 @@ async function confirmarCierreVacante(){
   if(tabActiva==='con'){
     const sel=document.querySelector('input[name="cierre-cand"]:checked');
     if(!sel){showToast('Selecciona un candidato','err');return;}
+    const fechaCont=document.getElementById('cierre-fecha-contratacion').value||today();
     const ci=DB.candidatos.findIndex(c=>c.id===sel.value);
-    if(ci>=0){DB.candidatos[ci].etapa='Validado';DB.candidatos[ci].activo=true;await saveRecord('candidatos',DB.candidatos[ci]);}
+    if(ci>=0){
+      DB.candidatos[ci].etapa='Validado';
+      DB.candidatos[ci].activo=true;
+      const etapas=getEmpresaEtapas(DB.vacantes[vi].empresa_id);
+      const finalIdx=etapas.findIndex(e=>e.tipo==='cierre');
+      if(finalIdx>=0) DB.candidatos[ci]['f_'+finalIdx]=fechaCont;
+      await saveRecord('candidatos',DB.candidatos[ci]);
+    }
     DB.vacantes[vi].estado='Cubierta';
     DB.vacantes[vi].candidato_contratado=sel.value;
-    if(!DB.vacantes[vi].fecha_cierre) DB.vacantes[vi].fecha_cierre=today();
+    DB.vacantes[vi].fecha_cierre=fechaCont;
   }else{
     const motivo=document.getElementById('cierre-motivo').value;
     if(!motivo){showToast('Selecciona un motivo','err');return;}
@@ -5987,6 +6019,37 @@ async function confirmarCierreVacante(){
   closeModal('modal-cierre-vacante');
   showToast('Vacante cerrada ✓');
   setTimeout(()=>renderVacantesTable(),100);
+}
+
+function editarFechaCierre(vacId){
+  const v=DB.vacantes.find(x=>x.id===vacId);
+  if(!v)return;
+  document.getElementById('efc-vac-id').value=vacId;
+  document.getElementById('efc-fecha').value=v.fecha_cierre||today();
+  openModal('modal-editar-fecha-cierre');
+}
+
+async function guardarFechaCierre(){
+  const vacId=document.getElementById('efc-vac-id').value;
+  const fecha=document.getElementById('efc-fecha').value;
+  if(!fecha){showToast('Selecciona una fecha','err');return;}
+  const vi=DB.vacantes.findIndex(x=>x.id===vacId);
+  if(vi<0)return;
+  DB.vacantes[vi].fecha_cierre=fecha;
+  const candId=DB.vacantes[vi].candidato_contratado;
+  if(candId){
+    const ci=DB.candidatos.findIndex(c=>c.id===candId);
+    if(ci>=0){
+      const etapas=getEmpresaEtapas(DB.vacantes[vi].empresa_id);
+      const finalIdx=etapas.findIndex(e=>e.tipo==='cierre');
+      if(finalIdx>=0) DB.candidatos[ci]['f_'+finalIdx]=fecha;
+      await saveRecord('candidatos',DB.candidatos[ci]);
+    }
+  }
+  await saveRecord('vacantes',DB.vacantes[vi]);
+  closeModal('modal-editar-fecha-cierre');
+  showToast('Fecha actualizada ✓');
+  renderVacantesTable();
 }
 
 function getSLAStatus(v) {
@@ -6285,6 +6348,7 @@ function renderVacantesTable(){
       <td style="font-size:12px;color:var(--text2)">${v.departamento||''}</td>
       <td>${fmt(v.fecha_apertura)}</td>
       <td>${badgeVacEst(v.estado)}</td>
+      <td style="font-size:12px;color:var(--text2)">${v.fecha_cierre?fmt(v.fecha_cierre):'—'}</td>
       <td>${getSLAStatus(v)}</td>
       <td><span class="dpill ${dClass(dias)}">${dias}d</span></td>
       <td>${act}/${cands.length}</td>
@@ -6293,10 +6357,11 @@ function renderVacantesTable(){
         <button class="btn btn-primary btn-sm" style="padding:4px" onclick="openCandModal('${v.id}')"><i class="fa fa-user-plus" style="font-size:13px"></i></button>
         ${v.estado==='Abierta'?`<button class="btn btn-ghost btn-sm" style="padding:4px" onclick="abrirCierreVacante('${v.id}')" title="Cerrar vacante"><i class="fa fa-times-circle" style="font-size:13px"></i></button>`:`<span class="badge ${v.estado==='Cubierta'?'bg':'br'}">${v.estado}</span>`}
         ${currentUserData?.rol==='admin'?`<button class="btn btn-danger btn-sm" style="padding:4px" onclick="eliminarVacante('${v.id}')" title="Eliminar vacante"><i class="fa fa-trash" style="font-size:13px"></i></button>`:''}
+        ${currentUserData?.rol==='admin'&&v.estado==='Cubierta'?`<button class="btn btn-ghost btn-sm" style="padding:4px" onclick="editarFechaCierre('${v.id}')" title="Editar fecha de contratación"><i class="fa fa-calendar-alt" style="font-size:13px;color:var(--accent)"></i></button>`:''}
       </td>
     </tr>
     <tr id="detail-${v.id}" style="display:none">
-      <td colspan="13" style="padding:0;background:var(--surface2)">
+      <td colspan="14" style="padding:0;background:var(--surface2)">
         <div style="padding:16px 20px">
           <div id="resumen-${v.id}" style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap"></div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -6346,8 +6411,8 @@ function renderVacantesTable(){
   }
 
   document.getElementById('vacantes-table').innerHTML=`<table>
-    <thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>SLA</th><th>Días</th><th>Cands.</th><th style="min-width:120px">Acción</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="13" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>
+    <thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>F. Cierre</th><th>SLA</th><th>Días</th><th>Cands.</th><th style="min-width:120px">Acción</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="14" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>
   </table>`;
   _applyVacColVis();
   const _vcnt=document.getElementById('vacantes-count');
@@ -6396,6 +6461,7 @@ function exportarVacantesExcel(){
     {show:vis('departamento'),  label:'Departamento', val:v=>v.departamento||''},
     {show:vis('apertura'),      label:'Apertura',     val:v=>fmt(v.fecha_apertura)},
     {show:true,       label:'Estado',        val:v=>v.estado},
+    {show:vis('fecha_cierre'),  label:'F. Cierre',   val:v=>v.fecha_cierre?fmt(v.fecha_cierre):''},
     {show:vis('sla'),  label:'SLA',          val:v=>v.sla_dias?`${daysBetween(v.fecha_apertura)}/${v.sla_dias}d`:''},
     {show:vis('dias'), label:'Días abierta', val:v=>daysBetween(v.fecha_apertura)},
     {show:vis('cands'),label:'Cands.',       val:v=>{const cs=DB.candidatos.filter(c=>c.vacante_id===v.id);const act=cs.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length;return`${act}/${cs.length}`;}},

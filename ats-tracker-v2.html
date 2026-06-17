@@ -6045,10 +6045,10 @@ async function confirmarCierreVacante(){
     const fechaCont=document.getElementById('cierre-fecha-contratacion').value||today();
     const ci=DB.candidatos.findIndex(c=>c.id===sel.value);
     if(ci>=0){
-      DB.candidatos[ci].etapa='Validado';
-      DB.candidatos[ci].activo=true;
       const etapas=getEmpresaEtapas(DB.vacantes[vi].empresa_id);
       const finalIdx=etapas.findIndex(e=>e.tipo==='cierre');
+      DB.candidatos[ci].etapa=finalIdx>=0?etapas[finalIdx].label:'Validado';
+      DB.candidatos[ci].activo=true;
       if(finalIdx>=0) DB.candidatos[ci]['f_'+finalIdx]=fechaCont;
       await saveRecord('candidatos',DB.candidatos[ci]);
     }
@@ -7270,8 +7270,10 @@ function renderCandidatosTable(){
     const _tieneRef=_candConRefs.has(c.id);
     const _eiColor=_tieneEi?'#22c55e':'#9ca3af';
     const _refColor=_tieneRef?'#22c55e':'#9ca3af';
-    const etapaOpts=[...empEtapas.map(e=>e.label),...ETAPAS_SALIDA]
-      .map(lbl=>`<option value="${lbl}" ${c.etapa===lbl?'selected':''}>${lbl}</option>`).join('');
+    const _allEtapaLabels=[...empEtapas.map(e=>e.label),...ETAPAS_SALIDA];
+    const _etapaDisplay=_allEtapaLabels.includes(c.etapa)?c.etapa:(empEtapas.find(e=>e.tipo==='cierre')?.label||'Validado');
+    const etapaOpts=_allEtapaLabels
+      .map(lbl=>`<option value="${lbl}" ${_etapaDisplay===lbl?'selected':''}>${lbl}</option>`).join('');
     const motivoOpts=MOTIVOS.map(m=>`<option value="${m}" ${c.motivo_desercion===m?'selected':''}>${m}</option>`).join('');
     const timelineRows=empEtapas.map((et,i)=>{
       const dateVal=c['f_'+i]||'';

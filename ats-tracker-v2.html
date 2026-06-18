@@ -3250,7 +3250,17 @@ function getEmpresaEtapas(empId){
 function _isEmpresaRole(){ return ['rh_cliente','coordinador'].includes(currentUserData?.rol); }
 function _userEmpresaId(){ return _isEmpresaRole() ? (currentUserData?.empresa_id||null) : null; }
 function _coordsEmpresa(empId){ return (DB.coordinadores||[]).filter(c=>c.empresa_id===empId&&c.activo!==false); }
-function _coordAssigned(item){ if(currentUserData?.rol!=='coordinador') return true; const coordId=currentUserData?.coordinador_id; if(!coordId) return false; return (item?.coordinadores_ids||[]).includes(coordId); }
+function _coordAssigned(item){
+  if(currentUserData?.rol!=='coordinador') return true;
+  const coordId=currentUserData?.coordinador_id;
+  if(!coordId) return false;
+  // Procedimientos heredan acceso del perfil de puesto padre
+  if(item?.perfil_id){
+    const perfil=DB.perfilesPuesto.find(p=>p.id===item.perfil_id);
+    return (perfil?.coordinadores_ids||[]).includes(coordId);
+  }
+  return (item?.coordinadores_ids||[]).includes(coordId);
+}
 function esColocado(c){
   if(!c) return false;
   const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
@@ -18044,20 +18054,6 @@ function openProcCrearModal(id){
           </div>
         </div>
 
-        ${['admin','rh_cliente','reclutador'].includes(currentUserData?.rol)?(()=>{
-          const coords=_coordsEmpresa(_procEmpId);
-          if(!coords.length) return '';
-          const assigned=p.coordinadores_ids||[];
-          return`<div style="background:var(--surface2);border-radius:8px;padding:14px 16px;border:1px solid var(--border)">
-            <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px"><i class="fa fa-user-check" style="margin-right:6px"></i>Coordinadores con acceso</div>
-            <div style="display:flex;flex-direction:column;gap:7px">${coords.map(u=>{const area=[u.departamento,u.proyecto].filter(Boolean).join(' / ');return`
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
-                <input type="checkbox" name="pmc-coord" value="${u.id}" ${assigned.includes(u.id)?'checked':''} style="width:auto;padding:0;flex-shrink:0">
-                <span>${_esc(u.nombre||u.id)}${area?`<span style="margin-left:6px;font-size:11px;color:var(--text3);font-weight:400">${_esc(area)}</span>`:''}</span>
-              </label>`;}).join('')}
-            </div>
-          </div>`;
-        })():''}
         <div id="pmc-err" style="display:none;background:#FEE2E2;color:#DC2626;padding:9px 12px;border-radius:7px;font-size:13px"></div>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px">
           <button class="btn btn-ghost" onclick="closeProcCrearModal()">Cancelar</button>
@@ -18295,6 +18291,7 @@ async function saveProcSubido(editId){
     }
   }
   const id=editId||crypto.randomUUID();
+  const coordinadores_ids=Array.from(document.querySelectorAll('input[name="pms-coord"]:checked')).map(el=>el.value);
   const data={
     tipo:'subido',
     titulo,
@@ -18304,14 +18301,15 @@ async function saveProcSubido(editId){
     fecha_elaboracion:document.getElementById('pms-fecha')?.value||'',
     archivo_url,
     archivo_nombre,
+    coordinadores_ids,
   };
   try{
     if(editId){
-      await sbClient.from('procedimientos').update({data}).eq('id',editId);
+      await sbClient.from('procedimientos').update({data, coordinadores_ids}).eq('id',editId);
       const idx=(DB.procedimientos||[]).findIndex(p=>p.id===editId);
       if(idx>=0)DB.procedimientos[idx]={id:editId,...data};
     }else{
-      await sbClient.from('procedimientos').insert({id,data});
+      await sbClient.from('procedimientos').insert({id, data, coordinadores_ids});
       if(!DB.procedimientos)DB.procedimientos=[];
       DB.procedimientos.push({id,...data});
     }

@@ -15,23 +15,37 @@ serve(async (req) => {
   try {
     const { email, redirectTo, nombre, rol, empresa_id, reclutador_id } = await req.json()
 
+    if (!email) throw new Error('El email es requerido')
+
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+    // Try to invite; if user already exists in Auth, look up their ID instead
+    let userId: string | null = null
+    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
       email,
       { redirectTo: redirectTo || 'https://ats-five-black.vercel.app/ats-tracker-v2.html' }
     )
 
-    if (error) throw error
+    if (inviteError) {
+      // User might already exist — search by email
+      const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers()
+      if (listError) throw new Error('No se pudo invitar: ' + inviteError.message)
+      const existing = listData?.users?.find((u: any) => u.email === email)
+      if (!existing) throw new Error(inviteError.message)
+      userId = existing.id
+    } else {
+      userId = inviteData?.user?.id ?? null
+    }
 
-    if (data?.user?.id) {
-      const { error: insertError } = await supabaseAdmin
+    // Upsert into usuarios table
+    if (userId) {
+      const { error: upsertError } = await supabaseAdmin
         .from('usuarios')
         .upsert({
-          id: data.user.id,
+          id: userId,
           nombre: nombre || email,
           email,
           rol: rol || 'reclutador',
@@ -39,7 +53,7 @@ serve(async (req) => {
           reclutador_id: reclutador_id || null,
           activo: true,
         })
-      if (insertError) throw insertError
+      if (upsertError) throw new Error('Usuario invitado pero error al registrar: ' + upsertError.message)
     }
 
     return new Response(

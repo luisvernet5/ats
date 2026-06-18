@@ -11934,7 +11934,7 @@ async function saveUsuario() {
         const { data, error: fnError } = await sbClient.functions.invoke('invite-user', {
           body: { email, nombre, rol, empresa_id, reclutador_id }
         });
-        if(fnError) throw fnError;
+        if(fnError) throw new Error(fnError.context?.error || fnError.message);
         if(data?.error) throw new Error(data.error);
         showToast('Invitación enviada a ' + email + ' ✓');
         closeModal('modal-usuario');

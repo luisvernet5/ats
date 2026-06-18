@@ -5564,9 +5564,9 @@ async function saveReclutador(){
 
 async function toggleUsuarioActivo(id, activo){
   const { error } = await sbClient.from('usuarios').update({ activo }).eq('id', id);
-  if(error){ showToast('Error: '+error.message,'err'); loadUsuarios(); return; }
+  if(error){ showToast('Error: '+error.message,'err'); _refreshUsuariosUI(); return; }
   showToast(activo ? 'Usuario activado ✓' : 'Usuario desactivado ✓');
-  loadUsuarios();
+  _refreshUsuariosUI();
 }
 
 async function toggleReclutadorActivo(id, activo){
@@ -11927,6 +11927,14 @@ function openUsuarioModal(usrId=null) {
   openModal('modal-usuario');
 }
 
+async function _refreshUsuariosUI(){
+  if(document.getElementById('cfg-tab-coordinadores')?.classList.contains('active')){
+    await renderCoordinadoresConfig();
+  } else {
+    loadUsuarios();
+  }
+}
+
 async function saveUsuario() {
   const usrId = document.getElementById('usr-id').value;
   const nombre = document.getElementById('usr-nombre').value.trim();
@@ -11948,7 +11956,7 @@ async function saveUsuario() {
         if(data?.error) throw new Error(data.error);
         showToast('Invitación enviada a ' + email + ' ✓');
         closeModal('modal-usuario');
-        loadUsuarios();
+        _refreshUsuariosUI();
         return;
       }
       const uuid = document.getElementById('usr-uuid').value.trim();
@@ -11962,7 +11970,7 @@ async function saveUsuario() {
       showToast('Usuario actualizado ✓');
     }
     closeModal('modal-usuario');
-    loadUsuarios();
+    _refreshUsuariosUI();
   } catch(e) {
     showToast('Error: '+e.message, 'err');
   }
@@ -11978,7 +11986,7 @@ async function eliminarUsuario(usrId) {
     if(data?.error) throw new Error(data.error);
     await logActivity('Eliminar usuario', 'usuarios', usrId, usrId);
     showToast('Usuario eliminado ✓');
-    await loadUsuarios();
+    await _refreshUsuariosUI();
   } catch(e) {
     showToast('Error: ' + e.message, 'err');
   }

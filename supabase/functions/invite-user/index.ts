@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { email, redirectTo } = await req.json()
+    const { email, redirectTo, nombre, rol, empresa_id, reclutador_id } = await req.json()
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -25,6 +25,22 @@ serve(async (req) => {
     )
 
     if (error) throw error
+
+    // Insert into usuarios table with role and empresa/reclutador assignment
+    if (data?.user?.id) {
+      const { error: insertError } = await supabaseAdmin
+        .from('usuarios')
+        .upsert({
+          id: data.user.id,
+          nombre: nombre || email,
+          email,
+          rol: rol || 'reclutador',
+          empresa_id: empresa_id || null,
+          reclutador_id: reclutador_id || null,
+          activo: true,
+        })
+      if (insertError) throw insertError
+    }
 
     return new Response(
       JSON.stringify({ success: true }),

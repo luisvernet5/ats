@@ -3121,6 +3121,8 @@ const DB={
   perfilesEliminados:[],
   kpis:[],
   procedimientos:[],
+  usuarios:[],
+  coordinadores:[],
   reclutadores:[
     {id:'r1',nombre:'Ana López',email:'ana@empresa.com'},
     {id:'r2',nombre:'Carlos Méndez',email:'carlos@empresa.com'},
@@ -13689,9 +13691,13 @@ function exportarPerfilesExcel(modo='sencilla'){
 }
 
 let _perfilEmpId=null, _perfilId=null;
-function openPerfilModal(empId, perfilId){
+async function openPerfilModal(empId, perfilId){
   _perfilEmpId=empId; _perfilId=perfilId;
-  const p = perfilId ? DB.perfilesPuesto.find(x=>x.id===perfilId)||{} : {};
+  let p = perfilId ? DB.perfilesPuesto.find(x=>x.id===perfilId)||{} : {};
+  if(perfilId){
+    const {data:fr}=await sbClient.from('perfiles_puesto').select('*').eq('id',perfilId).single();
+    if(fr){ p={id:fr.id,...(fr.data||fr)}; const idx=DB.perfilesPuesto.findIndex(x=>x.id===perfilId); if(idx>=0) DB.perfilesPuesto[idx]=p; }
+  }
   const v=(id)=>p[id]||'';
   const chk=(field,val)=>p[field]===val?' checked':'';
   const resp=(field,label)=>`

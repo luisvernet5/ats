@@ -13902,11 +13902,11 @@ function openPerfilModal(empId, perfilId){
         const assigned=p.coordinadores_ids||[];
         return`<div style="background:var(--surface2);border-radius:8px;padding:14px 16px;margin-bottom:14px;border:1px solid var(--border)">
           <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px"><i class="fa fa-user-check" style="margin-right:6px"></i>Coordinadores con acceso</div>
-          <div style="display:flex;flex-direction:column;gap:7px">${coords.map(u=>`
+          <div style="display:flex;flex-direction:column;gap:7px">${coords.map(u=>{const area=[u.departamento,u.proyecto].filter(Boolean).join(' / ');return`
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
               <input type="checkbox" name="pf-coord" value="${u.id}" ${assigned.includes(u.id)?'checked':''} style="width:auto;padding:0;flex-shrink:0">
-              ${_esc(u.nombre||u.email||u.id)}
-            </label>`).join('')}
+              <span>${_esc(u.nombre||u.id)}${area?`<span style="margin-left:6px;font-size:11px;color:var(--text3);font-weight:400">${_esc(area)}</span>`:''}</span>
+            </label>`;}).join('')}
           </div>
         </div>`;
       })():''}
@@ -18039,11 +18039,11 @@ function openProcCrearModal(id){
           const assigned=p.coordinadores_ids||[];
           return`<div style="background:var(--surface2);border-radius:8px;padding:14px 16px;border:1px solid var(--border)">
             <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px"><i class="fa fa-user-check" style="margin-right:6px"></i>Coordinadores con acceso</div>
-            <div style="display:flex;flex-direction:column;gap:7px">${coords.map(u=>`
+            <div style="display:flex;flex-direction:column;gap:7px">${coords.map(u=>{const area=[u.departamento,u.proyecto].filter(Boolean).join(' / ');return`
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
                 <input type="checkbox" name="pmc-coord" value="${u.id}" ${assigned.includes(u.id)?'checked':''} style="width:auto;padding:0;flex-shrink:0">
-                ${_esc(u.nombre||u.email||u.id)}
-              </label>`).join('')}
+                <span>${_esc(u.nombre||u.id)}${area?`<span style="margin-left:6px;font-size:11px;color:var(--text3);font-weight:400">${_esc(area)}</span>`:''}</span>
+              </label>`;}).join('')}
             </div>
           </div>`;
         })():''}

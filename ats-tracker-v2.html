@@ -1770,6 +1770,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
             <option value="admin">Admin — acceso total</option>
             <option value="reclutador">Reclutador — solo sus vacantes</option>
             <option value="rh_cliente">RH Cliente — solo su empresa</option>
+            <option value="coordinador">Coordinador — solo visualizar su empresa</option>
             <option value="facturacion">Facturación — solo Garantías</option>
           </select>
         </div>
@@ -2195,6 +2196,12 @@ function adaptUIToRole() {
         if(!keep) btn.style.display='none';
       });
     }
+  } else if(rol === 'coordinador') {
+    ['nav-empresas','nav-pipeline','nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-config','nav-headcount','nav-ese'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.style.display='none';
+    });
+    const topbarActCo = document.querySelector('.topbar-actions');
+    if(topbarActCo) topbarActCo.querySelectorAll('button').forEach(btn => btn.style.display='none');
   } else if(rol === 'reclutador') {
     ['nav-empresas','nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-config','nav-headcount'].forEach(id => {
       const el = document.getElementById(id); if(el) el.style.display='none';
@@ -2313,8 +2320,8 @@ function adaptUIToRole() {
       document.querySelector('.main').appendChild(pg);
     }
   }
-  // Documentación — admin, reclutador y rh_cliente
-  if(['admin','reclutador','rh_cliente'].includes(rol) && !document.getElementById('nav-documentacion')){
+  // Documentación — admin, reclutador, rh_cliente y coordinador
+  if(['admin','reclutador','rh_cliente','coordinador'].includes(rol) && !document.getElementById('nav-documentacion')){
     const navEl = document.querySelector('.sb-nav');
     const configItem = document.getElementById('nav-config');
     if(navEl){
@@ -2641,7 +2648,7 @@ async function cargarResumen(){
 
   const all = Object.values(porRec).sort((a,b)=>b.totalAcciones-a.totalAcciones);
   content._dataRec = all.filter(r=>r.rol==='reclutador'||r.rol==='admin');
-  content._dataRH  = all.filter(r=>r.rol==='rh_cliente');
+  content._dataRH  = all.filter(r=>r.rol==='rh_cliente'||r.rol==='coordinador');
   _renderResumenCards();
   }catch(e){
     if(content) content.innerHTML=`<div style="color:var(--red);font-size:13px;padding:16px 0">Error al cargar: ${e?.message||e}</div>`;
@@ -2994,7 +3001,7 @@ async function loadDB(){
       updateSandboxUI();
       return;
     }
-    const _isRhC=currentUserData?.rol?.toLowerCase()==='rh_cliente';
+    const _isRhC=_isEmpresaRole();
     const _rhEmpId=currentUserData?.empresa_id||null;
     const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand,perfiles,evals,evEnv,procEval,procEnv]=await Promise.all([
       sbClient.from('empresas').select('*'),
@@ -3235,6 +3242,8 @@ function getEmpresaEtapas(empId){
   if(!e||!e.etapas||!e.etapas.length)return DEFAULT_ETAPAS.map(x=>({...x}));
   return e.etapas;
 }
+function _isEmpresaRole(){ return ['rh_cliente','coordinador'].includes(currentUserData?.rol); }
+function _userEmpresaId(){ return _isEmpresaRole() ? (currentUserData?.empresa_id||null) : null; }
 function esColocado(c){
   if(!c) return false;
   const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
@@ -3358,7 +3367,7 @@ function exportarCSV(){
   const expEmp=document.getElementById('exp-emp');
   const expRec=document.getElementById('exp-rec');
   const expEtapa=document.getElementById('exp-etapa');
-  const _isRhCExp=currentUserData?.rol==='rh_cliente';
+  const _isRhCExp=_isEmpresaRole();
   const _rhEmpIdExp=currentUserData?.empresa_id||null;
   if(_isRhCExp && _rhEmpIdExp){
     const _rhEmpExp=DB.empresas.find(e=>e.id===_rhEmpIdExp)||{};
@@ -4625,12 +4634,12 @@ function openVacanteModal(id=null,preEmpId=null){
   document.getElementById('vac-proyecto').innerHTML='<option value="">Sin asignar</option>';
   const empSel=document.getElementById('vac-empresa');
   empSel.innerHTML='<option value="">Seleccionar...</option>';
-  (currentUserData?.rol==='rh_cliente'
+  (_isEmpresaRole()
     ? DB.empresas.filter(e=>e.id===currentUserData?.empresa_id)
     : DB.empresas
   ).forEach(e=>empSel.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
   if(preEmpId)empSel.value=preEmpId;
-  if(currentUserData?.rol==='rh_cliente'){
+  if(_isEmpresaRole()){
     empSel.value = currentUserData?.empresa_id||'';
     empSel.disabled = true;
   } else {
@@ -4650,7 +4659,7 @@ function openVacanteModal(id=null,preEmpId=null){
       document.getElementById('vac-id').value=v.id;
       document.getElementById('vac-nombre').value=v.nombre;
       document.getElementById('vac-empresa').value=v.empresa_id||'';
-      if(currentUserData?.rol==='rh_cliente'){
+      if(_isEmpresaRole()){
         document.getElementById('vac-empresa').value = currentUserData?.empresa_id||'';
         document.getElementById('vac-empresa').disabled = true;
       } else {
@@ -5111,11 +5120,11 @@ function openCandModal(vacanteIdOrNull,reemplazaId=null){
   // populate empresa
   const empSel=document.getElementById('cand-empresa');
   empSel.innerHTML='<option value="">Seleccionar empresa...</option>';
-  (currentUserData?.rol==='rh_cliente'
+  (_isEmpresaRole()
     ? DB.empresas.filter(e=>e.id===currentUserData?.empresa_id)
     : DB.empresas
   ).forEach(e=>empSel.innerHTML+=`<option value="${e.id}">${e.nombre}</option>`);
-  if(currentUserData?.rol==='rh_cliente' && currentUserData?.empresa_id){
+  if(_isEmpresaRole() && currentUserData?.empresa_id){
     empSel.value = currentUserData.empresa_id;
     onCandEmpresaChange();
   }
@@ -5675,7 +5684,7 @@ function getChain(id){
    ============================================================ */
 function renderDashboard(){
   const recId = currentUserData?.rol === 'reclutador' ? currentUserData?.reclutador_id : null;
-  const empId = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
+  const empId = _userEmpresaId();
   const vacantes = recId
     ? DB.vacantes.filter(v=>v.reclutador_id===recId)
     : empId
@@ -5921,7 +5930,7 @@ function renderPipelineCalendar(cands){
 }
 
 function renderPipeline(){
-  const _empIdPip = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
+  const _empIdPip = _userEmpresaId();
   // populate multi-select filters
   const pipEmpOpts=(_empIdPip?DB.empresas.filter(e=>e.id===_empIdPip):DB.empresas).map(e=>({value:e.id,label:e.nombre}));
   _mfPopulate('flt-pip-emp',pipEmpOpts,'Todas las empresas');
@@ -5929,7 +5938,7 @@ function renderPipeline(){
   const pipVacOpts=(_empIdPip?DB.vacantes.filter(v=>v.empresa_id===_empIdPip):DB.vacantes).map(v=>({value:v.id,label:v.nombre}));
   _mfPopulate('flt-pip-vac',pipVacOpts,'Todas las vacantes');
   const _recIdP = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
-  const _empIdP = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
+  const _empIdP = _userEmpresaId();
   const _vacsP = _recIdP ? DB.vacantes.filter(v=>v.reclutador_id===_recIdP) : _empIdP ? DB.vacantes.filter(v=>v.empresa_id===_empIdP) : DB.vacantes;
   let cands = (_recIdP||_empIdP) ? DB.candidatos.filter(c=>_vacsP.find(v=>v.id===c.vacante_id)) : DB.candidatos;
   const mfPipEmp=_mfGet('flt-pip-emp');if(mfPipEmp){const vids=_vacsP.filter(v=>mfPipEmp.has(v.empresa_id||'')).map(v=>v.id);cands=cands.filter(c=>vids.includes(c.vacante_id));}
@@ -6355,10 +6364,10 @@ function renderVacantesTable(){
   const desdeFlt=(document.getElementById('flt-vac-desde')||{}).value||'';
   const hastaFlt=(document.getElementById('flt-vac-hasta')||{}).value||'';
   const _recIdV = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
-  const _empIdV = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
+  const _empIdV = _userEmpresaId();
   const base = _recIdV ? DB.vacantes.filter(v=>v.reclutador_id===_recIdV) : _empIdV ? DB.vacantes.filter(v=>v.empresa_id===_empIdV) : DB.vacantes;
   // populate multi-select filters
-  const empOpts=(currentUserData?.rol==='rh_cliente'?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).map(e=>({value:e.id,label:e.nombre}));
+  const empOpts=(_isEmpresaRole()?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).map(e=>({value:e.id,label:e.nombre}));
   _mfPopulate('flt-vac-emp',empOpts,'Todas las empresas');
   _mfPopulate('flt-vac-est',['Abierta','Cubierta','Cancelada'].map(s=>({value:s,label:s})),'Todos los estados');
   const rIdsV=[...new Set(base.map(v=>v.reclutador_id).filter(Boolean))];
@@ -6474,7 +6483,7 @@ function exportarVacantesExcel(){
   const desdeFlt=(document.getElementById('flt-vac-desde')||{}).value||'';
   const hastaFlt=(document.getElementById('flt-vac-hasta')||{}).value||'';
   const _recIdV=currentUserData?.rol==='reclutador'?currentUserData?.reclutador_id:null;
-  const _empIdV=currentUserData?.rol==='rh_cliente'?currentUserData?.empresa_id:null;
+  const _empIdV=_userEmpresaId();
   let list=_recIdV?DB.vacantes.filter(v=>v.reclutador_id===_recIdV):_empIdV?DB.vacantes.filter(v=>v.empresa_id===_empIdV):DB.vacantes;
   if(q)list=list.filter(v=>v.nombre.toLowerCase().includes(q.toLowerCase()));
   const mfEmp=_mfGet('flt-vac-emp');if(mfEmp)list=list.filter(v=>mfEmp.has(v.empresa_id||''));
@@ -7120,7 +7129,7 @@ function exportCandidatosExcel(){
   // — mismos filtros que renderCandidatosTable —
   const q = (document.getElementById('flt-cand-q')||{}).value||'';
   const _recIdC = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
-  const _empIdC = currentUserData?.rol==='rh_cliente'  ? currentUserData?.empresa_id  : null;
+  const _empIdC = _userEmpresaId();
   const _vacsC  = _recIdC ? DB.vacantes.filter(v=>v.reclutador_id===_recIdC)
                 : _empIdC ? DB.vacantes.filter(v=>v.empresa_id===_empIdC)
                 : DB.vacantes;
@@ -7197,16 +7206,16 @@ function renderCandidatosTable(){
   const q=(document.getElementById('flt-cand-q')||{}).value||'';
   if(!window._etapaFiltroSet) window._etapaFiltroSet = null; // null = todas
   // populate empresa multi-select filter
-  const cEmpOpts=(currentUserData?.rol==='rh_cliente'?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).map(e=>({value:e.id,label:e.nombre}));
+  const cEmpOpts=(_isEmpresaRole()?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).map(e=>({value:e.id,label:e.nombre}));
   _mfPopulate('flt-cand-emp',cEmpOpts,'Todas las empresas');
   // populate reclutador multi-select filter (scoped for rh_cliente)
-  const _empIdCRec=currentUserData?.rol==='rh_cliente'?currentUserData?.empresa_id:null;
+  const _empIdCRec=_userEmpresaId();
   const vacsForRec=_empIdCRec?DB.vacantes.filter(v=>v.empresa_id===_empIdCRec):DB.vacantes;
   const cRIds=[...new Set(vacsForRec.map(v=>v.reclutador_id).filter(Boolean))];
   _mfPopulate('flt-cand-rec',cRIds.map(id=>{const r=DB.reclutadores.find(x=>x.id===id)||{};return{value:id,label:r.nombre||id};}),'Todos los reclutadores');
 
   const _recIdC = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
-  const _empIdC = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
+  const _empIdC = _userEmpresaId();
   const _vacsC = _recIdC ? DB.vacantes.filter(v=>v.reclutador_id===_recIdC) : _empIdC ? DB.vacantes.filter(v=>v.empresa_id===_empIdC) : DB.vacantes;
   let list = (_recIdC||_empIdC) ? DB.candidatos.filter(c=>_vacsC.find(v=>v.id===c.vacante_id)) : DB.candidatos;
   if(!window._filtroMostrarDescartados) list = list.filter(c=>!_esCandDescartado(c));
@@ -8948,7 +8957,7 @@ let currentHCEmpId='', currentHCSemana=0, currentHCAnio=0;
 async function renderHeadCount(){
   const page = document.getElementById('page-headcount');
   if(!page) return;
-  const isRhC = currentUserData?.rol === 'rh_cliente';
+  const isRhC = _isEmpresaRole();
   const rhEmpId = currentUserData?.empresa_id || null;
   const empresasFiltradas = (isRhC && rhEmpId)
     ? DB.empresas.filter(e => e.id === rhEmpId)
@@ -10403,7 +10412,7 @@ function renderContratados(){
   const page = document.getElementById('page-contratados');
   if(!page) return;
   const recIdRole = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
-  const empIdC = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
+  const empIdC = _userEmpresaId();
 
   // Base: todos los candidatos colocados (igual que el Dashboard)
   let candsColocados = DB.candidatos.filter(c=>!c.descartado && esColocado(c));
@@ -11692,7 +11701,7 @@ async function _renderPermisosTab(){
   content.innerHTML='<div style="display:flex;gap:6px;align-items:center;padding:20px 0"><i class="fa fa-spinner fa-spin"></i> Cargando usuarios...</div>';
   const {data:usuarios}=await sbClient.from('usuarios').select('*');
   const list=(usuarios||[]).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
-  const rolBadge=u=>u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':u.rol==='facturacion'?'ba':'bg';
+  const rolBadge=u=>u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':u.rol==='coordinador'?'bx':u.rol==='facturacion'?'ba':'bg';
   const userRows=list.map(u=>`
     <div id="perm-usr-${u.id}" onclick="_permisosSelectUser('${u.id}')"
       style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;cursor:pointer;transition:background .12s;border:1px solid transparent">
@@ -11755,7 +11764,7 @@ async function _permisosSelectUser(userId){
       </div>
     </div>`;
   }).join('');
-  const rolBadge=u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':u.rol==='facturacion'?'ba':'bg';
+  const rolBadge=u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':u.rol==='coordinador'?'bx':u.rol==='facturacion'?'ba':'bg';
   const empNombre=u.empresa_id?(DB.empresas.find(e=>e.id===u.empresa_id)?.nombre||null):null;
   detail.innerHTML=`
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
@@ -11847,7 +11856,7 @@ async function saveEditReclutador(id){
 function onUsrRolChange() {
   const rol = document.getElementById('usr-rol').value;
   document.getElementById('usr-reclutador-field').style.display = rol==='reclutador' ? 'grid' : 'none';
-  document.getElementById('usr-empresa-field').style.display = rol==='rh_cliente' ? 'grid' : 'none';
+  document.getElementById('usr-empresa-field').style.display = (rol==='rh_cliente'||rol==='coordinador') ? 'grid' : 'none';
 }
 
 function toggleInviteMode() {
@@ -11915,9 +11924,9 @@ async function saveUsuario() {
   const rol = document.getElementById('usr-rol').value;
   if(!nombre || !email || !rol) { showToast('Completa nombre, email y rol', 'err'); return; }
   const reclutador_id = rol==='reclutador' ? document.getElementById('usr-reclutador-sel').value : null;
-  const empresa_id = rol==='rh_cliente' ? document.getElementById('usr-empresa-sel').value : null;
+  const empresa_id = (rol==='rh_cliente'||rol==='coordinador') ? document.getElementById('usr-empresa-sel').value : null;
   if(rol==='reclutador' && !reclutador_id) { showToast('Selecciona el reclutador', 'err'); return; }
-  if(rol==='rh_cliente' && !empresa_id) { showToast('Selecciona la empresa', 'err'); return; }
+  if((rol==='rh_cliente'||rol==='coordinador') && !empresa_id) { showToast('Selecciona la empresa', 'err'); return; }
   try {
     if(!usrId) {
       const sendInvite = document.getElementById('usr-send-invite').checked;
@@ -12013,14 +12022,14 @@ async function loadUsuarios() {
   const rows = list.map((u,i) => {
     const emp = DB.empresas.find(e=>e.id===u.empresa_id)||{};
     const rec = DB.reclutadores.find(r=>r.id===u.reclutador_id)||{};
-    const rolBadge = u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':'bg';
+    const rolBadge = u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':u.rol==='coordinador'?'bx':u.rol==='facturacion'?'ba':'bg';
     const esSelf = u.id === currentUser?.id;
     return `<tr style="${u.activo===false?'opacity:.55':''}">
       <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
       <td class="td-p">${u.nombre||'—'}</td>
       <td>${u.email||'—'}</td>
       <td><span class="badge ${rolBadge}">${u.rol}</span></td>
-      <td>${u.rol==='rh_cliente'?emp.nombre||u.empresa_id||'—':u.rol==='reclutador'?rec.nombre||u.reclutador_id||'—':'—'}</td>
+      <td>${(u.rol==='rh_cliente'||u.rol==='coordinador')?emp.nombre||u.empresa_id||'—':u.rol==='reclutador'?rec.nombre||u.reclutador_id||'—':'—'}</td>
       <td style="text-align:center">
         ${esSelf ? '<span style="font-size:11px;color:var(--text3)">—</span>' : `<label class="sw" title="${u.activo===false?'Inactivo':'Activo'}"><input type="checkbox" ${u.activo!==false?'checked':''} onchange="toggleUsuarioActivo('${u.id}',this.checked)"><span class="sw-sl"></span></label>`}
       </td>
@@ -13167,7 +13176,7 @@ function renderPerfiles(){
   if(!page) return;
   const rol = currentUserData?.rol||'admin';
   let empresas = DB.empresas;
-  if(rol==='rh_cliente'){
+  if(_isEmpresaRole()){
     const empId = currentUserData?.empresa_id;
     empresas = DB.empresas.filter(e=>e.id===empId);
     if(empresas.length===1){ renderPerfilesEmpresa(empresas[0].id); return; }
@@ -14939,7 +14948,7 @@ function exportarDocumentacionExcel(){
 function _docCandidatosFiltrados(){
   const q = _docQ.toLowerCase().trim();
   const recId = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
-  const empIdCliente = currentUserData?.rol==='rh_cliente' ? currentUserData?.empresa_id : null;
+  const empIdCliente = _userEmpresaId();
   // Empresas donde el reclutador tiene vacantes asignadas
   const recEmpIds = recId
     ? new Set(DB.vacantes.filter(v=>v.reclutador_id===recId).map(v=>v.empresa_id).filter(Boolean))
@@ -17557,7 +17566,7 @@ function renderProcedimientos(){
   _procEmpId=null;_procPerfilId=null;
   const rol=currentUserData?.rol||'admin';
   let empresas=DB.empresas;
-  if(rol==='rh_cliente'){
+  if(_isEmpresaRole()){
     const eId=currentUserData?.empresa_id;
     empresas=DB.empresas.filter(e=>e.id===eId);
     if(empresas.length===1){renderProcedimientosEmpresa(empresas[0].id);return;}

@@ -1737,6 +1737,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     <div class="mh"><h3 id="modal-usr-title">Nuevo usuario</h3><button class="xbtn" onclick="closeModal('modal-usuario')"><i class="fa fa-times"></i></button></div>
     <div class="mb">
       <input type="hidden" id="usr-id">
+      <input type="hidden" id="usr-coordinador-id-hidden">
       <div id="usr-new-instructions" class="alert alert-i" style="margin-bottom:14px">
         <i class="fa fa-info-circle"></i>
         <div id="usr-instructions-text">
@@ -3048,6 +3049,7 @@ async function loadDB(){
     try{const kpisRes=await sbClient.from('kpis').select('*');DB.kpis=(kpisRes.data||[]).map(r=>r.data||r).filter(Boolean);}catch(e){DB.kpis=[];}
     try{const procRes=await sbClient.from('procedimientos').select('*');DB.procedimientos=(procRes.data||[]).map(r=>({id:r.id,...(r.data||r)})).filter(Boolean);}catch(e){DB.procedimientos=[];}
     try{const usrRes=await sbClient.from('usuarios').select('*');DB.usuarios=(usrRes.data||[]).filter(Boolean);}catch(e){DB.usuarios=[];}
+    try{const coordRes=await sbClient.from('coordinadores').select('*');DB.coordinadores=(coordRes.data||[]).filter(Boolean);}catch(e){DB.coordinadores=[];}
   }catch(e){
     console.error('[loadDB] ERROR:',e?.message||e);
     showToast('Error al cargar datos: '+(e?.message||'revisa la consola'),'err');
@@ -3245,8 +3247,8 @@ function getEmpresaEtapas(empId){
 }
 function _isEmpresaRole(){ return ['rh_cliente','coordinador'].includes(currentUserData?.rol); }
 function _userEmpresaId(){ return _isEmpresaRole() ? (currentUserData?.empresa_id||null) : null; }
-function _coordsEmpresa(empId){ return (DB.usuarios||[]).filter(u=>u.rol==='coordinador'&&u.empresa_id===empId&&u.activo!==false); }
-function _coordAssigned(item){ if(currentUserData?.rol!=='coordinador') return true; return (item?.coordinadores_ids||[]).includes(currentUser?.id); }
+function _coordsEmpresa(empId){ return (DB.coordinadores||[]).filter(c=>c.empresa_id===empId&&c.activo!==false); }
+function _coordAssigned(item){ if(currentUserData?.rol!=='coordinador') return true; const coordId=currentUserData?.coordinador_id; if(!coordId) return false; return (item?.coordinadores_ids||[]).includes(coordId); }
 function esColocado(c){
   if(!c) return false;
   const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
@@ -11892,6 +11894,7 @@ function openUsuarioModal(usrId=null) {
     toggleInviteMode();
   }
   ['usr-nombre','usr-email'].forEach(i => document.getElementById(i).value='');
+  document.getElementById('usr-coordinador-id-hidden').value = '';
   document.getElementById('usr-rol').value = '';
   onUsrRolChange();
   const recSel = document.getElementById('usr-reclutador-sel');
@@ -11943,6 +11946,7 @@ async function saveUsuario() {
   if(!nombre || !email || !rol) { showToast('Completa nombre, email y rol', 'err'); return; }
   const reclutador_id = rol==='reclutador' ? document.getElementById('usr-reclutador-sel').value : null;
   const empresa_id = (rol==='rh_cliente'||rol==='coordinador') ? document.getElementById('usr-empresa-sel').value : null;
+  const coordinador_id = document.getElementById('usr-coordinador-id-hidden').value || null;
   if(rol==='reclutador' && !reclutador_id) { showToast('Selecciona el reclutador', 'err'); return; }
   if((rol==='rh_cliente'||rol==='coordinador') && !empresa_id) { showToast('Selecciona la empresa', 'err'); return; }
   try {
@@ -11950,7 +11954,7 @@ async function saveUsuario() {
       const sendInvite = document.getElementById('usr-send-invite').checked;
       if(sendInvite) {
         const { data, error: fnError } = await sbClient.functions.invoke('invite-user', {
-          body: { email, nombre, rol, empresa_id, reclutador_id }
+          body: { email, nombre, rol, empresa_id, reclutador_id, coordinador_id }
         });
         if(fnError) throw new Error(fnError.context?.error || fnError.message);
         if(data?.error) throw new Error(data.error);
@@ -11961,11 +11965,11 @@ async function saveUsuario() {
       }
       const uuid = document.getElementById('usr-uuid').value.trim();
       if(!uuid) { showToast('Pega el UUID del usuario de Supabase Auth', 'err'); return; }
-      const { error } = await sbClient.from('usuarios').insert({ id: uuid, nombre, email, rol, reclutador_id, empresa_id });
+      const { error } = await sbClient.from('usuarios').insert({ id: uuid, nombre, email, rol, reclutador_id, empresa_id, coordinador_id });
       if(error) { showToast('Error: UUID inválido o ya registrado', 'err'); return; }
       showToast('Usuario registrado ✓');
     } else {
-      const { error: updErr } = await sbClient.from('usuarios').update({ nombre, rol, reclutador_id, empresa_id }).eq('id', usrId);
+      const { error: updErr } = await sbClient.from('usuarios').update({ nombre, rol, reclutador_id, empresa_id, coordinador_id }).eq('id', usrId);
       if(updErr) { showToast('Error al guardar: '+updErr.message, 'err'); return; }
       showToast('Usuario actualizado ✓');
     }
@@ -12026,17 +12030,19 @@ async function renderCoordinadoresConfig(){
   const content = document.getElementById('cfg-content');
   if(!content) return;
   content.innerHTML = `<div style="display:flex;justify-content:center;align-items:center;padding:40px"><i class="fa fa-spinner fa-spin" style="color:var(--accent);font-size:20px"></i></div>`;
-  const { data: usuarios } = await sbClient.from('usuarios').select('*');
-  DB.usuarios = (usuarios||[]).filter(Boolean);
-  const coords = (usuarios||[]).filter(u=>u.rol==='coordinador').sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
-  const empresas = DB.empresas;
-  const rows = coords.map((u,i)=>{
-    const emp = empresas.find(e=>e.id===u.empresa_id);
-    const esSelf = u.id === currentUser?.id;
-    return`<tr style="${u.activo===false?'opacity:.55':''}">
+  const { data: coordData } = await sbClient.from('coordinadores').select('*');
+  DB.coordinadores = (coordData||[]).filter(Boolean);
+  const { data: usrData } = await sbClient.from('usuarios').select('*');
+  DB.usuarios = (usrData||[]).filter(Boolean);
+  const coords = (DB.coordinadores).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+  const rows = coords.map((c,i)=>{
+    const emp = DB.empresas.find(e=>e.id===c.empresa_id);
+    const hasUser = DB.usuarios.some(u=>u.coordinador_id===c.id);
+    const area = [c.departamento,c.proyecto].filter(Boolean).join(' / ') || '—';
+    return`<tr style="${c.activo===false?'opacity:.55':''}">
       <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
-      <td class="td-p" style="font-weight:500">${_esc(u.nombre||'—')}</td>
-      <td style="font-size:13px;color:var(--text2)">${_esc(u.email||'—')}</td>
+      <td class="td-p" style="font-weight:500">${_esc(c.nombre||'—')}</td>
+      <td style="font-size:13px;color:var(--text2)">${_esc(area)}</td>
       <td>
         ${emp?`<div style="display:flex;align-items:center;gap:6px">
           ${emp.logo?`<img src="${emp.logo}" style="width:18px;height:18px;object-fit:contain;border-radius:3px">`:`<div style="width:18px;height:18px;border-radius:3px;background:${emp.color||'#2AAADE'}22;display:inline-flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${emp.color||'#2AAADE'};font-size:9px"></i></div>`}
@@ -12044,27 +12050,34 @@ async function renderCoordinadoresConfig(){
         </div>`:`<span style="font-size:12px;color:var(--text3)">Sin asignar</span>`}
       </td>
       <td style="text-align:center">
-        <label class="sw" title="${u.activo===false?'Inactivo — clic para activar':'Activo — clic para desactivar'}">
-          <input type="checkbox" ${u.activo!==false?'checked':''} ${esSelf?'disabled':''} onchange="toggleUsuarioActivo('${u.id}',this.checked)">
+        <label class="sw" title="${c.activo===false?'Inactivo':'Activo'}">
+          <input type="checkbox" ${c.activo!==false?'checked':''} onchange="toggleCoordinadorActivo('${c.id}',this.checked)">
           <span class="sw-sl"></span>
         </label>
       </td>
+      <td style="text-align:center">
+        ${hasUser
+          ?`<span style="font-size:11px;background:#dcfce7;color:#166534;padding:2px 8px;border-radius:20px;font-weight:600"><i class="fa fa-check" style="margin-right:4px"></i>Con acceso</span>`
+          :`<button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="openInviteParaCoordinador('${c.id}')" title="Crear usuario con acceso"><i class="fa fa-user-plus"></i> Invitar</button>`}
+      </td>
       <td style="text-align:right;white-space:nowrap">
-        <button class="btn btn-ghost btn-sm" onclick="openCoordinadorModal('${u.id}')" title="Editar"><i class="fa fa-pen"></i></button>
-        ${esSelf?'':`<button class="btn btn-danger btn-sm" onclick="eliminarUsuario('${u.id}')" title="Eliminar"><i class="fa fa-trash"></i></button>`}
+        <button class="btn btn-ghost btn-sm" onclick="openCoordinadorModal('${c.id}')" title="Editar"><i class="fa fa-pen"></i></button>
+        <button class="btn btn-danger btn-sm" onclick="eliminarCoordinador('${c.id}')" title="Eliminar"><i class="fa fa-trash"></i></button>
       </td>
     </tr>`;
   }).join('');
   content.innerHTML=`
-    <div style="max-width:860px">
-      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Los coordinadores solo pueden ver los perfiles de puesto y procedimientos que se les asignen dentro de su empresa.</p>
+    <div style="max-width:920px">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Registra los coordinadores o jefes de departamento. Después asígnalos a los perfiles de puesto y procedimientos que deben visualizar. Usa <b>Invitar</b> para darles acceso al sistema.</p>
       ${coords.length===0
         ?`<div style="text-align:center;padding:40px 0;color:var(--text3)"><i class="fa fa-user-check" style="font-size:36px;display:block;margin-bottom:10px"></i>No hay coordinadores registrados</div>`
         :`<div class="table-wrap" style="margin-bottom:16px"><table>
           <thead><tr>
             <th style="width:36px;text-align:center">#</th>
-            <th>Nombre</th><th>Email</th><th>Empresa asignada</th>
-            <th style="text-align:center">Activo</th><th></th>
+            <th>Nombre</th><th>Área / Proyecto</th><th>Empresa</th>
+            <th style="text-align:center">Activo</th>
+            <th style="text-align:center">Acceso</th>
+            <th></th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table></div>`}
@@ -12075,13 +12088,112 @@ async function renderCoordinadoresConfig(){
 }
 
 function openCoordinadorModal(id=null){
-  openUsuarioModal(id);
-  if(!id){
-    setTimeout(()=>{
-      const sel = document.getElementById('usr-rol');
-      if(sel){ sel.value='coordinador'; onUsrRolChange(); }
-    }, 30);
+  const existing = id ? (DB.coordinadores||[]).find(c=>c.id===id) : null;
+  const empOpts = DB.empresas.map(e=>`<option value="${e.id}" ${existing?.empresa_id===e.id?'selected':''}>${_esc(e.nombre)}</option>`).join('');
+  const firstEmpId = existing?.empresa_id || DB.empresas[0]?.id || '';
+  const emp = DB.empresas.find(e=>e.id===firstEmpId)||{};
+  const deptoOpts = (emp.departamentos||[]).map(d=>`<option value="${d}" ${existing?.departamento===d?'selected':''}>${d}</option>`).join('');
+  const proyOpts = (emp.proyectos||[]).map(p=>`<option value="${p}" ${existing?.proyecto===p?'selected':''}>${p}</option>`).join('');
+  const modal = document.createElement('div');
+  modal.id = 'modal-coordinador';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3000;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML=`
+    <div style="background:var(--surface);border-radius:12px;width:440px;max-width:95vw;padding:24px;box-shadow:0 8px 32px #0004">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-weight:700;font-size:16px">${id?'Editar coordinador':'Nuevo coordinador'}</div>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-coordinador').remove()"><i class="fa fa-times"></i></button>
+      </div>
+      <input type="hidden" id="coord-id" value="${id||''}">
+      <div class="fg" style="margin-bottom:14px">
+        <label>Nombre completo *</label>
+        <input type="text" id="coord-nombre" value="${_esc(existing?.nombre||'')}" placeholder="Ej. Javier González">
+      </div>
+      <div class="fg" style="margin-bottom:14px">
+        <label>Empresa *</label>
+        <select id="coord-empresa" onchange="onCoordEmpresaChange()">
+          <option value="">— Seleccionar —</option>${empOpts}
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+        <div class="fg">
+          <label>Departamento</label>
+          <select id="coord-departamento">
+            <option value="">— Ninguno —</option>${deptoOpts}
+          </select>
+        </div>
+        <div class="fg">
+          <label>Proyecto</label>
+          <select id="coord-proyecto">
+            <option value="">— Ninguno —</option>${proyOpts}
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px">
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-coordinador').remove()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveCoordinador()"><i class="fa fa-save"></i> Guardar</button>
+      </div>
+    </div>`;
+  document.getElementById('modal-coordinador')?.remove();
+  document.body.appendChild(modal);
+}
+
+function onCoordEmpresaChange(){
+  const empId = document.getElementById('coord-empresa').value;
+  const emp = DB.empresas.find(e=>e.id===empId)||{};
+  document.getElementById('coord-departamento').innerHTML =
+    `<option value="">— Ninguno —</option>`+(emp.departamentos||[]).map(d=>`<option value="${d}">${d}</option>`).join('');
+  document.getElementById('coord-proyecto').innerHTML =
+    `<option value="">— Ninguno —</option>`+(emp.proyectos||[]).map(p=>`<option value="${p}">${p}</option>`).join('');
+}
+
+async function saveCoordinador(){
+  const id = document.getElementById('coord-id').value;
+  const nombre = document.getElementById('coord-nombre').value.trim();
+  const empresa_id = document.getElementById('coord-empresa').value;
+  const departamento = document.getElementById('coord-departamento').value||null;
+  const proyecto = document.getElementById('coord-proyecto').value||null;
+  if(!nombre){ showToast('El nombre es obligatorio','err'); return; }
+  if(!empresa_id){ showToast('Selecciona una empresa','err'); return; }
+  const payload = { nombre, empresa_id, departamento, proyecto };
+  let error;
+  if(id){
+    ({error} = await sbClient.from('coordinadores').update(payload).eq('id',id));
+  } else {
+    ({error} = await sbClient.from('coordinadores').insert({...payload, activo:true}));
   }
+  if(error){ showToast('Error: '+error.message,'err'); return; }
+  showToast(id ? 'Coordinador actualizado ✓' : 'Coordinador registrado ✓');
+  document.getElementById('modal-coordinador').remove();
+  await renderCoordinadoresConfig();
+}
+
+async function toggleCoordinadorActivo(id, activo){
+  const {error} = await sbClient.from('coordinadores').update({activo}).eq('id',id);
+  if(error){ showToast('Error: '+error.message,'err'); return; }
+  showToast(activo ? 'Coordinador activado ✓' : 'Coordinador desactivado ✓');
+  await renderCoordinadoresConfig();
+}
+
+async function eliminarCoordinador(id){
+  if(!confirm('¿Eliminar este coordinador? Se quitará su acceso a perfiles y procedimientos.')) return;
+  const {error} = await sbClient.from('coordinadores').delete().eq('id',id);
+  if(error){ showToast('Error: '+error.message,'err'); return; }
+  showToast('Coordinador eliminado ✓');
+  await renderCoordinadoresConfig();
+}
+
+function openInviteParaCoordinador(coordId){
+  const coord = (DB.coordinadores||[]).find(c=>c.id===coordId);
+  openUsuarioModal();
+  setTimeout(()=>{
+    const rolSel = document.getElementById('usr-rol');
+    if(rolSel){ rolSel.value='coordinador'; onUsrRolChange(); }
+    const empSel = document.getElementById('usr-empresa-sel');
+    if(empSel && coord?.empresa_id) empSel.value = coord.empresa_id;
+    const nombreEl = document.getElementById('usr-nombre');
+    if(nombreEl && coord?.nombre) nombreEl.value = coord.nombre;
+    document.getElementById('usr-coordinador-id-hidden') && (document.getElementById('usr-coordinador-id-hidden').value = coordId);
+  }, 40);
 }
 
 async function loadUsuarios() {

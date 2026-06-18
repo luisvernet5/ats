@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { email, redirectTo, nombre, rol, empresa_id, reclutador_id } = await req.json()
+    const { email, redirectTo, nombre, rol, empresa_id, reclutador_id, coordinador_id } = await req.json()
 
     if (!email) throw new Error('El email es requerido')
 
@@ -51,6 +51,7 @@ serve(async (req) => {
           rol: rol || 'reclutador',
           empresa_id: empresa_id || null,
           reclutador_id: reclutador_id || null,
+          coordinador_id: coordinador_id || null,
           activo: true,
         })
       if (upsertError) throw new Error('Usuario invitado pero error al registrar: ' + upsertError.message)

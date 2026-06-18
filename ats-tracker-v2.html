@@ -13896,7 +13896,7 @@ function openPerfilModal(empId, perfilId){
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Autorizaciones</div>
       <div class="fg" style="margin-bottom:14px"><label>Elaboró</label><input type="text" id="pf-elaboro" value="${v('elaboro')}"></div>
 
-      ${currentUserData?.rol==='admin'?(()=>{
+      ${['admin','rh_cliente','reclutador'].includes(currentUserData?.rol)?(()=>{
         const coords=_coordsEmpresa(empId);
         if(!coords.length) return '';
         const assigned=p.coordinadores_ids||[];
@@ -18033,7 +18033,7 @@ function openProcCrearModal(id){
           </div>
         </div>
 
-        ${currentUserData?.rol==='admin'?(()=>{
+        ${['admin','rh_cliente','reclutador'].includes(currentUserData?.rol)?(()=>{
           const coords=_coordsEmpresa(_procEmpId);
           if(!coords.length) return '';
           const assigned=p.coordinadores_ids||[];

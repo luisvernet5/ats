@@ -11561,6 +11561,9 @@ function renderConfig(){
         <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-documentacion" onclick="switchConfigTab('documentacion')">
           <i class="fa fa-folder-open"></i> Documentación
         </button>
+        <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-coordinadores" onclick="switchConfigTab('coordinadores')">
+          <i class="fa fa-user-check"></i> Coordinadores
+        </button>
         ${currentUser?.email==='lukaarrever@gmail.com'?`
         <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-usuarios" onclick="switchConfigTab('usuarios')">
           <i class="fa fa-users-cog"></i> Usuarios
@@ -11665,6 +11668,10 @@ function switchConfigTab(tab){
 
   else if(tab==='documentacion'){
     renderDocConfig();
+  }
+
+  else if(tab==='coordinadores'){
+    renderCoordinadoresConfig();
   }
 
   else if(tab==='usuarios'){
@@ -12004,6 +12011,68 @@ async function enviarResetPassword(email) {
     showToast('Email de reset enviado a ' + email + ' ✓');
   } catch(e) {
     showToast('Error: ' + e.message, 'err');
+  }
+}
+
+async function renderCoordinadoresConfig(){
+  const content = document.getElementById('cfg-content');
+  if(!content) return;
+  content.innerHTML = `<div style="display:flex;justify-content:center;align-items:center;padding:40px"><i class="fa fa-spinner fa-spin" style="color:var(--accent);font-size:20px"></i></div>`;
+  const { data: usuarios } = await sbClient.from('usuarios').select('*');
+  DB.usuarios = (usuarios||[]).filter(Boolean);
+  const coords = (usuarios||[]).filter(u=>u.rol==='coordinador').sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+  const empresas = DB.empresas;
+  const rows = coords.map((u,i)=>{
+    const emp = empresas.find(e=>e.id===u.empresa_id);
+    const esSelf = u.id === currentUser?.id;
+    return`<tr style="${u.activo===false?'opacity:.55':''}">
+      <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
+      <td class="td-p" style="font-weight:500">${_esc(u.nombre||'—')}</td>
+      <td style="font-size:13px;color:var(--text2)">${_esc(u.email||'—')}</td>
+      <td>
+        ${emp?`<div style="display:flex;align-items:center;gap:6px">
+          ${emp.logo?`<img src="${emp.logo}" style="width:18px;height:18px;object-fit:contain;border-radius:3px">`:`<div style="width:18px;height:18px;border-radius:3px;background:${emp.color||'#2AAADE'}22;display:inline-flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${emp.color||'#2AAADE'};font-size:9px"></i></div>`}
+          <span style="font-size:13px">${_esc(emp.nombre)}</span>
+        </div>`:`<span style="font-size:12px;color:var(--text3)">Sin asignar</span>`}
+      </td>
+      <td style="text-align:center">
+        <label class="sw" title="${u.activo===false?'Inactivo — clic para activar':'Activo — clic para desactivar'}">
+          <input type="checkbox" ${u.activo!==false?'checked':''} ${esSelf?'disabled':''} onchange="toggleUsuarioActivo('${u.id}',this.checked)">
+          <span class="sw-sl"></span>
+        </label>
+      </td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="openCoordinadorModal('${u.id}')" title="Editar"><i class="fa fa-pen"></i></button>
+        ${esSelf?'':`<button class="btn btn-danger btn-sm" onclick="eliminarUsuario('${u.id}')" title="Eliminar"><i class="fa fa-trash"></i></button>`}
+      </td>
+    </tr>`;
+  }).join('');
+  content.innerHTML=`
+    <div style="max-width:860px">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Los coordinadores solo pueden ver los perfiles de puesto y procedimientos que se les asignen dentro de su empresa.</p>
+      ${coords.length===0
+        ?`<div style="text-align:center;padding:40px 0;color:var(--text3)"><i class="fa fa-user-check" style="font-size:36px;display:block;margin-bottom:10px"></i>No hay coordinadores registrados</div>`
+        :`<div class="table-wrap" style="margin-bottom:16px"><table>
+          <thead><tr>
+            <th style="width:36px;text-align:center">#</th>
+            <th>Nombre</th><th>Email</th><th>Empresa asignada</th>
+            <th style="text-align:center">Activo</th><th></th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>`}
+      <button class="btn btn-primary btn-sm" onclick="openCoordinadorModal()">
+        <i class="fa fa-user-plus"></i> Agregar coordinador
+      </button>
+    </div>`;
+}
+
+function openCoordinadorModal(id=null){
+  openUsuarioModal(id);
+  if(!id){
+    setTimeout(()=>{
+      const sel = document.getElementById('usr-rol');
+      if(sel){ sel.value='coordinador'; onUsrRolChange(); }
+    }, 30);
   }
 }
 

@@ -13696,7 +13696,11 @@ async function openPerfilModal(empId, perfilId){
   let p = perfilId ? DB.perfilesPuesto.find(x=>x.id===perfilId)||{} : {};
   if(perfilId){
     const {data:fr}=await sbClient.from('perfiles_puesto').select('*').eq('id',perfilId).single();
+    console.log('[LOAD PERFIL] fila Supabase:', fr);
+    console.log('[LOAD PERFIL] fr.data:', fr?.data);
+    console.log('[LOAD PERFIL] coordinadores_ids en data:', fr?.data?.coordinadores_ids);
     if(fr){ p={id:fr.id,...(fr.data||fr)}; const idx=DB.perfilesPuesto.findIndex(x=>x.id===perfilId); if(idx>=0) DB.perfilesPuesto[idx]=p; }
+    console.log('[LOAD PERFIL] p.coordinadores_ids final:', p.coordinadores_ids);
   }
   const v=(id)=>p[id]||'';
   const chk=(field,val)=>p[field]===val?' checked':'';
@@ -13955,10 +13959,12 @@ async function savePerfilPuesto(){
     updated_at:new Date().toISOString()
   };
   if(!obj.nombre_puesto){showToast('Ingresa el nombre del puesto','err');return;}
+  console.log('[SAVE PERFIL] coordinadores_ids a guardar:', obj.coordinadores_ids);
   if(!SANDBOX_MODE){
-    const {error}=await sbClient.from('perfiles_puesto').upsert({
+    const {data:upsertData, error}=await sbClient.from('perfiles_puesto').upsert({
       id:obj.id, empresa_id:obj.empresa_id, data:obj, updated_at:obj.updated_at
-    });
+    }).select();
+    console.log('[SAVE PERFIL] respuesta Supabase:', upsertData, 'error:', error);
     if(error){showToast('Error: '+error.message,'err');return;}
   }
   const isNew=DB.perfilesPuesto.findIndex(x=>x.id===obj.id)<0;

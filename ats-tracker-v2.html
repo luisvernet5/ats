@@ -3035,7 +3035,7 @@ async function loadDB(){
     DB.docPlantillas=docPlt.data||[];
     DB.docCandidato=docCand.data||[];
     DB.personal=[];
-    const _allPerfiles=(perfiles.data||[]).map(r=>({id:r.id,empresa_id:r.empresa_id,...(r.data||{})}));
+    const _allPerfiles=(perfiles.data||[]).map(r=>({id:r.id,empresa_id:r.empresa_id,...(r.data||{}), coordinadores_ids:r.coordinadores_ids||r.data?.coordinadores_ids||[]}));
     DB.perfilesPuesto=_allPerfiles.filter(p=>!p.eliminado);
     DB.perfilesEliminados=_allPerfiles.filter(p=>p.eliminado);
     const _allEvals=(evals.data||[]).map(r=>r.data||r).filter(Boolean);
@@ -3047,7 +3047,7 @@ async function loadDB(){
     DB._candidatosFull=true;DB._vacantesFull=true;
     DB._evaluacionesFull=true;DB._perfilesFull=true;
     try{const kpisRes=await sbClient.from('kpis').select('*');DB.kpis=(kpisRes.data||[]).map(r=>r.data||r).filter(Boolean);}catch(e){DB.kpis=[];}
-    try{const procRes=await sbClient.from('procedimientos').select('*');DB.procedimientos=(procRes.data||[]).map(r=>({id:r.id,...(r.data||r)})).filter(Boolean);}catch(e){DB.procedimientos=[];}
+    try{const procRes=await sbClient.from('procedimientos').select('*');DB.procedimientos=(procRes.data||[]).map(r=>({id:r.id,...(r.data||r), coordinadores_ids:r.coordinadores_ids||r.data?.coordinadores_ids||[]})).filter(Boolean);}catch(e){DB.procedimientos=[];}
     try{const usrRes=await sbClient.from('usuarios').select('*');DB.usuarios=(usrRes.data||[]).filter(Boolean);}catch(e){DB.usuarios=[];}
     try{const coordRes=await sbClient.from('coordinadores').select('*');DB.coordinadores=(coordRes.data||[]).filter(Boolean);}catch(e){DB.coordinadores=[];}
   }catch(e){
@@ -13696,11 +13696,11 @@ async function openPerfilModal(empId, perfilId){
   let p = perfilId ? DB.perfilesPuesto.find(x=>x.id===perfilId)||{} : {};
   if(perfilId){
     const {data:fr}=await sbClient.from('perfiles_puesto').select('*').eq('id',perfilId).single();
-    console.log('[LOAD PERFIL] fila Supabase:', fr);
-    console.log('[LOAD PERFIL] fr.data:', fr?.data);
-    console.log('[LOAD PERFIL] coordinadores_ids en data:', fr?.data?.coordinadores_ids);
-    if(fr){ p={id:fr.id,...(fr.data||fr)}; const idx=DB.perfilesPuesto.findIndex(x=>x.id===perfilId); if(idx>=0) DB.perfilesPuesto[idx]=p; }
-    console.log('[LOAD PERFIL] p.coordinadores_ids final:', p.coordinadores_ids);
+    if(fr){
+      p={id:fr.id,...(fr.data||fr), coordinadores_ids: fr.coordinadores_ids||fr.data?.coordinadores_ids||[]};
+      const idx=DB.perfilesPuesto.findIndex(x=>x.id===perfilId);
+      if(idx>=0) DB.perfilesPuesto[idx]=p;
+    }
   }
   const v=(id)=>p[id]||'';
   const chk=(field,val)=>p[field]===val?' checked':'';
@@ -13959,12 +13959,11 @@ async function savePerfilPuesto(){
     updated_at:new Date().toISOString()
   };
   if(!obj.nombre_puesto){showToast('Ingresa el nombre del puesto','err');return;}
-  console.log('[SAVE PERFIL] coordinadores_ids a guardar:', obj.coordinadores_ids);
   if(!SANDBOX_MODE){
-    const {data:upsertData, error}=await sbClient.from('perfiles_puesto').upsert({
-      id:obj.id, empresa_id:obj.empresa_id, data:obj, updated_at:obj.updated_at
-    }).select();
-    console.log('[SAVE PERFIL] respuesta Supabase:', upsertData, 'error:', error);
+    const {error}=await sbClient.from('perfiles_puesto').upsert({
+      id:obj.id, empresa_id:obj.empresa_id, data:obj, updated_at:obj.updated_at,
+      coordinadores_ids: obj.coordinadores_ids||[]
+    });
     if(error){showToast('Error: '+error.message,'err');return;}
   }
   const isNew=DB.perfilesPuesto.findIndex(x=>x.id===obj.id)<0;
@@ -18155,12 +18154,12 @@ async function saveProcCreado(){
   };
   try{
     if(id){
-      await sbClient.from('procedimientos').update({data}).eq('id',id);
+      await sbClient.from('procedimientos').update({data, coordinadores_ids: data.coordinadores_ids||[]}).eq('id',id);
       const idx=(DB.procedimientos||[]).findIndex(p=>p.id===id);
       if(idx>=0)DB.procedimientos[idx]={id,...data};
     }else{
       const newId=crypto.randomUUID();
-      await sbClient.from('procedimientos').insert({id:newId,data});
+      await sbClient.from('procedimientos').insert({id:newId, data, coordinadores_ids: data.coordinadores_ids||[]});
       if(!DB.procedimientos)DB.procedimientos=[];
       DB.procedimientos.push({id:newId,...data});
     }

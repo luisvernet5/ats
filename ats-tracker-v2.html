@@ -13425,6 +13425,21 @@ function renderPerfilesEmpresa(empId){
   _pfRenderTabla();
 }
 
+function _pfRefresh(){
+  const empId=_pfCurrentEmpId;
+  if(!empId) return;
+  const savedProy=window._mf['pf-flt-proy'];
+  const savedDep =window._mf['pf-flt-dep'];
+  const todos=DB.perfilesPuesto.filter(p=>p.empresa_id===empId);
+  const proyOpts=[...new Set(todos.map(p=>p.proyecto).filter(Boolean))].sort().map(v=>({value:v,label:v}));
+  const depOpts =[...new Set(todos.map(p=>p.departamento).filter(Boolean))].sort().map(v=>({value:v,label:v}));
+  _mfPopulate('pf-flt-proy',proyOpts,'Proyecto');
+  _mfPopulate('pf-flt-dep', depOpts, 'Departamento');
+  if(savedProy){const valid=new Set(proyOpts.map(o=>o.value));const r=new Set([...savedProy].filter(v=>valid.has(v)));window._mf['pf-flt-proy']=r.size?r:null;_mfUpdateBtn('pf-flt-proy');}
+  if(savedDep) {const valid=new Set(depOpts.map(o=>o.value)); const r=new Set([...savedDep].filter(v=>valid.has(v)));  window._mf['pf-flt-dep'] =r.size?r:null; _mfUpdateBtn('pf-flt-dep');}
+  _pfRenderTabla();
+}
+
 function _pfRenderTabla(){
   const empId=_pfCurrentEmpId;
   const wrap=document.getElementById('pf-tabla-wrap');
@@ -13945,7 +13960,7 @@ async function savePerfilPuesto(){
   logActivity(isNew?'Nuevo perfil de puesto':'Editar perfil de puesto','perfiles',obj.id,`${obj.nombre_puesto||''} — ${DB.empresas.find(e=>e.id===obj.empresa_id)?.nombre||''}`);
   document.getElementById('modal-perfil-puesto')?.remove();
   showToast('Perfil guardado ✓');
-  renderPerfilesEmpresa(_perfilEmpId);
+  _pfRefresh();
 }
 
 async function exportPerfilPDFBtn(){

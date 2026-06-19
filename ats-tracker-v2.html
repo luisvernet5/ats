@@ -3737,6 +3737,11 @@ function renderEmpresas(){
 function openEmpresaDetail(empId){
   const e=DB.empresas.find(x=>x.id===empId);
   if(!e)return;
+  // Detect if returning to same empresa to preserve filter state
+  const isReturn = (_edCurrentEmpId === empId);
+  const savedVista  = isReturn ? empresaVistaActual : 'folio';
+  const savedDesde  = isReturn ? (document.getElementById('filtroFechaDesde')?.value||'') : '';
+  const savedHasta  = isReturn ? (document.getElementById('filtroFechaHasta')?.value||'') : '';
   sessionStorage.setItem('lastPage','empresa-detail');
   sessionStorage.setItem('lastEmpId',empId);
   const vacs=DB.vacantes.filter(v=>v.empresa_id===empId);
@@ -3751,7 +3756,7 @@ function openEmpresaDetail(empId){
 
   _edVacsAll = vacs.filter(v=>v.estado==='Abierta');
   _edCurrentEmpId = empId;
-  empresaVistaActual = 'folio';
+  empresaVistaActual = savedVista;
   const vacsRows = _buildEDVacsRows([..._edVacsAll].sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true})), empId, etapas);
   const edProyOptsList = [...new Set(_edVacsAll.map(v=>v.proyecto).filter(Boolean))].sort().map(p=>({value:p,label:p}));
   const edDepOptsList  = [...new Set(_edVacsAll.map(v=>v.departamento).filter(Boolean))].sort().map(d=>({value:d,label:d}));
@@ -3841,10 +3846,15 @@ function openEmpresaDetail(empId){
   document.getElementById('page-title').textContent=e.nombre;
   showPage('empresa-detail');
   _applyEDColVis();
-  _mfReset('ed-flt-proy','ed-flt-dep','ed-flt-rec');
+  if(!isReturn) _mfReset('ed-flt-proy','ed-flt-dep','ed-flt-rec');
   _mfPopulate('ed-flt-proy', edProyOptsList, 'Proyecto');
   _mfPopulate('ed-flt-dep', edDepOptsList, 'Departamento');
   _mfPopulate('ed-flt-rec', edRecOptsList, 'Reclutador');
+  if(isReturn){
+    if(savedDesde){ const el=document.getElementById('filtroFechaDesde'); if(el) el.value=savedDesde; }
+    if(savedHasta){ const el=document.getElementById('filtroFechaHasta'); if(el) el.value=savedHasta; }
+    ['folio','proyecto'].forEach(k=>{ const el=document.getElementById('btn-vista-'+k); if(el) el.className=`btn btn-sm ${empresaVistaActual===k?'btn-primary':'btn-ghost'}`; });
+  }
   filtrarVacantesEmpresa();
   setTimeout(() => renderAnalyticsTab(empId, 'general'), 100);
 }

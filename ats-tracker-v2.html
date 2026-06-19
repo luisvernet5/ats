@@ -6550,7 +6550,15 @@ function exportarVacantesExcel(){
   XLSX.writeFile(wb,`vacantes_${today()}.xlsx`);
 }
 
+function _vdToggleSort(){
+  window._vdSortDir = window._vdSortDir === 'asc' ? 'desc' : 'asc';
+  const p = window._vdParams||{};
+  openVacanteDetailView(p.vacId, p.empId, p.origen, p.origenId);
+}
+
 function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {
+  window._vdParams = {vacId, empId, origen, origenId};
+  if(window._vdSortDir===undefined) window._vdSortDir='asc';
   const v = DB.vacantes.find(x=>x.id===vacId)||{};
   const emp = DB.empresas.find(x=>x.id===empId)||{};
   const rec = DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
@@ -6611,7 +6619,13 @@ function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {
       <div class="card"><div class="card-title">Días prom.</div><div class="card-value" style="color:var(--amber)">${avgDias||'—'}</div></div>
     </div>`;
 
-  const rows = cands.length ? cands.map((c,i)=>{
+  const sortedCands = [...cands].sort((a,b)=>{
+    const da=a.f_0||''; const db2=b.f_0||'';
+    if(!da&&!db2) return 0; if(!da) return 1; if(!db2) return -1;
+    return window._vdSortDir==='desc' ? db2.localeCompare(da) : da.localeCompare(db2);
+  });
+
+  const rows = sortedCands.length ? sortedCands.map((c,i)=>{
     const r2 = DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
     const d = processTotal(c);
     const cd = clienteDays(c);
@@ -6639,7 +6653,11 @@ function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {
   const tablaHtml = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div class="sec-title" style="margin:0">Candidatos</div>
-      <button class="btn btn-primary btn-sm" onclick="openCandModal('${vacId}')"><i class="fa fa-user-plus"></i> Agregar candidato</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn btn-sm ${window._vdSortDir==='asc'?'btn-primary':'btn-ghost'}" onclick="_vdToggleSort()" title="Más antiguo primero"><i class="fa fa-arrow-up"></i> Más antiguo</button>
+        <button class="btn btn-sm ${window._vdSortDir==='desc'?'btn-primary':'btn-ghost'}" onclick="_vdToggleSort()" title="Más reciente primero"><i class="fa fa-arrow-down"></i> Más reciente</button>
+        <button class="btn btn-primary btn-sm" onclick="openCandModal('${vacId}')"><i class="fa fa-user-plus"></i> Agregar candidato</button>
+      </div>
     </div>
     <div class="table-wrap">
       <table><thead><tr>

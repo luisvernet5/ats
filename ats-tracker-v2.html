@@ -7537,13 +7537,16 @@ function openReclutadorDetail(recId) {
     .map(p=>({value:p,label:p}));
   const rdDepOptsList = [...new Set(vacs.map(v=>v.departamento).filter(Boolean))].sort()
     .map(d=>({value:d,label:d}));
+  const rdEstOptsList = [...new Set(vacs.map(v=>v.estado).filter(Boolean))].sort()
+    .map(e=>({value:e,label:e}));
 
   const filtrosHtml = `
     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:12px">
       <div id="wrap-rd-flt-emp" style="flex:none"><button id="btn-rd-flt-emp" onclick="_mfOpen('rd-flt-emp',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:30px;border:1px solid #ddd;border-radius:6px;background:white;color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:140px;justify-content:space-between"><span id="lbl-rd-flt-emp">Todas las empresas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <div id="wrap-rd-flt-proy" style="flex:none"><button id="btn-rd-flt-proy" onclick="_mfOpen('rd-flt-proy',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:30px;border:1px solid #ddd;border-radius:6px;background:white;color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:110px;justify-content:space-between"><span id="lbl-rd-flt-proy">Proyecto</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <div id="wrap-rd-flt-dep" style="flex:none"><button id="btn-rd-flt-dep" onclick="_mfOpen('rd-flt-dep',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:30px;border:1px solid #ddd;border-radius:6px;background:white;color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:110px;justify-content:space-between"><span id="lbl-rd-flt-dep">Departamento</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
-      <button onclick="_mfReset('rd-flt-emp','rd-flt-proy','rd-flt-dep');filtrarVacsReclutador()" style="height:30px;font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#666">× Limpiar</button>
+      <div id="wrap-rd-flt-est" style="flex:none"><button id="btn-rd-flt-est" onclick="_mfOpen('rd-flt-est',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:30px;border:1px solid #ddd;border-radius:6px;background:white;color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:100px;justify-content:space-between"><span id="lbl-rd-flt-est">Estado</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <button onclick="_mfReset('rd-flt-emp','rd-flt-proy','rd-flt-dep','rd-flt-est');filtrarVacsReclutador()" style="height:30px;font-size:12px;padding:4px 12px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;color:#666">× Limpiar</button>
     </div>`;
 
   const tablaHtml = `
@@ -7563,6 +7566,7 @@ function openReclutadorDetail(recId) {
   _mfPopulate('rd-flt-emp', rdEmpOptsList, 'Todas las empresas');
   _mfPopulate('rd-flt-proy', rdProyOptsList, 'Proyecto');
   _mfPopulate('rd-flt-dep', rdDepOptsList, 'Departamento');
+  _mfPopulate('rd-flt-est', rdEstOptsList, 'Estado');
   filtrarVacsReclutador();
   document.getElementById('page-title').textContent = r.nombre;
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
@@ -7574,10 +7578,12 @@ function filtrarVacsReclutador(){
   const mfEmp=_mfGet('rd-flt-emp');
   const mfProy=_mfGet('rd-flt-proy');
   const mfDep=_mfGet('rd-flt-dep');
+  const mfEst=_mfGet('rd-flt-est');
   let list=_rdVacsAll;
   if(mfEmp)list=list.filter(v=>mfEmp.has(v.empresa_id||''));
   if(mfProy)list=list.filter(v=>mfProy.has(v.proyecto||''));
   if(mfDep)list=list.filter(v=>mfDep.has(v.departamento||''));
+  if(mfEst)list=list.filter(v=>mfEst.has(v.estado||''));
   const recId=_rdRecId;
   const rows=list.map((v,i)=>{
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};

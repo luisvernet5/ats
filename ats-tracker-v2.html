@@ -13489,6 +13489,9 @@ function _pfRefresh(){
   _pfRenderTabla();
 }
 
+function _pfSetSort(field, dir){ window._pfSort={field,dir}; _pfRenderTabla(); }
+function _pfToggleSort(field){ const s=window._pfSort||{}; window._pfSort={field, dir:s.field===field&&s.dir==='asc'?'desc':'asc'}; _pfRenderTabla(); }
+
 function _pfRenderTabla(){
   const empId=_pfCurrentEmpId;
   const wrap=document.getElementById('pf-tabla-wrap');
@@ -13496,13 +13499,27 @@ function _pfRenderTabla(){
   const mfP=_mfGet('pf-flt-proy'), mfD=_mfGet('pf-flt-dep');
   const _isCoord=currentUserData?.rol==='coordinador';
   const todosPerfiles=DB.perfilesPuesto.filter(p=>p.empresa_id===empId&&(_isCoord?_coordAssigned(p):true));
-  const perfiles=todosPerfiles.filter(p=>{
+  let perfiles=todosPerfiles.filter(p=>{
     if(mfP&&!mfP.has(p.proyecto||'')) return false;
     if(mfD&&!mfD.has(p.departamento||'')) return false;
     return true;
   });
+  const s=window._pfSort||{field:null,dir:'asc'};
+  if(s.field) perfiles=[...perfiles].sort((a,b)=>{
+    const va=s.field==='proyecto'?a.proyecto||'':s.field==='departamento'?a.departamento||'':a.updated_at||'';
+    const vb=s.field==='proyecto'?b.proyecto||'':s.field==='departamento'?b.departamento||'':b.updated_at||'';
+    const cmp=va.localeCompare(vb,'es',{sensitivity:'base'});
+    return s.dir==='desc'?-cmp:cmp;
+  });
   const count=document.getElementById('pf-flt-count');
   if(count) count.textContent=`${perfiles.length} perfil${perfiles.length!==1?'es':''}`;
+  const sortBar=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+    <span style="font-size:12px;color:var(--text3);flex-shrink:0">Ordenar:</span>
+    <button class="btn btn-sm ${s.field==='proyecto'?'btn-primary':'btn-ghost'}" onclick="_pfToggleSort('proyecto')">Proyecto${s.field==='proyecto'?` <i class="fa fa-arrow-${s.dir==='desc'?'down':'up'}"></i>`:''}</button>
+    <button class="btn btn-sm ${s.field==='departamento'?'btn-primary':'btn-ghost'}" onclick="_pfToggleSort('departamento')">Departamento${s.field==='departamento'?` <i class="fa fa-arrow-${s.dir==='desc'?'down':'up'}"></i>`:''}</button>
+    <button class="btn btn-sm ${s.field==='fecha'&&s.dir==='asc'?'btn-primary':'btn-ghost'}" onclick="_pfSetSort('fecha','asc')"><i class="fa fa-arrow-up"></i> Más antiguo</button>
+    <button class="btn btn-sm ${s.field==='fecha'&&s.dir==='desc'?'btn-primary':'btn-ghost'}" onclick="_pfSetSort('fecha','desc')"><i class="fa fa-arrow-down"></i> Más reciente</button>
+  </div>`;
   const rows=perfiles.map((p,i)=>{
     const mod=p.updated_at?new Date(p.updated_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
     return`<tr>
@@ -13519,7 +13536,7 @@ function _pfRenderTabla(){
       </td>
     </tr>`;
   }).join('');
-  wrap.innerHTML=`<div class="table-wrap"><table>
+  wrap.innerHTML=sortBar+`<div class="table-wrap"><table>
     <thead><tr>
       <th style="width:36px;text-align:center">#</th><th>Nombre del puesto</th><th>Proyecto</th><th>Departamento</th><th style="white-space:nowrap">Últ. modificación</th><th></th>
     </tr></thead>
@@ -14903,6 +14920,7 @@ async function generarPDFPerfil(id){
   const black=[0,0,0];
   const gray=[245,245,245];
   const section=(title)=>{
+    chkNewPage(18);
     doc.setFillColor(...blue);
     doc.rect(ml,y,mr-ml,7,'F');
     doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(255,255,255);
@@ -14910,10 +14928,12 @@ async function generarPDFPerfil(id){
     y+=9;
   };
   const row2=(label,val,label2,val2)=>{
+    const v1=String(val||'').trim(), v2=String(val2||'').trim();
+    if(!v1 && !v2) return;
     const valMaxW = label2 ? (W/2 - (ml+38) - 4) : (mr - (ml+40));
     const val2MaxW = label2 ? (mr - (W/2+36) - 2) : 0;
-    const valLines = doc.splitTextToSize(String(val||''), valMaxW);
-    const val2Lines = label2 ? doc.splitTextToSize(String(val2||''), val2MaxW) : [];
+    const valLines = doc.splitTextToSize(v1, valMaxW);
+    const val2Lines = (label2 && v2) ? doc.splitTextToSize(v2, val2MaxW) : [];
     const maxLines = Math.max(1, valLines.length, val2Lines.length);
     const rowH = maxLines * 5 + 3;
     chkNewPage(rowH);
@@ -14921,7 +14941,7 @@ async function generarPDFPerfil(id){
     doc.text(label,ml,y+4);
     doc.setFont('helvetica','bold');doc.setTextColor(...black);
     valLines.forEach((l,i)=>doc.text(l,ml+38,y+4+i*5));
-    if(label2){
+    if(label2 && v2){
       doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
       doc.text(label2,W/2+2,y+4);
       doc.setFont('helvetica','bold');doc.setTextColor(...black);
@@ -15000,8 +15020,10 @@ async function generarPDFPerfil(id){
   row2('Lugar de trabajo',p.lugar_trabajo,'Ubicación geográfica',p.ubicacion_geografica);
   row2('Departamento',p.departamento||'','Proyecto',p.proyecto||'');
 
-  section('Actividades Esenciales');
-  renderTextBlock(p.actividades_esenciales||'',ml+2,mr-ml-4);
+  if(_rtToText(p.actividades_esenciales||'').trim()){
+    section('Actividades Esenciales');
+    renderTextBlock(p.actividades_esenciales||'',ml+2,mr-ml-4);
+  }
 
   section('Perfil de puesto');
   const edadStr=(p.edad_ini||p.edad_fin)?(p.edad_ini&&p.edad_fin?`${p.edad_ini} hasta ${p.edad_fin} años`:p.edad_ini?`Desde ${p.edad_ini} años`:`Hasta ${p.edad_fin} años`):(p.edad||'');
@@ -15066,54 +15088,66 @@ async function generarPDFPerfil(id){
   }
   y+=2;
 
-  chkNewPage();
-  section('Condiciones de trabajo');
   const tipoStr=p.tipo_trabajo_rows?.length?_pfTipoToStr(p.tipo_trabajo_rows):(p.tipo_trabajo||'');
-  row2('Disponibilidad para viajar',p.disponibilidad_viajar,'Tipo de trabajo',tipoStr);
-  rowSide('Horario de trabajo',p.horario_trabajo||'');
-  rowSide('Tipo de contratación',p.tipo_contratacion||'');
-  rowSide('Prestaciones',p.prestaciones||'');
+  const hasCondiciones=p.disponibilidad_viajar||tipoStr||p.horario_trabajo||p.tipo_contratacion||p.prestaciones;
+  if(hasCondiciones){
+    section('Condiciones de trabajo');
+    row2('Disponibilidad para viajar',p.disponibilidad_viajar,'Tipo de trabajo',tipoStr);
+    rowSide('Horario de trabajo',p.horario_trabajo||'');
+    rowSide('Tipo de contratación',p.tipo_contratacion||'');
+    rowSide('Prestaciones',p.prestaciones||'');
+  }
 
-  chkNewPage();
-  section('Acompañamiento - Capacitación');
-  renderTextBlock(p.acompanamiento_capacitacion||'',ml+2,mr-ml-4);
+  if(_rtToText(p.acompanamiento_capacitacion||'').trim()){
+    section('Acompañamiento - Capacitación');
+    renderTextBlock(p.acompanamiento_capacitacion||'',ml+2,mr-ml-4);
+  }
 
-  chkNewPage();
-  section('Responsabilidades');
-  const respFields=[
-    ['Responsabilidad en valores',''],
-    ['En efectivo o token institucional',p.resp_efectivo],
-    ['Cheques al portador',p.resp_cheques],
-    ['Formas valoradas',p.resp_formas_valoradas],
-    ['Responsabilidades en bienes',''],
-    ['Mobiliario',p.resp_mobiliario],
-    ['Equipo de cómputo',p.resp_equipo_computo],
-    ['Automóvil utilitario',p.resp_automovil],
-    ['Telefonía',p.resp_telefonia],
-    ['Documentos e información',p.resp_documentos],
-    ['Otros',p.resp_otros],
-    ['EPP/Uniforme',p.resp_uniforme],
+  const respGrupos=[
+    {header:'Responsabilidad en valores',items:[
+      ['En efectivo o token institucional',p.resp_efectivo],
+      ['Cheques al portador',p.resp_cheques],
+      ['Formas valoradas',p.resp_formas_valoradas],
+    ]},
+    {header:'Responsabilidades en bienes',items:[
+      ['Mobiliario',p.resp_mobiliario],
+      ['Equipo de cómputo',p.resp_equipo_computo],
+      ['Automóvil utilitario',p.resp_automovil],
+      ['Telefonía',p.resp_telefonia],
+      ['Documentos e información',p.resp_documentos],
+      ['Otros',p.resp_otros],
+      ['EPP/Uniforme',p.resp_uniforme],
+    ]},
   ];
-  respFields.forEach(([label,val])=>{
-    chkNewPage();
-    if(!val){
-      doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(60,60,60);
-      doc.text(label,ml+2,y+4);
-    } else {
-      doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...black);
-      doc.text(`• ${label}`,ml+4,y+4);
-      if(val==='Aplica') doc.setTextColor(34,197,94); else doc.setTextColor(180,180,180);
-      doc.text(val,mr-20,y+4,{align:'right'});
-    }
-    doc.setDrawColor(220,220,220);doc.line(ml,y+lh,mr,y+lh);
-    y+=lh;
+  const respFiltered=[];
+  respGrupos.forEach(({header,items})=>{
+    const activos=items.filter(([,v])=>v);
+    if(activos.length){respFiltered.push([header,'']);activos.forEach(i=>respFiltered.push(i));}
   });
-  y+=2;
+  if(respFiltered.length){
+    section('Responsabilidades');
+    respFiltered.forEach(([label,val])=>{
+      chkNewPage();
+      if(!val){
+        doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(60,60,60);
+        doc.text(label,ml+2,y+4);
+      } else {
+        doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...black);
+        doc.text(`• ${label}`,ml+4,y+4);
+        if(val==='Aplica') doc.setTextColor(34,197,94); else doc.setTextColor(180,180,180);
+        doc.text(val,mr-20,y+4,{align:'right'});
+      }
+      doc.setDrawColor(220,220,220);doc.line(ml,y+lh,mr,y+lh);
+      y+=lh;
+    });
+    y+=2;
+  }
 
-  chkNewPage();
-  section('Entregables');
-  renderTextBlock(p.entregables||'',ml+2,mr-ml-4);
-  y+=2;
+  if(_rtToText(p.entregables||'').trim()){
+    section('Entregables');
+    renderTextBlock(p.entregables||'',ml+2,mr-ml-4);
+    y+=2;
+  }
 
   if(y>220){doc.addPage();y=14;}
   section('Autorizaciones');
@@ -17907,6 +17941,9 @@ function renderProcedimientosEmpresa(empId){
   }
 }
 
+function _procpeSetSort(field,dir){ window._procpeSort={field,dir}; _procpeRenderTabla(_procEmpId); }
+function _procpeToggleSort(field){ const s=window._procpeSort||{}; window._procpeSort={field,dir:s.field===field&&s.dir==='asc'?'desc':'asc'}; _procpeRenderTabla(_procEmpId); }
+
 function _procpeRenderTabla(empId){
   const wrap=document.getElementById('procpe-tabla-wrap');
   if(!wrap)return;
@@ -17914,13 +17951,27 @@ function _procpeRenderTabla(empId){
   const color=emp.color||'#2AAADE';
   const todosPerfiles=DB.perfilesPuesto.filter(p=>p.empresa_id===empId&&_coordAssigned(p));
   const mfP=_mfGet('procpe-proy'),mfD=_mfGet('procpe-dep');
-  const perfiles=todosPerfiles.filter(p=>{
+  let perfiles=todosPerfiles.filter(p=>{
     if(mfP&&!mfP.has(p.proyecto||''))return false;
     if(mfD&&!mfD.has(p.departamento||''))return false;
     return true;
   });
+  const s=window._procpeSort||{field:null,dir:'asc'};
+  if(s.field) perfiles=[...perfiles].sort((a,b)=>{
+    const va=s.field==='proyecto'?a.proyecto||'':s.field==='departamento'?a.departamento||'':a.updated_at||'';
+    const vb=s.field==='proyecto'?b.proyecto||'':s.field==='departamento'?b.departamento||'':b.updated_at||'';
+    const cmp=va.localeCompare(vb,'es',{sensitivity:'base'});
+    return s.dir==='desc'?-cmp:cmp;
+  });
   const cnt=document.getElementById('procpe-count');
   if(cnt)cnt.textContent=`${perfiles.length} perfil${perfiles.length!==1?'es':''}`;
+  const sortBar=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+    <span style="font-size:12px;color:var(--text3);flex-shrink:0">Ordenar:</span>
+    <button class="btn btn-sm ${s.field==='proyecto'?'btn-primary':'btn-ghost'}" onclick="_procpeToggleSort('proyecto')">Proyecto${s.field==='proyecto'?` <i class="fa fa-arrow-${s.dir==='desc'?'down':'up'}"></i>`:''}</button>
+    <button class="btn btn-sm ${s.field==='departamento'?'btn-primary':'btn-ghost'}" onclick="_procpeToggleSort('departamento')">Departamento${s.field==='departamento'?` <i class="fa fa-arrow-${s.dir==='desc'?'down':'up'}"></i>`:''}</button>
+    <button class="btn btn-sm ${s.field==='fecha'&&s.dir==='asc'?'btn-primary':'btn-ghost'}" onclick="_procpeSetSort('fecha','asc')"><i class="fa fa-arrow-up"></i> Más antiguo</button>
+    <button class="btn btn-sm ${s.field==='fecha'&&s.dir==='desc'?'btn-primary':'btn-ghost'}" onclick="_procpeSetSort('fecha','desc')"><i class="fa fa-arrow-down"></i> Más reciente</button>
+  </div>`;
   const rows=perfiles.map((p,i)=>{
     const c=(DB.procedimientos||[]).filter(x=>x.perfil_id===p.id).length;
     return`<tr style="cursor:pointer" onclick="renderProcedimientosPerfil('${empId}','${p.id}')">
@@ -17938,7 +17989,7 @@ function _procpeRenderTabla(empId){
       </td>
     </tr>`;
   }).join('');
-  wrap.innerHTML=`<div class="table-wrap"><table>
+  wrap.innerHTML=sortBar+`<div class="table-wrap"><table>
     <thead><tr>
       <th style="width:36px;text-align:center">#</th>
       <th>Nombre del puesto</th><th>Proyecto</th><th>Departamento</th>

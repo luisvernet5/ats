@@ -6100,7 +6100,10 @@ async function confirmarCierreVacante(){
     DB.vacantes[vi].motivo_cierre=motivo;
     DB.vacantes[vi].obs_cierre=document.getElementById('cierre-obs').value;
   }
-  await saveRecord('vacantes',DB.vacantes[vi]);
+  const vFinal=DB.vacantes[vi];
+  await saveRecord('vacantes',vFinal);
+  const accionLog=vFinal.estado==='Cubierta'?'Cerrar vacante (Cubierta)':'Cerrar vacante (Cancelada)';
+  await logActivity(accionLog,'vacantes',vacId,vFinal.nombre||vacId);
   closeModal('modal-cierre-vacante');
   showToast('Vacante cerrada ✓');
   setTimeout(()=>renderVacantesTable(),100);

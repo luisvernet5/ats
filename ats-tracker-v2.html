@@ -11501,7 +11501,7 @@ async function exportarRespaldo(){
       referencias, hc_plantilla, hc_resumen, hc_historico, hc_plantilla_historico,
       ese, doc_plantillas, doc_candidato, perfiles_puesto,
       evaluaciones, evaluaciones_enviadas, procesos_evaluacion, procesos_enviados,
-      kpis, procedimientos
+      kpis, procedimientos, coordinadores
     ] = await Promise.all([
       sbClient.from('vacantes').select('*'),
       sbClient.from('candidatos').select('*'),
@@ -11524,9 +11524,10 @@ async function exportarRespaldo(){
       sbClient.from('procesos_enviados').select('*'),
       sbClient.from('kpis').select('*'),
       sbClient.from('procedimientos').select('*'),
+      sbClient.from('coordinadores').select('*'),
     ]);
     const backup = {
-      version: '2.2',
+      version: '2.3',
       fecha: new Date().toISOString(),
       tablas: {
         empresas: empresas.data||[],
@@ -11550,6 +11551,7 @@ async function exportarRespaldo(){
         procesos_enviados: procesos_enviados.data||[],
         kpis: kpis.data||[],
         procedimientos: procedimientos.data||[],
+        coordinadores: coordinadores.data||[],
       }
     };
     const counts = Object.entries(backup.tablas).map(([k,v])=>`${k}: ${v.length}`).join(', ');
@@ -11573,7 +11575,7 @@ async function importarRespaldo(input){
     const backup = JSON.parse(text);
     if(!backup.tablas) throw new Error('Archivo de respaldo inválido');
     showToast('Importando datos...');
-    const tablas = ['empresas','reclutadores','usuarios','vacantes','candidatos','garantias','referencias','hc_plantilla','hc_resumen','hc_historico','hc_plantilla_historico','ese','doc_plantillas','doc_candidato','perfiles_puesto','evaluaciones','evaluaciones_enviadas','procesos_evaluacion','procesos_enviados','kpis','procedimientos'];
+    const tablas = ['empresas','reclutadores','usuarios','vacantes','candidatos','garantias','referencias','hc_plantilla','hc_resumen','hc_historico','hc_plantilla_historico','ese','doc_plantillas','doc_candidato','perfiles_puesto','evaluaciones','evaluaciones_enviadas','procesos_evaluacion','procesos_enviados','kpis','procedimientos','coordinadores'];
     for(const tabla of tablas){
       const registros = backup.tablas[tabla];
       if(!registros?.length) continue;

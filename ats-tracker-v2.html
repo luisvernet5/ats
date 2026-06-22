@@ -2462,12 +2462,12 @@ function adaptUIToRole() {
       navEl.style.display = _perms.has(sec.key) ? '' : 'none';
     });
   }
-  // Orden final del nav: Perfiles → Librería → Procesos → Garantías → ESE
+  // Orden final del nav: Perfiles → Librería → Procesos → Procedimientos → KPIs → Garantías → ESE
   setTimeout(()=>{
     const refItem=document.getElementById('nav-perfiles');
     if(!refItem)return;
     let anchor=refItem;
-    ['nav-evaluaciones','nav-procesos-eval','nav-kpis','nav-garantias','nav-ese'].forEach(id=>{
+    ['nav-evaluaciones','nav-procesos-eval','nav-procedimientos','nav-kpis','nav-garantias','nav-ese'].forEach(id=>{
       const el=document.getElementById(id);
       if(el){anchor.parentNode.insertBefore(el,anchor.nextSibling);anchor=el;}
     });

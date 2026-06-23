@@ -421,6 +421,41 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     padding-bottom: 4px;
     flex-wrap: nowrap !important;
   }
+
+  /* =====================================================
+     PIPELINE — filtros, nav y calendario
+     ===================================================== */
+  /* Filtros del pipeline: misma lógica que .fbar general */
+  #page-pipeline .fbar > div[id^="wrap-flt-pip"] {
+    flex: 1 1 auto !important;
+    min-width: 130px !important;
+    max-width: calc(50% - 4px);
+  }
+  #page-pipeline .fbar > div[id^="wrap-flt-pip"] > button {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+  /* Nav bar de semana — evitar overflow */
+  #pip-cal-nav {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    padding: 10px 0 6px !important;
+  }
+  #pip-cal-label {
+    min-width: unset !important;
+    flex: 1 1 auto !important;
+    text-align: center;
+  }
+  #pip-cal-total {
+    width: 100%;
+    text-align: center;
+    margin-left: 0 !important;
+    order: 10;
+  }
+  /* Calendario 7 columnas — scroll horizontal en móvil */
+  .pip-cal-grid {
+    min-width: 700px;
+  }
 }
 ._eval-emp-chip { display:inline-flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:3px 10px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--text);transition:background .15s,color .15s,border-color .15s;margin:2px;user-select:none }
 ._eval-emp-chip._sel { background:var(--accent)!important;color:#fff!important;border-color:var(--accent)!important }
@@ -581,7 +616,9 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <button class="btn btn-ghost btn-sm" onclick="movePipWeek(0,true)"><i class="fa fa-circle" style="font-size:8px"></i> Hoy</button>
       <span style="font-size:11px;color:var(--text3);margin-left:4px" id="pip-cal-total"></span>
     </div>
-    <div id="pipeline-board"></div>
+    <div id="pip-board-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+      <div id="pipeline-board"></div>
+    </div>
   </div>
 
   <!-- VACANTES -->

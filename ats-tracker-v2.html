@@ -4062,28 +4062,37 @@ function toggleCandCol(key){
   localStorage.setItem('cand_col_vis',JSON.stringify(_candColVis));
   _applyCandColVis();
 }
-function openCandColPanel(){
-  const existing=document.getElementById('cand-col-panel');
+function _openColPanelHelper(panelId, btnId, colDefs, visMap, toggleFn){
+  const existing=document.getElementById(panelId);
   if(existing){existing.remove();return;}
-  const btn=document.getElementById('btn-cand-col-vis');
+  const btn=document.getElementById(btnId);
   if(!btn)return;
   const rect=btn.getBoundingClientRect();
   const panel=document.createElement('div');
-  panel.id='cand-col-panel';
-  panel.style.cssText=`position:fixed;top:${rect.bottom+6}px;left:${rect.left}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.12);z-index:200;min-width:180px;padding:6px 0`;
+  panel.id=panelId;
+  const spaceBelow=window.innerHeight-rect.bottom-8;
+  const spaceAbove=rect.top-8;
+  const useBelow=spaceBelow>=spaceAbove||spaceBelow>=150;
+  const maxH=Math.min(useBelow?spaceBelow:spaceAbove,400);
+  const topPos=useBelow?rect.bottom+4:rect.top-maxH-4;
+  const leftOrRight=rect.left+180>window.innerWidth?`right:${window.innerWidth-rect.right}px`:`left:${rect.left}px`;
+  panel.style.cssText=`position:fixed;top:${topPos}px;${leftOrRight};background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.12);z-index:1000;min-width:180px;max-height:${maxH}px;overflow-y:auto;padding:6px 0`;
   panel.innerHTML=`<div style="padding:6px 14px 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">Columnas visibles</div>`+
-    _candColDefs.map(({key,label})=>`
+    colDefs.map(({key,label})=>`
       <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;border-radius:6px;font-size:13px;user-select:none"
         onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-        <input type="checkbox" ${_candColVis[key]===false?'':'checked'}
+        <input type="checkbox" ${visMap[key]===false?'':'checked'}
           style="accent-color:var(--accent);width:14px;height:14px"
-          onchange="toggleCandCol('${key}')">
+          onchange="${toggleFn}('${key}')">
         ${label}
       </label>`).join('');
   document.body.appendChild(panel);
-  const close=e=>{if(!panel.contains(e.target)&&e.target.id!=='btn-cand-col-vis'){panel.remove();document.removeEventListener('mousedown',close);}};
-  setTimeout(()=>document.addEventListener('mousedown',close),0);
+  const closePanel=()=>{panel.remove();document.removeEventListener('mousedown',onDown);window.removeEventListener('scroll',closePanel,true);};
+  const onDown=e=>{if(!panel.contains(e.target)&&e.target.id!==btnId)closePanel();};
+  setTimeout(()=>{document.addEventListener('mousedown',onDown);window.addEventListener('scroll',closePanel,true);},0);
 }
+
+function openCandColPanel(){ _openColPanelHelper('cand-col-panel','btn-cand-col-vis',_candColDefs,_candColVis,'toggleCandCol'); }
 
 /* ── Vacantes column visibility ─────────────────────────── */
 let _vacColVis=JSON.parse(localStorage.getItem('vac_col_vis')||'{}');
@@ -4114,28 +4123,7 @@ function toggleVacCol(key){
   localStorage.setItem('vac_col_vis',JSON.stringify(_vacColVis));
   _applyVacColVis();
 }
-function openVacColPanel(){
-  const existing=document.getElementById('vac-col-panel');
-  if(existing){existing.remove();return;}
-  const btn=document.getElementById('btn-vac-col-vis');
-  if(!btn)return;
-  const rect=btn.getBoundingClientRect();
-  const panel=document.createElement('div');
-  panel.id='vac-col-panel';
-  panel.style.cssText=`position:fixed;top:${rect.bottom+6}px;left:${rect.left}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.12);z-index:200;min-width:180px;padding:6px 0`;
-  panel.innerHTML=`<div style="padding:6px 14px 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">Columnas visibles</div>`+
-    _vacColDefs.map(({key,label})=>`
-      <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;border-radius:6px;font-size:13px;user-select:none"
-        onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-        <input type="checkbox" ${_vacColVis[key]===false?'':'checked'}
-          style="accent-color:var(--accent);width:14px;height:14px"
-          onchange="toggleVacCol('${key}')">
-        ${label}
-      </label>`).join('');
-  document.body.appendChild(panel);
-  const close=e=>{if(!panel.contains(e.target)&&e.target.id!=='btn-vac-col-vis'){panel.remove();document.removeEventListener('mousedown',close);}};
-  setTimeout(()=>document.addEventListener('mousedown',close),0);
-}
+function openVacColPanel(){ _openColPanelHelper('vac-col-panel','btn-vac-col-vis',_vacColDefs,_vacColVis,'toggleVacCol'); }
 
 /* ── Contratados column visibility ──────────────────────── */
 let _ctColVis=JSON.parse(localStorage.getItem('ct_col_vis')||'{}');
@@ -4166,27 +4154,7 @@ function toggleCtCol(key){
   localStorage.setItem('ct_col_vis',JSON.stringify(_ctColVis));
   _applyCtColVis();
 }
-function openCtColPanel(){
-  const existing=document.getElementById('ct-col-panel');
-  if(existing){existing.remove();return;}
-  const btn=document.getElementById('btn-ct-col-vis');
-  if(!btn)return;
-  const rect=btn.getBoundingClientRect();
-  const panel=document.createElement('div');
-  panel.id='ct-col-panel';
-  panel.style.cssText=`position:fixed;top:${rect.bottom+6}px;left:${rect.left}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.12);z-index:200;min-width:180px;padding:6px 0`;
-  panel.innerHTML=`<div style="padding:6px 14px 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">Columnas visibles</div>`+
-    _ctColDefs.map(({key,label})=>`
-      <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;border-radius:6px;font-size:13px;user-select:none"
-        onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-        <input type="checkbox" ${_ctColVis[key]===false?'':'checked'}
-          style="accent-color:var(--accent);width:14px;height:14px"
-          onchange="toggleCtCol('${key}')">
-        ${label}
-      </label>`).join('');
-  document.body.appendChild(panel);
-  const close=e=>{if(!panel.contains(e.target)&&e.target.id!=='btn-ct-col-vis'){panel.remove();document.removeEventListener('mousedown',close);}};
-  setTimeout(()=>document.addEventListener('mousedown',close),0);
+function openCtColPanel(){ _openColPanelHelper('ct-col-panel','btn-ct-col-vis',_ctColDefs,_ctColVis,'toggleCtCol');
 }
 
 function openEDColPanel(){

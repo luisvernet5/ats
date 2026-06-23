@@ -350,6 +350,77 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
      ===================================================== */
   .topbar-actions .btn span { display: none; }
   .topbar-actions .btn { padding: 7px 10px !important; }
+
+  /* =====================================================
+     OVERFLOW — evitar scroll horizontal del body
+     ===================================================== */
+  html, body { overflow-x: hidden; }
+  .app, .main { max-width: 100vw; }
+
+  /* =====================================================
+     FILTROS .fbar — dropdowns y fechas adaptables
+     ===================================================== */
+  .fbar > div[id^="wrap-flt"],
+  .fbar > div[id^="wrap-ct"] {
+    flex: 1 1 auto !important;
+    min-width: 130px !important;
+    max-width: calc(50% - 4px);
+  }
+  .fbar > div[id^="wrap-flt"] > button,
+  .fbar > div[id^="wrap-ct"] > button {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+  .fbar input[type="date"] {
+    flex: 1 1 auto !important;
+    min-width: 100px !important;
+    max-width: calc(50% - 4px) !important;
+    box-sizing: border-box;
+  }
+  .fbar select { max-width: 100% !important; }
+
+  /* =====================================================
+     EMPRESA DETAIL — barra de filtros de vacantes
+     ===================================================== */
+  #ed-filter-bar {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+    padding-bottom: 0 !important;
+  }
+  #ed-filter-bar > div[id^="wrap-ed-flt"] {
+    flex: 1 1 auto !important;
+    min-width: 110px !important;
+    max-width: calc(50% - 4px);
+  }
+  #ed-filter-bar > div[id^="wrap-ed-flt"] > button {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+  #ed-filter-bar input[type="date"] {
+    flex: 1 1 auto !important;
+    min-width: 100px !important;
+    max-width: calc(50% - 4px);
+    box-sizing: border-box;
+  }
+  #ed-filter-bar > .btn { flex-shrink: 0; }
+
+  /* =====================================================
+     HC SEMANA — botones de acción en cabecera
+     ===================================================== */
+  #hc-content > div:first-child > div:last-child > .btn {
+    flex: 1 1 auto;
+    font-size: 11px !important;
+    padding: 5px 8px !important;
+  }
+
+  /* =====================================================
+     ANALÍTICA — tabs overflow en móvil
+     ===================================================== */
+  [id^="analytics-tabs-"] {
+    overflow-x: auto;
+    padding-bottom: 4px;
+    flex-wrap: nowrap !important;
+  }
 }
 ._eval-emp-chip { display:inline-flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:3px 10px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--text);transition:background .15s,color .15s,border-color .15s;margin:2px;user-select:none }
 ._eval-emp-chip._sel { background:var(--accent)!important;color:#fff!important;border-color:var(--accent)!important }
@@ -530,7 +601,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <button class="btn btn-green btn-sm" onclick="exportarVacantesExcel()" style="white-space:nowrap;font-size:12px;padding:0 8px"><i class="fa fa-file-excel"></i> Exportar Excel</button>
       <button class="btn btn-primary btn-sm" onclick="openVacanteModal()" style="white-space:nowrap;font-size:12px;padding:0 8px"><i class="fa fa-plus"></i> Nueva</button>
     </div>
-    <div style="display:flex;gap:6px;margin-bottom:10px">
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
       <button id="vac-vista-folio" class="btn btn-primary btn-sm" onclick="setVacVista('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
       <button id="vac-vista-proyecto" class="btn btn-ghost btn-sm" onclick="setVacVista('proyecto')"><i class="fa fa-layer-group"></i> Por proyecto</button>
       <button id="vac-vista-departamento" class="btn btn-ghost btn-sm" onclick="setVacVista('departamento')"><i class="fa fa-sitemap"></i> Por departamento</button>
@@ -566,7 +637,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <button class="btn btn-green btn-sm" onclick="exportCandidatosExcel()" style="white-space:nowrap"><i class="fa fa-file-excel"></i> Exportar Excel</button>
       <button id="btn-cand-col-vis" class="btn btn-ghost btn-sm" onclick="openCandColPanel()"><i class="fa fa-columns"></i> Columnas</button>
     </div>
-    <div style="display:flex;gap:6px;margin-bottom:10px">
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
       <button id="cand-vista-folio" class="btn btn-primary btn-sm" onclick="setVistaCand('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
       <button id="cand-vista-proyecto" class="btn btn-ghost btn-sm" onclick="setVistaCand('proyecto')"><i class="fa fa-layer-group"></i> Por proyecto</button>
       <button id="cand-vista-departamento" class="btn btn-ghost btn-sm" onclick="setVistaCand('departamento')"><i class="fa fa-sitemap"></i> Por departamento</button>
@@ -3807,7 +3878,7 @@ function openEmpresaDetail(empId){
         <div class="sec-title">Proceso de reclutamiento configurado</div>
         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${processHtml}</div>
       </div>
-      <div style="display:flex;align-items:center;gap:5px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px">
+      <div id="ed-filter-bar" style="display:flex;align-items:center;gap:5px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px">
         <strong style="white-space:nowrap;font-size:13px;flex-shrink:0">Vacantes</strong>
         <button id="btn-vista-folio" class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="cambiarVistaEmpresa('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
         <button id="btn-vista-proyecto" class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="cambiarVistaEmpresa('proyecto')"><i class="fa fa-layer-group"></i> Por proyecto</button>
@@ -9413,15 +9484,15 @@ async function abrirTablaHC(empId, semana, anio){
   content.innerHTML=`
     <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${empId}')"><i class="fa fa-arrow-left"></i> Semanas</button>
-      <div style="display:flex;align-items:center;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;overflow:hidden">
         <button ${semAnterior?`onclick="abrirTablaHC('${empId}',${semAnterior.semana},${semAnterior.anio})"`:'disabled'}
-          style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border2);background:var(--surface2);cursor:${semAnterior?'pointer':'default'};opacity:${semAnterior?1:.35};display:flex;align-items:center;justify-content:center"
+          style="width:30px;height:30px;flex-shrink:0;border-radius:50%;border:1px solid var(--border2);background:var(--surface2);cursor:${semAnterior?'pointer':'default'};opacity:${semAnterior?1:.35};display:flex;align-items:center;justify-content:center"
           title="${semAnterior?'Semana '+semAnterior.semana+' ('+semAnterior.anio+')':'Sin semana anterior'}">
           <i class="fa fa-chevron-left" style="font-size:11px;color:var(--text)"></i>
         </button>
-        <div style="font-size:14px;font-weight:600;white-space:nowrap">${emp.nombre||''} — Semana ${semana} — ${anio} (${label})</div>
+        <div style="font-size:14px;font-weight:600;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">${emp.nombre||''} — Semana ${semana} — ${anio} (${label})</div>
         <button ${semSiguiente?`onclick="abrirTablaHC('${empId}',${semSiguiente.semana},${semSiguiente.anio})"`:'disabled'}
-          style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border2);background:var(--surface2);cursor:${semSiguiente?'pointer':'default'};opacity:${semSiguiente?1:.35};display:flex;align-items:center;justify-content:center"
+          style="width:30px;height:30px;flex-shrink:0;border-radius:50%;border:1px solid var(--border2);background:var(--surface2);cursor:${semSiguiente?'pointer':'default'};opacity:${semSiguiente?1:.35};display:flex;align-items:center;justify-content:center"
           title="${semSiguiente?'Semana '+semSiguiente.semana+' ('+semSiguiente.anio+')':'Sin semana siguiente'}">
           <i class="fa fa-chevron-right" style="font-size:11px;color:var(--text)"></i>
         </button>

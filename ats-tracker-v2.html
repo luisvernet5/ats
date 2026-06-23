@@ -4197,7 +4197,11 @@ function openEDColPanel(){
   const rect=btn.getBoundingClientRect();
   const panel=document.createElement('div');
   panel.id='ed-col-panel';
-  panel.style.cssText=`position:fixed;top:${rect.bottom+4}px;right:${window.innerWidth-rect.right}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:6px 4px;z-index:100;box-shadow:0 4px 20px rgba(0,0,0,.15);min-width:170px`;
+  const spaceBelow=window.innerHeight-rect.bottom-8;
+  const spaceAbove=rect.top-8;
+  const maxH=Math.min(Math.max(spaceBelow,spaceAbove),400);
+  const topPos=spaceBelow>=spaceAbove?rect.bottom+4:rect.top-Math.min(spaceAbove,400)-4;
+  panel.style.cssText=`position:fixed;top:${topPos}px;right:${window.innerWidth-rect.right}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:6px 4px;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,.15);min-width:170px;max-height:${maxH}px;overflow-y:auto`;
   panel.innerHTML=`<div style="font-size:11px;font-weight:600;color:var(--text3);padding:4px 12px 6px;text-transform:uppercase;letter-spacing:.04em">Columnas visibles</div>`+
     _edColDefs.map(({key,label})=>`
       <label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;border-radius:6px;font-size:13px;user-select:none"
@@ -4208,8 +4212,9 @@ function openEDColPanel(){
         ${label}
       </label>`).join('');
   document.body.appendChild(panel);
-  const close=e=>{if(!panel.contains(e.target)&&e.target.id!=='btn-ed-col-vis'){panel.remove();document.removeEventListener('mousedown',close);}};
-  setTimeout(()=>document.addEventListener('mousedown',close),0);
+  const closePanel=()=>{panel.remove();document.removeEventListener('mousedown',onDown);window.removeEventListener('scroll',closePanel,true);};
+  const onDown=e=>{if(!panel.contains(e.target)&&e.target.id!=='btn-ed-col-vis')closePanel();};
+  setTimeout(()=>{document.addEventListener('mousedown',onDown);window.addEventListener('scroll',closePanel,true);},0);
 }
 
 function cambiarVistaEmpresa(vista){

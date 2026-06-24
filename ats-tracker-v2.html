@@ -5654,7 +5654,7 @@ async function saveCandidato(){
 function populateRecSel(selId,cur){
   const sel=document.getElementById(selId);if(!sel)return;
   sel.innerHTML='<option value="">Seleccionar...</option>';
-  DB.reclutadores.forEach(r=>sel.innerHTML+=`<option value="${r.id}" ${cur===r.id?'selected':''}>${r.nombre}</option>`);
+  DB.reclutadores.filter(r=>r.activo!==false).forEach(r=>sel.innerHTML+=`<option value="${r.id}" ${cur===r.id?'selected':''}>${r.nombre}</option>`);
 }
 
 async function saveReclutador(){

@@ -12876,7 +12876,7 @@ async function exportRefLaboralesPDF() {
     doc.setFillColor(232,248,252);doc.setDrawColor(42,170,222);doc.rect(M,y,CW,7,'FD');
     doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(42,170,222);
     doc.text(`Referencia ${idx+1}`,M+2,y+5);doc.setTextColor(0);y+=10;
-    r2('Candidato',g(`ref-lab-${n}-candidato`),'Empresa',g(`ref-lab-${n}-empresa`));
+    r2('Candidato',candNombre,'Empresa',g(`ref-lab-${n}-empresa`));
     r2('Nombre contacto',g(`ref-lab-${n}-contacto`),'Teléfono',g(`ref-lab-${n}-telefono`));
     r2('Puesto del contacto',g(`ref-lab-${n}-puesto-contacto`),'Tiempo laborado',g(`ref-lab-${n}-tiempo-laborado`));
     r2('Puestos ocupados',g(`ref-lab-${n}-puestos`),'Causa de separación',g(`ref-lab-${n}-separacion`));

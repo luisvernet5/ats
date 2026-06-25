@@ -2933,7 +2933,7 @@ function filtrarLog(){
       </td>
       <td><span style="font-size:11px;font-weight:600;color:${col};background:${col}18;padding:3px 8px;border-radius:20px">${d.accion||'—'}</span></td>
       <td style="font-size:11px;color:var(--text3)">${d.entidad||'—'}</td>
-      <td style="font-size:12px">${d.detalle||'—'}</td>
+      <td style="font-size:12px">${(()=>{let det=d.detalle||'—';if(d.accion==='Nueva vacante'&&d.entidad_id&&det!=='—'&&!det.includes('Folio:')){const vac=DB.vacantes?.find(v=>v.id===d.entidad_id);if(vac?.folio)det+=` — Folio: ${vac.folio}`;}return det;})()}</td>
     </tr>`;
   }).join('');
 
@@ -4890,7 +4890,8 @@ async function saveVacante(){
       if(reclutador_id) notificarReclutador(_nv);
     }
     const _lv = id ? DB.vacantes.find(x=>x.id===id) : DB.vacantes[DB.vacantes.length-1];
-    await logActivity(_lv&&_vacAnterior?'Editar vacante':'Nueva vacante','vacantes',_lv?.id,_lv?.nombre||'',_vacAnterior,_lv);
+    const _lvDetalle = (_lv?.nombre||'') + (_lv?.folio&&!_vacAnterior ? ` — Folio: ${_lv.folio}` : '');
+    await logActivity(_lv&&_vacAnterior?'Editar vacante':'Nueva vacante','vacantes',_lv?.id,_lvDetalle,_vacAnterior,_lv);
     closeModal('modal-vacante');
     setTimeout(()=>{
       const activePage=document.querySelector('.page.active')?.id.replace('page-','');
@@ -5084,7 +5085,7 @@ async function doImportVacantes(){
       };
       await saveRecord('vacantes', nv);
       DB.vacantes.push(nv);
-      await logActivity('Nueva vacante','vacantes',nv.id,nv.nombre);
+      await logActivity('Nueva vacante','vacantes',nv.id,nv.folio?`${nv.nombre} — Folio: ${nv.folio}`:nv.nombre);
       saved++;
     } catch(e){
       console.error('Error importando fila', row._row, e);

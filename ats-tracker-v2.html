@@ -6870,7 +6870,10 @@ async function ejecutarDescarteCand(){
   const motivo=document.getElementById('dd-motivo').value.trim();
   const ci=DB.candidatos.findIndex(x=>x.id===candId);if(ci<0)return;
   DB.candidatos[ci].descartado=true;
+  DB.candidatos[ci].etapa='Descartado';
+  DB.candidatos[ci].activo=false;
   DB.candidatos[ci].fecha_descarte=today();
+  DB.candidatos[ci].fecha_salida=DB.candidatos[ci].fecha_salida||today();
   DB.candidatos[ci].motivo_descarte=motivo||null;
   await saveRecord('candidatos',DB.candidatos[ci]);
   closeModal('modal-descarte-direct');
@@ -6977,7 +6980,7 @@ function _renderTablaDescartados(lista){
       <td style="font-size:13px">${rec.nombre||'—'}</td>
       <td style="font-size:12px;color:var(--text2)">${v.proyecto||''}</td>
       <td style="font-size:12px;color:var(--text2)">${v.departamento||''}</td>
-      <td>${badgeEtapa(c.etapa,v.empresa_id)}</td>
+      <td>${badgeEtapa(c.descartado===true&&!['Descartado','No aceptó','Desertó'].includes(c.etapa)?'Descartado':c.etapa,v.empresa_id)}</td>
       <td style="font-size:12px;color:var(--text3)">${fmt(c.fecha_descarte||c.fecha_salida)||'—'}</td>
       <td style="font-size:12px;color:var(--text3)">${c.motivo_descarte||c.motivo_desercion||'—'}</td>
       <td>

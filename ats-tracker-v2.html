@@ -15621,6 +15621,7 @@ function eseSelectCandidato(id, nombre){
 }
 
 let _eseQ = '';
+let _eseOrden = 'reciente';
 
 function _eseFmt(d){ return d ? new Date(d+'T12:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
 
@@ -15646,7 +15647,17 @@ function _eseFiltered(){
   const f2 = document.getElementById('ese-fecha-hasta')?.value;
   if(f1) list = list.filter(e=>(e.fecha_realizado||'') >= f1);
   if(f2) list = list.filter(e=>(e.fecha_realizado||'') <= f2);
-  return list.sort((a,b)=>(b.fecha_realizado||'').localeCompare(a.fecha_realizado||''));
+  return list.sort((a,b)=>_eseOrden==='antiguo'
+    ? (a.fecha_realizado||'').localeCompare(b.fecha_realizado||'')
+    : (b.fecha_realizado||'').localeCompare(a.fecha_realizado||''));
+}
+function setEseOrden(orden){
+  _eseOrden=orden;
+  const r=document.getElementById('ese-ord-reciente');
+  const a=document.getElementById('ese-ord-antiguo');
+  if(r){r.className=orden==='reciente'?'btn btn-primary btn-sm':'btn btn-ghost btn-sm';}
+  if(a){a.className=orden==='antiguo'?'btn btn-primary btn-sm':'btn btn-ghost btn-sm';}
+  _eseRenderTable();
 }
 function _eseLimpiarFechas(){
   const d=document.getElementById('ese-fecha-desde');
@@ -15878,6 +15889,10 @@ function renderESE(){
           <button onclick="_eseLimpiarFechas()" style="display:flex;align-items:center;gap:4px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text2);cursor:pointer;font-size:13px;white-space:nowrap">× Limpiar</button>
           <span class="sp"></span>
           <span id="ese-count" style="font-size:13px;color:var(--text3)"></span>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+          <button id="ese-ord-reciente" class="btn btn-primary btn-sm" onclick="setEseOrden('reciente')"><i class="fa fa-arrow-down"></i> Más recientes</button>
+          <button id="ese-ord-antiguo"  class="btn btn-ghost   btn-sm" onclick="setEseOrden('antiguo')"><i class="fa fa-arrow-up"></i> Más antiguo</button>
         </div>
         <div id="ese-results"></div>
       </div>

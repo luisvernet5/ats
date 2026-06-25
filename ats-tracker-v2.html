@@ -651,28 +651,29 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
 
   <!-- CANDIDATOS -->
   <div class="page" id="page-candidatos">
-    <div class="fbar">
-      <input type="text" id="flt-cand-q" placeholder="Buscar candidato..." oninput="renderCandidatosTable()">
-      <div id="wrap-flt-cand-emp" style="flex:none"><button id="btn-flt-cand-emp" onclick="_mfOpen('flt-cand-emp',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between"><span id="lbl-flt-cand-emp">Todas las empresas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
-      <div id="wrap-flt-cand-rec" style="flex:none"><button id="btn-flt-cand-rec" onclick="_mfOpen('flt-cand-rec',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:155px;justify-content:space-between"><span id="lbl-flt-cand-rec">Todos los reclutadores</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+    <div class="fbar" style="gap:6px">
+      <input type="text" id="flt-cand-q" placeholder="Buscar candidato..." oninput="renderCandidatosTable()" style="min-width:110px;font-size:12px;height:32px">
+      <div id="wrap-flt-cand-emp" style="flex:none"><button id="btn-flt-cand-emp" onclick="_mfOpen('flt-cand-emp',event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:110px;justify-content:space-between"><span id="lbl-flt-cand-emp">Empresa</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div id="wrap-flt-cand-rec" style="flex:none"><button id="btn-flt-cand-rec" onclick="_mfOpen('flt-cand-rec',event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:120px;justify-content:space-between"><span id="lbl-flt-cand-rec">Reclutador</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <div id="flt-cand-etapa-wrap" style="flex:none">
-        <button id="flt-cand-etapa-btn" onclick="toggleEtapaDropdown(event)"
-          style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between">
-          <span id="flt-cand-etapa-label">Todas las etapas</span>
+        <button id="flt-cand-etapa-btn" onclick="toggleEtapaDropdown(event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:110px;justify-content:space-between">
+          <span id="flt-cand-etapa-label">Etapa</span>
           <i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i>
         </button>
       </div>
-      <input type="date" id="flt-cand-desde" title="Fecha inicio desde" onchange="renderCandidatosTable()" style="width:140px;font-size:13px">
-      <input type="date" id="flt-cand-hasta" title="Fecha inicio hasta" onchange="renderCandidatosTable()" style="width:140px;font-size:13px">
-      <button onclick="_candLimpiarFechas()" style="display:flex;align-items:center;gap:4px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text2);cursor:pointer;font-size:13px;white-space:nowrap">× Limpiar</button>
+      <div id="wrap-flt-cand-proy" style="flex:none"><button id="btn-flt-cand-proy" onclick="_mfOpen('flt-cand-proy',event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:100px;justify-content:space-between"><span id="lbl-flt-cand-proy">Proyecto</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <div id="wrap-flt-cand-dep" style="flex:none"><button id="btn-flt-cand-dep" onclick="_mfOpen('flt-cand-dep',event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:115px;justify-content:space-between"><span id="lbl-flt-cand-dep">Departamento</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+      <input type="date" id="flt-cand-desde" title="Fecha inicio desde" onchange="renderCandidatosTable()" style="width:108px;min-width:108px;font-size:12px;height:32px">
+      <input type="date" id="flt-cand-hasta" title="Fecha inicio hasta" onchange="renderCandidatosTable()" style="width:108px;min-width:108px;font-size:12px;height:32px">
+      <button onclick="_candLimpiarFechas()" style="display:flex;align-items:center;gap:4px;padding:0 8px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text2);cursor:pointer;font-size:12px;white-space:nowrap">× Limpiar</button>
       <span class="sp"></span>
-      <select id="cand-page-size" onchange="_candPageSize=parseInt(this.value);_candPage=1;renderCandidatosTable()" style="width:auto;min-width:130px">
+      <select id="cand-page-size" onchange="_candPageSize=parseInt(this.value);_candPage=1;renderCandidatosTable()" style="width:auto;min-width:110px;font-size:12px;height:32px">
         <option value="30" selected>30 registros</option>
         <option value="100">100 registros</option>
         <option value="0">Todos</option>
       </select>
-      <button class="btn btn-green btn-sm" onclick="exportCandidatosExcel()" style="white-space:nowrap"><i class="fa fa-file-excel"></i> Exportar Excel</button>
-      <button id="btn-cand-col-vis" class="btn btn-ghost btn-sm" onclick="openCandColPanel()"><i class="fa fa-columns"></i> Columnas</button>
+      <button class="btn btn-green btn-sm" onclick="exportCandidatosExcel()" style="white-space:nowrap;height:32px"><i class="fa fa-file-excel"></i> Exportar Excel</button>
+      <button id="btn-cand-col-vis" class="btn btn-ghost btn-sm" onclick="openCandColPanel()" style="height:32px"><i class="fa fa-columns"></i> Columnas</button>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
       <button id="cand-vista-folio" class="btn btn-primary btn-sm" onclick="setVistaCand('folio')"><i class="fa fa-list-ol"></i> Por folio</button>
@@ -7256,6 +7257,7 @@ function _candLimpiarFechas(){
   const h=document.getElementById('flt-cand-hasta');
   if(d) d.value='';
   if(h) h.value='';
+  _mfReset('flt-cand-proy','flt-cand-dep');
   renderCandidatosTable();
 }
 
@@ -7274,6 +7276,8 @@ function exportCandidatosExcel(){
   if(mfEmp){ const vids=_vacsC.filter(v=>mfEmp.has(v.empresa_id||'')).map(v=>v.id); list=list.filter(c=>vids.includes(c.vacante_id)); }
   const mfRec = _mfGet('flt-cand-rec');
   if(mfRec) list = list.filter(c=>mfRec.has(c.reclutador_id||''));
+  const mfExpProy=_mfGet('flt-cand-proy');if(mfExpProy){const pvids=_vacsC.filter(v=>mfExpProy.has(v.proyecto||'')).map(v=>v.id);list=list.filter(c=>pvids.includes(c.vacante_id));}
+  const mfExpDep=_mfGet('flt-cand-dep');if(mfExpDep){const dvids=_vacsC.filter(v=>mfExpDep.has(v.departamento||'')).map(v=>v.id);list=list.filter(c=>dvids.includes(c.vacante_id));}
   if(window._etapaFiltroSet) list = list.filter(c=>window._etapaFiltroSet.has(c.etapa||''));
 
   // — mismo orden que la vista activa —
@@ -7341,21 +7345,26 @@ function renderCandidatosTable(){
   if(!window._etapaFiltroSet) window._etapaFiltroSet = null; // null = todas
   // populate empresa multi-select filter
   const cEmpOpts=(_isEmpresaRole()?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).map(e=>({value:e.id,label:e.nombre}));
-  _mfPopulate('flt-cand-emp',cEmpOpts,'Todas las empresas');
+  _mfPopulate('flt-cand-emp',cEmpOpts,'Empresa');
   // populate reclutador multi-select filter (scoped for rh_cliente)
   const _empIdCRec=_userEmpresaId();
   const vacsForRec=_empIdCRec?DB.vacantes.filter(v=>v.empresa_id===_empIdCRec):DB.vacantes;
   const cRIds=[...new Set(vacsForRec.map(v=>v.reclutador_id).filter(Boolean))];
-  _mfPopulate('flt-cand-rec',cRIds.map(id=>{const r=DB.reclutadores.find(x=>x.id===id)||{};return{value:id,label:r.nombre||id};}),'Todos los reclutadores');
+  _mfPopulate('flt-cand-rec',cRIds.map(id=>{const r=DB.reclutadores.find(x=>x.id===id)||{};return{value:id,label:r.nombre||id};}),'Reclutador');
 
   const _recIdC = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   const _empIdC = _userEmpresaId();
   const _vacsC = _recIdC ? DB.vacantes.filter(v=>v.reclutador_id===_recIdC) : _empIdC ? DB.vacantes.filter(v=>v.empresa_id===_empIdC) : DB.vacantes;
+  // populate proyecto and departamento filters
+  _mfPopulate('flt-cand-proy',[...new Set(_vacsC.map(v=>v.proyecto).filter(Boolean))].sort().map(p=>({value:p,label:p})),'Proyecto');
+  _mfPopulate('flt-cand-dep',[...new Set(_vacsC.map(v=>v.departamento).filter(Boolean))].sort().map(d=>({value:d,label:d})),'Departamento');
   let list = (_recIdC||_empIdC) ? DB.candidatos.filter(c=>_vacsC.find(v=>v.id===c.vacante_id)) : DB.candidatos;
   if(!window._filtroMostrarDescartados) list = list.filter(c=>!_esCandDescartado(c));
   if(q)list=list.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
   const mfCandEmp=_mfGet('flt-cand-emp');if(mfCandEmp){const vids=_vacsC.filter(v=>mfCandEmp.has(v.empresa_id||'')).map(v=>v.id);list=list.filter(c=>vids.includes(c.vacante_id));}
   const mfCandRec=_mfGet('flt-cand-rec');if(mfCandRec)list=list.filter(c=>mfCandRec.has(c.reclutador_id||''));
+  const mfCandProy=_mfGet('flt-cand-proy');if(mfCandProy){const pvids=_vacsC.filter(v=>mfCandProy.has(v.proyecto||'')).map(v=>v.id);list=list.filter(c=>pvids.includes(c.vacante_id));}
+  const mfCandDep=_mfGet('flt-cand-dep');if(mfCandDep){const dvids=_vacsC.filter(v=>mfCandDep.has(v.departamento||'')).map(v=>v.id);list=list.filter(c=>dvids.includes(c.vacante_id));}
   // populate etapa checkbox dropdown
   _etapaPopulatePanel(list);
   if(window._etapaFiltroSet) list=list.filter(c=>window._etapaFiltroSet.has(c.etapa||''));

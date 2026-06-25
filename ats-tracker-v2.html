@@ -8874,6 +8874,29 @@ async function doExportGarantias(){
   XLSX.writeFile(wb,`garantias_${today()}.xlsx`);
 }
 
+let _garOrden = 'reciente';
+
+function setGarOrden(orden){
+  _garOrden = orden;
+  const r = document.getElementById('gar-ord-reciente');
+  const a = document.getElementById('gar-ord-antiguo');
+  if(r) r.className = orden==='reciente' ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm';
+  if(a) a.className = orden==='antiguo'  ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm';
+  const tbody = document.querySelector('#garantias-table-wrap tbody');
+  if(!tbody) return;
+  const mainRows = [...tbody.querySelectorAll('tr.garantia-row')];
+  mainRows.sort((x,y)=>{
+    const da=x.dataset.inicio||''; const db=y.dataset.inicio||'';
+    return orden==='antiguo' ? da.localeCompare(db) : db.localeCompare(da);
+  });
+  mainRows.forEach(tr=>{
+    tbody.appendChild(tr);
+    const vacId = tr.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+    const exp = vacId ? document.getElementById('grow-'+vacId) : null;
+    if(exp) tbody.appendChild(exp);
+  });
+}
+
 async function renderGarantias(){
   const page = document.getElementById('page-garantias');
   if(!page) return;
@@ -8892,6 +8915,11 @@ async function renderGarantias(){
   }
 
   const hoyStr = today();
+  vacsConGarantia.sort((a,b)=>{
+    const da=garantiasDB[a.id]?.garantia_inicio||'';
+    const db=garantiasDB[b.id]?.garantia_inicio||'';
+    return _garOrden==='antiguo' ? da.localeCompare(db) : db.localeCompare(da);
+  });
   const rows = vacsConGarantia.map((v,i)=>{
     const emp = DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const rec = DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
@@ -9023,6 +9051,10 @@ async function renderGarantias(){
       <button class="btn btn-green btn-sm" onclick="exportarGarantias()">
         <i class="fa fa-file-excel"></i> Exportar Excel
       </button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+      <button id="gar-ord-reciente" class="${_garOrden==='reciente'?'btn btn-primary btn-sm':'btn btn-ghost btn-sm'}" onclick="setGarOrden('reciente')"><i class="fa fa-arrow-down"></i> Más recientes</button>
+      <button id="gar-ord-antiguo"  class="${_garOrden==='antiguo' ?'btn btn-primary btn-sm':'btn btn-ghost btn-sm'}" onclick="setGarOrden('antiguo')"><i class="fa fa-arrow-up"></i> Más antiguo</button>
     </div>
     <div id="garantias-table-wrap">
     <div class="table-wrap">

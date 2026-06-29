@@ -88,10 +88,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .g2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
 .g2>*{min-width:0;overflow:hidden}
 .sec-title{font-size:14px;font-weight:600;margin-bottom:14px;color:var(--text)}
-.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:clip}
 table{width:100%;border-collapse:collapse}
 thead tr{background:var(--surface2)}
-th{padding:10px 14px;text-align:left;font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+th{padding:10px 14px;text-align:left;font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;position:sticky;top:0;z-index:2;background:var(--surface2);box-shadow:0 1px 0 var(--border)}
 td{padding:10px 14px;font-size:13px;border-top:1px solid var(--border);color:var(--text2);vertical-align:middle}
 tr:hover td{background:var(--surface2)}
 .td-p{color:var(--text)!important;font-weight:500}

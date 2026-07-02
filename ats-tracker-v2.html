@@ -7063,9 +7063,10 @@ function _mfOpen(id,e){
   panel.style.cssText=`position:fixed;top:${rect.bottom+4}px;left:${rect.left}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:6px 4px;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,.15);min-width:${Math.max(rect.width,180)}px;max-height:300px;overflow-y:auto`;
   _mfFillPanel(panel,id);
   document.body.appendChild(panel);
-  const closePanel=()=>{ panel.remove(); document.removeEventListener('mousedown',onMouseDown); window.removeEventListener('scroll',closePanel,true); };
+  const closePanel=()=>{ panel.remove(); document.removeEventListener('mousedown',onMouseDown); window.removeEventListener('scroll',onScroll,true); };
   const onMouseDown=ev=>{ if(!panel.contains(ev.target)&&ev.target.id!=='btn-'+id) closePanel(); };
-  setTimeout(()=>{ document.addEventListener('mousedown',onMouseDown); window.addEventListener('scroll',closePanel,true); },0);
+  const onScroll=ev=>{ if(!panel.contains(ev.target)) closePanel(); };
+  setTimeout(()=>{ document.addEventListener('mousedown',onMouseDown); window.addEventListener('scroll',onScroll,true); },0);
 }
 
 function _mfFillPanel(panel,id){

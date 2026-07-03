@@ -9290,7 +9290,8 @@ async function showHCTab(tab){
 
     const _plantMap=new Map();
     (plantilla||[]).forEach(p=>_plantMap.set(p.proyecto,p));
-    const plantillaUniq=[..._plantMap.values()];
+    const _gCfgOrd=gEmp.proyectos||[];
+    const plantillaUniq=[..._plantMap.values()].sort((a,b)=>{const ia=_gCfgOrd.indexOf(a.proyecto),ib=_gCfgOrd.indexOf(b.proyecto);if(ia===-1&&ib===-1)return(a.orden||0)-(b.orden||0);if(ia===-1)return 1;if(ib===-1)return -1;return ia-ib;});
     const labelsArr = plantillaUniq.map(p=>p.proyecto);
     const authArr   = plantillaUniq.map(p=>p.plantilla_autorizada||0);
     const actualArr = plantillaUniq.map(p=>resumenMap[p.proyecto]?.actual||0);
@@ -9637,7 +9638,9 @@ async function abrirTablaHC(empId, semana, anio){
       </td>
     </tr>`;
   };
-  const rows=(plantilla||[]).map(p=>mkRow(p.proyecto,p.proyecto.replace(/[^a-zA-Z0-9]/g,'_'),p.plantilla_autorizada||0,resumenMap[p.proyecto]||{},p.id||'')).join('');
+  const _cfgOrd=emp.proyectos||[];
+  const _plantOrd=[...(plantilla||[])].sort((a,b)=>{const ia=_cfgOrd.indexOf(a.proyecto),ib=_cfgOrd.indexOf(b.proyecto);if(ia===-1&&ib===-1)return(a.orden||0)-(b.orden||0);if(ia===-1)return 1;if(ib===-1)return -1;return ia-ib;});
+  const rows=_plantOrd.map(p=>mkRow(p.proyecto,p.proyecto.replace(/[^a-zA-Z0-9]/g,'_'),p.plantilla_autorizada||0,resumenMap[p.proyecto]||{},p.id||'')).join('');
   content.innerHTML=`
     <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="showHCWeekList('${empId}')"><i class="fa fa-arrow-left"></i> Semanas</button>

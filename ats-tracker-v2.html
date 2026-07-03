@@ -3304,6 +3304,8 @@ let selReason=null;
 let empColorSel=EMPRESA_COLORS[0];
 let empDepartamentos=[];
 let empProyectos=[];
+let empProyectosInactivos=new Set();
+let empDepartamentosInactivos=new Set();
 let charts={};
 let dragIdx=null;
 let openCandRows=new Set();
@@ -3668,19 +3670,25 @@ function empColorHexInput(val){
 let _empDragIdx=null,_empDragType=null;
 function renderEmpChips(type){
   const arr=type==='departamentos'?empDepartamentos:empProyectos;
+  const inact=type==='departamentos'?empDepartamentosInactivos:empProyectosInactivos;
   const el=document.getElementById(type==='departamentos'?'emp-depto-chips':'emp-proy-chips');
   if(!el)return;
-  el.innerHTML=arr.map((d,i)=>`<span draggable="true"
+  el.innerHTML=arr.map((d,i)=>{
+    const off=inact.has(d);
+    return `<div draggable="true"
     ondragstart="empChipDragStart(event,'${type}',${i})"
     ondragover="empChipDragOver(event,this)"
     ondragleave="this.style.outline=''"
     ondrop="empChipDrop(event,'${type}',${i})"
     ondragend="empChipDragEnd('${type}')"
-    style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--text2);cursor:grab;user-select:none">
-    <i class="fa fa-grip-lines" style="font-size:9px;color:var(--text3);opacity:.5"></i>
-    ${d}
-    <button onclick="removeEmpChip('${type}',${i})" style="background:none;border:none;cursor:pointer;padding:0;margin-left:2px;color:var(--text3);font-size:14px;line-height:1">×</button>
-  </span>`).join('');
+    style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:3px 8px 3px 10px;font-size:12px;color:${off?'var(--text3)':'var(--text2)'};cursor:grab;user-select:none;opacity:${off?0.55:1}">
+    <i class="fa fa-grip-lines" style="font-size:9px;color:var(--text3);opacity:.5;flex-shrink:0"></i>
+    <span id="emp-chip-nm-${type}-${i}" style="${off?'text-decoration:line-through;':''}flex:1">${_esc(d)}</span>
+    <button onclick="event.stopPropagation();empChipEdit('${type}',${i})" title="Renombrar" style="background:none;border:none;cursor:pointer;padding:2px 3px;color:var(--text3);font-size:10px;line-height:1;border-radius:3px" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text3)'"><i class="fa fa-pencil-alt"></i></button>
+    <button onclick="event.stopPropagation();empChipToggle('${type}',${i})" title="${off?'Activar':'Desactivar'}" style="background:none;border:none;cursor:pointer;padding:2px 3px;color:${off?'var(--text3)':'var(--accent)'};font-size:12px;line-height:1;border-radius:3px" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'"><i class="fa fa-toggle-${off?'off':'on'}"></i></button>
+    <button onclick="event.stopPropagation();removeEmpChip('${type}',${i})" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:0 0 0 2px;color:var(--text3);font-size:15px;line-height:1" onmouseover="this.style.color='var(--danger,#e74c3c)'" onmouseout="this.style.color='var(--text3)'">×</button>
+    </div>`;
+  }).join('');
 }
 function empChipDragStart(e,type,idx){
   _empDragIdx=idx; _empDragType=type;
@@ -3713,7 +3721,37 @@ function addEmpChip(type){
 }
 function removeEmpChip(type,idx){
   const arr=type==='departamentos'?empDepartamentos:empProyectos;
+  const inact=type==='departamentos'?empDepartamentosInactivos:empProyectosInactivos;
+  inact.delete(arr[idx]);
   arr.splice(idx,1);
+  renderEmpChips(type);
+}
+function empChipToggle(type,idx){
+  const arr=type==='departamentos'?empDepartamentos:empProyectos;
+  const inact=type==='departamentos'?empDepartamentosInactivos:empProyectosInactivos;
+  const name=arr[idx];
+  if(inact.has(name))inact.delete(name);else inact.add(name);
+  renderEmpChips(type);
+}
+function empChipEdit(type,idx){
+  const arr=type==='departamentos'?empDepartamentos:empProyectos;
+  const nm=document.getElementById(`emp-chip-nm-${type}-${idx}`);
+  if(!nm)return;
+  const cur=arr[idx];
+  nm.innerHTML=`<input type="text" value="${_esc(cur)}" style="width:160px;font-size:12px;padding:1px 6px;border:1px solid var(--accent);border-radius:4px;background:var(--surface);color:var(--text);cursor:text" onkeydown="if(event.key==='Enter'){empChipSaveEdit('${type}',${idx},this.value);event.preventDefault()}else if(event.key==='Escape'){renderEmpChips('${type}')}" onblur="empChipSaveEdit('${type}',${idx},this.value)">`;
+  nm.querySelector('input').focus();
+  nm.querySelector('input').select();
+}
+function empChipSaveEdit(type,idx,newVal){
+  const val=newVal.trim();
+  if(!val){renderEmpChips(type);return;}
+  const arr=type==='departamentos'?empDepartamentos:empProyectos;
+  const inact=type==='departamentos'?empDepartamentosInactivos:empProyectosInactivos;
+  const old=arr[idx];
+  if(old!==val){
+    if(inact.has(old)){inact.delete(old);inact.add(val);}
+    arr[idx]=val;
+  }
   renderEmpChips(type);
 }
 function previewEmpLogo(){
@@ -3741,6 +3779,8 @@ function openEmpresaModal(id=null){
   ['emp-nombre','emp-sector','emp-contacto','emp-tel','emp-dir','emp-notas','emp-depto-input','emp-proy-input'].forEach(i=>document.getElementById(i).value='');
   empDepartamentos=[];
   empProyectos=[];
+  empProyectosInactivos=new Set();
+  empDepartamentosInactivos=new Set();
   renderEmpChips('departamentos');
   renderEmpChips('proyectos');
   empColorSel=EMPRESA_COLORS[DB.empresas.length%EMPRESA_COLORS.length];
@@ -3757,6 +3797,8 @@ function openEmpresaModal(id=null){
       document.getElementById('emp-notas').value=e.notas||'';
       empDepartamentos=[...(e.departamentos||[])];
       empProyectos=[...(e.proyectos||[])];
+      empProyectosInactivos=new Set(e.proyectos_inactivos||[]);
+      empDepartamentosInactivos=new Set(e.departamentos_inactivos||[]);
       renderEmpChips('departamentos');
       renderEmpChips('proyectos');
       empColorSel=e.color||EMPRESA_COLORS[0];
@@ -3774,7 +3816,7 @@ async function saveEmpresa(){
   const nombre=document.getElementById('emp-nombre').value.trim();
   if(!nombre){showToast('Ingresa el nombre de la empresa','err');return}
   const id=document.getElementById('emp-id').value;
-  const data={nombre,sector:document.getElementById('emp-sector').value,contacto:document.getElementById('emp-contacto').value,tel:document.getElementById('emp-tel').value,dir:document.getElementById('emp-dir').value,notas:document.getElementById('emp-notas').value,color:empColorSel,departamentos:[...empDepartamentos],proyectos:[...empProyectos]};
+  const data={nombre,sector:document.getElementById('emp-sector').value,contacto:document.getElementById('emp-contacto').value,tel:document.getElementById('emp-tel').value,dir:document.getElementById('emp-dir').value,notas:document.getElementById('emp-notas').value,color:empColorSel,departamentos:[...empDepartamentos],proyectos:[...empProyectos],proyectos_inactivos:[...empProyectosInactivos],departamentos_inactivos:[...empDepartamentosInactivos]};
   const _empAnterior = id ? {...(DB.empresas.find(x=>x.id===id)||{})} : null;
   if(id){const i=DB.empresas.findIndex(e=>e.id===id);DB.empresas[i]={...DB.empresas[i],...data};showToast('Empresa actualizada ✓')}
   else{DB.empresas.push({id:uid(),...data,etapas:DEFAULT_ETAPAS.map(e=>({...e,id:uid()}))});showToast('Empresa creada ✓')}
@@ -6489,7 +6531,7 @@ function renderVacantesTable(){
   _mfPopulate('flt-vac-proy',proyectos.map(p=>({value:p,label:p})),'Proyecto');
   const deptos=[...new Set(base.map(v=>v.departamento).filter(Boolean))].sort();
   _mfPopulate('flt-vac-dep',deptos.map(d=>({value:d,label:d})),'Departamento');
-  let list=base;
+  let list=base.filter(v=>{const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};if(v.proyecto&&(emp.proyectos_inactivos||[]).includes(v.proyecto))return false;if(v.departamento&&(emp.departamentos_inactivos||[]).includes(v.departamento))return false;return true;});
   if(q)list=list.filter(v=>v.nombre.toLowerCase().includes(q.toLowerCase()));
   const mfVacEmp=_mfGet('flt-vac-emp');if(mfVacEmp)list=list.filter(v=>mfVacEmp.has(v.empresa_id||''));
   const mfVacEst=_mfGet('flt-vac-est');if(mfVacEst)list=list.filter(v=>mfVacEst.has(v.estado||''));
@@ -6597,7 +6639,7 @@ function exportarVacantesExcel(){
   const hastaFlt=(document.getElementById('flt-vac-hasta')||{}).value||'';
   const _recIdV=currentUserData?.rol==='reclutador'?currentUserData?.reclutador_id:null;
   const _empIdV=_userEmpresaId();
-  let list=_recIdV?DB.vacantes.filter(v=>v.reclutador_id===_recIdV):_empIdV?DB.vacantes.filter(v=>v.empresa_id===_empIdV):DB.vacantes;
+  let list=(_recIdV?DB.vacantes.filter(v=>v.reclutador_id===_recIdV):_empIdV?DB.vacantes.filter(v=>v.empresa_id===_empIdV):DB.vacantes).filter(v=>{const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};if(v.proyecto&&(emp.proyectos_inactivos||[]).includes(v.proyecto))return false;if(v.departamento&&(emp.departamentos_inactivos||[]).includes(v.departamento))return false;return true;});
   if(q)list=list.filter(v=>v.nombre.toLowerCase().includes(q.toLowerCase()));
   const mfEmp=_mfGet('flt-vac-emp');if(mfEmp)list=list.filter(v=>mfEmp.has(v.empresa_id||''));
   const mfEst=_mfGet('flt-vac-est');if(mfEst)list=list.filter(v=>mfEst.has(v.estado||''));
@@ -7360,6 +7402,7 @@ function renderCandidatosTable(){
   _mfPopulate('flt-cand-proy',[...new Set(_vacsC.map(v=>v.proyecto).filter(Boolean))].sort().map(p=>({value:p,label:p})),'Proyecto');
   _mfPopulate('flt-cand-dep',[...new Set(_vacsC.map(v=>v.departamento).filter(Boolean))].sort().map(d=>({value:d,label:d})),'Departamento');
   let list = (_recIdC||_empIdC) ? DB.candidatos.filter(c=>_vacsC.find(v=>v.id===c.vacante_id)) : DB.candidatos;
+  list=list.filter(c=>{const v=_vacsC.find(x=>x.id===c.vacante_id)||{};const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};if(v.proyecto&&(emp.proyectos_inactivos||[]).includes(v.proyecto))return false;if(v.departamento&&(emp.departamentos_inactivos||[]).includes(v.departamento))return false;return true;});
   if(!window._filtroMostrarDescartados) list = list.filter(c=>!_esCandDescartado(c));
   if(q)list=list.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
   const mfCandEmp=_mfGet('flt-cand-emp');if(mfCandEmp){const vids=_vacsC.filter(v=>mfCandEmp.has(v.empresa_id||'')).map(v=>v.id);list=list.filter(c=>vids.includes(c.vacante_id));}

@@ -8268,7 +8268,8 @@ function exportTeDesgloseExcel(){
     included.forEach(item=>{const g=item.v[_teGrupo]||sinLabel;if(!groups[g])groups[g]=[];groups[g].push(item);});
     const cancelledByGroup={};
     cancelled.forEach(item=>{const g=item.v[_teGrupo]||sinLabel;if(!cancelledByGroup[g])cancelledByGroup[g]=[];cancelledByGroup[g].push(item);});
-    const allKeys=[...new Set([...Object.keys(groups),...Object.keys(cancelledByGroup)])].sort();
+    const _cfgK=_teGrupo==='proyecto'?(emp.proyectos||[]):(emp.departamentos||[]);
+    const allKeys=[...new Set([...Object.keys(groups),...Object.keys(cancelledByGroup)])].sort((a,b)=>{const ia=_cfgK.indexOf(a),ib=_cfgK.indexOf(b);if(ia===-1&&ib===-1)return a.localeCompare(b);if(ia===-1)return 1;if(ib===-1)return -1;return ia-ib;});
     allKeys.forEach(g=>{
       const gInc=groups[g]||[];
       const gCan=(cancelledByGroup[g]||[]).length;
@@ -8373,7 +8374,8 @@ function exportTeDesglosePDF(){
     included.forEach(item=>{const g=item.v[_teGrupo]||sinLabel;if(!groups[g])groups[g]=[];groups[g].push(item);});
     const cancelledByGroup={};
     cancelled.forEach(item=>{const g=item.v[_teGrupo]||sinLabel;if(!cancelledByGroup[g])cancelledByGroup[g]=[];cancelledByGroup[g].push(item);});
-    const allKeys=[...new Set([...Object.keys(groups),...Object.keys(cancelledByGroup)])].sort();
+    const _cfgK=_teGrupo==='proyecto'?(emp.proyectos||[]):(emp.departamentos||[]);
+    const allKeys=[...new Set([...Object.keys(groups),...Object.keys(cancelledByGroup)])].sort((a,b)=>{const ia=_cfgK.indexOf(a),ib=_cfgK.indexOf(b);if(ia===-1&&ib===-1)return a.localeCompare(b);if(ia===-1)return 1;if(ib===-1)return -1;return ia-ib;});
     allKeys.forEach(g=>{
       const gInc=groups[g]||[];
       const gCan=(cancelledByGroup[g]||[]).length;
@@ -8458,7 +8460,8 @@ function showTeDesglose(){
     included.forEach(item=>{const g=item.v[_teGrupo]||sinLabel;if(!groups[g])groups[g]=[];groups[g].push(item);});
     const cancelledByGroup={};
     cancelled.forEach(item=>{const g=item.v[_teGrupo]||sinLabel;if(!cancelledByGroup[g])cancelledByGroup[g]=[];cancelledByGroup[g].push(item);});
-    const allKeys=[...new Set([...Object.keys(groups),...Object.keys(cancelledByGroup)])].sort();
+    const _cfgK=_teGrupo==='proyecto'?(emp.proyectos||[]):(emp.departamentos||[]);
+    const allKeys=[...new Set([...Object.keys(groups),...Object.keys(cancelledByGroup)])].sort((a,b)=>{const ia=_cfgK.indexOf(a),ib=_cfgK.indexOf(b);if(ia===-1&&ib===-1)return a.localeCompare(b);if(ia===-1)return 1;if(ib===-1)return -1;return ia-ib;});
     if(!allKeys.length){
       bodyHTML=`<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">Sin vacantes en el período seleccionado</div>`;
     } else {

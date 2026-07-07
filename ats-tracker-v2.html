@@ -1109,7 +1109,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       </div>
       <div style="background:var(--surface2);border-radius:8px;padding:12px;font-size:12px;color:var(--text3);margin-top:12px">
         <strong style="color:var(--text2)">Formato de columnas en el archivo:</strong><br>
-        A: Pregunta &nbsp;|&nbsp; B: Tipo (opcion_multiple, texto_corto, parrafo, casillas, desplegable) &nbsp;|&nbsp; C–G: Opciones &nbsp;|&nbsp; H: Respuesta correcta &nbsp;|&nbsp; I: Puntos &nbsp;|&nbsp; J: Requerida (Si/No)
+        A: Pregunta &nbsp;|&nbsp; B: Tipo (opcion_multiple, texto_corto, parrafo, casillas, desplegable, escala) &nbsp;|&nbsp; C–G: Opciones &nbsp;|&nbsp; H: Respuesta correcta &nbsp;|&nbsp; I: Puntos &nbsp;|&nbsp; J: Requerida (Si/No) &nbsp;|&nbsp; K: EscalaMinLabel &nbsp;|&nbsp; L: EscalaMaxLabel
       </div>
     </div>
     <div class="mf">
@@ -16763,12 +16763,14 @@ function evalImportLoadFile(input){
     }
     if(!rows.length){ showToast('No se encontraron preguntas en el archivo'); return; }
     window._evalImportRows = rows.map(r => ({
-      pregunta:  r[0]||'',
-      tipo:      _eiNormTipo(r[1]),
-      opciones:  [r[2],r[3],r[4],r[5],r[6]].filter(Boolean),
-      correcta:  r[7]||'',
-      puntos:    parseFloat(r[8])||1,
-      requerida: /^s/i.test(r[9]||'si'),
+      pregunta:         r[0]||'',
+      tipo:             _eiNormTipo(r[1]),
+      opciones:         [r[2],r[3],r[4],r[5],r[6]].filter(Boolean),
+      correcta:         r[7]||'',
+      puntos:           parseFloat(r[8])||1,
+      requerida:        /^s/i.test(r[9]||'si'),
+      escala_min_label: r[10]||'',
+      escala_max_label: r[11]||'',
     }));
     _eiRenderPreview();
     document.getElementById('ei-drop-zone').style.display = 'none';
@@ -16793,15 +16795,16 @@ function _eiRenderPreview(){
 }
 
 function evalImportDescargarPlantilla(){
-  const header = ['Pregunta','Tipo','Opcion1','Opcion2','Opcion3','Opcion4','Opcion5','RespuestaCorrecta','Puntos','Requerida'];
+  const header = ['Pregunta','Tipo','Opcion1','Opcion2','Opcion3','Opcion4','Opcion5','RespuestaCorrecta','Puntos','Requerida','EscalaMinLabel','EscalaMaxLabel'];
   const ejemplo = [
-    ['¿Cuál es la diferencia entre JavaScript y TypeScript?','texto_corto','','','','','','',1,'Si'],
-    ['¿Cuál es el operador de igualdad estricta en JS?','opcion_multiple','==','===','!=','!==','','===',1,'Si'],
-    ['Selecciona los frameworks de frontend','casillas','React','Vue','Angular','Svelte','Next.js','',1,'No'],
-    ['¿En qué año fue creado JavaScript?','texto_corto','','','','','','1995',1,'Si'],
+    ['¿Cuál es la diferencia entre JavaScript y TypeScript?','texto_corto','','','','','','',1,'Si','',''],
+    ['¿Cuál es el operador de igualdad estricta en JS?','opcion_multiple','==','===','!=','!==','','===',1,'Si','',''],
+    ['Selecciona los frameworks de frontend','casillas','React','Vue','Angular','Svelte','Next.js','',1,'No','',''],
+    ['¿En qué año fue creado JavaScript?','texto_corto','','','','','','1995',1,'Si','',''],
+    ['¿Qué tan seguido comunicas ideas claramente a tu equipo?','escala','','','','','','',1,'Si','Nunca','Siempre'],
   ];
   const ws = XLSX.utils.aoa_to_sheet([header, ...ejemplo]);
-  ws['!cols'] = [{wch:40},{wch:20},{wch:18},{wch:18},{wch:18},{wch:18},{wch:18},{wch:22},{wch:8},{wch:10}];
+  ws['!cols'] = [{wch:40},{wch:20},{wch:18},{wch:18},{wch:18},{wch:18},{wch:18},{wch:22},{wch:8},{wch:10},{wch:24},{wch:24}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Preguntas');
   XLSX.writeFile(wb, 'plantilla_evaluacion.xlsx');
@@ -16827,6 +16830,12 @@ async function evalImportConfirm(){
         }
         console.log(`[IMPORT] Q${i+1}: "${r.pregunta.slice(0,40)}..." → match=${matchIdx>=0} → respuesta_correcta="${q.respuesta_correcta}"`);
       }
+    } else if(r.tipo === 'escala_lineal'){
+      q.escala_min       = 1;
+      q.escala_max       = 5;
+      q.escala_min_label = r.escala_min_label || '';
+      q.escala_max_label = r.escala_max_label || '';
+      q.respuesta_correcta = null;
     }
     return q;
   });

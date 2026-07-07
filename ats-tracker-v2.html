@@ -706,6 +706,8 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div style="display:flex;gap:6px">
         <button id="evtab-plantillas" class="btn btn-primary btn-sm" onclick="evSetTab('plantillas')"><i class="fa fa-list"></i> Plantillas</button>
+        <button id="eval-sort-reciente" class="btn btn-ghost btn-sm" onclick="setEvalSort('reciente')"><i class="fa fa-arrow-down"></i> Más recientes</button>
+        <button id="eval-sort-antiguo" class="btn btn-ghost btn-sm" onclick="setEvalSort('antiguo')"><i class="fa fa-arrow-up"></i> Más antiguo</button>
       </div>
       <button class="btn btn-primary btn-sm" id="btn-nueva-eval" onclick="openEvalTemplateModal()"><i class="fa fa-plus"></i> Nueva evaluación</button>
     </div>
@@ -16216,14 +16218,29 @@ function renderEvalRespuestas(){
     </tr>`;
   }).join('');
 }
+window._evalPlantSort='reciente';
+function setEvalSort(ord){
+  window._evalPlantSort=ord;
+  const btnR=document.getElementById('eval-sort-reciente');
+  const btnA=document.getElementById('eval-sort-antiguo');
+  if(btnR)btnR.className=`btn btn-sm ${ord==='reciente'?'btn-primary':'btn-ghost'}`;
+  if(btnA)btnA.className=`btn btn-sm ${ord==='antiguo'?'btn-primary':'btn-ghost'}`;
+  renderEvalPlantillas();
+}
 function renderEvalPlantillas(){
   const tbody = document.getElementById('eval-plantillas-tbody');
   if(!tbody) return;
+  const btnR=document.getElementById('eval-sort-reciente');
+  const btnA=document.getElementById('eval-sort-antiguo');
+  const ord=window._evalPlantSort||'reciente';
+  if(btnR)btnR.className=`btn btn-sm ${ord==='reciente'?'btn-primary':'btn-ghost'}`;
+  if(btnA)btnA.className=`btn btn-sm ${ord==='antiguo'?'btn-primary':'btn-ghost'}`;
   if(!DB.evaluaciones.length){
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin evaluaciones. Crea la primera con "+ Nueva evaluación".</td></tr>`;
     return;
   }
-  tbody.innerHTML = DB.evaluaciones.map(e=>{
+  const sorted=[...DB.evaluaciones].sort((a,b)=>ord==='reciente'?(b.created_at||'').localeCompare(a.created_at||''):(a.created_at||'').localeCompare(b.created_at||''));
+  tbody.innerHTML = sorted.map(e=>{
     const empIds = e.empresa_ids||[];
     let empsHTML;
     if(!empIds.length){

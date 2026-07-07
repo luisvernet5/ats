@@ -5725,7 +5725,12 @@ async function saveCandidato(){
     const _cObj=id?DB.candidatos.find(c=>c.id===id):DB.candidatos[DB.candidatos.length-1];
     if(_cObj)await saveRecord('candidatos',_cObj);
     if(_cObj)await saveReferencias(_cObj.id);
-    if(_cObj)await logActivity(_cObj&&_candAnterior?'Editar candidato':'Nuevo candidato','candidatos',_cObj.id,_cObj.nombre||'',_candAnterior,_cObj);
+    if(_cObj){
+      const _logVac=DB.vacantes.find(v=>v.id===_cObj.vacante_id)||{};
+      const _logVacDesc=_logVac.nombre?`${_logVac.nombre}${_logVac.folio?' ('+_logVac.folio+')':''}`:null;
+      const _logDetalle=(!_candAnterior&&_logVacDesc)?`${_cObj.nombre||''} — Vacante: ${_logVacDesc}`:(_cObj.nombre||'');
+      await logActivity(_candAnterior?'Editar candidato':'Nuevo candidato','candidatos',_cObj.id,_logDetalle,_candAnterior,_cObj);
+    }
     closeModal('modal-candidato');
     renderPage(document.querySelector('.page.active').id.replace('page-',''));
   } catch(e) {
@@ -7095,7 +7100,11 @@ async function reactivarCandidato(candId){
 
 async function eliminarCandidatoPermanente(candId){
   const c=DB.candidatos.find(x=>x.id===candId);if(!c)return;
+  const _vac=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+  const _vacDesc=_vac.nombre?`${_vac.nombre}${_vac.folio?' ('+_vac.folio+')':''}`:null;
   if(!confirm(`¿Eliminar permanentemente a ${c.nombre}?\nEsta acción NO se puede deshacer.`))return;
+  const _detalle=_vacDesc?`${c.nombre} — Vacante: ${_vacDesc}`:(c.nombre||candId);
+  await logActivity('Eliminar candidato','candidatos',candId,_detalle,null,null);
   await deleteRecord('candidatos',candId);
   DB.candidatos=DB.candidatos.filter(x=>x.id!==candId);
   _filtrarDescartados();

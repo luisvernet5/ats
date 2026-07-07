@@ -16451,9 +16451,9 @@ function exportEvaluacionPreviewPDF(evalId){
     let inp='';
     if(q.tipo==='texto_corto')inp=`<input disabled placeholder="Respuesta corta..." style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid #ddd;background:#f9f9f9;box-sizing:border-box">`;
     else if(q.tipo==='parrafo')inp=`<textarea disabled rows="3" placeholder="Respuesta..." style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid #ddd;resize:none;background:#f9f9f9;box-sizing:border-box"></textarea>`;
-    else if(q.tipo==='opcion_multiple')inp=`<div>${(q.opciones||[]).map(opt=>`<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:7px;margin-bottom:4px;border:1px solid #e0e0e0;background:#fff;font-size:13px"><input type="radio" disabled style="width:15px;height:15px;flex-shrink:0"> ${_esc(opt)}</label>`).join('')}</div>`;
-    else if(q.tipo==='casillas')inp=`<div>${(q.opciones||[]).map(opt=>`<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:7px;margin-bottom:4px;border:1px solid #e0e0e0;background:#fff;font-size:13px"><input type="checkbox" disabled style="width:15px;height:15px;flex-shrink:0"> ${_esc(opt)}</label>`).join('')}</div>`;
-    else if(q.tipo==='desplegable')inp=`<select disabled style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid #ddd;background:#f9f9f9"><option>Selecciona una opción...</option>${(q.opciones||[]).map(opt=>`<option>${_esc(opt)}</option>`).join('')}</select>`;
+    else if(q.tipo==='opcion_multiple')inp=`<div>${(q.opciones||[]).map(o=>`<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:7px;margin-bottom:4px;border:1px solid #e0e0e0;background:#fff;font-size:13px"><input type="radio" disabled style="width:15px;height:15px;flex-shrink:0"> ${_esc(_normOpt(o))}</label>`).join('')}</div>`;
+    else if(q.tipo==='casillas')inp=`<div>${(q.opciones||[]).map(o=>`<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:7px;margin-bottom:4px;border:1px solid #e0e0e0;background:#fff;font-size:13px"><input type="checkbox" disabled style="width:15px;height:15px;flex-shrink:0"> ${_esc(_normOpt(o))}</label>`).join('')}</div>`;
+    else if(q.tipo==='desplegable')inp=`<select disabled style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid #ddd;background:#f9f9f9"><option>Selecciona una opción...</option>${(q.opciones||[]).map(o=>`<option>${_esc(_normOpt(o))}</option>`).join('')}</select>`;
     else if(q.tipo==='escala_lineal'){
       const min=q.escala_min||1,max=q.escala_max||5;
       const nums=Array.from({length:max-min+1},(_,i)=>i+min);
@@ -16947,7 +16947,7 @@ function _evalGetOpcContent(qId, tipo, q){
   if(tipo==='fecha') return `<div style="margin-top:8px"><input type="date" disabled style="font-size:13px;opacity:.55;cursor:default;background:var(--bg2);padding:5px 8px;border-radius:6px;border:1px solid var(--border)"></div>`;
   if(tipo==='hora') return `<div style="margin-top:8px"><input type="time" disabled style="font-size:13px;opacity:.55;cursor:default;background:var(--bg2);padding:5px 8px;border-radius:6px;border:1px solid var(--border)"></div>`;
   // opcion_multiple / casillas / desplegable
-  const opciones=q?.opciones||['',''];
+  const opciones=(q?.opciones||['','']).map(_normOpt);
   const opcionesImg=q?.opciones_imagenes||[];
   const _rc=q?.respuesta_correcta;
   const correctSet=new Set(Array.isArray(_rc)?_rc.map(v=>opciones.indexOf(v)).filter(i=>i>=0):(_rc?[opciones.indexOf(_rc)].filter(i=>i>=0):[]) );
@@ -16960,6 +16960,7 @@ function _evalGetOpcContent(qId, tipo, q){
   </div>`;
 }
 
+function _normOpt(o){ return (o && typeof o === 'object') ? (o.texto || '') : String(o || ''); }
 function _evalEsCorrecta(q,respuesta){
   if(q.respuesta_correcta==null) return false;
   if(Array.isArray(q.respuesta_correcta)) return q.respuesta_correcta.includes(respuesta);
@@ -17575,8 +17576,8 @@ function _renderEvalPublica(ev, enviada){
     } else if(q.tipo==='parrafo'){
       input = `<textarea name="q_${q.id}" rows="3" placeholder="Tu respuesta..." style="width:100%;font-size:13px;resize:vertical"></textarea>`;
     } else if(q.tipo==='opcion_multiple'){
-      input = `<div style="display:flex;flex-direction:column;gap:8px">${(q.opciones||[]).map((opt,oi)=>{
-        const img=(q.opciones_imagenes||[])[oi]||null;
+      input = `<div style="display:flex;flex-direction:column;gap:8px">${(q.opciones||[]).map((_o,oi)=>{
+        const opt=_normOpt(_o); const img=(q.opciones_imagenes||[])[oi]||null;
         return `<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;padding:10px 12px;border-radius:8px;border:1px solid var(--border);transition:background .15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
           <input type="radio" name="q_${q.id}" value="${_esc(opt)}" style="accent-color:var(--primary);flex-shrink:0">
           <div style="display:flex;flex-direction:column;gap:6px;flex:1">
@@ -17586,8 +17587,8 @@ function _renderEvalPublica(ev, enviada){
         </label>`;
       }).join('')}</div>`;
     } else if(q.tipo==='casillas'){
-      input = `<div style="display:flex;flex-direction:column;gap:8px">${(q.opciones||[]).map((opt,oi)=>{
-        const img=(q.opciones_imagenes||[])[oi]||null;
+      input = `<div style="display:flex;flex-direction:column;gap:8px">${(q.opciones||[]).map((_o,oi)=>{
+        const opt=_normOpt(_o); const img=(q.opciones_imagenes||[])[oi]||null;
         return `<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;padding:10px 12px;border-radius:8px;border:1px solid var(--border);transition:background .15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
           <input type="checkbox" name="q_${q.id}" value="${_esc(opt)}" style="accent-color:var(--primary);flex-shrink:0">
           <div style="display:flex;flex-direction:column;gap:6px;flex:1">
@@ -17599,7 +17600,7 @@ function _renderEvalPublica(ev, enviada){
     } else if(q.tipo==='desplegable'){
       input = `<select name="q_${q.id}" style="width:100%;font-size:13px">
         <option value="">Selecciona una opción...</option>
-        ${(q.opciones||[]).map(opt=>`<option value="${_esc(opt)}">${_esc(opt)}</option>`).join('')}
+        ${(q.opciones||[]).map(_o=>{ const opt=_normOpt(_o); return `<option value="${_esc(opt)}">${_esc(opt)}</option>`; }).join('')}
       </select>`;
     } else if(q.tipo==='escala_lineal'){
       const min=q.escala_min||1, max=q.escala_max||5;
@@ -18420,23 +18421,23 @@ function _renderProcesoPubPreguntas(preguntas){
     else if(q.tipo==='parrafo')
       input=`<textarea name="q_${q.id}" rows="3" placeholder="Respuesta..." style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border);resize:vertical;background:var(--bg);color:var(--text);box-sizing:border-box"></textarea>`;
     else if(q.tipo==='opcion_multiple')
-      input=`<div style="display:flex;flex-direction:column;gap:6px">${(q.opciones||[]).map((opt,oi)=>{
-        const img=(q.opciones_imagenes||[])[oi]||null;
+      input=`<div style="display:flex;flex-direction:column;gap:6px">${(q.opciones||[]).map((_o,oi)=>{
+        const opt=_normOpt(_o); const img=(q.opciones_imagenes||[])[oi]||null;
         return`<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:7px;cursor:pointer;border:1px solid var(--border);background:var(--bg);font-size:13px">
           <input type="radio" name="q_${q.id}" value="${_esc(opt)}" style="accent-color:var(--primary);flex-shrink:0">
           <div style="display:flex;flex-direction:column;gap:6px;flex:1">${_esc(opt)}${img?`<img src="${img}" style="max-width:200px;max-height:140px;border-radius:6px;border:1px solid var(--border);display:block">`:''}
           </div></label>`;
       }).join('')}</div>`;
     else if(q.tipo==='casillas')
-      input=`<div style="display:flex;flex-direction:column;gap:6px">${(q.opciones||[]).map((opt,oi)=>{
-        const img=(q.opciones_imagenes||[])[oi]||null;
+      input=`<div style="display:flex;flex-direction:column;gap:6px">${(q.opciones||[]).map((_o,oi)=>{
+        const opt=_normOpt(_o); const img=(q.opciones_imagenes||[])[oi]||null;
         return`<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:7px;cursor:pointer;border:1px solid var(--border);background:var(--bg);font-size:13px">
           <input type="checkbox" name="q_${q.id}" value="${_esc(opt)}" style="accent-color:var(--primary);flex-shrink:0">
           <div style="display:flex;flex-direction:column;gap:6px;flex:1">${_esc(opt)}${img?`<img src="${img}" style="max-width:200px;max-height:140px;border-radius:6px;border:1px solid var(--border);display:block">`:''}
           </div></label>`;
       }).join('')}</div>`;
     else if(q.tipo==='desplegable')
-      input=`<select name="q_${q.id}" style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border)"><option value="">Selecciona...</option>${(q.opciones||[]).map(opt=>`<option value="${_esc(opt)}">${_esc(opt)}</option>`).join('')}</select>`;
+      input=`<select name="q_${q.id}" style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border)"><option value="">Selecciona...</option>${(q.opciones||[]).map(_o=>{ const opt=_normOpt(_o); return `<option value="${_esc(opt)}">${_esc(opt)}</option>`; }).join('')}</select>`;
     else if(q.tipo==='escala_lineal'){
       const min=q.escala_min||1,max=q.escala_max||5,nums=Array.from({length:max-min+1},(_,i)=>i+min);
       input=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">

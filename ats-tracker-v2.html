@@ -17871,7 +17871,10 @@ function renderPERespuestas(){
     const proc=(DB.procesosEval||[]).find(x=>x.id===e.proceso_id)||{};
     const vac=DB.vacantes.find(x=>x.id===e.vacante_id)||{};
     const pct=e.puntaje_final||0;
-    const resultado=pct>=70?`<span class="badge bg">Aprobado</span>`:pct>=50?`<span class="badge ba">Regular</span>`:`<span class="badge br">No aprobado</span>`;
+    const _todoProcLik=(e.pruebas||[]).every(p=>p.es_likert_puro);
+    const resultado=_todoProcLik
+      ?(pct>=71?`<span class="badge bg">Nivel alto</span>`:pct>=41?`<span class="badge ba">Nivel medio</span>`:`<span class="badge br">Nivel bajo</span>`)
+      :(pct>=70?`<span class="badge bg">Aprobado</span>`:pct>=50?`<span class="badge ba">Regular</span>`:`<span class="badge br">No aprobado</span>`);
     return `<tr>
       <td>${_esc(e.candidato_nombre||'—')}</td>
       <td>${_esc(e.candidato_tel||'—')}</td>
@@ -18177,12 +18180,16 @@ function verRespuestasProceso(envId){
     <div style="font-size:13px;color:var(--text2)">Teléfono: ${_esc(enviado.candidato_tel||'—')} &nbsp;|&nbsp; Correo: ${_esc(enviado.candidato_email||'—')}</div>
   </div>`;
   if(pct!=null){
+    const _todoProcLik=(enviado.pruebas||[]).every(p=>p.es_likert_puro);
     const color=pct>=70?'#22c55e':pct>=50?'#f59e0b':'#ef4444';
-    const res=pct>=70?'Aprobado':pct>=50?'Regular':'No aprobado';
+    const res=_todoProcLik
+      ?(pct>=71?'Nivel de desarrollo alto':pct>=41?'Nivel de desarrollo medio':'Nivel de desarrollo bajo')
+      :(pct>=70?'Aprobado':pct>=50?'Regular':'No aprobado');
+    const _subtitulo=_todoProcLik?'Nivel de desarrollo':'Puntaje ponderado final';
     html+=`<div style="background:var(--bg2);border-radius:10px;padding:16px;margin-bottom:14px;text-align:center">
       <div style="font-size:30px;font-weight:700;color:${color}">${pct.toFixed(1)}%</div>
       <div style="font-size:14px;font-weight:600;color:${color}">${res}</div>
-      <div style="font-size:12px;color:var(--text3);margin-top:3px">Puntaje ponderado final</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:3px">${_subtitulo}</div>
     </div>`;
   }
   html+='<div style="display:flex;flex-direction:column;gap:12px">';
@@ -18255,8 +18262,11 @@ function exportProcesoPDF(envId, pruebaIdx){
   if(!enviado)return;
   const proc=(DB.procesosEval||[]).find(x=>x.id===enviado.proceso_id)||{};
   const pct=enviado.puntaje_final;
+  const _todoProcLik=(enviado.pruebas||[]).every(p=>p.es_likert_puro);
   const color=pct!=null?(pct>=70?'#16a34a':pct>=50?'#d97706':'#dc2626'):'#333';
-  const res=pct!=null?(pct>=70?'Aprobado':pct>=50?'Regular':'No aprobado'):'';
+  const res=pct!=null?(_todoProcLik
+    ?(pct>=71?'Nivel de desarrollo alto':pct>=41?'Nivel de desarrollo medio':'Nivel de desarrollo bajo')
+    :(pct>=70?'Aprobado':pct>=50?'Regular':'No aprobado')):'';
 
   const pruebas = pruebaIdx===null ? (enviado.pruebas||[]) : [(enviado.pruebas||[])[pruebaIdx]];
 
@@ -18270,7 +18280,7 @@ function exportProcesoPDF(envId, pruebaIdx){
     body += `<div class="score-box">
       <div class="score-num" style="color:${color}">${pct.toFixed(1)}%</div>
       <div class="score-label" style="color:${color}">${res}</div>
-      <div class="score-sub">Puntaje ponderado final</div>
+      <div class="score-sub">${_todoProcLik?'Nivel de desarrollo':'Puntaje ponderado final'}</div>
     </div>`;
   }
 
@@ -18513,21 +18523,42 @@ async function submitProcesoPrueba(){
   btn.disabled=true;btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Guardando...';
   // Calcular puntaje de esta prueba
   let puntaje=null;
-  const pregsConClave=(ev.preguntas||[]).filter(q=>q.respuesta_correcta&&q.cuenta_calificacion!==false);
-  if(pregsConClave.length){
-    const puntosObt=pregsConClave.filter(q=>_evalEsCorrecta(q,respuestas[q.id])).reduce((s,q)=>s+(q.puntos||0),0);
-    const puntosTotal=pregsConClave.reduce((s,q)=>s+(q.puntos||0),0);
-    puntaje=puntosTotal>0?Math.round(puntosObt/puntosTotal*100):Math.round(pregsConClave.filter(q=>_evalEsCorrecta(q,respuestas[q.id])).length/pregsConClave.length*100);
+  const _califPregs=(ev.preguntas||[]).filter(q=>q.cuenta_calificacion!==false&&!_EVAL_TEXTO_TIPOS.has(q.tipo));
+  const _pregsObj=_califPregs.filter(q=>q.respuesta_correcta);
+  const _pregsLik=_califPregs.filter(q=>q.tipo==='escala_lineal');
+  if(_pregsObj.length&&!_pregsLik.length){
+    // Objetiva pura — lógica existente sin cambios
+    const puntosObt=_pregsObj.filter(q=>_evalEsCorrecta(q,respuestas[q.id])).reduce((s,q)=>s+(q.puntos||0),0);
+    const puntosTotal=_pregsObj.reduce((s,q)=>s+(q.puntos||0),0);
+    puntaje=puntosTotal>0?Math.round(puntosObt/puntosTotal*100):Math.round(_pregsObj.filter(q=>_evalEsCorrecta(q,respuestas[q.id])).length/_pregsObj.length*100);
+  } else if(!_pregsObj.length&&_pregsLik.length){
+    // Likert pura: promedio de (respuesta/escala_max)*100 sobre las respondidas
+    const _lik=_pregsLik.filter(q=>respuestas[q.id]!=null);
+    if(_lik.length) puntaje=Math.round(_lik.reduce((s,q)=>s+(parseFloat(respuestas[q.id])||0)/(q.escala_max||5)*100,0)/_lik.length);
+  } else if(_pregsObj.length&&_pregsLik.length){
+    // Mixta: ponderar cada bloque por sus puntos
+    const ptObj=_pregsObj.reduce((s,q)=>s+(q.puntos||1),0);
+    const ptLik=_pregsLik.reduce((s,q)=>s+(q.puntos||1),0);
+    const ptTotal=ptObj+ptLik;
+    const pctObj=_pregsObj.filter(q=>_evalEsCorrecta(q,respuestas[q.id])).reduce((s,q)=>s+(q.puntos||1),0)/ptObj*100;
+    const _lik=_pregsLik.filter(q=>respuestas[q.id]!=null);
+    const pctLik=_lik.length?_lik.reduce((s,q)=>s+(parseFloat(respuestas[q.id])||0)/(q.escala_max||5)*100,0)/_pregsLik.length:0;
+    puntaje=Math.round(pctObj*(ptObj/ptTotal)+pctLik*(ptLik/ptTotal));
   }
+  const _esLikertPuro=_califPregs.length>0&&_califPregs.every(q=>q.tipo==='escala_lineal');
   const updatedPruebas=(enviado.pruebas||[]).map((p,i)=>
-    i===evalIdx?{...p,estado:'completada',respuestas,puntaje,fecha_completada:new Date().toISOString()}:p
+    i===evalIdx?{...p,estado:'completada',respuestas,puntaje,es_likert_puro:_esLikertPuro,fecha_completada:new Date().toISOString()}:p
   );
   const nextIdx=updatedPruebas.findIndex(p=>p.estado==='pendiente');
   let estadoFinal=nextIdx===-1?'completado':'en_progreso';
   let puntajeFinal=null;
   if(estadoFinal==='completado'){
-    const totalPeso=updatedPruebas.reduce((s,p)=>s+p.peso,0)||100;
-    puntajeFinal=updatedPruebas.reduce((s,p)=>s+(p.puntaje||0)*(p.peso/totalPeso),0);
+    let _sumaPond=0,_pesosEfectivos=0;
+    for(const p of updatedPruebas){
+      if(p.puntaje!=null){_sumaPond+=p.puntaje*p.peso;_pesosEfectivos+=p.peso;}
+      else if(!p.es_likert_puro){_pesosEfectivos+=p.peso;} // objetivo sin score cuenta como 0%
+    }
+    puntajeFinal=_pesosEfectivos>0?_sumaPond/_pesosEfectivos:null;
   }
   const updatedEnviado={
     ...enviado,

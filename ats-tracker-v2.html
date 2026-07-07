@@ -16182,8 +16182,8 @@ function renderEvalRespuestas(){
     if(tieneClaves && e.respuestas){
       const resp=e.respuestas||{};
       const totalPuntos=pregs.filter(q=>q.cuenta_calificacion!==false).reduce((s,q)=>s+(q.puntos||0),0);
-      const obtuvo=pregs.filter(q=>q.cuenta_calificacion!==false&&q.respuesta_correcta!=null&&resp[q.id]===q.respuesta_correcta).reduce((s,q)=>s+(q.puntos||0),0);
-      const correctas=pregs.filter(q=>q.respuesta_correcta!=null&&resp[q.id]===q.respuesta_correcta).length;
+      const obtuvo=pregs.filter(q=>q.cuenta_calificacion!==false&&q.respuesta_correcta!=null&&_evalEsCorrecta(q,resp[q.id])).reduce((s,q)=>s+(q.puntos||0),0);
+      const correctas=pregs.filter(q=>q.respuesta_correcta!=null&&_evalEsCorrecta(q,resp[q.id])).length;
       const total=pregs.filter(q=>q.respuesta_correcta!=null).length;
       const pct=total?Math.round(correctas/total*100):0;
       scoreHTML=`<span style="font-weight:700;font-size:14px;color:${pct>=70?'var(--green)':pct>=50?'var(--amber)':'var(--red)'}">${pct}%</span><span style="font-size:11px;color:var(--text3);margin-left:4px">${correctas}/${total}</span>`;
@@ -16336,7 +16336,7 @@ function renderEvalEnviadas(){
       const tieneClaves = ev.preguntas.some(q=>q.respuesta_correcta);
       if(tieneClaves){
         const resp = e.respuestas||{};
-        const correctas = ev.preguntas.filter(q=>q.respuesta_correcta&&resp[q.id]===q.respuesta_correcta).length;
+        const correctas = ev.preguntas.filter(q=>q.respuesta_correcta&&_evalEsCorrecta(q,resp[q.id])).length;
         const pct = Math.round(correctas/ev.preguntas.length*100);
         scoreHTML = `<span style="font-weight:600;color:${pct>=70?'#22c55e':pct>=50?'#f59e0b':'#ef4444'}">${correctas}/${ev.preguntas.length} (${pct}%)</span>`;
       }
@@ -16574,22 +16574,28 @@ function _evalGetOpcContent(qId, tipo, q){
   // opcion_multiple / casillas / desplegable
   const opciones=q?.opciones||['',''];
   const opcionesImg=q?.opciones_imagenes||[];
-  const correctIdx=q?.respuesta_correcta?opciones.indexOf(q.respuesta_correcta):-1;
+  const _rc=q?.respuesta_correcta;
+  const correctSet=new Set(Array.isArray(_rc)?_rc.map(v=>opciones.indexOf(v)).filter(i=>i>=0):(_rc?[opciones.indexOf(_rc)].filter(i=>i>=0):[]) );
   return `<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px" id="opts_${qId}">
-    ${opciones.map((o,i)=>evalOpcionHTML(qId,o,i,i===correctIdx,tipo,opcionesImg[i]||'')).join('')}
+    ${opciones.map((o,i)=>evalOpcionHTML(qId,o,i,correctSet.has(i),tipo,opcionesImg[i]||'')).join('')}
   </div>
   <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
     <button class="btn btn-ghost btn-sm" style="font-size:12px" onclick="evalAddOpcion('${qId}')"><i class="fa fa-plus"></i> Agregar opción</button>
-    ${tipo==='opcion_multiple'?`<span style="font-size:11px;color:var(--text3)"><i class="fa fa-check-circle" style="color:#22c55e"></i> Radio verde = respuesta correcta</span>`:''}
+    ${tipo==='opcion_multiple'?`<span style="font-size:11px;color:var(--text3)"><i class="fa fa-check-circle" style="color:#22c55e"></i> Checkbox verde = respuestas correctas (puede ser más de una)</span>`:''}
   </div>`;
 }
 
+function _evalEsCorrecta(q,respuesta){
+  if(q.respuesta_correcta==null) return false;
+  if(Array.isArray(q.respuesta_correcta)) return q.respuesta_correcta.includes(respuesta);
+  return respuesta===q.respuesta_correcta;
+}
 function evalOpcionHTML(qId,val='',idx=0,isCorrect=false,tipo='opcion_multiple',imagen=''){
   const bullet = tipo==='casillas'
     ? `<input type="checkbox" disabled style="cursor:default">`
     : tipo==='desplegable'
     ? `<span style="font-size:12px;color:var(--text3);min-width:18px">${idx+1}.</span>`
-    : `<input type="radio" name="correct_${qId}" value="${idx}" ${isCorrect?'checked':''} title="Respuesta correcta" style="accent-color:#22c55e;cursor:pointer">`;
+    : `<input type="checkbox" name="correct_${qId}" value="${idx}" ${isCorrect?'checked':''} title="Marcar como respuesta correcta" style="accent-color:#22c55e;cursor:pointer;width:15px;height:15px">`;
   const prevHTML = imagen
     ? `<div style="position:relative;display:inline-block;margin-top:4px">
         <img src="${imagen}" style="max-height:72px;max-width:110px;border-radius:4px;border:1px solid var(--border);display:block">
@@ -16765,9 +16771,8 @@ async function saveEvalTemplate(){
         return row?.querySelector('[data-field="opcion-imagen"]')?.value||null;
       });
       if(tipo==='opcion_multiple'){
-        const cr=document.querySelector(`input[name="correct_${qId}"]:checked`);
-        const ci=cr?parseInt(cr.value):-1;
-        respuesta_correcta=ci>=0&&opciones[ci]?opciones[ci]:null;
+        const checked=[...document.querySelectorAll(`input[name="correct_${qId}"]:checked`)].map(cb=>parseInt(cb.value)).filter(i=>i>=0&&opciones[i]);
+        respuesta_correcta=checked.length===1?opciones[checked[0]]:checked.length>1?checked.map(i=>opciones[i]):null;
       }
     } else if(tipo==='escala_lineal'){
       escala_min=parseInt(document.querySelector(`[data-qid="${qId}"][data-field="escala_min"]`)?.value)||1;
@@ -16924,7 +16929,7 @@ function _evalCalcScore(preguntas, respuestas){
     puntosTotal += pts;
     const resp = respuestas[q.id];
     if(q.respuesta_correcta && resp){
-      const esCorrecta = String(resp)===String(q.respuesta_correcta);
+      const esCorrecta = _evalEsCorrecta(q,resp);
       if(esCorrecta){ puntosObtenidos+=pts; correctas++; }
     }
   }
@@ -16946,7 +16951,7 @@ function verRespuestasEval(envId){
     const resp = respuestas[q.id]||null;
     const respStr = resp ? String(resp) : null;
     const cuentaCal = q.cuenta_calificacion!==false;
-    const esCorrecta = q.respuesta_correcta && respStr && respStr===String(q.respuesta_correcta);
+    const esCorrecta = q.respuesta_correcta && resp && _evalEsCorrecta(q,resp);
     const borderColor = tieneClaves && cuentaCal && q.respuesta_correcta
       ? (esCorrecta ? '#22c55e' : respStr ? '#ef4444' : 'var(--border)')
       : 'var(--border)';
@@ -17007,7 +17012,7 @@ function generarInformeEvalXLSX(){
     pregNum++;
     const resp = respuestas[q.id]||'Sin respuesta';
     const cuentaCal = q.cuenta_calificacion!==false;
-    const esCorrecta = q.respuesta_correcta && String(resp)===String(q.respuesta_correcta);
+    const esCorrecta = q.respuesta_correcta && _evalEsCorrecta(q,resp);
     const ptObtenidos = cuentaCal&&esCorrecta?(q.puntos||0):0;
     if(tieneClaves)
       rows.push([pregNum, q.tipo, q.texto, resp, q.respuesta_correcta||'—', ptObtenidos, cuentaCal?(q.puntos||0):'—', cuentaCal?'Sí':'No']);
@@ -17072,7 +17077,7 @@ async function generarInformeEvalPDF(){
     pregNum++;
     const resp = respuestas[q.id]||'Sin respuesta';
     const cuentaCal = q.cuenta_calificacion!==false;
-    const esCorrecta = q.respuesta_correcta && String(resp)===String(q.respuesta_correcta);
+    const esCorrecta = q.respuesta_correcta && _evalEsCorrecta(q,resp);
     // Número y pregunta
     doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(40,40,40);
     const qLines = doc.splitTextToSize(`${pregNum}. ${(q.texto||'').replace(/^\d+[\.\)]\s*/,'')}`, CW);
@@ -17761,12 +17766,13 @@ function verRespuestasProceso(envId){
       for(const q of ev.preguntas){
         if(q.tipo==='titulo'||q.tipo==='descripcion')continue;
         const resp=(prueba.respuestas||{})[q.id]||'—';
-        const esCorrecta=q.respuesta_correcta&&resp===q.respuesta_correcta;
-        const esIncorrecta=q.respuesta_correcta&&resp!=='—'&&resp!==q.respuesta_correcta;
+        const esCorrecta=q.respuesta_correcta&&_evalEsCorrecta(q,resp);
+        const esIncorrecta=q.respuesta_correcta&&resp!=='—'&&!esCorrecta;
+        const _rcLabel=q.respuesta_correcta?(Array.isArray(q.respuesta_correcta)?q.respuesta_correcta.join(', '):q.respuesta_correcta):null;
         html+=`<div style="font-size:12px;padding:6px 10px;background:var(--bg);border-radius:6px;border-left:3px solid ${esCorrecta?'#22c55e':esIncorrecta?'#ef4444':'var(--border)'}">
           <div style="font-weight:500;color:var(--text2)">${_esc(q.texto||'Pregunta')}</div>
           <div style="margin-top:1px;color:var(--text)">${_esc(resp)}</div>
-          ${q.respuesta_correcta?`<div style="font-size:11px;color:var(--text3)">Respuesta correcta: ${_esc(q.respuesta_correcta)}</div>`:''}
+          ${_rcLabel?`<div style="font-size:11px;color:var(--text3)">Respuesta correcta: ${_esc(_rcLabel)}</div>`:''}
         </div>`;
       }
       html+='</div>';
@@ -17850,12 +17856,13 @@ function exportProcesoPDF(envId, pruebaIdx){
         if(q.tipo==='titulo'){body+=`<div class="q-titulo">${q.texto||''}</div>`;continue;}
         if(q.tipo==='descripcion'){body+=`<div class="q-desc">${q.texto||''}</div>`;continue;}
         const resp=(prueba.respuestas||{})[q.id]||'—';
-        const ok=q.respuesta_correcta&&resp===q.respuesta_correcta;
+        const ok=q.respuesta_correcta&&_evalEsCorrecta(q,resp);
         const bad=q.respuesta_correcta&&resp!=='—'&&!ok;
+        const _rcL=q.respuesta_correcta?(Array.isArray(q.respuesta_correcta)?q.respuesta_correcta.join(', '):q.respuesta_correcta):null;
         body+=`<div class="q-item ${ok?'correct':bad?'wrong':'neutral'}">
           <div class="q-text">${q.texto||'Pregunta'}</div>
           <div class="q-resp">${resp}</div>
-          ${q.respuesta_correcta?`<div class="q-correct">Respuesta correcta: ${q.respuesta_correcta}</div>`:''}
+          ${_rcL?`<div class="q-correct">Respuesta correcta: ${_rcL}</div>`:''}
         </div>`;
       }
     } else if(!completada){
@@ -18074,9 +18081,9 @@ async function submitProcesoPrueba(){
   let puntaje=null;
   const pregsConClave=(ev.preguntas||[]).filter(q=>q.respuesta_correcta&&q.cuenta_calificacion!==false);
   if(pregsConClave.length){
-    const puntosObt=pregsConClave.filter(q=>respuestas[q.id]===q.respuesta_correcta).reduce((s,q)=>s+(q.puntos||0),0);
+    const puntosObt=pregsConClave.filter(q=>_evalEsCorrecta(q,respuestas[q.id])).reduce((s,q)=>s+(q.puntos||0),0);
     const puntosTotal=pregsConClave.reduce((s,q)=>s+(q.puntos||0),0);
-    puntaje=puntosTotal>0?Math.round(puntosObt/puntosTotal*100):Math.round(pregsConClave.filter(q=>respuestas[q.id]===q.respuesta_correcta).length/pregsConClave.length*100);
+    puntaje=puntosTotal>0?Math.round(puntosObt/puntosTotal*100):Math.round(pregsConClave.filter(q=>_evalEsCorrecta(q,respuestas[q.id])).length/pregsConClave.length*100);
   }
   const updatedPruebas=(enviado.pruebas||[]).map((p,i)=>
     i===evalIdx?{...p,estado:'completada',respuestas,puntaje,fecha_completada:new Date().toISOString()}:p

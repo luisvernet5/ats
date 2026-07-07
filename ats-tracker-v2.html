@@ -7511,7 +7511,8 @@ function renderCandidatosTable(){
     const _refColor=_tieneRef?'#22c55e':'#9ca3af';
     const _allEtapaLabels=[...empEtapas.map(e=>e.label),...ETAPAS_SALIDA];
     const _etapaDisplay=_allEtapaLabels.includes(c.etapa)?c.etapa:(empEtapas.find(e=>e.tipo==='cierre')?.label||'Validado');
-    const etapaOpts=_allEtapaLabels
+    const _dropdownOpts=isSalida?[...empEtapas.map(e=>e.label),c.etapa]:empEtapas.map(e=>e.label);
+    const etapaOpts=_dropdownOpts
       .map(lbl=>`<option value="${lbl}" ${_etapaDisplay===lbl?'selected':''}>${lbl}</option>`).join('');
     const motivoOpts=MOTIVOS.map(m=>`<option value="${m}" ${c.motivo_desercion===m?'selected':''}>${m}</option>`).join('');
     const timelineRows=empEtapas.map((et,i)=>{

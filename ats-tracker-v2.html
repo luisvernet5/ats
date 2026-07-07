@@ -16457,7 +16457,7 @@ function exportEvaluacionPreviewPDF(evalId){
     else if(q.tipo==='escala_lineal'){
       const min=q.escala_min||1,max=q.escala_max||5;
       const nums=Array.from({length:max-min+1},(_,i)=>i+min);
-      inp=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">${q.escala_min_label?`<span style="font-size:12px;color:#888">${_esc(q.escala_min_label)}</span>`:''}${nums.map(v=>`<label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:13px;min-width:36px;padding:8px 4px;border-radius:6px;border:1px solid #e0e0e0;text-align:center;background:#fff"><input type="radio" disabled> ${v}</label>`).join('')}${q.escala_max_label?`<span style="font-size:12px;color:#888">${_esc(q.escala_max_label)}</span>`:''}</div>`;
+      inp=`<div style="display:flex;flex-direction:column;gap:4px;margin-top:4px">${nums.map(v=>{const lbl=_escalaLikertLabel(q,v);return`<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:7px;border:1px solid #e0e0e0;background:#fff;font-size:13px;opacity:.7"><input type="radio" disabled style="width:15px;height:15px;flex-shrink:0"><span style="font-weight:600;min-width:14px">${v}</span>${lbl?`<span style="color:#555">- ${_esc(lbl)}</span>`:''}</label>`;}).join('')}</div>`;
     }
     else if(q.tipo==='fecha')inp=`<input type="date" disabled style="font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid #ddd;background:#f9f9f9">`;
     else if(q.tipo==='hora')inp=`<input type="time" disabled style="font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid #ddd;background:#f9f9f9">`;
@@ -16960,10 +16960,10 @@ function _evalGetOpcContent(qId, tipo, q){
         </div>
       </div>
     </div>
-    <div id="escala_preview_${qId}" style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
-      ${scaleOpts.map(v=>`<label style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:12px">
+    <div id="escala_preview_${qId}" style="display:flex;flex-direction:column;gap:3px;margin-top:10px">
+      ${scaleOpts.map(v=>{const lbl=_escalaLikertLabel(q||{escala_min:min,escala_max:max,escala_min_label:q?.escala_min_label,escala_max_label:q?.escala_max_label},v);return`<label style="display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-size:12px${correcta==v?';border-color:#22c55e;background:rgba(34,197,94,.07)':''}">
         <input type="radio" name="correct_esc_${qId}" value="${v}" ${correcta==v?'checked':''} style="accent-color:#22c55e" title="Respuesta correcta">
-        <span>${v}</span></label>`).join('')}
+        <span style="font-weight:600;min-width:12px">${v}</span>${lbl?`<span style="color:var(--text2)">- ${_esc(lbl)}</span>`:''}</label>`;}).join('')}
     </div>
     <div style="font-size:11px;color:var(--text3);margin-top:4px"><i class="fa fa-check-circle" style="color:#22c55e"></i> Selecciona la respuesta correcta (radio verde)</div>`;
   }
@@ -16984,6 +16984,26 @@ function _evalGetOpcContent(qId, tipo, q){
 }
 
 function _normOpt(o){ return (o && typeof o === 'object') ? (o.texto || '') : String(o || ''); }
+
+const ESCALA_LIKERT_DEFAULT = [
+  'Totalmente en desacuerdo',
+  'En desacuerdo',
+  'Neutral',
+  'De acuerdo',
+  'Totalmente de acuerdo'
+];
+function _escalaLikertLabel(q, value){
+  const min=q.escala_min||1, max=q.escala_max||5;
+  const total=max-min+1, idx=value-min;
+  if(total===ESCALA_LIKERT_DEFAULT.length){
+    if(idx===0 && q.escala_min_label) return q.escala_min_label;
+    if(idx===total-1 && q.escala_max_label) return q.escala_max_label;
+    return ESCALA_LIKERT_DEFAULT[idx]||'';
+  }
+  if(idx===0) return q.escala_min_label||'';
+  if(idx===total-1) return q.escala_max_label||'';
+  return '';
+}
 function _evalEsCorrecta(q,respuesta){
   if(q.respuesta_correcta==null) return false;
   if(Array.isArray(q.respuesta_correcta)) return q.respuesta_correcta.includes(respuesta);
@@ -17628,12 +17648,10 @@ function _renderEvalPublica(ev, enviada){
     } else if(q.tipo==='escala_lineal'){
       const min=q.escala_min||1, max=q.escala_max||5;
       const nums = Array.from({length:max-min+1},(_,i)=>i+min);
-      input = `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">
-        ${q.escala_min_label?`<span style="font-size:12px;color:var(--text3)">${q.escala_min_label}</span>`:''}
-        ${nums.map(v=>`<label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-size:13px;min-width:36px;padding:8px 4px;border-radius:6px;border:1px solid var(--border);text-align:center" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-          <input type="radio" name="q_${q.id}" value="${v}" style="accent-color:var(--primary)"> ${v}
-        </label>`).join('')}
-        ${q.escala_max_label?`<span style="font-size:12px;color:var(--text3)">${q.escala_max_label}</span>`:''}
+      input = `<div style="display:flex;flex-direction:column;gap:4px;margin-top:4px">
+        ${nums.map(v=>{const lbl=_escalaLikertLabel(q,v);return`<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:7px;border:1px solid var(--border);cursor:pointer;font-size:13px" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+          <input type="radio" name="q_${q.id}" value="${v}" style="accent-color:var(--primary);width:15px;height:15px;flex-shrink:0"><span style="font-weight:600;min-width:14px">${v}</span>${lbl?`<span style="color:var(--text2)">- ${lbl}</span>`:''}
+        </label>`;}).join('')}
       </div>`;
     } else if(q.tipo==='fecha'){
       input = `<input type="date" name="q_${q.id}" style="font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid var(--border)">`;
@@ -18473,10 +18491,9 @@ function _renderProcesoPubPreguntas(preguntas){
       input=`<select name="q_${q.id}" style="width:100%;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border)"><option value="">Selecciona...</option>${(q.opciones||[]).map(_o=>{ const opt=_normOpt(_o); return `<option value="${_esc(opt)}">${_esc(opt)}</option>`; }).join('')}</select>`;
     else if(q.tipo==='escala_lineal'){
       const min=q.escala_min||1,max=q.escala_max||5,nums=Array.from({length:max-min+1},(_,i)=>i+min);
-      input=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">
-        ${q.escala_min_label?`<span style="font-size:12px;color:var(--text3)">${_esc(q.escala_min_label)}</span>`:''}
-        ${nums.map(v=>`<label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-size:13px;min-width:36px;padding:8px 4px;border-radius:6px;border:1px solid var(--border);text-align:center"><input type="radio" name="q_${q.id}" value="${v}" style="accent-color:var(--primary)"> ${v}</label>`).join('')}
-        ${q.escala_max_label?`<span style="font-size:12px;color:var(--text3)">${_esc(q.escala_max_label)}</span>`:''}</div>`;
+      input=`<div style="display:flex;flex-direction:column;gap:4px;margin-top:4px">
+        ${nums.map(v=>{const lbl=_escalaLikertLabel(q,v);return`<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:7px;border:1px solid var(--border);cursor:pointer;font-size:13px" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''"><input type="radio" name="q_${q.id}" value="${v}" style="accent-color:var(--primary);width:15px;height:15px;flex-shrink:0"><span style="font-weight:600;min-width:14px">${v}</span>${lbl?`<span style="color:var(--text2)">- ${_esc(lbl)}</span>`:''}</label>`;}).join('')}
+      </div>`;
     }
     else if(q.tipo==='fecha')input=`<input type="date" name="q_${q.id}" style="font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid var(--border)">`;
     else if(q.tipo==='hora')input=`<input type="time" name="q_${q.id}" style="font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid var(--border)">`;

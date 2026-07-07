@@ -1018,8 +1018,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <input type="hidden" id="eval-tpl-id">
       <input type="hidden" id="eval-tpl-banner-data">
       <div class="fr full"><div class="fg"><label>Nombre de la evaluación *</label><input id="eval-tpl-nombre" placeholder="Ej. Evaluación Técnica Ventas"></div></div>
-      <div class="fr full"><div class="fg"><label>¿Qué evalúa? <span style="font-size:11px;color:var(--text3)">(resumen visible en las tarjetas)</span></label><input id="eval-tpl-resumen" placeholder="Ej. Conocimientos en hidráulica, neumática y mantenimiento preventivo..."></div></div>
-      <div class="fr full"><div class="fg"><label>Descripción <span style="font-size:11px;color:var(--text3)">(instrucciones para el candidato)</span></label><textarea id="eval-tpl-desc" rows="2" placeholder="Instrucciones o contexto para el candidato..." style="resize:vertical"></textarea></div></div>
+      <div class="fr full"><div class="fg"><label>Descripción</label><textarea id="eval-tpl-desc" rows="2" placeholder="Instrucciones o contexto para el candidato..." style="resize:vertical"></textarea></div></div>
       <div class="fr full"><div class="fg">
         <label>Categoría</label>
         <div id="eval-tpl-cats" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
@@ -16230,7 +16229,6 @@ function renderEvalTipos(){
         </div>
         <span style="font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0">${nPregs} preg.</span>
       </div>
-      ${(()=>{const txt=e.resumen||(()=>{const qs=(e.preguntas||[]).filter(q=>!['titulo','descripcion'].includes(q.tipo)&&q.texto).slice(0,5).map(q=>q.texto.replace(/^\d+[\.\)]\s*/,'').trim());return qs.length?'Evalúa: '+qs.join(' · '):null;})();return txt?`<p style="font-size:12px;color:var(--text2);margin:0;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${_esc(txt)}</p>`:''})()}
       <div style="display:flex;flex-wrap:wrap;gap:4px">${empsHTML}</div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:8px;border-top:1px solid var(--border)">
         <div style="display:flex;align-items:center;gap:6px">
@@ -16639,7 +16637,6 @@ function _evalGetCatSel(){
 function openEvalTemplateModal(id=null){
   document.getElementById('eval-tpl-id').value = '';
   document.getElementById('eval-tpl-nombre').value = '';
-  document.getElementById('eval-tpl-resumen').value = '';
   document.getElementById('eval-tpl-desc').value = '';
   document.getElementById('eval-preguntas-list').innerHTML = '';
   document.getElementById('eval-tpl-title').textContent = id ? 'Editar evaluación' : 'Nueva evaluación';
@@ -16657,7 +16654,6 @@ function openEvalTemplateModal(id=null){
     const e = DB.evaluaciones.find(x=>x.id===id)||{};
     document.getElementById('eval-tpl-id').value = id;
     document.getElementById('eval-tpl-nombre').value = e.nombre||'';
-    document.getElementById('eval-tpl-resumen').value = e.resumen||'';
     document.getElementById('eval-tpl-desc').value = e.descripcion||'';
     _evalSetBanner(e.banner||null);
     (e.preguntas||[]).forEach(q=>evalAddPregunta(q));
@@ -16945,8 +16941,7 @@ async function saveEvalTemplate(){
   const anterior = esNueva ? null : DB.evaluaciones.find(x=>x.id===id);
   const banner = document.getElementById('eval-tpl-banner-data').value||null;
   const categoria = _evalGetCatSel();
-  const resumen = (document.getElementById('eval-tpl-resumen').value||'').trim()||null;
-  const ev={id,nombre,resumen,descripcion:document.getElementById('eval-tpl-desc').value.trim(),empresa_ids,preguntas,banner,activa:true,categoria,created_at:new Date().toISOString()};
+  const ev={id,nombre,descripcion:document.getElementById('eval-tpl-desc').value.trim(),empresa_ids,preguntas,banner,activa:true,categoria,created_at:new Date().toISOString()};
   try{
     await saveRecord('evaluaciones',ev);
     const idx=DB.evaluaciones.findIndex(x=>x.id===id);

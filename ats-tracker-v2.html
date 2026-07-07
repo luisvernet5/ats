@@ -16815,8 +16815,8 @@ async function evalImportConfirm(){
   const preguntas = window._evalImportRows.map((r,i) => {
     const q = { id: 'q' + Date.now() + i, texto: r.pregunta, tipo: r.tipo, requerida: r.requerida, puntos: r.puntos };
     if(['opcion_multiple','casillas','desplegable'].includes(r.tipo)){
-      q.opciones = r.opciones.map((o,j) => ({id:'op'+j, texto:o}));
-      if(r.correcta) q.correcta = r.correcta;
+      q.opciones = r.opciones.map(o => String(o));
+      if(r.correcta) q.respuesta_correcta = r.correcta;
     }
     return q;
   });

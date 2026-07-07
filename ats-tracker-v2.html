@@ -16555,7 +16555,7 @@ function _evalRenderCats(selVal){
   const c=document.getElementById('eval-tpl-cats');if(!c)return;
   c.innerHTML=EVAL_CATEGORIAS.map(cat=>{
     const sel=selVal===cat.value;
-    return`<button type="button" onclick="_evalCatSel('${cat.value}')" data-catval="${cat.value}"
+    return`<button type="button" onclick="_evalCatSel('${cat.value}')" data-catval="${cat.value}" data-selected="${sel?'1':''}"
       style="padding:5px 14px;border-radius:20px;border:2px solid ${cat.color};background:${sel?cat.color:'transparent'};color:${sel?'#fff':cat.color};font-size:12px;font-weight:600;cursor:pointer;transition:all .15s">${cat.label}</button>`;
   }).join('');
 }
@@ -16563,17 +16563,14 @@ function _evalCatSel(val){
   document.querySelectorAll('#eval-tpl-cats button').forEach(btn=>{
     const cat=EVAL_CATEGORIAS.find(c=>c.value===btn.dataset.catval);if(!cat)return;
     const sel=btn.dataset.catval===val;
+    btn.dataset.selected=sel?'1':'';
     btn.style.background=sel?cat.color:'transparent';
     btn.style.color=sel?'#fff':cat.color;
   });
 }
 function _evalGetCatSel(){
-  const btns=[...document.querySelectorAll('#eval-tpl-cats button')];
-  for(const btn of btns){
-    const cat=EVAL_CATEGORIAS.find(c=>c.value===btn.dataset.catval);
-    if(cat&&btn.style.background===cat.color) return btn.dataset.catval;
-  }
-  return null;
+  const btn=document.querySelector('#eval-tpl-cats button[data-selected="1"]');
+  return btn?btn.dataset.catval:null;
 }
 function openEvalTemplateModal(id=null){
   document.getElementById('eval-tpl-id').value = '';

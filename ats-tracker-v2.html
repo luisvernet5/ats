@@ -1123,9 +1123,9 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
           <div id="pe-peso-total" style="font-size:12px;font-weight:600;color:var(--text3)">Total: 0%</div>
         </div>
         <div id="pe-pruebas-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <select id="pe-add-eval-select" style="flex:1;font-size:13px"><option value="">Seleccionar evaluación para agregar...</option></select>
-          <button class="btn btn-ghost btn-sm" onclick="peAddPrueba()"><i class="fa fa-plus"></i> Agregar</button>
+        <div id="pe-eval-picker">
+          <div id="pe-cat-pills" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
+          <div id="pe-eval-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;max-height:220px;overflow-y:auto;padding:2px"></div>
         </div>
         <div id="pe-peso-warning" style="display:none;margin-top:8px;padding:6px 10px;background:#fff8e6;border-radius:6px;font-size:12px;color:#b45309"><i class="fa fa-exclamation-triangle"></i> Los pesos deben sumar exactamente 100%</div>
       </div>
@@ -17639,13 +17639,12 @@ function openProcesoEvalModal(id=null){
   document.getElementById('proceso-eval-title').textContent=proc?'Editar proceso':'Nuevo proceso de evaluación';
   document.getElementById('pe-nombre').value=proc?.nombre||'';
   document.getElementById('pe-desc').value=proc?.descripcion||'';
-  const sel=document.getElementById('pe-add-eval-select');
-  sel.innerHTML='<option value="">Seleccionar evaluación para agregar...</option>'+
-    (DB.evaluaciones||[]).filter(e=>e.activa!==false).map(e=>`<option value="${e.id}">${_esc(e.nombre)}</option>`).join('');
+  window._peCatFilt=null;
   const list=document.getElementById('pe-pruebas-list');
   list.innerHTML='';
   (proc?.pruebas||[]).forEach(pr=>_peAddPruebaItem(pr.evaluacion_id,pr.nombre,pr.peso));
   _peUpdatePesoTotal();
+  _peRenderPicker();
   document.getElementById('pe-peso-warning').style.display='none';
   openModal('modal-proceso-eval');
 }
@@ -17682,20 +17681,55 @@ function _peRemovePrueba(btn){
   btn.closest('[data-pe-idx]').remove();
   [...document.querySelectorAll('#pe-pruebas-list [data-pe-idx]')].forEach((el,i)=>el.dataset.peIdx=i);
   _peUpdatePesoTotal();
+  _peRenderPicker();
 }
 
-function peAddPrueba(){
-  const sel=document.getElementById('pe-add-eval-select');
-  const evalId=sel.value;
-  if(!evalId)return;
+function _peRenderPicker(){
+  const catsUsadas=new Set((DB.evaluaciones||[]).filter(e=>e.activa!==false).map(e=>e.categoria).filter(Boolean));
+  const filt=window._peCatFilt||null;
+  const pillsEl=document.getElementById('pe-cat-pills');
+  if(pillsEl){
+    pillsEl.innerHTML=[{value:null,label:'Todas',color:'#6b7280'},...EVAL_CATEGORIAS.filter(c=>catsUsadas.has(c.value))].map(cat=>{
+      const sel=filt===cat.value;
+      return`<button type="button" onclick="_peCatSel(${cat.value===null?'null':`'${cat.value}'`})"
+        style="padding:4px 12px;border-radius:20px;border:2px solid ${cat.color};background:${sel?cat.color:'transparent'};color:${sel?'#fff':cat.color};font-size:12px;font-weight:600;cursor:pointer;transition:all .15s">${cat.label}</button>`;
+    }).join('');
+  }
+  let evals=(DB.evaluaciones||[]).filter(e=>e.activa!==false);
+  if(filt) evals=evals.filter(e=>e.categoria===filt);
+  const existing=new Set([...document.querySelectorAll('#pe-pruebas-list [data-eval-id]')].map(el=>el.dataset.evalId));
+  const cardsEl=document.getElementById('pe-eval-cards');
+  if(!cardsEl)return;
+  if(!evals.length){cardsEl.innerHTML=`<div style="color:var(--text3);font-size:12px;padding:16px;text-align:center;grid-column:1/-1">Sin evaluaciones en esta categoría</div>`;return;}
+  cardsEl.innerHTML=evals.map(e=>{
+    const added=existing.has(e.id);
+    const cat=EVAL_CATEGORIAS.find(c=>c.value===e.categoria);
+    const color=cat?cat.color:'#9ca3af';
+    const nPregs=(e.preguntas||[]).filter(q=>!['titulo','descripcion'].includes(q.tipo)).length;
+    return`<div onclick="${added?'':'_pePickEval(\''+e.id+'\')'}" style="padding:10px 12px;border-radius:10px;border:2px solid ${added?'var(--green)':color+'55'};background:${added?'rgba(34,197,94,.08)':'var(--surface2)'};cursor:${added?'default':'pointer'};transition:all .15s;${added?'':''}position:relative" ${added?'':' onmouseover="this.style.borderColor=\''+color+'\'" onmouseout="this.style.borderColor=\''+color+'55\'"'}>
+      ${added?`<span style="position:absolute;top:6px;right:8px;font-size:10px;color:var(--green);font-weight:700"><i class="fa fa-check"></i></span>`:`<span style="position:absolute;top:6px;right:8px;font-size:10px;color:${color};font-weight:700">+ Añadir</span>`}
+      <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.3;padding-right:40px;margin-bottom:4px">${_esc(e.nombre)}</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:10px;padding:1px 7px;border-radius:8px;border:1px solid ${color};color:${color};font-weight:600">${cat?cat.label:'Sin categoría'}</span>
+        <span style="font-size:10px;color:var(--text3)">${nPregs} preg.</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function _peCatSel(val){
+  window._peCatFilt=val;
+  _peRenderPicker();
+}
+function _pePickEval(evalId){
   const ev=(DB.evaluaciones||[]).find(x=>x.id===evalId);
   if(!ev)return;
   const existing=[...document.querySelectorAll('#pe-pruebas-list [data-eval-id]')].map(el=>el.dataset.evalId);
   if(existing.includes(evalId)){showToast('Esta evaluación ya fue agregada');return;}
   _peAddPruebaItem(evalId,ev.nombre,0);
-  sel.value='';
   _peUpdatePesoTotal();
+  _peRenderPicker();
 }
+function peAddPrueba(){}
 
 function saveProcesoEval(){
   const nombre=document.getElementById('pe-nombre').value.trim();

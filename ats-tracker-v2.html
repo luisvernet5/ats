@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#F4F4F8;--surface:#FFFFFF;--surface2:#EBEBF2;--surface3:#E0E0EA;--border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);--accent:#2AAADE;--accent2:#1B7FAF;--glow:rgba(42,170,222,0.10);--text:#16162A;--text2:#4A4A6A;--text3:#8A8AA8;--green:#16A34A;--amber:#D97706;--red:#DC2626;--purple:#9333EA;--orange:#EA580C;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;--r:10px;--rl:14px}
@@ -711,7 +712,10 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
         <button id="eval-sort-antiguo" class="btn btn-ghost btn-sm" onclick="setEvalSort('antiguo')" style="display:none"><i class="fa fa-arrow-up"></i> Más antiguo</button>
         <div id="wrap-eval-cat" style="display:none;flex:none"><button id="btn-eval-cat" onclick="_mfOpen('eval-cat',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:140px;justify-content:space-between"><span id="lbl-eval-cat">Tipo: Todos</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       </div>
-      <button class="btn btn-primary btn-sm" id="btn-nueva-eval" onclick="openEvalTemplateModal()"><i class="fa fa-plus"></i> Nueva evaluación</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="openEvalImportModal()"><i class="fa fa-file-upload"></i> Importar</button>
+        <button class="btn btn-primary btn-sm" id="btn-nueva-eval" onclick="openEvalTemplateModal()"><i class="fa fa-plus"></i> Nueva evaluación</button>
+      </div>
     </div>
     <div id="ev-panel-tipos" style="display:block"></div>
     <div id="ev-panel-plantillas" style="display:none">
@@ -1062,6 +1066,55 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     <div class="mf">
       <button class="btn btn-ghost" onclick="closeModal('modal-eval-template')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveEvalTemplate()">Guardar evaluación</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL IMPORTAR EVALUACIÓN ===== -->
+<div class="modal-overlay" id="modal-eval-import">
+  <div class="modal" style="width:800px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column">
+    <div class="mh"><h3>Importar evaluación desde archivo</h3><button class="xbtn" onclick="closeModal('modal-eval-import')"><i class="fa fa-times"></i></button></div>
+    <div class="mb" style="flex:1;overflow-y:auto;min-height:0">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div class="fg">
+          <label>Nombre de la evaluación *</label>
+          <input id="ei-nombre" placeholder="Ej. Evaluación Técnica Soldadura">
+        </div>
+        <div class="fg">
+          <label>Categoría</label>
+          <div id="ei-cats" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
+        </div>
+      </div>
+      <div style="border:2px dashed var(--border2);border-radius:12px;padding:24px;text-align:center;background:var(--surface2);margin-bottom:16px" id="ei-drop-zone">
+        <i class="fa fa-file-excel" style="font-size:32px;color:#22c55e;margin-bottom:8px;display:block"></i>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">Arrastra tu archivo aquí o haz clic para seleccionar</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Formatos aceptados: .xlsx, .xls, .csv</div>
+        <label style="cursor:pointer">
+          <input type="file" id="ei-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="evalImportLoadFile(this)">
+          <span class="btn btn-ghost btn-sm"><i class="fa fa-folder-open"></i> Seleccionar archivo</span>
+        </label>
+        <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="evalImportDescargarPlantilla()"><i class="fa fa-download"></i> Descargar plantilla</button>
+      </div>
+      <div id="ei-preview" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-weight:600;font-size:13px;color:var(--text)">Vista previa — <span id="ei-count">0</span> preguntas detectadas</div>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('ei-file-input').value='';document.getElementById('ei-preview').style.display='none';document.getElementById('ei-drop-zone').style.display=''"><i class="fa fa-times"></i> Quitar archivo</button>
+        </div>
+        <div class="table-wrap" style="max-height:320px;overflow-y:auto">
+          <table class="table" style="font-size:12px">
+            <thead><tr><th>#</th><th>Pregunta</th><th>Tipo</th><th>Opciones</th><th>Resp. correcta</th><th>Pts</th></tr></thead>
+            <tbody id="ei-preview-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;font-size:12px;color:var(--text3);margin-top:12px">
+        <strong style="color:var(--text2)">Formato de columnas en el archivo:</strong><br>
+        A: Pregunta &nbsp;|&nbsp; B: Tipo (opcion_multiple, texto_corto, parrafo, casillas, desplegable) &nbsp;|&nbsp; C–G: Opciones &nbsp;|&nbsp; H: Respuesta correcta &nbsp;|&nbsp; I: Puntos &nbsp;|&nbsp; J: Requerida (Si/No)
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-eval-import')">Cancelar</button>
+      <button class="btn btn-primary" onclick="evalImportConfirm()"><i class="fa fa-check"></i> Crear evaluación</button>
     </div>
   </div>
 </div>
@@ -16630,6 +16683,182 @@ function _evalGetCatSel(){
   const btn=document.querySelector('#eval-tpl-cats button[data-selected="1"]');
   return btn?btn.dataset.catval:null;
 }
+// ===== IMPORTAR EVALUACIÓN =====
+window._evalImportRows = [];
+
+function openEvalImportModal(){
+  document.getElementById('ei-nombre').value = '';
+  document.getElementById('ei-file-input').value = '';
+  document.getElementById('ei-preview').style.display = 'none';
+  document.getElementById('ei-drop-zone').style.display = '';
+  document.getElementById('ei-preview-tbody').innerHTML = '';
+  document.getElementById('ei-count').textContent = '0';
+  window._evalImportRows = [];
+  // render category pills
+  const catsEl = document.getElementById('ei-cats');
+  catsEl.innerHTML = EVAL_CATEGORIAS.map(cat => `<button type="button" onclick="_eiCatSel('${cat.value}')" data-catval="${cat.value}" data-selected="" style="padding:3px 10px;border-radius:20px;border:1.5px solid ${cat.color};background:transparent;color:${cat.color};cursor:pointer;font-size:12px;font-weight:600">${cat.label}</button>`).join('');
+  openModal('modal-eval-import');
+}
+
+function _eiCatSel(val){
+  document.querySelectorAll('#ei-cats button').forEach(btn => {
+    const cat = EVAL_CATEGORIAS.find(c => c.value === btn.dataset.catval); if(!cat) return;
+    const sel = btn.dataset.catval === val;
+    btn.dataset.selected = sel ? '1' : '';
+    btn.style.background = sel ? cat.color : 'transparent';
+    btn.style.color = sel ? '#fff' : cat.color;
+  });
+}
+
+function _eiGetCat(){
+  const btn = document.querySelector('#ei-cats button[data-selected="1"]');
+  return btn ? btn.dataset.catval : null;
+}
+
+const _EI_TIPO_MAP = {
+  'opcion_multiple':'opcion_multiple','opción múltiple':'opcion_multiple','multiple':'opcion_multiple',
+  'texto_corto':'texto_corto','texto corto':'texto_corto','corto':'texto_corto',
+  'parrafo':'parrafo','párrafo':'parrafo','largo':'parrafo',
+  'casillas':'casillas','checkbox':'casillas',
+  'desplegable':'desplegable','select':'desplegable','lista':'desplegable',
+  'escala_lineal':'escala_lineal','escala lineal':'escala_lineal','escala':'escala_lineal',
+  'fecha':'fecha','hora':'hora',
+};
+
+function _eiNormTipo(raw){
+  if(!raw) return 'texto_corto';
+  const k = String(raw).toLowerCase().trim();
+  return _EI_TIPO_MAP[k] || 'texto_corto';
+}
+
+function evalImportLoadFile(input){
+  const file = input.files[0]; if(!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+  reader.onload = function(e){
+    let rows = [];
+    try {
+      if(ext === 'csv'){
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        // skip header row if first cell looks like a label
+        const start = /pregunta/i.test(lines[0].split(',')[0]) ? 1 : 0;
+        for(let i = start; i < lines.length; i++){
+          const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g,'').trim());
+          if(!cols[0]) continue;
+          rows.push(cols);
+        }
+      } else {
+        const wb = XLSX.read(e.target.result, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+        const start = /pregunta/i.test(String(data[0]?.[0]||'')) ? 1 : 0;
+        for(let i = start; i < data.length; i++){
+          if(!data[i][0]) continue;
+          rows.push(data[i].map(c => String(c||'').trim()));
+        }
+      }
+    } catch(err){
+      showToast('Error al leer el archivo: ' + err.message); return;
+    }
+    if(!rows.length){ showToast('No se encontraron preguntas en el archivo'); return; }
+    window._evalImportRows = rows.map(r => ({
+      pregunta:  r[0]||'',
+      tipo:      _eiNormTipo(r[1]),
+      opciones:  [r[2],r[3],r[4],r[5],r[6]].filter(Boolean),
+      correcta:  r[7]||'',
+      puntos:    parseFloat(r[8])||1,
+      requerida: /^s/i.test(r[9]||'si'),
+    }));
+    _eiRenderPreview();
+    document.getElementById('ei-drop-zone').style.display = 'none';
+    document.getElementById('ei-preview').style.display = '';
+    document.getElementById('ei-count').textContent = window._evalImportRows.length;
+  };
+  if(ext === 'csv') reader.readAsText(file, 'UTF-8');
+  else reader.readAsArrayBuffer(file);
+}
+
+function _eiRenderPreview(){
+  const tbody = document.getElementById('ei-preview-tbody');
+  const _TIPO_LABEL = {opcion_multiple:'Opción múltiple',texto_corto:'Texto corto',parrafo:'Párrafo',casillas:'Casillas',desplegable:'Desplegable',escala_lineal:'Escala lineal',fecha:'Fecha',hora:'Hora'};
+  tbody.innerHTML = window._evalImportRows.map((r,i) => `<tr>
+    <td style="color:var(--text3)">${i+1}</td>
+    <td style="max-width:260px;white-space:normal">${r.pregunta}</td>
+    <td style="white-space:nowrap">${_TIPO_LABEL[r.tipo]||r.tipo}</td>
+    <td style="color:var(--text3);font-size:11px">${r.opciones.join(', ')||'—'}</td>
+    <td style="color:#22c55e;font-size:11px">${r.correcta||'—'}</td>
+    <td>${r.puntos}</td>
+  </tr>`).join('');
+}
+
+function evalImportDescargarPlantilla(){
+  const header = ['Pregunta','Tipo','Opcion1','Opcion2','Opcion3','Opcion4','Opcion5','RespuestaCorrecta','Puntos','Requerida'];
+  const ejemplo = [
+    ['¿Cuál es la diferencia entre JavaScript y TypeScript?','texto_corto','','','','','','',1,'Si'],
+    ['¿Cuál es el operador de igualdad estricta en JS?','opcion_multiple','==','===','!=','!==','','===',1,'Si'],
+    ['Selecciona los frameworks de frontend','casillas','React','Vue','Angular','Svelte','Next.js','',1,'No'],
+    ['¿En qué año fue creado JavaScript?','texto_corto','','','','','','1995',1,'Si'],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet([header, ...ejemplo]);
+  ws['!cols'] = [{wch:40},{wch:20},{wch:18},{wch:18},{wch:18},{wch:18},{wch:18},{wch:22},{wch:8},{wch:10}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Preguntas');
+  XLSX.writeFile(wb, 'plantilla_evaluacion.xlsx');
+}
+
+async function evalImportConfirm(){
+  const nombre = (document.getElementById('ei-nombre').value||'').trim();
+  if(!nombre){ showToast('Ingresa el nombre de la evaluación'); document.getElementById('ei-nombre').focus(); return; }
+  if(!window._evalImportRows.length){ showToast('Primero carga un archivo con preguntas'); return; }
+  const categoria = _eiGetCat() || 'general';
+  const preguntas = window._evalImportRows.map((r,i) => {
+    const q = { id: 'q' + Date.now() + i, texto: r.pregunta, tipo: r.tipo, requerida: r.requerida, puntos: r.puntos };
+    if(['opcion_multiple','casillas','desplegable'].includes(r.tipo)){
+      q.opciones = r.opciones.map((o,j) => ({id:'op'+j, texto:o}));
+      if(r.correcta) q.correcta = r.correcta;
+    }
+    return q;
+  });
+  const evalObj = {
+    nombre, categoria,
+    descripcion: '',
+    preguntas,
+    activa: true,
+    empresa_id: currentUserData?.empresa_id || null,
+    creado_por: currentUserData?.id || null,
+    created_at: new Date().toISOString(),
+  };
+  try {
+    await saveRecord('evaluaciones', evalObj);
+    DB.evaluaciones = DB.evaluaciones || [];
+    DB.evaluaciones.push(evalObj);
+    closeModal('modal-eval-import');
+    showToast(`Evaluación "${nombre}" importada con ${preguntas.length} preguntas`);
+    await logActivity('Nueva evaluación','evaluaciones', evalObj.id, `${nombre} (${preguntas.length} preguntas importadas)`);
+    renderEvalPlantillas();
+  } catch(err){
+    showToast('Error al guardar: ' + (err.message||err));
+  }
+}
+
+// drag-and-drop on the drop zone
+(function(){
+  function setupEiDrop(){
+    const zone = document.getElementById('ei-drop-zone'); if(!zone) return;
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor='var(--primary)'; });
+    zone.addEventListener('dragleave', () => { zone.style.borderColor='var(--border2)'; });
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.style.borderColor='var(--border2)';
+      const file = e.dataTransfer.files[0]; if(!file) return;
+      const inp = document.getElementById('ei-file-input');
+      const dt = new DataTransfer(); dt.items.add(file); inp.files = dt.files;
+      evalImportLoadFile(inp);
+    });
+  }
+  document.addEventListener('DOMContentLoaded', setupEiDrop);
+})();
+
 function openEvalTemplateModal(id=null){
   document.getElementById('eval-tpl-id').value = '';
   document.getElementById('eval-tpl-nombre').value = '';

@@ -16180,8 +16180,8 @@ function evSetTab(tab){
   document.getElementById('ev-panel-respuestas').style.display  = tab==='respuestas'  ? '' : 'none';
   document.getElementById('evtab-plantillas').className  = `btn btn-sm ${tab==='plantillas' ?'btn-primary':'btn-ghost'}`;
   document.getElementById('evtab-tipos').className       = `btn btn-sm ${tab==='tipos'      ?'btn-primary':'btn-ghost'}`;
-  document.getElementById('evtab-enviadas').className    = `btn btn-sm ${tab==='enviadas'   ?'btn-primary':'btn-ghost'}`;
-  document.getElementById('evtab-respuestas').className  = `btn btn-sm ${tab==='respuestas' ?'btn-primary':'btn-ghost'}`;
+  const _etEnv=document.getElementById('evtab-enviadas');   if(_etEnv)  _etEnv.className   = `btn btn-sm ${tab==='enviadas'   ?'btn-primary':'btn-ghost'}`;
+  const _etResp=document.getElementById('evtab-respuestas');if(_etResp) _etResp.className  = `btn btn-sm ${tab==='respuestas' ?'btn-primary':'btn-ghost'}`;
   const showSort=tab==='plantillas';
   const btnR=document.getElementById('eval-sort-reciente');
   const btnA=document.getElementById('eval-sort-antiguo');

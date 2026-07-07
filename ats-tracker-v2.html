@@ -712,8 +712,9 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <button class="btn btn-primary btn-sm" id="btn-nueva-eval" onclick="openEvalTemplateModal()"><i class="fa fa-plus"></i> Nueva evaluación</button>
     </div>
     <div id="ev-panel-plantillas">
+      <div id="eval-cat-filters" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
       <div class="table-wrap"><table class="table" id="eval-plantillas-table">
-        <thead><tr><th>Nombre</th><th>Empresas</th><th>Preguntas</th><th>Estado</th><th>Creada</th><th></th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Categoría</th><th>Empresas</th><th>Preguntas</th><th>Estado</th><th>Creada</th><th></th></tr></thead>
         <tbody id="eval-plantillas-tbody"></tbody>
       </table></div>
     </div>
@@ -1016,6 +1017,10 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <input type="hidden" id="eval-tpl-banner-data">
       <div class="fr full"><div class="fg"><label>Nombre de la evaluación *</label><input id="eval-tpl-nombre" placeholder="Ej. Evaluación Técnica Ventas"></div></div>
       <div class="fr full"><div class="fg"><label>Descripción</label><textarea id="eval-tpl-desc" rows="2" placeholder="Instrucciones o contexto para el candidato..." style="resize:vertical"></textarea></div></div>
+      <div class="fr full"><div class="fg">
+        <label>Categoría</label>
+        <div id="eval-tpl-cats" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
+      </div></div>
       <div class="fr full"><div class="fg">
         <label>Banner <span style="font-size:11px;color:var(--text3)">(imagen ancha, formato Google Forms — recomendado 1600×400 px)</span></label>
         <div id="eval-banner-preview" style="display:none;margin-bottom:8px;position:relative">
@@ -16219,6 +16224,7 @@ function renderEvalRespuestas(){
   }).join('');
 }
 window._evalPlantSort='reciente';
+window._evalCatFilt=null;
 function setEvalSort(ord){
   window._evalPlantSort=ord;
   const btnR=document.getElementById('eval-sort-reciente');
@@ -16227,20 +16233,40 @@ function setEvalSort(ord){
   if(btnA)btnA.className=`btn btn-sm ${ord==='antiguo'?'btn-primary':'btn-ghost'}`;
   renderEvalPlantillas();
 }
+function setEvalCatFilt(val){
+  window._evalCatFilt=window._evalCatFilt===val?null:val;
+  renderEvalPlantillas();
+}
 function renderEvalPlantillas(){
   const tbody = document.getElementById('eval-plantillas-tbody');
   if(!tbody) return;
   const btnR=document.getElementById('eval-sort-reciente');
   const btnA=document.getElementById('eval-sort-antiguo');
   const ord=window._evalPlantSort||'reciente';
+  const filt=window._evalCatFilt;
   if(btnR)btnR.className=`btn btn-sm ${ord==='reciente'?'btn-primary':'btn-ghost'}`;
   if(btnA)btnA.className=`btn btn-sm ${ord==='antiguo'?'btn-primary':'btn-ghost'}`;
+  const catsUsadas=new Set((DB.evaluaciones||[]).map(e=>e.categoria).filter(Boolean));
+  const catFiltersEl=document.getElementById('eval-cat-filters');
+  if(catFiltersEl){
+    catFiltersEl.innerHTML=[{value:null,label:'Todas',color:'#6b7280'},...EVAL_CATEGORIAS.filter(c=>catsUsadas.has(c.value))].map(cat=>{
+      const sel=filt===cat.value;
+      return`<button type="button" onclick="setEvalCatFilt(${cat.value===null?'null':`'${cat.value}'`})"
+        style="padding:4px 12px;border-radius:20px;border:2px solid ${cat.color};background:${sel?cat.color:'transparent'};color:${sel?'#fff':cat.color};font-size:12px;font-weight:600;cursor:pointer;transition:all .15s">${cat.label}</button>`;
+    }).join('');
+  }
   if(!DB.evaluaciones.length){
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin evaluaciones. Crea la primera con "+ Nueva evaluación".</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Sin evaluaciones. Crea la primera con "+ Nueva evaluación".</td></tr>`;
     return;
   }
-  const sorted=[...DB.evaluaciones].sort((a,b)=>ord==='reciente'?(b.created_at||'').localeCompare(a.created_at||''):(a.created_at||'').localeCompare(b.created_at||''));
-  tbody.innerHTML = sorted.map(e=>{
+  let list=[...DB.evaluaciones];
+  if(filt) list=list.filter(e=>e.categoria===filt);
+  list.sort((a,b)=>ord==='reciente'?(b.created_at||'').localeCompare(a.created_at||''):(a.created_at||'').localeCompare(b.created_at||''));
+  if(!list.length){
+    tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Sin evaluaciones en esta categoría.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(e=>{
     const empIds = e.empresa_ids||[];
     let empsHTML;
     if(!empIds.length){
@@ -16251,8 +16277,11 @@ function renderEvalPlantillas(){
         return emp ? `<span style="display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;background:var(--primary-light,#e8f0fe);color:var(--primary);border:1px solid var(--primary);margin:1px">${emp.nombre}</span>` : '';
       }).filter(Boolean).join('');
     }
+    const cat=EVAL_CATEGORIAS.find(c=>c.value===e.categoria);
+    const catBadge=cat?`<span style="display:inline-block;font-size:11px;padding:2px 9px;border-radius:10px;border:1px solid ${cat.color};color:${cat.color};font-weight:600">${cat.label}</span>`:`<span style="font-size:11px;color:var(--text3)">—</span>`;
     return `<tr>
       <td><strong>${e.nombre}</strong></td>
+      <td>${catBadge}</td>
       <td style="max-width:260px;line-height:1.6">${empsHTML}</td>
       <td style="text-align:center">${(e.preguntas||[]).length}</td>
       <td><span class="badge ${e.activa!==false?'bg':'br'}">${e.activa!==false?'Activa':'Inactiva'}</span></td>
@@ -16513,6 +16542,39 @@ function _evalSetBanner(url){
   }
 }
 
+const EVAL_CATEGORIAS=[
+  {value:'tecnica',    label:'Técnica',      color:'#3b82f6'},
+  {value:'ofimatica',  label:'Ofimática',    color:'#8b5cf6'},
+  {value:'habilidades',label:'Habilidades',  color:'#10b981'},
+  {value:'psicometrica',label:'Psicométrica',color:'#f59e0b'},
+  {value:'idiomas',    label:'Idiomas',      color:'#ec4899'},
+  {value:'actitudinal',label:'Actitudinal',  color:'#14b8a6'},
+  {value:'general',    label:'General',      color:'#6b7280'},
+];
+function _evalRenderCats(selVal){
+  const c=document.getElementById('eval-tpl-cats');if(!c)return;
+  c.innerHTML=EVAL_CATEGORIAS.map(cat=>{
+    const sel=selVal===cat.value;
+    return`<button type="button" onclick="_evalCatSel('${cat.value}')" data-catval="${cat.value}"
+      style="padding:5px 14px;border-radius:20px;border:2px solid ${cat.color};background:${sel?cat.color:'transparent'};color:${sel?'#fff':cat.color};font-size:12px;font-weight:600;cursor:pointer;transition:all .15s">${cat.label}</button>`;
+  }).join('');
+}
+function _evalCatSel(val){
+  document.querySelectorAll('#eval-tpl-cats button').forEach(btn=>{
+    const cat=EVAL_CATEGORIAS.find(c=>c.value===btn.dataset.catval);if(!cat)return;
+    const sel=btn.dataset.catval===val;
+    btn.style.background=sel?cat.color:'transparent';
+    btn.style.color=sel?'#fff':cat.color;
+  });
+}
+function _evalGetCatSel(){
+  const btns=[...document.querySelectorAll('#eval-tpl-cats button')];
+  for(const btn of btns){
+    const cat=EVAL_CATEGORIAS.find(c=>c.value===btn.dataset.catval);
+    if(cat&&btn.style.background===cat.color) return btn.dataset.catval;
+  }
+  return null;
+}
 function openEvalTemplateModal(id=null){
   document.getElementById('eval-tpl-id').value = '';
   document.getElementById('eval-tpl-nombre').value = '';
@@ -16520,6 +16582,7 @@ function openEvalTemplateModal(id=null){
   document.getElementById('eval-preguntas-list').innerHTML = '';
   document.getElementById('eval-tpl-title').textContent = id ? 'Editar evaluación' : 'Nueva evaluación';
   evalRemoveBanner();
+  _evalRenderCats(id ? (DB.evaluaciones.find(x=>x.id===id)?.categoria||null) : null);
   const selectedEmpIds = id ? (DB.evaluaciones.find(x=>x.id===id)?.empresa_ids||[]) : [];
   document.getElementById('eval-tpl-emps').innerHTML = DB.empresas.map(e=>{
     const sel = selectedEmpIds.includes(e.id);
@@ -16818,7 +16881,8 @@ async function saveEvalTemplate(){
   const esNueva = !DB.evaluaciones.find(x=>x.id===id);
   const anterior = esNueva ? null : DB.evaluaciones.find(x=>x.id===id);
   const banner = document.getElementById('eval-tpl-banner-data').value||null;
-  const ev={id,nombre,descripcion:document.getElementById('eval-tpl-desc').value.trim(),empresa_ids,preguntas,banner,activa:true,created_at:new Date().toISOString()};
+  const categoria = _evalGetCatSel();
+  const ev={id,nombre,descripcion:document.getElementById('eval-tpl-desc').value.trim(),empresa_ids,preguntas,banner,activa:true,categoria,created_at:new Date().toISOString()};
   try{
     await saveRecord('evaluaciones',ev);
     const idx=DB.evaluaciones.findIndex(x=>x.id===id);

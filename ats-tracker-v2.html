@@ -2270,6 +2270,7 @@ async function initSession() {
   }
   document.getElementById('auth-screen').style.display = 'none';
   await loadDB();
+  _setupRealtime();
   await _loadPermisosMap();
   adaptUIToRole();
   initSidebarState();
@@ -3198,6 +3199,7 @@ async function saveRecord(tabla,objeto){
   }
   const {error} = await sbClient.from(tabla).upsert({id:objeto.id,data:objeto});
   if(error) throw new Error(error.message);
+  window._atsLastSaveTs = Date.now();
 }
 async function deleteRecord(tabla,id){
   if(SANDBOX_MODE){
@@ -3207,6 +3209,7 @@ async function deleteRecord(tabla,id){
     return;
   }
   await sbClient.from(tabla).delete().eq('id',id);
+  window._atsLastSaveTs = Date.now();
 }
 
 /* ============================================================
@@ -3344,6 +3347,38 @@ function getFechaContratacion(v, contratado){
 function showToast(msg,t='ok'){const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${t==='ok'?'tok':'terr'} show`;setTimeout(()=>el.className='toast',2800)}
 function recargarVistaActiva(){const p=document.querySelector('.page.active');if(p)renderPage(p.id.replace('page-',''));}
 async function recargarDatosActivos(){await loadDB();const p=document.querySelector('.page.active')?.id.replace('page-','');if(p)renderPage(p);}
+
+function _setupRealtime(){
+  if(SANDBOX_MODE) return;
+  let _rtTimer=null;
+  const _tryReload=async()=>{
+    if(document.querySelector('.modal.open')){
+      // Hay un modal abierto — reintentar en 4 segundos
+      _rtTimer=setTimeout(_tryReload,4000);
+      return;
+    }
+    await recargarDatosActivos();
+  };
+  const _scheduleReload=()=>{
+    // Si fue un save propio (< 4s) ignorar para no hacer doble carga
+    if(Date.now()-(window._atsLastSaveTs||0)<4000) return;
+    clearTimeout(_rtTimer);
+    _rtTimer=setTimeout(_tryReload,1500);
+  };
+  const TABLAS=['candidatos','vacantes','empresas','reclutadores','ese',
+    'hc_resumen','hc_plantilla','garantias','referencias','activity_log',
+    'perfiles_puesto','evaluaciones','kpis','procedimientos','usuarios'];
+  const ch=sbClient.channel('ats-realtime-v1');
+  TABLAS.forEach(t=>ch.on('postgres_changes',{event:'*',schema:'public',table:t},_scheduleReload));
+  ch.subscribe(st=>{
+    if(st==='SUBSCRIBED') console.log('[ATS] Realtime conectado ✓');
+    else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT') console.warn('[ATS] Realtime no disponible — recarga manual requerida');
+  });
+  // Recargar también cuando el usuario regresa a la pestaña
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible') _scheduleReload();
+  });
+}
 function openModal(id){document.getElementById(id).classList.add('open')}
 function openReclutadorModal(){
   document.getElementById('rec-nombre').value='';

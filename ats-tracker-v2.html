@@ -225,6 +225,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
 .ed-kpi-l{font-size:10px;color:var(--text3)}
 .ed-kpi-panel{background:var(--surface);border:1px solid var(--border2);border-radius:var(--rl);padding:16px 18px;margin-bottom:18px;animation:fadeInDown .18s ease}
 @keyframes fadeInDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 
 /* VACANTE EXPAND ROW */
 .vac-expand-row{display:none}
@@ -3099,7 +3100,7 @@ async function _ensureVacantesFull(){/* no-op — loadDB loads everything */}
 async function _ensureEvaluaciones(){/* no-op — loadDB loads everything */}
 async function _ensurePerfilesPuesto(){/* no-op — loadDB loads everything */}
 
-async function loadDB(){
+async function loadDB(silent=false){
   try{
     if(SANDBOX_MODE){
       DB.empresas=JSON.parse(localStorage.getItem('sandbox_empresas')||'[]');
@@ -3166,7 +3167,7 @@ async function loadDB(){
   }finally{
     if(!DB.empresas.length&&!DB.reclutadores.length)seedData();
     updateSandboxUI();
-    renderDashboard();
+    if(!silent) renderDashboard();
     _migrarFirmasEntrevistador();
   }
 }
@@ -3348,22 +3349,28 @@ function showToast(msg,t='ok'){const el=document.getElementById('toast');el.text
 function recargarVistaActiva(){const p=document.querySelector('.page.active');if(p)renderPage(p.id.replace('page-',''));}
 async function recargarDatosActivos(){await loadDB();const p=document.querySelector('.page.active')?.id.replace('page-','');if(p)renderPage(p);}
 
+function _showRtBadge(){
+  const ex=document.getElementById('rt-sync-badge');
+  if(ex){clearTimeout(ex._t);ex.remove();}
+  const el=document.createElement('div');
+  el.id='rt-sync-badge';
+  el.style.cssText='position:fixed;bottom:22px;right:22px;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:6px 14px;font-size:12px;color:var(--text2);z-index:9000;box-shadow:0 3px 10px rgba(0,0,0,.15);display:flex;align-items:center;gap:6px;opacity:0;transition:opacity .25s;pointer-events:none';
+  el.innerHTML='<i class="fa fa-sync-alt" style="font-size:10px;animation:spin 1s linear infinite"></i>Sincronizado';
+  document.body.appendChild(el);
+  requestAnimationFrame(()=>el.style.opacity='1');
+  el._t=setTimeout(()=>{el.style.opacity='0';setTimeout(()=>el.remove(),300);},2500);
+}
 function _setupRealtime(){
   if(SANDBOX_MODE) return;
   let _rtTimer=null;
-  const _tryReload=async()=>{
-    if(document.querySelector('.modal.open')){
-      // Hay un modal abierto — reintentar en 4 segundos
-      _rtTimer=setTimeout(_tryReload,4000);
-      return;
-    }
-    await recargarDatosActivos();
+  const _doSilentSync=async()=>{
+    await loadDB(true); // actualiza DB en memoria, sin re-render de pantalla
+    _showRtBadge();
   };
   const _scheduleReload=()=>{
-    // Si fue un save propio (< 4s) ignorar para no hacer doble carga
-    if(Date.now()-(window._atsLastSaveTs||0)<4000) return;
+    if(Date.now()-(window._atsLastSaveTs||0)<4000) return; // ignorar saves propios
     clearTimeout(_rtTimer);
-    _rtTimer=setTimeout(_tryReload,1500);
+    _rtTimer=setTimeout(_doSilentSync,1500);
   };
   const TABLAS=['candidatos','vacantes','empresas','reclutadores','ese',
     'hc_resumen','hc_plantilla','garantias','referencias','activity_log',
@@ -3372,9 +3379,8 @@ function _setupRealtime(){
   TABLAS.forEach(t=>ch.on('postgres_changes',{event:'*',schema:'public',table:t},_scheduleReload));
   ch.subscribe(st=>{
     if(st==='SUBSCRIBED') console.log('[ATS] Realtime conectado ✓');
-    else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT') console.warn('[ATS] Realtime no disponible — recarga manual requerida');
+    else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT') console.warn('[ATS] Realtime no disponible');
   });
-  // Recargar también cuando el usuario regresa a la pestaña
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='visible') _scheduleReload();
   });

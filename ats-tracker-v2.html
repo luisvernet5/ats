@@ -3670,7 +3670,7 @@ function buildColorPicker(sel){
   const circles=EMPRESA_COLORS.map(col=>`<div onclick="empColorPickerSel('${col}')" style="width:28px;height:28px;border-radius:50%;background:${col};cursor:pointer;border:3px solid ${col===sel?'#fff':'transparent'};box-shadow:${col===sel?'0 0 0 2px '+col:'none'};transition:all .15s"></div>`).join('');
   c.innerHTML=`<div id="emp-color-circles" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">${circles}</div>
     <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
-      <input type="color" id="emp-color-native" value="${sel||'#2AAADE'}" onchange="empColorPickerSel(this.value);this.blur()" style="width:32px;height:32px;padding:2px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer">
+      <span style="font-size:11px;color:var(--text3)">Hex:</span>
       <input type="text" id="emp-color-hex" value="${sel||'#2AAADE'}" maxlength="7" placeholder="#000000" oninput="empColorHexInput(this.value)" style="width:88px;font-family:var(--mono);font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text1)">
       <div id="emp-color-preview" style="width:28px;height:28px;border-radius:50%;background:${sel||'#2AAADE'};border:1px solid var(--border2);flex-shrink:0"></div>
     </div>`;

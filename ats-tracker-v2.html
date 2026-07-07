@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -16812,7 +16812,7 @@ async function evalImportConfirm(){
   if(!nombre){ showToast('Ingresa el nombre de la evaluación'); document.getElementById('ei-nombre').focus(); return; }
   if(!window._evalImportRows.length){ showToast('Primero carga un archivo con preguntas'); return; }
   const categoria = _eiGetCat() || 'general';
-  const _norm = s => String(s||'').trim().toLowerCase();
+  const _norm = s => String(s||'').replace(/[  -​ ﻿]/g, ' ').trim().replace(/\s+/g, ' ').toLowerCase();
   const warnings = [];
   const preguntas = window._evalImportRows.map((r,i) => {
     const q = { id: 'q' + Date.now() + i, texto: r.pregunta, tipo: r.tipo, requerida: r.requerida, puntos: r.puntos };
@@ -16825,6 +16825,7 @@ async function evalImportConfirm(){
         } else {
           warnings.push(`P${i+1}: "${r.pregunta.slice(0,50)}" — respuesta "${r.correcta}" no coincide con ninguna opción`);
         }
+        console.log(`[IMPORT] Q${i+1}: "${r.pregunta.slice(0,40)}..." → match=${matchIdx>=0} → respuesta_correcta="${q.respuesta_correcta}"`);
       }
     }
     return q;

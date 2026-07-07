@@ -7553,7 +7553,7 @@ function renderCandidatosTable(){
           <button class="btn btn-ghost btn-sm" onclick="openEntrevistaModal('${c.id}')" title="Entrevista"><i id="ei-icon-${c.id}" class="fa fa-clipboard-list" style="color:${_eiColor}"></i></button>
           <button class="btn btn-ghost btn-sm" onclick="openReferenciasModal('${c.id}')" title="Referencias"><i id="ref-icon-${c.id}" class="fa fa-users" style="color:${_refColor}"></i></button>
           <button class="btn btn-ghost btn-sm" onclick="toggleAccionesCand('${c.id}')" title="Más acciones"><i class="fa fa-ellipsis-v"></i></button>
-          ${currentUserData?.rol==='admin'?`<button onclick="confirmarDescarteCand('${c.id}')" title="Descartar candidato" style="background:var(--red);color:#fff;border:none;border-radius:6px;cursor:pointer;padding:5px 8px;font-size:12px"><i class="fa fa-trash"></i></button>`:''}
+          ${currentUserData?.rol==='admin'?`<button onclick="eliminarCandidatoPermanente('${c.id}')" title="Eliminar candidato" style="background:var(--red);color:#fff;border:none;border-radius:6px;cursor:pointer;padding:5px 8px;font-size:12px"><i class="fa fa-trash"></i></button>`:''}
           <div id="menu-${c.id}" style="display:none;position:absolute;right:0;bottom:32px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;z-index:50;min-width:220px;box-shadow:0 4px 20px rgba(0,0,0,.15);padding:6px 0">
             <div style="padding:6px 14px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Acciones</div>
             <div class="menu-item" onclick="abrirDescarte('${c.id}')"><i class="fa fa-user-times" style="width:16px"></i> Descartar candidato</div>

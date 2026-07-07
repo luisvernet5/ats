@@ -706,14 +706,13 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button id="evtab-plantillas" class="btn btn-primary btn-sm" onclick="evSetTab('plantillas')"><i class="fa fa-list"></i> Plantillas</button>
-        <button id="evtab-tipos" class="btn btn-ghost btn-sm" onclick="evSetTab('tipos')"><i class="fa fa-th-large"></i> Tipos de evaluación</button>
         <button id="eval-sort-reciente" class="btn btn-ghost btn-sm" onclick="setEvalSort('reciente')"><i class="fa fa-arrow-down"></i> Más recientes</button>
         <button id="eval-sort-antiguo" class="btn btn-ghost btn-sm" onclick="setEvalSort('antiguo')"><i class="fa fa-arrow-up"></i> Más antiguo</button>
       </div>
       <button class="btn btn-primary btn-sm" id="btn-nueva-eval" onclick="openEvalTemplateModal()"><i class="fa fa-plus"></i> Nueva evaluación</button>
     </div>
-    <div id="ev-panel-tipos" style="display:none"></div>
     <div id="ev-panel-plantillas">
+      <div id="eval-cat-filters" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
       <div class="table-wrap"><table class="table" id="eval-plantillas-table">
         <thead><tr><th>Nombre</th><th>Categoría</th><th>Empresas</th><th>Preguntas</th><th>Estado</th><th>Creada</th><th></th></tr></thead>
         <tbody id="eval-plantillas-tbody"></tbody>
@@ -16175,20 +16174,12 @@ function renderEvaluaciones(){
 }
 function evSetTab(tab){
   document.getElementById('ev-panel-plantillas').style.display  = tab==='plantillas'  ? '' : 'none';
-  document.getElementById('ev-panel-tipos').style.display       = tab==='tipos'       ? '' : 'none';
   document.getElementById('ev-panel-enviadas').style.display    = tab==='enviadas'    ? '' : 'none';
   document.getElementById('ev-panel-respuestas').style.display  = tab==='respuestas'  ? '' : 'none';
   document.getElementById('evtab-plantillas').className  = `btn btn-sm ${tab==='plantillas' ?'btn-primary':'btn-ghost'}`;
-  document.getElementById('evtab-tipos').className       = `btn btn-sm ${tab==='tipos'      ?'btn-primary':'btn-ghost'}`;
   const _etEnv=document.getElementById('evtab-enviadas');   if(_etEnv)  _etEnv.className   = `btn btn-sm ${tab==='enviadas'   ?'btn-primary':'btn-ghost'}`;
   const _etResp=document.getElementById('evtab-respuestas');if(_etResp) _etResp.className  = `btn btn-sm ${tab==='respuestas' ?'btn-primary':'btn-ghost'}`;
-  const showSort=tab==='plantillas';
-  const btnR=document.getElementById('eval-sort-reciente');
-  const btnA=document.getElementById('eval-sort-antiguo');
-  if(btnR)btnR.style.display=showSort?'':'none';
-  if(btnA)btnA.style.display=showSort?'':'none';
   if(tab==='respuestas') renderEvalRespuestas();
-  if(tab==='tipos') renderEvalTipos();
 }
 function renderEvalTipos(){
   const el=document.getElementById('ev-panel-tipos');if(!el)return;
@@ -16280,6 +16271,7 @@ function renderEvalRespuestas(){
   }).join('');
 }
 window._evalPlantSort='reciente';
+window._evalCatFilt=null;
 function setEvalSort(ord){
   window._evalPlantSort=ord;
   const btnR=document.getElementById('eval-sort-reciente');
@@ -16300,12 +16292,25 @@ function renderEvalPlantillas(){
   const ord=window._evalPlantSort||'reciente';
   if(btnR)btnR.className=`btn btn-sm ${ord==='reciente'?'btn-primary':'btn-ghost'}`;
   if(btnA)btnA.className=`btn btn-sm ${ord==='antiguo'?'btn-primary':'btn-ghost'}`;
+  const filt=window._evalCatFilt||null;
+  const catsUsadas=new Set((DB.evaluaciones||[]).map(e=>e.categoria).filter(Boolean));
+  const catFiltersEl=document.getElementById('eval-cat-filters');
+  if(catFiltersEl){
+    catFiltersEl.innerHTML=[{value:null,label:'Todas',color:'#6b7280'},...EVAL_CATEGORIAS.filter(c=>catsUsadas.has(c.value))].map(cat=>{
+      const sel=filt===cat.value;
+      return`<button type="button" onclick="setEvalCatFilt(${cat.value===null?'null':`'${cat.value}'`})"
+        style="padding:4px 12px;border-radius:20px;border:2px solid ${cat.color};background:${sel?cat.color:'transparent'};color:${sel?'#fff':cat.color};font-size:12px;font-weight:600;cursor:pointer;transition:all .15s">${cat.label}</button>`;
+    }).join('');
+  }
   if(!DB.evaluaciones.length){
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Sin evaluaciones. Crea la primera con "+ Nueva evaluación".</td></tr>`;
     return;
   }
-  const sorted=[...DB.evaluaciones].sort((a,b)=>ord==='reciente'?(b.created_at||'').localeCompare(a.created_at||''):(a.created_at||'').localeCompare(b.created_at||''));
-  tbody.innerHTML = sorted.map(e=>{
+  let list=[...DB.evaluaciones];
+  if(filt) list=list.filter(e=>e.categoria===filt);
+  list.sort((a,b)=>ord==='reciente'?(b.created_at||'').localeCompare(a.created_at||''):(a.created_at||'').localeCompare(b.created_at||''));
+  if(!list.length){tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Sin evaluaciones en esta categoría.</td></tr>`;return;}
+  tbody.innerHTML = list.map(e=>{
     const empIds = e.empresa_ids||[];
     let empsHTML;
     if(!empIds.length){

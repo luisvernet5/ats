@@ -16812,11 +16812,20 @@ async function evalImportConfirm(){
   if(!nombre){ showToast('Ingresa el nombre de la evaluación'); document.getElementById('ei-nombre').focus(); return; }
   if(!window._evalImportRows.length){ showToast('Primero carga un archivo con preguntas'); return; }
   const categoria = _eiGetCat() || 'general';
+  const _norm = s => String(s||'').trim().toLowerCase();
+  const warnings = [];
   const preguntas = window._evalImportRows.map((r,i) => {
     const q = { id: 'q' + Date.now() + i, texto: r.pregunta, tipo: r.tipo, requerida: r.requerida, puntos: r.puntos };
     if(['opcion_multiple','casillas','desplegable'].includes(r.tipo)){
       q.opciones = r.opciones.map(o => String(o));
-      if(r.correcta) q.respuesta_correcta = r.correcta;
+      if(r.correcta){
+        const matchIdx = q.opciones.findIndex(o => _norm(o) === _norm(r.correcta));
+        if(matchIdx >= 0){
+          q.respuesta_correcta = q.opciones[matchIdx];
+        } else {
+          warnings.push(`P${i+1}: "${r.pregunta.slice(0,50)}" — respuesta "${r.correcta}" no coincide con ninguna opción`);
+        }
+      }
     }
     return q;
   });
@@ -16838,6 +16847,10 @@ async function evalImportConfirm(){
     showToast(`Evaluación "${nombre}" importada con ${preguntas.length} preguntas`);
     await logActivity('Nueva evaluación','evaluaciones', evalObj.id, `${nombre} (${preguntas.length} preguntas importadas)`);
     renderEvalPlantillas();
+    if(warnings.length){
+      console.warn('[Import] Respuestas correctas sin coincidencia:\n' + warnings.join('\n'));
+      setTimeout(()=>alert(`${warnings.length} pregunta(s) quedaron sin respuesta correcta marcada porque el texto del Excel no coincidió con ninguna opción:\n\n${warnings.join('\n')}`), 400);
+    }
   } catch(err){
     showToast('Error al guardar: ' + (err.message||err));
   }

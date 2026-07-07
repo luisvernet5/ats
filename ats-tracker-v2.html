@@ -709,7 +709,12 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
         <button id="evtab-tipos" class="btn btn-primary btn-sm" onclick="evSetTab('tipos')"><i class="fa fa-th-large"></i> Tipos de evaluación</button>
         <button id="eval-sort-reciente" class="btn btn-ghost btn-sm" onclick="setEvalSort('reciente')" style="display:none"><i class="fa fa-arrow-down"></i> Más recientes</button>
         <button id="eval-sort-antiguo" class="btn btn-ghost btn-sm" onclick="setEvalSort('antiguo')" style="display:none"><i class="fa fa-arrow-up"></i> Más antiguo</button>
-        <select id="eval-cat-select" onchange="setEvalCatFilt(this.value||null)" style="display:none;padding:4px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-size:12px;cursor:pointer;outline:none;width:130px"></select>
+        <div id="wrap-eval-cat" style="display:none">
+          <button id="btn-eval-cat" onclick="_mfOpen('eval-cat',event)" style="display:flex;align-items:center;gap:6px;padding:0 12px;height:28px;border:1px solid var(--border2);border-radius:20px;background:var(--surface);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:120px;justify-content:space-between">
+            <span id="lbl-eval-cat">Tipo: Todos</span>
+            <i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i>
+          </button>
+        </div>
       </div>
       <button class="btn btn-primary btn-sm" id="btn-nueva-eval" onclick="openEvalTemplateModal()"><i class="fa fa-plus"></i> Nueva evaluación</button>
     </div>
@@ -7224,6 +7229,7 @@ function _mfOnChange(id){
   else if(id.startsWith('g-flt-')) filtrarGarantias();
   else if(id==='ct-emp-filter'||id==='ct-rec-filter'||id==='ct-semana-filter') filtrarContratados();
   else if(id==='ese-estado') _eseRenderTable();
+  else if(id==='eval-cat') renderEvalPlantillas();
   else if(id.startsWith('log-flt-')){logPaginaActual=1;filtrarLog();}
   else if(id==='ed-flt-proy'||id==='ed-flt-dep'||id==='ed-flt-rec') filtrarVacantesEmpresa();
   else if(id==='pf-flt-proy'||id==='pf-flt-dep') _pfRenderTabla();
@@ -16187,10 +16193,10 @@ function evSetTab(tab){
   const showSort=tab==='plantillas';
   const btnR=document.getElementById('eval-sort-reciente');
   const btnA=document.getElementById('eval-sort-antiguo');
-  const catSel=document.getElementById('eval-cat-select');
+  const catWrap=document.getElementById('wrap-eval-cat');
   if(btnR)btnR.style.display=showSort?'':'none';
   if(btnA)btnA.style.display=showSort?'':'none';
-  if(catSel)catSel.style.display=showSort?'':'none';
+  if(catWrap)catWrap.style.display=showSort?'':'none';
   if(tab==='respuestas') renderEvalRespuestas();
   if(tab==='tipos') renderEvalTipos();
 }
@@ -16312,19 +16318,15 @@ function renderEvalPlantillas(){
   const ord=window._evalPlantSort||'reciente';
   if(btnR)btnR.className=`btn btn-sm ${ord==='reciente'?'btn-primary':'btn-ghost'}`;
   if(btnA)btnA.className=`btn btn-sm ${ord==='antiguo'?'btn-primary':'btn-ghost'}`;
-  const filt=window._evalCatFilt||null;
   const catsUsadas=new Set((DB.evaluaciones||[]).map(e=>e.categoria).filter(Boolean));
-  const catSel=document.getElementById('eval-cat-select');
-  if(catSel){
-    catSel.innerHTML=`<option value="">Tipo: Todas</option>`+EVAL_CATEGORIAS.filter(c=>catsUsadas.has(c.value)).map(c=>`<option value="${c.value}" ${filt===c.value?'selected':''}>${c.label}</option>`).join('');
-    catSel.value=filt||'';
-  }
+  _mfPopulate('eval-cat', EVAL_CATEGORIAS.filter(c=>catsUsadas.has(c.value)).map(c=>({value:c.value,label:c.label})), 'Tipo: Todos');
+  const _mfFilt=_mfGet('eval-cat');
   if(!DB.evaluaciones.length){
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Sin evaluaciones. Crea la primera con "+ Nueva evaluación".</td></tr>`;
     return;
   }
   let list=[...DB.evaluaciones];
-  if(filt) list=list.filter(e=>e.categoria===filt);
+  if(_mfFilt!==null) list=list.filter(e=>_mfFilt.has(e.categoria||''));
   list.sort((a,b)=>ord==='reciente'?(b.created_at||'').localeCompare(a.created_at||''):(a.created_at||'').localeCompare(b.created_at||''));
   if(!list.length){tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Sin evaluaciones en esta categoría.</td></tr>`;return;}
   tbody.innerHTML = list.map(e=>{

@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -720,10 +721,11 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     </div>
     <div id="ev-panel-tipos" style="display:block"></div>
     <div id="ev-panel-reportes" style="display:none">
-      <div style="text-align:center;color:var(--text3);padding:60px 20px">
-        <i class="fa fa-file-contract" style="font-size:32px;margin-bottom:12px;display:block"></i>
-        Aquí administrarás y relacionarás los reportes de plantilla personalizada con sus evaluaciones.<br>Próximamente.
-      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Sube el PDF de reporte (diseñado con campos de formulario rellenables) y relaciónalo con una evaluación. Al generarse el informe, esos campos se llenan automáticamente con los resultados del candidato.</div>
+      <div class="table-wrap"><table class="table" id="reportes-tipos-table">
+        <thead><tr><th>Evaluación</th><th>Categoría</th><th>Reporte PDF</th><th>Campos mapeados</th><th></th></tr></thead>
+        <tbody id="reportes-tipos-tbody"></tbody>
+      </table></div>
     </div>
     <div id="ev-panel-plantillas" style="display:none">
       <div class="table-wrap"><table class="table" id="eval-plantillas-table">
@@ -1117,6 +1119,38 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     <div class="mf">
       <button class="btn btn-ghost" onclick="closeModal('modal-eval-plantilla')">Cancelar</button>
       <button class="btn btn-primary" onclick="_guardarPlantillaModal()"><i class="fa fa-save"></i> Guardar plantilla</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL ASIGNAR REPORTE PDF ===== -->
+<div class="modal-overlay" id="modal-reporte-plantilla">
+  <div class="modal" style="width:640px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column">
+    <div class="mh">
+      <h3><i class="fa fa-file-pdf" style="color:#ef4444;margin-right:8px"></i>Reporte PDF — <span id="reporte-ev-nombre"></span></h3>
+      <button class="xbtn" onclick="closeModal('modal-reporte-plantilla')"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="mb" style="flex:1;overflow-y:auto;min-height:0">
+      <input type="hidden" id="reporte-ev-id">
+      <div style="background:var(--bg2);border-radius:8px;padding:11px 16px;margin-bottom:14px;font-size:12px;color:var(--text2);line-height:1.7;border:1px solid var(--border)">
+        Sube un PDF diseñado con <strong style="color:var(--text)">campos de formulario rellenables</strong> (Word, LibreOffice o Adobe Acrobat). Detectaremos esos campos y los podrás relacionar con: candidato, puntaje, nivel y fecha.
+      </div>
+      <div class="fg">
+        <label>Archivo PDF</label>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <label style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;padding:7px 14px;border:1px dashed var(--border);border-radius:8px;font-size:13px;color:var(--text2);background:var(--surface2)">
+            <i class="fa fa-upload"></i> Seleccionar PDF
+            <input type="file" accept="application/pdf" style="display:none" onchange="onReportePdfFileChange(this)">
+          </label>
+          <span id="reporte-pdf-archivo-actual" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+        <div id="reporte-pdf-status" style="font-size:12px;margin-top:6px"></div>
+      </div>
+      <div id="reporte-campos-wrap" style="margin-top:14px"></div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-reporte-plantilla')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarReporteAsignado()"><i class="fa fa-save"></i> Guardar</button>
     </div>
   </div>
 </div>
@@ -16276,6 +16310,7 @@ let _evalPubData  = null; // {evaluacion, enviada}
 // ── Página ──────────────────────────────────────────────────
 function renderEvaluaciones(){
   renderEvalTipos();
+  renderReportesTipos();
   renderEvalPlantillas();
   renderEvalEnviadas();
   renderEvalRespuestas();
@@ -16300,6 +16335,7 @@ function evSetTab(tab){
   if(catWrap)catWrap.style.display=showSort?'':'none';
   if(tab==='respuestas') renderEvalRespuestas();
   if(tab==='tipos') renderEvalTipos();
+  if(tab==='reportes') renderReportesTipos();
 }
 window._evalTiposFilt=null;
 function setEvalTiposFilt(val){
@@ -16457,6 +16493,201 @@ function renderEvalPlantillas(){
       </td>
     </tr>`;
   }).join('');
+}
+
+// ── Tipos de Reportes: PDF de plantilla por evaluación ────────
+const REPORTE_PDF_VARS=[
+  {value:'candidato',label:'Candidato'},
+  {value:'puntaje',label:'Puntaje'},
+  {value:'nivel',label:'Nivel'},
+  {value:'fecha',label:'Fecha'}
+];
+let _reportePdfBucketReady=false;
+let _reportePdfNewFile=null;
+async function _reportePdfEnsureBucket(){
+  if(_reportePdfBucketReady) return;
+  await sbClient.storage.createBucket('reporte-plantillas',{public:true,fileSizeLimit:10485760}).catch(()=>{});
+  _reportePdfBucketReady=true;
+}
+function renderReportesTipos(){
+  const tbody=document.getElementById('reportes-tipos-tbody');
+  if(!tbody) return;
+  if(!DB.evaluaciones.length){
+    tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Sin evaluaciones. Crea evaluaciones primero en "Tipos de evaluación".</td></tr>`;
+    return;
+  }
+  const list=[...DB.evaluaciones].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+  tbody.innerHTML=list.map(e=>{
+    const cat=EVAL_CATEGORIAS.find(c=>c.value===e.categoria);
+    const catBadge=cat?`<span style="display:inline-block;font-size:11px;padding:2px 9px;border-radius:10px;border:1px solid ${cat.color};color:${cat.color};font-weight:600">${cat.label}</span>`:`<span style="font-size:11px;color:var(--text3)">—</span>`;
+    const tieneArchivo=!!e.reporte_pdf_path;
+    const archivoHTML=tieneArchivo
+      ?`<span style="font-size:12px"><i class="fa fa-file-pdf" style="color:#ef4444;margin-right:5px"></i>${_esc(e.reporte_pdf_nombre||'informe.pdf')}</span>`
+      :`<span style="font-size:11px;color:var(--text3);font-style:italic">Sin asignar</span>`;
+    const camposCount=(e.reporte_pdf_campos||[]).filter(c=>c.variable).length;
+    return `<tr>
+      <td><strong>${_esc(e.nombre||'')}</strong></td>
+      <td>${catBadge}</td>
+      <td>${archivoHTML}</td>
+      <td style="text-align:center">${tieneArchivo?camposCount:'—'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="openReporteAsignarModal('${e.id}')"><i class="fa fa-${tieneArchivo?'edit':'upload'}"></i> ${tieneArchivo?'Editar':'Asignar'}</button>
+        ${tieneArchivo?`<button class="btn btn-danger btn-sm" onclick="quitarReportePdf('${e.id}')" title="Quitar"><i class="fa fa-trash"></i></button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+function openReporteAsignarModal(evId){
+  const ev=DB.evaluaciones.find(x=>x.id===evId);
+  if(!ev) return;
+  document.getElementById('reporte-ev-id').value=evId;
+  document.getElementById('reporte-ev-nombre').textContent=ev.nombre||'';
+  document.getElementById('reporte-pdf-status').textContent='';
+  document.getElementById('reporte-pdf-archivo-actual').textContent=ev.reporte_pdf_nombre?`Actual: ${ev.reporte_pdf_nombre}`:'';
+  _reportePdfNewFile=null;
+  const camposExistentes=(ev.reporte_pdf_campos||[]).map(c=>c.pdfField);
+  const mapaExistente={};
+  (ev.reporte_pdf_campos||[]).forEach(c=>{mapaExistente[c.pdfField]=c.variable;});
+  if(camposExistentes.length) _renderCamposMapeo(camposExistentes,mapaExistente);
+  else document.getElementById('reporte-campos-wrap').innerHTML=`<div style="font-size:12px;color:var(--text3)">Sube un PDF para detectar sus campos de formulario.</div>`;
+  openModal('modal-reporte-plantilla');
+}
+function _guessVariableReporte(fieldName){
+  const n=(fieldName||'').toLowerCase();
+  if(/candidat|nombre/.test(n)) return 'candidato';
+  if(/punt|score|calif/.test(n)) return 'puntaje';
+  if(/nivel|result|estatus|status/.test(n)) return 'nivel';
+  if(/fecha|date/.test(n)) return 'fecha';
+  return '';
+}
+function _renderCamposMapeo(fields,mapaExistente){
+  mapaExistente=mapaExistente||{};
+  const wrap=document.getElementById('reporte-campos-wrap');
+  if(!fields.length){
+    wrap.innerHTML=`<div style="font-size:12px;color:var(--text3)">El PDF no tiene campos de formulario detectables.</div>`;
+    return;
+  }
+  wrap.innerHTML=`<label style="font-weight:600;font-size:13px;display:block;margin-bottom:8px">Relacionar campos del PDF</label>
+    <div style="display:flex;flex-direction:column;gap:8px">
+    ${fields.map(f=>{
+      const sel=mapaExistente[f]!==undefined?mapaExistente[f]:_guessVariableReporte(f);
+      const opts=[{value:'',label:'Ignorar'},...REPORTE_PDF_VARS].map(o=>`<option value="${o.value}" ${o.value===sel?'selected':''}>${o.label}</option>`).join('');
+      return `<div style="display:flex;align-items:center;gap:10px" data-pdf-field="${_esc(f)}">
+        <span style="flex:1;font-size:13px;font-family:var(--mono);background:var(--bg2);padding:5px 9px;border-radius:6px">${_esc(f)}</span>
+        <i class="fa fa-arrow-right" style="color:var(--text3);font-size:11px"></i>
+        <select data-campo-mapeo style="flex:1;height:34px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);padding:0 8px">${opts}</select>
+      </div>`;
+    }).join('')}
+    </div>`;
+}
+async function onReportePdfFileChange(input){
+  const file=input.files?.[0];
+  if(!file) return;
+  const statusEl=document.getElementById('reporte-pdf-status');
+  statusEl.style.color='var(--text3)';
+  statusEl.innerHTML='<i class="fa fa-spinner fa-spin"></i> Leyendo campos del PDF...';
+  try{
+    const bytes=await file.arrayBuffer();
+    const pdfDoc=await PDFLib.PDFDocument.load(bytes);
+    const form=pdfDoc.getForm();
+    const fieldNames=form.getFields().filter(f=>f instanceof PDFLib.PDFTextField).map(f=>f.getName());
+    _reportePdfNewFile=file;
+    document.getElementById('reporte-pdf-archivo-actual').textContent=`Nuevo: ${file.name}`;
+    statusEl.style.color='var(--green)';
+    statusEl.innerHTML=`<i class="fa fa-check-circle"></i> ${fieldNames.length} campo(s) detectado(s)`;
+    _renderCamposMapeo(fieldNames,{});
+  }catch(e){
+    statusEl.style.color='var(--red)';
+    statusEl.textContent='Error al leer el PDF: '+e.message;
+  }
+}
+async function guardarReporteAsignado(){
+  const evId=document.getElementById('reporte-ev-id').value;
+  const ev=DB.evaluaciones.find(x=>x.id===evId);
+  if(!ev) return;
+  const mapeo=[...document.querySelectorAll('#reporte-campos-wrap [data-pdf-field]')].map(row=>({
+    pdfField:row.dataset.pdfField,
+    variable:row.querySelector('[data-campo-mapeo]').value||null
+  }));
+  if(!_reportePdfNewFile && !ev.reporte_pdf_path){showToast('Sube un archivo PDF','err');return;}
+  try{
+    if(_reportePdfNewFile){
+      await _reportePdfEnsureBucket();
+      const path=`reportes/${evId}-${Date.now()}.pdf`;
+      const {error}=await sbClient.storage.from('reporte-plantillas').upload(path,_reportePdfNewFile,{cacheControl:'3600',upsert:true});
+      if(error) throw error;
+      ev.reporte_pdf_path=path;
+      ev.reporte_pdf_nombre=_reportePdfNewFile.name;
+    }
+    ev.reporte_pdf_campos=mapeo;
+    await saveRecord('evaluaciones',ev);
+    const idx=DB.evaluaciones.findIndex(x=>x.id===evId);
+    if(idx>=0) DB.evaluaciones[idx]=ev;
+    await logActivity('Reporte PDF asignado','evaluaciones',evId,`${ev.nombre} · ${ev.reporte_pdf_nombre}`);
+    showToast('Reporte guardado ✓');
+    closeModal('modal-reporte-plantilla');
+    renderReportesTipos();
+  }catch(e){showToast('Error: '+e.message,'err');}
+}
+async function quitarReportePdf(evId){
+  const ev=DB.evaluaciones.find(x=>x.id===evId);
+  if(!ev) return;
+  if(!confirm(`¿Quitar el reporte PDF de "${ev.nombre}"?`)) return;
+  ev.reporte_pdf_path=null;
+  ev.reporte_pdf_nombre=null;
+  ev.reporte_pdf_campos=null;
+  try{
+    await saveRecord('evaluaciones',ev);
+    const idx=DB.evaluaciones.findIndex(x=>x.id===evId);
+    if(idx>=0) DB.evaluaciones[idx]=ev;
+    showToast('Reporte quitado ✓');
+    renderReportesTipos();
+  }catch(e){showToast('Error: '+e.message,'err');}
+}
+function _reporteVarsForPrueba(prueba,ev,enviado){
+  const pct=prueba.puntaje??0;
+  const isLikert=!!prueba.es_likert_puro;
+  const nivel=isLikert
+    ?(pct>=71?'Nivel de desarrollo alto':pct>=41?'Nivel de desarrollo medio':'Nivel de desarrollo bajo')
+    :(pct>=70?'Aprobado':pct>=50?'Regular':'No aprobado');
+  const fecha=prueba.fecha_completada?new Date(prueba.fecha_completada).toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}):'—';
+  return{
+    candidato:enviado.candidato_nombre||'—',
+    puntaje:prueba.puntaje!=null?prueba.puntaje.toFixed(1)+'%':'—',
+    nivel,
+    fecha
+  };
+}
+async function rellenarYDescargarReportePdf(envId,pruebaIdx){
+  const enviado=(DB.procesosEnviados||[]).find(x=>x.id===envId);
+  if(!enviado) return false;
+  const prueba=(enviado.pruebas||[])[pruebaIdx];
+  if(!prueba) return false;
+  const ev=(DB.evaluaciones||[]).find(x=>x.id===prueba.evaluacion_id)||{};
+  if(!ev.reporte_pdf_path) return false;
+  try{
+    const {data:urlData}=sbClient.storage.from('reporte-plantillas').getPublicUrl(ev.reporte_pdf_path);
+    const bytes=await fetch(urlData.publicUrl).then(r=>r.arrayBuffer());
+    const pdfDoc=await PDFLib.PDFDocument.load(bytes);
+    const form=pdfDoc.getForm();
+    const vars=_reporteVarsForPrueba(prueba,ev,enviado);
+    for(const map of (ev.reporte_pdf_campos||[])){
+      if(!map.variable) continue;
+      try{ form.getTextField(map.pdfField).setText(String(vars[map.variable]??'')); }catch(e){}
+    }
+    form.flatten();
+    const outBytes=await pdfDoc.save();
+    const blob=new Blob([outBytes],{type:'application/pdf'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`Informe - ${enviado.candidato_nombre||'candidato'} - ${prueba.nombre||'evaluacion'}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    return true;
+  }catch(e){showToast('Error al generar el PDF: '+e.message,'err');return true;}
 }
 
 function previewEvaluacion(evalId){
@@ -18313,8 +18544,14 @@ function verRespuestasProceso(envId){
         <div><span style="font-weight:600;font-size:14px">${_esc(prueba.nombre)}</span><span style="font-size:11px;color:var(--text3);margin-left:8px">Peso: ${prueba.peso}%</span></div>
         <div style="display:flex;align-items:center;gap:8px">${puntBadge}<span class="badge ${completada?'bg':'bp'}">${completada?'Completada':'Pendiente'}</span></div>
       </div>`;
-    // Plantilla personalizada de informe
-    if(completada&&ev.tipo_informe==='personalizado'&&ev.plantilla_informe){
+    // Reporte PDF de plantilla asignado (Tipos de Reportes)
+    if(completada&&ev.reporte_pdf_path){
+      const _pIdx=(enviado.pruebas||[]).indexOf(prueba);
+      html+=`<div style="display:flex;align-items:center;justify-content:space-between;font-size:13px;padding:8px 0">
+        <span><i class="fa fa-file-pdf" style="color:#ef4444;margin-right:6px"></i>Plantilla PDF: ${_esc(ev.reporte_pdf_nombre||'informe.pdf')}</span>
+        <button class="btn btn-outline btn-sm" onclick="rellenarYDescargarReportePdf('${envId}',${_pIdx})"><i class="fa fa-download"></i> Descargar PDF</button>
+      </div>`;
+    } else if(completada&&ev.tipo_informe==='personalizado'&&ev.plantilla_informe){
       const _pPct=prueba.puntaje??0;
       const _todoPrLik=prueba.es_likert_puro;
       const _nivelStr=_todoPrLik
@@ -18657,6 +18894,11 @@ ${compPages}
 function exportProcesoPDF(envId, pruebaIdx){
   const enviado=(DB.procesosEnviados||[]).find(x=>x.id===envId);
   if(!enviado)return;
+  if(pruebaIdx!==null){
+    const _prueba=(enviado.pruebas||[])[pruebaIdx];
+    const _ev=(DB.evaluaciones||[]).find(x=>x.id===_prueba?.evaluacion_id)||{};
+    if(_ev.reporte_pdf_path){ rellenarYDescargarReportePdf(envId,pruebaIdx); return; }
+  }
   const proc=(DB.procesosEval||[]).find(x=>x.id===enviado.proceso_id)||{};
   const pct=enviado.puntaje_final;
   const _todoProcLik=(enviado.pruebas||[]).every(p=>p.es_likert_puro);

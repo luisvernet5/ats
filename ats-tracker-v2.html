@@ -18692,6 +18692,7 @@ body{font-family:'Liberation Sans','Arial',sans-serif;color:var(--ink);backgroun
 .score-val.result-regular{color:var(--amber);}
 .score-val.result-reprobado{color:#C0524A;}
 .page-flow{width:1024px;position:relative;page-break-before:always;background:var(--paper);padding-bottom:80px;}
+.pg-sub-title{font-size:15.5px;font-weight:bold;color:var(--ink);margin-bottom:12.9px;}
 .qcard-list{margin-top:8px;}
 .qcard{padding:14px 20px 14px 22px;margin-bottom:10px;border-left:3.9px solid var(--line);border-bottom:1px solid var(--line);}
 .qcard:last-child{border-bottom:none;}
@@ -18850,6 +18851,7 @@ function generarInformePDF(envId){
       const pregsObj=(ev.preguntas||[]).filter(q=>!_EVAL_TEXTO_TIPOS.has(q.tipo));
       const resp=prueba.respuestas||{};
       const resultCls=pct>=70?'aprobado':pct>=50?'regular':'reprobado';
+      const sobreEsta=`Esta evaluación mide conocimientos objetivos a partir de ${pregsObj.length} pregunta${pregsObj.length===1?'':'s'} de opción múltiple. Cada pregunta cuenta con una única respuesta correcta.`;
       const qHtml=pregsObj.map((q,i)=>{
         const candResp=resp[q.id];
         const tieneClave=!!q.respuesta_correcta;
@@ -18886,6 +18888,8 @@ function generarInformePDF(envId){
         <div class="score-val result-${resultCls}">${_esc(nivelLabel)}</div>
       </div>
     </div>
+    <div class="pg-sub-title">Sobre esta evaluación</div>
+    <p class="pg-desc" style="margin-bottom:33px">${sobreEsta}</p>
     <div class="qcard-list">${qHtml}</div>
   </div>
   <div class="pg-footer" style="position:relative;margin-top:40px">

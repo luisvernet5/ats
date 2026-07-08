@@ -18630,15 +18630,16 @@ function verRespuestasProceso(envId){
 
 // ── Informe PDF con diseño de marca ──────────────────────────────
 const _INFORME_CSS = `:root{--navy:#001628;--ink:#0B2540;--cyan:#1397D5;--paper:#FAFAF8;--line:#DCE2E6;--amber:#C97A2B;--mint:#1E8F72;--muted:#6B7684;}
+@page{size:10.667in 15.086in;margin:0;}
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{width:1024px;}
 body{font-family:'Liberation Sans','Arial',sans-serif;color:var(--ink);background:var(--paper);}
 .page{width:1024px;height:1448.3px;position:relative;page-break-after:always;overflow:hidden;background:var(--paper);}
-.pg-header{position:relative;padding:51.6px 72.2px 0 72.2px;height:90.3px;}
-.pg-wordmark{position:absolute;left:72.2px;top:54.2px;font-size:15.5px;font-weight:bold;letter-spacing:3.2px;color:var(--navy);}
+.pg-header{position:relative;height:105.9px;background-color:var(--navy);padding:0 72.2px;display:flex;align-items:center;justify-content:space-between;}
+.pg-wordmark{font-size:15.5px;font-weight:bold;letter-spacing:3.2px;color:#fff;}
 .pg-wordmark span{color:var(--cyan);}
-.pg-pageno{position:absolute;right:72.2px;top:54.2px;font-size:14.2px;color:var(--muted);letter-spacing:1.3px;}
-.pg-rule{position:absolute;left:72.2px;right:72.2px;top:87.7px;height:1.3px;background-color:var(--line);}
+.pg-pageno{font-size:13px;font-weight:600;color:rgba(255,255,255,0.7);letter-spacing:1.3px;text-transform:uppercase;}
+.pg-rule{display:none;}
 .pg-body{padding:56.7px 72.2px 0 72.2px;}
 .pg-kicker{color:var(--cyan);font-size:14.2px;font-weight:bold;letter-spacing:3.9px;text-transform:uppercase;margin-bottom:12.9px;}
 .pg-title{font-size:43.8px;font-weight:bold;color:var(--navy);margin-bottom:18.1px;letter-spacing:-0.6px;}
@@ -18864,7 +18865,7 @@ function generarInformePDF(envId){
       }).join('');
 
       return `<div class="page-flow">
-  <div class="pg-header" style="padding-top:51.6px">
+  <div class="pg-header">
     <div class="pg-wordmark">ATS <span>TRACKER</span></div>
     <div class="pg-pageno">${pagAct} / ${pagTot} &nbsp;EVALUACIÓN</div>
     <div class="pg-rule"></div>

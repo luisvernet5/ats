@@ -1022,7 +1022,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <input type="hidden" id="eval-tpl-id">
       <input type="hidden" id="eval-tpl-banner-data">
       <div class="fr full"><div class="fg"><label>Nombre de la evaluación *</label><input id="eval-tpl-nombre" placeholder="Ej. Evaluación Técnica Ventas"></div></div>
-      <div class="fr full"><div class="fg"><label>Descripción</label><textarea id="eval-tpl-desc" rows="2" placeholder="Instrucciones o contexto para el candidato..." style="resize:vertical"></textarea></div></div>
+      <div class="fr full"><div class="fg"><label>Descripción</label><div id="eval-tpl-desc-wrap"></div></div></div>
       <div class="fr full"><div class="fg">
         <label>Categoría</label>
         <div id="eval-tpl-cats" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
@@ -16886,7 +16886,8 @@ async function evalImportConfirm(){
 function openEvalTemplateModal(id=null){
   document.getElementById('eval-tpl-id').value = '';
   document.getElementById('eval-tpl-nombre').value = '';
-  document.getElementById('eval-tpl-desc').value = '';
+  document.getElementById('eval-tpl-desc-wrap').innerHTML = _rtBox('eval-tpl-desc-rt','','Instrucciones o contexto para el candidato...');
+  document.getElementById('eval-tpl-desc-wrap').querySelector('.rt-body').style.minHeight='140px';
   document.getElementById('eval-preguntas-list').innerHTML = '';
   document.getElementById('eval-tpl-title').textContent = id ? 'Editar evaluación' : 'Nueva evaluación';
   evalRemoveBanner();
@@ -16903,7 +16904,11 @@ function openEvalTemplateModal(id=null){
     const e = DB.evaluaciones.find(x=>x.id===id)||{};
     document.getElementById('eval-tpl-id').value = id;
     document.getElementById('eval-tpl-nombre').value = e.nombre||'';
-    document.getElementById('eval-tpl-desc').value = e.descripcion||'';
+    const _descHtml=(e.descripcion||'').includes('<')
+      ? e.descripcion
+      : (e.descripcion||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    document.getElementById('eval-tpl-desc-wrap').innerHTML = _rtBox('eval-tpl-desc-rt',_descHtml,'Instrucciones o contexto para el candidato...');
+    document.getElementById('eval-tpl-desc-wrap').querySelector('.rt-body').style.minHeight='140px';
     _evalSetBanner(e.banner||null);
     (e.preguntas||[]).forEach(q=>evalAddPregunta(q));
   } else {
@@ -17211,7 +17216,7 @@ async function saveEvalTemplate(){
   const anterior = esNueva ? null : DB.evaluaciones.find(x=>x.id===id);
   const banner = document.getElementById('eval-tpl-banner-data').value||null;
   const categoria = _evalGetCatSel();
-  const ev={id,nombre,descripcion:document.getElementById('eval-tpl-desc').value.trim(),empresa_ids,preguntas,banner,activa:true,categoria,created_at:new Date().toISOString()};
+  const ev={id,nombre,descripcion:_rtGet('eval-tpl-desc-rt'),empresa_ids,preguntas,banner,activa:true,categoria,created_at:new Date().toISOString()};
   try{
     await saveRecord('evaluaciones',ev);
     const idx=DB.evaluaciones.findIndex(x=>x.id===id);
@@ -18445,7 +18450,10 @@ function _pepubRenderCurrentEval(){
   const pepubBanner=document.getElementById('pepub-banner');
   if(pepubBanner){ if(ev.banner){pepubBanner.src=ev.banner;pepubBanner.style.display='';}else{pepubBanner.src='';pepubBanner.style.display='none';} }
   document.getElementById('pepub-eval-nombre').textContent=_esc(prueba.nombre);
-  document.getElementById('pepub-eval-desc').textContent=ev.descripcion||'';
+  const _evDesc=ev.descripcion||'';
+  document.getElementById('pepub-eval-desc').innerHTML=_evDesc.includes('<')
+    ? _evDesc
+    : _evDesc.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
   document.getElementById('pepub-eval-peso').textContent=`Peso en el proceso: ${prueba.peso}%`;
   const isLast=evalIdx===(enviado.pruebas||[]).length-1;
   document.getElementById('pepub-submit-btn').innerHTML=isLast?'<i class="fa fa-paper-plane"></i> Enviar respuestas':'<i class="fa fa-arrow-right"></i> Siguiente';

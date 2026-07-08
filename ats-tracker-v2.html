@@ -16521,17 +16521,25 @@ function renderReportesTipos(){
     const cat=EVAL_CATEGORIAS.find(c=>c.value===e.categoria);
     const catBadge=cat?`<span style="display:inline-block;font-size:11px;padding:2px 9px;border-radius:10px;border:1px solid ${cat.color};color:${cat.color};font-weight:600">${cat.label}</span>`:`<span style="font-size:11px;color:var(--text3)">—</span>`;
     const tieneArchivo=!!e.reporte_pdf_path;
-    const archivoHTML=tieneArchivo
-      ?`<span style="font-size:12px"><i class="fa fa-file-pdf" style="color:#ef4444;margin-right:5px"></i>${_esc(e.reporte_pdf_nombre||'informe.pdf')}</span>`
-      :`<span style="font-size:11px;color:var(--text3);font-style:italic">Sin asignar</span>`;
-    const camposCount=(e.reporte_pdf_campos||[]).filter(c=>c.variable).length;
+    const esEstandar=(e.tipo_informe||'estandar')==='estandar';
+    let archivoHTML,camposHTML;
+    if(tieneArchivo){
+      archivoHTML=`<span style="font-size:12px"><i class="fa fa-file-pdf" style="color:#ef4444;margin-right:5px"></i>${_esc(e.reporte_pdf_nombre||'informe.pdf')}</span>`;
+      camposHTML=(e.reporte_pdf_campos||[]).filter(c=>c.variable).length;
+    } else if(esEstandar){
+      archivoHTML=`<span class="badge bg"><i class="fa fa-check-circle"></i> Reporte estándar</span>`;
+      camposHTML=`<span style="font-size:11px;color:var(--text3)">Automático</span>`;
+    } else {
+      archivoHTML=`<span style="font-size:11px;color:var(--text3);font-style:italic">Sin asignar</span>`;
+      camposHTML='—';
+    }
     return `<tr>
       <td><strong>${_esc(e.nombre||'')}</strong></td>
       <td>${catBadge}</td>
       <td>${archivoHTML}</td>
-      <td style="text-align:center">${tieneArchivo?camposCount:'—'}</td>
+      <td style="text-align:center">${camposHTML}</td>
       <td style="white-space:nowrap">
-        <button class="btn btn-ghost btn-sm" onclick="openReporteAsignarModal('${e.id}')"><i class="fa fa-${tieneArchivo?'edit':'upload'}"></i> ${tieneArchivo?'Editar':'Asignar'}</button>
+        <button class="btn btn-ghost btn-sm" onclick="openReporteAsignarModal('${e.id}')"><i class="fa fa-${tieneArchivo?'edit':'upload'}"></i> ${tieneArchivo?'Editar':'Asignar PDF'}</button>
         ${tieneArchivo?`<button class="btn btn-danger btn-sm" onclick="quitarReportePdf('${e.id}')" title="Quitar"><i class="fa fa-trash"></i></button>`:''}
       </td>
     </tr>`;

@@ -18717,7 +18717,9 @@ function generarInformePDF(envId){
   const progPct=pregTotal>0?Math.round(pregResp/pregTotal*100):100;
 
   // ── Cover HTML ───────────────────────────────────────────────
-  const coverHtml=`<div class="page">
+  // Con una sola prueba, el candidato+resultado ya caben en esa misma página: no hace falta portada aparte.
+  const soloUnaPrueba=pruebas.length===1;
+  const coverHtml=soloUnaPrueba?'':`<div class="page">
   <div class="pg-header">
     <div class="pg-wordmark">ATS <span>TRACKER</span></div>
     <div class="pg-pageno">INFORME DE EVALUACIÓN</div>
@@ -18748,7 +18750,7 @@ function generarInformePDF(envId){
 </div>`;
 
   // ── Competency pages ─────────────────────────────────────────
-  const totalPags=pruebas.length+1; // cover + 1 por prueba
+  const totalPags=soloUnaPrueba?1:pruebas.length+1; // 1 sola página, o portada + 1 por prueba
   const _catLabels={comunicacion:'Comunicación',liderazgo:'Liderazgo',tecnica:'Técnica',
     ofimatica:'Ofimática',ventas:'Ventas',servicio:'Servicio al cliente',general:'General',
     actitudinal:'Actitudinal',cognitivo:'Cognitivo',personalidad:'Personalidad'};
@@ -18785,7 +18787,7 @@ function generarInformePDF(envId){
     const compDesc=oraciones.slice(0,2).join(' ').trim()||(rawDesc.slice(0,180).trim()+(rawDesc.length>180?'…':''));
 
     const kicker=(_catLabels[ev.categoria]||ev.categoria||'Competencia').toUpperCase();
-    const pagAct=String(idx+2).padStart(2,'0');
+    const pagAct=String(soloUnaPrueba?1:idx+2).padStart(2,'0');
     const pagTot=String(totalPags).padStart(2,'0');
 
     if(isLikert){
@@ -18884,6 +18886,10 @@ function generarInformePDF(envId){
       <div class="score-col">
         <div class="score-lbl">Resultado</div>
         <div class="score-val result-${resultCls}">${_esc(nivelLabel)}</div>
+      </div>
+      <div class="score-col">
+        <div class="score-lbl">Fecha</div>
+        <div class="score-val" style="font-size:18px">${prueba.fecha_completada?new Date(prueba.fecha_completada).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,' / '):'—'}</div>
       </div>
     </div>
     <div class="pg-sub-title">Sobre esta evaluación</div>

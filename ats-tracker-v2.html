@@ -16445,7 +16445,7 @@ function exportEvaluacionPreviewPDF(evalId){
   const preguntas=ev.preguntas||[];
   const questionsHtml=preguntas.map(q=>{
     if(q.tipo==='titulo')return`<div style="font-size:15px;font-weight:700;color:#111;padding:6px 0 4px;border-bottom:2px solid #2aaade;margin-bottom:4px">${_esc(q.texto||'')}</div>`;
-    if(q.tipo==='descripcion')return`<div style="font-size:13px;color:#555;padding:3px 0 6px">${_esc(q.texto||'')}</div>`;
+    if(q.tipo==='descripcion')return`<div style="font-size:13px;color:#555;padding:3px 0 6px;white-space:pre-wrap">${_esc(q.texto||'')}</div>`;
     const req=q.requerida?'<span style="color:#e53e3e"> *</span>':'';
     const lbl=`<div style="font-size:13px;font-weight:600;margin-bottom:10px;color:#111">${_esc(q.texto||'')}${req}</div>`;
     let inp='';
@@ -17366,7 +17366,7 @@ function verRespuestasEval(envId){
   let pregNum=0;
   const filas = preguntas.map(q=>{
     if(q.tipo==='titulo') return `<div style="font-size:17px;font-weight:700;padding:6px 0 2px;border-bottom:1px solid var(--border);margin-bottom:4px">${q.texto}</div>`;
-    if(q.tipo==='descripcion') return `<div style="font-size:13px;color:var(--text2);padding:2px 0 6px">${q.texto}</div>`;
+    if(q.tipo==='descripcion') return `<div style="font-size:13px;color:var(--text2);padding:2px 0 6px;white-space:pre-wrap">${_esc(q.texto||'')}</div>`;
     pregNum++;
     const resp = respuestas[q.id]||null;
     const respStr = resp ? String(resp) : null;
@@ -17608,7 +17608,7 @@ function _renderEvalPublica(ev, enviada){
   let pregNum = 0;
   document.getElementById('evpub-preguntas').innerHTML = (ev.preguntas||[]).map(q=>{
     if(q.tipo==='titulo') return `<div style="font-size:20px;font-weight:700;padding:8px 0 2px">${q.texto}</div>`;
-    if(q.tipo==='descripcion') return `<div style="font-size:14px;color:var(--text2);padding:4px 0">${q.texto}</div>`;
+    if(q.tipo==='descripcion') return `<div style="font-size:14px;color:var(--text2);padding:4px 0;white-space:pre-wrap">${_esc(q.texto||'')}</div>`;
     pregNum++;
     const req = q.requerida ? '<span style="color:var(--red)"> *</span>' : '';
     const imgHTML = q.imagen ? `<div style="margin:8px 0 12px"><img src="${q.imagen}" style="max-width:100%;max-height:260px;border-radius:8px;border:1px solid var(--border);display:block"></div>` : '';
@@ -18460,7 +18460,7 @@ function _renderProcesoPubPreguntas(preguntas){
   let num=0;
   return preguntas.map(q=>{
     if(q.tipo==='titulo')return`<div style="font-size:16px;font-weight:700;color:var(--text);padding:6px 0;border-bottom:2px solid var(--primary);margin-bottom:4px">${_esc(q.texto||'')}</div>`;
-    if(q.tipo==='descripcion')return`<div style="font-size:13px;color:var(--text2);padding:4px 0">${_esc(q.texto||'')}</div>`;
+    if(q.tipo==='descripcion')return`<div style="font-size:13px;color:var(--text2);padding:4px 0;white-space:pre-wrap">${_esc(q.texto||'')}</div>`;
     num++;
     const req=q.requerida?`<span style="color:var(--danger)"> *</span>`:'';
     const imgHTML=q.imagen?`<div style="margin:8px 0 12px"><img src="${q.imagen}" style="max-width:100%;max-height:260px;border-radius:8px;border:1px solid var(--border);display:block"></div>`:'';

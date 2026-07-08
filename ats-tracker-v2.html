@@ -18367,10 +18367,240 @@ function verRespuestasProceso(envId){
         </div>
       </div>`;
     }
-    footer.innerHTML = pdfBtn + `<button class="btn btn-ghost" onclick="closeModal('modal-proceso-respuestas')">Cerrar</button>`;
+    const informeBtn = `<button class="btn btn-outline" onclick="generarInformePDF('${envId}')" style="border-color:var(--primary);color:var(--primary)"><i class="fa fa-download"></i> Descargar informe</button>`;
+    footer.innerHTML = informeBtn + pdfBtn + `<button class="btn btn-ghost" onclick="closeModal('modal-proceso-respuestas')">Cerrar</button>`;
   }
 
   openModal('modal-proceso-respuestas');
+}
+
+// ── Informe PDF con diseño de marca ──────────────────────────────
+const _INFORME_CSS = `:root{--navy:#001628;--ink:#0B2540;--cyan:#1397D5;--paper:#FAFAF8;--line:#DCE2E6;--amber:#C97A2B;--mint:#1E8F72;--muted:#6B7684;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:1024px;}
+body{font-family:'Liberation Sans','Arial',sans-serif;color:var(--ink);background:var(--paper);}
+.page{width:1024px;height:1448.3px;position:relative;page-break-after:always;overflow:hidden;background:var(--paper);}
+.cover{background-color:var(--navy);}
+.cover-wordmark{position:absolute;top:72.2px;left:77.4px;color:#fff;font-size:16.8px;font-weight:bold;letter-spacing:3.9px;}
+.cover-wordmark span{color:var(--cyan);}
+.cover-kicker{position:absolute;top:348.2px;left:77.4px;color:var(--cyan);font-size:15.5px;font-weight:bold;letter-spacing:5.2px;text-transform:uppercase;}
+.cover-name{position:absolute;top:381.7px;left:74.8px;width:877px;color:#fff;font-size:67.1px;font-weight:bold;line-height:1.08;}
+.cover-role{position:absolute;top:528.8px;left:77.4px;color:rgba(255,255,255,0.65);font-size:20.6px;font-weight:normal;letter-spacing:0.4px;}
+.cover-track{position:absolute;left:77.4px;right:77.4px;top:670.6px;height:2.6px;background-color:rgba(255,255,255,0.18);}
+.cover-track-fill{position:absolute;left:0;top:0;height:2.6px;background-color:var(--cyan);}
+.cover-track-pin{position:absolute;top:-7.7px;width:18.1px;height:18.1px;margin-left:-9px;border-radius:50%;background-color:var(--cyan);border:3.9px solid var(--navy);box-shadow:0 0 0 2.6px var(--cyan);}
+.cover-track-label{position:absolute;left:77.4px;top:696.4px;color:rgba(255,255,255,0.45);font-size:12.9px;letter-spacing:1.9px;text-transform:uppercase;}
+.cover-meta{position:absolute;left:77.4px;bottom:103.2px;right:77.4px;}
+.cover-meta-row{border-top:1.3px solid rgba(255,255,255,0.14);padding:20.6px 0;}
+.cover-meta-label{display:inline-block;width:257.9px;color:rgba(255,255,255,0.45);font-size:14.2px;letter-spacing:1.9px;text-transform:uppercase;vertical-align:top;}
+.cover-meta-value{display:inline-block;color:#fff;font-size:18.1px;font-weight:bold;}
+.cover-foot{position:absolute;bottom:43.8px;left:77.4px;color:rgba(255,255,255,0.35);font-size:12.3px;letter-spacing:0.6px;}
+.pg-header{position:relative;padding:51.6px 72.2px 0 72.2px;height:90.3px;}
+.pg-wordmark{position:absolute;left:72.2px;top:54.2px;font-size:15.5px;font-weight:bold;letter-spacing:3.2px;color:var(--navy);}
+.pg-wordmark span{color:var(--cyan);}
+.pg-pageno{position:absolute;right:72.2px;top:54.2px;font-size:14.2px;color:var(--muted);letter-spacing:1.3px;}
+.pg-rule{position:absolute;left:72.2px;right:72.2px;top:87.7px;height:1.3px;background-color:var(--line);}
+.pg-body{padding:56.7px 72.2px 0 72.2px;}
+.pg-kicker{color:var(--cyan);font-size:14.2px;font-weight:bold;letter-spacing:3.9px;text-transform:uppercase;margin-bottom:12.9px;}
+.pg-title{font-size:43.8px;font-weight:bold;color:var(--navy);margin-bottom:18.1px;letter-spacing:-0.6px;}
+.pg-desc{font-size:16.1px;line-height:1.65;color:var(--muted);max-width:722.2px;margin-bottom:49px;}
+.route{position:relative;height:116.1px;margin-bottom:10.3px;}
+.route-line{position:absolute;left:0;right:0;top:59.3px;height:2.6px;background-color:var(--line);}
+.route-tick{position:absolute;top:51.6px;width:1.3px;height:18.1px;background-color:var(--line);}
+.route-tick.major{background-color:#B9C2C9;}
+.route-ticklabel{position:absolute;top:74.8px;font-size:11.6px;color:var(--muted);width:25.8px;text-align:center;margin-left:-12.9px;}
+.route-pin{position:absolute;top:25.8px;width:2.6px;height:33.5px;background-color:var(--navy);}
+.route-pin-dot{position:absolute;top:10.3px;width:33.5px;height:33.5px;margin-left:-15.5px;border-radius:50%;background-color:var(--navy);border:5.2px solid var(--paper);box-shadow:0 0 0 1.9px var(--navy);}
+.route-pin-score{position:absolute;top:-28.4px;font-size:19.3px;font-weight:bold;color:var(--navy);margin-left:-25.8px;width:51.6px;text-align:center;}
+.route-zone{margin-top:33.5px;font-size:15.5px;color:var(--ink);}
+.route-zone b{color:var(--navy);}
+.pg-columns{margin-top:43.8px;}
+.col-observado{width:322.4px;float:left;padding-right:36.1px;border-right:1.3px solid var(--line);}
+.col-observado .lbl{font-size:13.5px;font-weight:bold;letter-spacing:2.6px;color:var(--navy);text-transform:uppercase;margin-bottom:20.6px;}
+.col-observado li{font-size:14.8px;line-height:1.55;color:var(--ink);margin-bottom:18.1px;list-style:none;}
+.col-eval{margin-left:361.1px;}
+.eval-block{margin-bottom:33.5px;padding-left:23.2px;border-left:3.9px solid var(--mint);}
+.eval-block.dev{border-left-color:var(--amber);}
+.eval-block .lbl{font-size:13.5px;font-weight:bold;letter-spacing:2.6px;text-transform:uppercase;margin-bottom:15.5px;}
+.eval-block.strength .lbl{color:var(--mint);}
+.eval-block.dev .lbl{color:var(--amber);}
+.eval-block li{font-size:14.8px;line-height:1.55;color:var(--ink);margin-bottom:11.6px;list-style:none;}
+.pg-footer{position:absolute;bottom:0;left:0;right:0;padding:20.6px 72.2px;border-top:1.3px solid var(--line);font-size:11.6px;color:var(--muted);}
+.pg-footer .r{float:right;}
+@media print{.no-print{display:none!important}}`;
+
+function generarInformePDF(envId){
+  const enviado=(DB.procesosEnviados||[]).find(x=>x.id===envId);
+  if(!enviado){showToast('Proceso no encontrado','err');return;}
+  const proc=(DB.procesosEval||[]).find(x=>x.id===enviado.proceso_id)||{};
+  const pruebas=(enviado.pruebas||[]).filter(p=>p.estado==='completada');
+  if(!pruebas.length){showToast('No hay pruebas completadas','err');return;}
+
+  // ── Empresa ──────────────────────────────────────────────────
+  const empId=currentUserData?.empresa_id;
+  const empresaNombre=(DB.empresas||[]).find(x=>x.id===empId)?.nombre||'—';
+
+  // ── Cover data ───────────────────────────────────────────────
+  const fechas=pruebas.map(p=>p.fecha_completada).filter(Boolean).sort();
+  const ultimaFecha=fechas.length?new Date(fechas[fechas.length-1]):new Date();
+  const fechaStr=ultimaFecha.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,' / ');
+  const evalNombre=pruebas.length===1?pruebas[0].nombre:(proc.nombre||'Evaluación');
+  const todoLikert=pruebas.every(p=>p.es_likert_puro);
+  const tipoEval=todoLikert?'Escala de autopercepción conductual':'Evaluación objetiva';
+
+  let pregTotal=0,pregResp=0;
+  for(const p of pruebas){
+    const ev=(DB.evaluaciones||[]).find(x=>x.id===p.evaluacion_id)||{};
+    const qs=(ev.preguntas||[]).filter(q=>!_EVAL_TEXTO_TIPOS.has(q.tipo));
+    pregTotal+=qs.length;
+    pregResp+=qs.filter(q=>(p.respuestas||{})[q.id]!=null).length;
+  }
+  const progPct=pregTotal>0?Math.round(pregResp/pregTotal*100):100;
+
+  // ── Cover HTML ───────────────────────────────────────────────
+  const coverHtml=`<div class="page cover">
+  <div class="cover-wordmark">ATS <span>TRACKER</span></div>
+  <div class="cover-kicker">Informe de evaluación</div>
+  <div class="cover-name">${_esc(enviado.candidato_nombre||'—')}</div>
+  <div class="cover-role">${_esc(evalNombre)} &nbsp;·&nbsp; ${_esc(empresaNombre)}</div>
+  <div class="cover-track">
+    <div class="cover-track-fill" style="width:${progPct}%"></div>
+    <div class="cover-track-pin" style="left:${progPct}%"></div>
+  </div>
+  <div class="cover-track-label">Progreso de la evaluación &nbsp;·&nbsp; Completada</div>
+  <div class="cover-meta">
+    <div class="cover-meta-row"><span class="cover-meta-label">Fecha</span><span class="cover-meta-value">${fechaStr}</span></div>
+    <div class="cover-meta-row"><span class="cover-meta-label">Tipo de evaluación</span><span class="cover-meta-value">${_esc(tipoEval)}</span></div>
+    <div class="cover-meta-row"><span class="cover-meta-label">Preguntas contestadas</span><span class="cover-meta-value">${pregResp} / ${pregTotal}</span></div>
+  </div>
+  <div class="cover-foot">Documento confidencial · Generado por ATS Tracker · atstracker.com.mx</div>
+</div>`;
+
+  // ── Competency pages ─────────────────────────────────────────
+  const totalPags=pruebas.length+1; // cover + 1 por prueba
+  const _catLabels={comunicacion:'Comunicación',liderazgo:'Liderazgo',tecnica:'Técnica',
+    ofimatica:'Ofimática',ventas:'Ventas',servicio:'Servicio al cliente',general:'General',
+    actitudinal:'Actitudinal',cognitivo:'Cognitivo',personalidad:'Personalidad'};
+
+  const compPages=pruebas.map((prueba,idx)=>{
+    const ev=(DB.evaluaciones||[]).find(x=>x.id===prueba.evaluacion_id)||{};
+    const isLikert=!!prueba.es_likert_puro;
+    const pct=prueba.puntaje??0;
+
+    // Score visual
+    let scoreValor,scorePct,escMin,escMax;
+    if(isLikert){
+      const rawAvg=(pct/100)*5;
+      scoreValor=rawAvg.toFixed(1);
+      scorePct=Math.max(2,Math.min(96,((rawAvg-1)/4)*100)).toFixed(1);
+      escMin='1'; escMax='5';
+    } else {
+      scoreValor=pct.toFixed(1)+'%';
+      scorePct=Math.max(2,Math.min(96,pct)).toFixed(1);
+      escMin='0%'; escMax='100%';
+    }
+
+    // Nivel
+    const nivelLabel=isLikert
+      ?(pct>=71?'Nivel de desarrollo alto':pct>=41?'Nivel de desarrollo medio':'Nivel de desarrollo bajo')
+      :(pct>=70?'Aprobado':pct>=50?'Regular':'No aprobado');
+    const nivelDetalle=isLikert
+      ?(pct>=71?'por encima del rango esperado para el rol':pct>=41?'dentro del rango esperado para el rol':'por debajo del rango esperado para el rol')
+      :(pct>=70?'puntaje suficiente para el estándar del rol':pct>=50?'dentro del rango mínimo aceptable':'requiere refuerzo en esta área');
+
+    // Descripción: strip HTML, máx 2 oraciones
+    const rawDesc=(ev.descripcion||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+    const oraciones=rawDesc.match(/[^.!?]+[.!?]+/g)||[];
+    const compDesc=oraciones.slice(0,2).join(' ').trim()||(rawDesc.slice(0,180).trim()+(rawDesc.length>180?'…':''));
+
+    // Bullets
+    let obsLi='',fortLi='',devLi='';
+    if(isLikert){
+      const pregsLik=(ev.preguntas||[]).filter(q=>q.tipo==='escala_lineal');
+      const resp=prueba.respuestas||{};
+      const fort=pregsLik.filter(q=>parseFloat(resp[q.id])>=4)
+        .sort((a,b)=>(parseFloat(resp[b.id])||0)-(parseFloat(resp[a.id])||0)).slice(0,4);
+      const dev=pregsLik.filter(q=>parseFloat(resp[q.id])<=2)
+        .sort((a,b)=>(parseFloat(resp[a.id])||0)-(parseFloat(resp[b.id])||0)).slice(0,4);
+      const obs=pregsLik.filter(q=>parseFloat(resp[q.id])===3).slice(0,3);
+      fortLi=fort.map(q=>`<li>${_esc(q.texto||'')}</li>`).join('')||'<li>Sin observaciones en esta categoría</li>';
+      devLi=dev.map(q=>`<li>${_esc(q.texto||'')}</li>`).join('')||'<li>Sin observaciones en esta categoría</li>';
+      obsLi=obs.map(q=>`<li>${_esc(q.texto||'')}</li>`).join('');
+    } else {
+      const pregsObj=(ev.preguntas||[]).filter(q=>q.respuesta_correcta&&!_EVAL_TEXTO_TIPOS.has(q.tipo));
+      if(pregsObj.length){
+        const resp=prueba.respuestas||{};
+        const corrN=pregsObj.filter(q=>_evalEsCorrecta(q,resp[q.id])).length;
+        const cort=pregsObj.filter(q=>_evalEsCorrecta(q,resp[q.id])).slice(0,3);
+        const inco=pregsObj.filter(q=>!_evalEsCorrecta(q,resp[q.id])&&resp[q.id]!=null).slice(0,3);
+        obsLi=`<li>Respondió ${corrN} de ${pregsObj.length} preguntas correctamente (${Math.round(corrN/pregsObj.length*100)}%)</li>`;
+        fortLi=cort.map(q=>`<li>${_esc(q.texto||'')}</li>`).join('')||'<li>—</li>';
+        devLi=inco.map(q=>`<li>${_esc(q.texto||'')}</li>`).join('')||'<li>—</li>';
+      }
+    }
+
+    const kicker=(_catLabels[ev.categoria]||ev.categoria||'Competencia').toUpperCase();
+    const pagAct=String(idx+2).padStart(2,'0');
+    const pagTot=String(totalPags).padStart(2,'0');
+
+    return `<div class="page">
+  <div class="pg-header">
+    <div class="pg-wordmark">ATS <span>TRACKER</span></div>
+    <div class="pg-pageno">${pagAct} / ${pagTot} &nbsp;COMPETENCIAS</div>
+    <div class="pg-rule"></div>
+  </div>
+  <div class="pg-body">
+    <div class="pg-kicker">${_esc(kicker)}</div>
+    <div class="pg-title">${_esc(prueba.nombre||'—')}</div>
+    <p class="pg-desc">${_esc(compDesc)}</p>
+    <div class="route">
+      <div class="route-line"></div>
+      <div class="route-tick major" style="left:0%"></div>
+      <div class="route-ticklabel" style="left:0%">${escMin}</div>
+      <div class="route-tick major" style="left:100%"></div>
+      <div class="route-ticklabel" style="left:100%;margin-left:-20px">${escMax}</div>
+      <div class="route-pin" style="left:${scorePct}%"></div>
+      <div class="route-pin-dot" style="left:${scorePct}%"></div>
+      <div class="route-pin-score" style="left:${scorePct}%">${scoreValor}</div>
+    </div>
+    <div class="route-zone"><b>${_esc(nivelLabel)}</b> — ${_esc(nivelDetalle)}</div>
+    <div class="pg-columns">
+      <div class="col-observado">
+        <div class="lbl">Se observa</div>
+        <ul>${obsLi}</ul>
+      </div>
+      <div class="col-eval">
+        <div class="eval-block strength">
+          <div class="lbl">Fortalezas</div>
+          <ul>${fortLi}</ul>
+        </div>
+        <div class="eval-block dev">
+          <div class="lbl">A desarrollar</div>
+          <ul>${devLi}</ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="pg-footer">
+    ATS Tracker · Informe generado automáticamente
+    <span class="r">${_esc(empresaNombre)} · Confidencial</span>
+  </div>
+</div>`;
+  }).join('');
+
+  // ── Ensamblar y abrir ────────────────────────────────────────
+  const fullHtml=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Informe — ${_esc(enviado.candidato_nombre||'')}</title>
+<style>${_INFORME_CSS}</style></head><body>
+${coverHtml}
+${compPages}
+<div class="no-print" style="position:fixed;bottom:20px;right:20px;z-index:999">
+  <button onclick="window.print()" style="background:#001628;color:#fff;border:none;border-radius:8px;padding:11px 22px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3)">&#128196; Imprimir / Guardar PDF</button>
+</div>
+<script>window.onload=function(){setTimeout(function(){window.print();},900);};<\/script>
+</body></html>`;
+
+  const blob=new Blob([fullHtml],{type:'text/html;charset=utf-8'});
+  window.open(URL.createObjectURL(blob),'_blank');
 }
 
 function exportProcesoPDF(envId, pruebaIdx){

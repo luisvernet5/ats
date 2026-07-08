@@ -18427,7 +18427,15 @@ body{font-family:'Liberation Sans','Arial',sans-serif;color:var(--ink);backgroun
 .eval-block li{font-size:14.8px;line-height:1.55;color:var(--ink);margin-bottom:11.6px;list-style:none;}
 .pg-footer{position:absolute;bottom:0;left:0;right:0;padding:20.6px 72.2px;border-top:1.3px solid var(--line);font-size:11.6px;color:var(--muted);}
 .pg-footer .r{float:right;}
-@media print{.no-print{display:none!important}}`;
+@media print{.no-print{display:none!important}}
+.page-flow{width:1024px;position:relative;page-break-before:always;background:var(--paper);padding-bottom:80px;}
+.qa-list{margin-top:28px;}
+.qa-item{padding:13px 18px 13px 22px;border-radius:8px;margin-bottom:9px;border-left:4px solid #ccc;background:#f8f9fa;}
+.qa-item.correct{border-left-color:var(--mint);background:#f0faf7;}
+.qa-item.wrong{border-left-color:#dc2626;background:#fff5f5;}
+.qa-q{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:6px;}
+.qa-ans{font-size:13px;color:#444;}
+.qa-ans-correct{font-size:12px;color:var(--mint);margin-top:5px;font-weight:500;}`;
 
 function generarInformePDF(envId){
   const enviado=(DB.procesosEnviados||[]).find(x=>x.id===envId);
@@ -18470,7 +18478,7 @@ function generarInformePDF(envId){
   <div class="cover-track-label">Progreso de la evaluación &nbsp;·&nbsp; Completada</div>
   <div class="cover-meta">
     <div class="cover-meta-row"><span class="cover-meta-label">Fecha</span><span class="cover-meta-value">${fechaStr}</span></div>
-    <div class="cover-meta-row"><span class="cover-meta-label">Tipo de evaluación</span><span class="cover-meta-value">${_esc(tipoEval)}</span></div>
+    <div class="cover-meta-row"><span class="cover-meta-label">Evaluación</span><span class="cover-meta-value">${_esc(evalNombre)}</span></div>
     <div class="cover-meta-row"><span class="cover-meta-label">Preguntas contestadas</span><span class="cover-meta-value">${pregResp} / ${pregTotal}</span></div>
   </div>
   <div class="cover-foot">Documento confidencial · Generado por ATS Tracker · atstracker.com.mx</div>
@@ -18513,9 +18521,12 @@ function generarInformePDF(envId){
     const oraciones=rawDesc.match(/[^.!?]+[.!?]+/g)||[];
     const compDesc=oraciones.slice(0,2).join(' ').trim()||(rawDesc.slice(0,180).trim()+(rawDesc.length>180?'…':''));
 
-    // Bullets
-    let obsLi='',fortLi='',devLi='';
+    const kicker=(_catLabels[ev.categoria]||ev.categoria||'Competencia').toUpperCase();
+    const pagAct=String(idx+2).padStart(2,'0');
+    const pagTot=String(totalPags).padStart(2,'0');
+
     if(isLikert){
+      // ── Likert: layout de columnas con fortalezas/desarrollo ──
       const pregsLik=(ev.preguntas||[]).filter(q=>q.tipo==='escala_lineal');
       const resp=prueba.respuestas||{};
       const fort=pregsLik.filter(q=>parseFloat(resp[q.id])>=4)
@@ -18523,27 +18534,11 @@ function generarInformePDF(envId){
       const dev=pregsLik.filter(q=>parseFloat(resp[q.id])<=2)
         .sort((a,b)=>(parseFloat(resp[a.id])||0)-(parseFloat(resp[b.id])||0)).slice(0,4);
       const obs=pregsLik.filter(q=>parseFloat(resp[q.id])===3).slice(0,3);
-      fortLi=fort.map(q=>`<li>${_esc(q.texto||'')}</li>`).join('')||'<li>Sin observaciones en esta categoría</li>';
-      devLi=dev.map(q=>`<li>${_esc(q.texto||'')}</li>`).join('')||'<li>Sin observaciones en esta categoría</li>';
-      obsLi=obs.map(q=>`<li>${_esc(q.texto||'')}</li>`).join('');
-    } else {
-      const pregsObj=(ev.preguntas||[]).filter(q=>q.respuesta_correcta&&!_EVAL_TEXTO_TIPOS.has(q.tipo));
-      if(pregsObj.length){
-        const resp=prueba.respuestas||{};
-        const corrN=pregsObj.filter(q=>_evalEsCorrecta(q,resp[q.id])).length;
-        const cort=pregsObj.filter(q=>_evalEsCorrecta(q,resp[q.id])).slice(0,3);
-        const inco=pregsObj.filter(q=>!_evalEsCorrecta(q,resp[q.id])&&resp[q.id]!=null).slice(0,3);
-        obsLi=`<li>Respondió ${corrN} de ${pregsObj.length} preguntas correctamente (${Math.round(corrN/pregsObj.length*100)}%)</li>`;
-        fortLi=cort.map(q=>`<li>${_esc(q.texto||'')}</li>`).join('')||'<li>—</li>';
-        devLi=inco.map(q=>`<li>${_esc(q.texto||'')}</li>`).join('')||'<li>—</li>';
-      }
-    }
+      const fortLi=fort.map(q=>`<li>${_esc(q.texto||'')}</li>`).join('')||'<li>Sin observaciones en esta categoría</li>';
+      const devLi=dev.map(q=>`<li>${_esc(q.texto||'')}</li>`).join('')||'<li>Sin observaciones en esta categoría</li>';
+      const obsLi=obs.map(q=>`<li>${_esc(q.texto||'')}</li>`).join('');
 
-    const kicker=(_catLabels[ev.categoria]||ev.categoria||'Competencia').toUpperCase();
-    const pagAct=String(idx+2).padStart(2,'0');
-    const pagTot=String(totalPags).padStart(2,'0');
-
-    return `<div class="page">
+      return `<div class="page">
   <div class="pg-header">
     <div class="pg-wordmark">ATS <span>TRACKER</span></div>
     <div class="pg-pageno">${pagAct} / ${pagTot} &nbsp;COMPETENCIAS</div>
@@ -18586,6 +18581,53 @@ function generarInformePDF(envId){
     <span class="r">${_esc(empresaNombre)} · Confidencial</span>
   </div>
 </div>`;
+    } else {
+      // ── Objetiva: lista Q&A completa ──────────────────────────
+      const pregsObj=(ev.preguntas||[]).filter(q=>!_EVAL_TEXTO_TIPOS.has(q.tipo));
+      const resp=prueba.respuestas||{};
+      const qaHtml=pregsObj.map(q=>{
+        const candidatoResp=resp[q.id];
+        const tieneCorrecta=!!q.respuesta_correcta;
+        const esCorrecta=tieneCorrecta?_evalEsCorrecta(q,candidatoResp):null;
+        const cls=tieneCorrecta?(esCorrecta?'correct':'wrong'):'';
+        const respText=candidatoResp!=null?_esc(String(candidatoResp)):'<span style="color:#aaa;font-style:italic">Sin respuesta</span>';
+        const correctaLine=(tieneCorrecta&&!esCorrecta)?`<div class="qa-ans-correct">&#10003; Respuesta correcta: ${_esc(String(q.respuesta_correcta))}</div>`:'';
+        return `<div class="qa-item ${cls}">
+  <div class="qa-q">${_esc(q.texto||'')}</div>
+  <div class="qa-ans">${respText}</div>
+  ${correctaLine}
+</div>`;
+      }).join('');
+
+      return `<div class="page-flow">
+  <div class="pg-header" style="padding-top:51.6px">
+    <div class="pg-wordmark">ATS <span>TRACKER</span></div>
+    <div class="pg-pageno">${pagAct} / ${pagTot} &nbsp;EVALUACIÓN</div>
+    <div class="pg-rule"></div>
+  </div>
+  <div class="pg-body">
+    <div class="pg-kicker">${_esc(kicker)}</div>
+    <div class="pg-title">${_esc(prueba.nombre||'—')}</div>
+    <p class="pg-desc">${_esc(compDesc)}</p>
+    <div class="route">
+      <div class="route-line"></div>
+      <div class="route-tick major" style="left:0%"></div>
+      <div class="route-ticklabel" style="left:0%">${escMin}</div>
+      <div class="route-tick major" style="left:100%"></div>
+      <div class="route-ticklabel" style="left:100%;margin-left:-20px">${escMax}</div>
+      <div class="route-pin" style="left:${scorePct}%"></div>
+      <div class="route-pin-dot" style="left:${scorePct}%"></div>
+      <div class="route-pin-score" style="left:${scorePct}%">${scoreValor}</div>
+    </div>
+    <div class="route-zone"><b>${_esc(nivelLabel)}</b> — ${_esc(nivelDetalle)}</div>
+    <div class="qa-list">${qaHtml}</div>
+  </div>
+  <div class="pg-footer" style="position:relative;margin-top:40px">
+    ATS Tracker · Informe generado automáticamente
+    <span class="r">${_esc(empresaNombre)} · Confidencial</span>
+  </div>
+</div>`;
+    }
   }).join('');
 
   // ── Ensamblar y abrir ────────────────────────────────────────

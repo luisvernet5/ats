@@ -1024,20 +1024,22 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <div class="fr full"><div class="fg"><label>Nombre de la evaluación *</label><input id="eval-tpl-nombre" placeholder="Ej. Evaluación Técnica Ventas"></div></div>
       <div class="fr full"><div class="fg"><label>Descripción</label><div id="eval-tpl-desc-wrap"></div></div></div>
       <div class="fr full"><div class="fg">
-        <label>Interpretación de resultados <span style="font-weight:400;color:var(--text3);font-size:11px">(opcional — se muestra en el informe cuando hay puntaje Likert)</span></label>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
-          <div style="border-left:3px solid #ef4444;padding-left:10px">
-            <div style="font-size:11px;font-weight:700;color:#ef4444;margin-bottom:4px">Nivel bajo &nbsp;0–40%</div>
-            <textarea id="eval-tpl-nivel-bajo" rows="3" placeholder="Describe qué indica un puntaje bajo en esta evaluación..." style="resize:vertical;font-size:12px"></textarea>
+        <label>Tipo de informe</label>
+        <div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:7px;padding:9px 14px;border-radius:8px;border:2px solid var(--border);cursor:pointer;font-size:13px;font-weight:500;flex:1;min-width:180px" id="eval-tipo-inf-lbl-estandar">
+            <input type="radio" name="eval-tipo-informe" value="estandar" id="eval-tipo-inf-estandar" onchange="_evalTipoInformeChange()" checked style="accent-color:var(--primary)">
+            <span><span style="display:block">Estándar</span><span style="font-size:11px;font-weight:400;color:var(--text3)">Muestra preguntas y respuestas del candidato</span></span>
+          </label>
+          <label style="display:flex;align-items:center;gap:7px;padding:9px 14px;border-radius:8px;border:2px solid var(--border);cursor:pointer;font-size:13px;font-weight:500;flex:1;min-width:180px" id="eval-tipo-inf-lbl-personalizado">
+            <input type="radio" name="eval-tipo-informe" value="personalizado" id="eval-tipo-inf-personalizado" onchange="_evalTipoInformeChange()" style="accent-color:var(--primary)">
+            <span><span style="display:block">Plantilla personalizada</span><span style="font-size:11px;font-weight:400;color:var(--text3)">Redacta el contenido del informe con variables</span></span>
+          </label>
+        </div>
+        <div id="eval-plantilla-wrap" style="display:none;margin-top:10px">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;line-height:1.6">
+            Variables disponibles: <code>{{candidato}}</code> — nombre · <code>{{puntaje}}</code> — % obtenido · <code>{{nivel}}</code> — nivel de resultado · <code>{{fecha}}</code> — fecha de evaluación
           </div>
-          <div style="border-left:3px solid #f59e0b;padding-left:10px">
-            <div style="font-size:11px;font-weight:700;color:#f59e0b;margin-bottom:4px">Nivel medio &nbsp;41–70%</div>
-            <textarea id="eval-tpl-nivel-medio" rows="3" placeholder="Describe qué indica un puntaje medio en esta evaluación..." style="resize:vertical;font-size:12px"></textarea>
-          </div>
-          <div style="border-left:3px solid #22c55e;padding-left:10px">
-            <div style="font-size:11px;font-weight:700;color:#22c55e;margin-bottom:4px">Nivel alto &nbsp;71–100%</div>
-            <textarea id="eval-tpl-nivel-alto" rows="3" placeholder="Describe qué indica un puntaje alto en esta evaluación..." style="resize:vertical;font-size:12px"></textarea>
-          </div>
+          <div id="eval-plantilla-editor-wrap"></div>
         </div>
       </div></div>
       <div class="fr full"><div class="fg">
@@ -16679,6 +16681,24 @@ const EVAL_CATEGORIAS=[
   {value:'actitudinal',label:'Actitudinal',  color:'#14b8a6'},
   {value:'general',    label:'General',      color:'#6b7280'},
 ];
+function _evalTipoInformeChange(){
+  const val=document.querySelector('input[name="eval-tipo-informe"]:checked')?.value||'estandar';
+  const wrap=document.getElementById('eval-plantilla-wrap');
+  if(val==='personalizado'){
+    wrap.style.display='';
+    if(!document.getElementById('eval-plantilla-rt')){
+      document.getElementById('eval-plantilla-editor-wrap').innerHTML=_rtBox('eval-plantilla-rt','','Redacta el informe aquí, usa {{candidato}}, {{puntaje}}, {{nivel}}, {{fecha}}...');
+      document.getElementById('eval-plantilla-editor-wrap').querySelector('.rt-body').style.minHeight='220px';
+    }
+  } else {
+    wrap.style.display='none';
+  }
+  // Resaltar la opción seleccionada
+  ['estandar','personalizado'].forEach(v=>{
+    const lbl=document.getElementById('eval-tipo-inf-lbl-'+v);
+    if(lbl) lbl.style.borderColor=v===val?'var(--primary)':'var(--border)';
+  });
+}
 function _evalRenderCats(selVal){
   const c=document.getElementById('eval-tpl-cats');if(!c)return;
   c.innerHTML=EVAL_CATEGORIAS.map(cat=>{
@@ -16905,9 +16925,9 @@ function openEvalTemplateModal(id=null){
   document.getElementById('eval-tpl-nombre').value = '';
   document.getElementById('eval-tpl-desc-wrap').innerHTML = _rtBox('eval-tpl-desc-rt','','Instrucciones o contexto para el candidato...');
   document.getElementById('eval-tpl-desc-wrap').querySelector('.rt-body').style.minHeight='140px';
-  document.getElementById('eval-tpl-nivel-bajo').value='';
-  document.getElementById('eval-tpl-nivel-medio').value='';
-  document.getElementById('eval-tpl-nivel-alto').value='';
+  document.getElementById('eval-tipo-inf-estandar').checked=true;
+  document.getElementById('eval-plantilla-wrap').style.display='none';
+  document.getElementById('eval-plantilla-editor-wrap').innerHTML='';
   document.getElementById('eval-preguntas-list').innerHTML = '';
   document.getElementById('eval-tpl-title').textContent = id ? 'Editar evaluación' : 'Nueva evaluación';
   evalRemoveBanner();
@@ -16929,14 +16949,20 @@ function openEvalTemplateModal(id=null){
       : (e.descripcion||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
     document.getElementById('eval-tpl-desc-wrap').innerHTML = _rtBox('eval-tpl-desc-rt',_descHtml,'Instrucciones o contexto para el candidato...');
     document.getElementById('eval-tpl-desc-wrap').querySelector('.rt-body').style.minHeight='140px';
-    document.getElementById('eval-tpl-nivel-bajo').value=e.desc_nivel_bajo||'';
-    document.getElementById('eval-tpl-nivel-medio').value=e.desc_nivel_medio||'';
-    document.getElementById('eval-tpl-nivel-alto').value=e.desc_nivel_alto||'';
+    const _tipoInf=e.tipo_informe||'estandar';
+    document.getElementById('eval-tipo-inf-'+_tipoInf).checked=true;
+    if(_tipoInf==='personalizado'){
+      document.getElementById('eval-plantilla-wrap').style.display='';
+      const _plHtml=(e.plantilla_informe||'').includes('<')?e.plantilla_informe:(e.plantilla_informe||'').replace(/\n/g,'<br>');
+      document.getElementById('eval-plantilla-editor-wrap').innerHTML=_rtBox('eval-plantilla-rt',_plHtml,'Redacta el informe aquí, usa {{candidato}}, {{puntaje}}, {{nivel}}, {{fecha}}...');
+      document.getElementById('eval-plantilla-editor-wrap').querySelector('.rt-body').style.minHeight='220px';
+    }
     _evalSetBanner(e.banner||null);
     (e.preguntas||[]).forEach(q=>evalAddPregunta(q));
   } else {
     evalAddPregunta();
   }
+  _evalTipoInformeChange();
   openModal('modal-eval-template');
 }
 const EVAL_TIPOS = [
@@ -17239,11 +17265,10 @@ async function saveEvalTemplate(){
   const anterior = esNueva ? null : DB.evaluaciones.find(x=>x.id===id);
   const banner = document.getElementById('eval-tpl-banner-data').value||null;
   const categoria = _evalGetCatSel();
-  const _nivelBajo=(document.getElementById('eval-tpl-nivel-bajo').value||'').trim();
-  const _nivelMedio=(document.getElementById('eval-tpl-nivel-medio').value||'').trim();
-  const _nivelAlto=(document.getElementById('eval-tpl-nivel-alto').value||'').trim();
+  const _tipoInf=document.querySelector('input[name="eval-tipo-informe"]:checked')?.value||'estandar';
+  const _plantillaHtml=_tipoInf==='personalizado'?_rtGet('eval-plantilla-rt'):'';
   const ev={id,nombre,descripcion:_rtGet('eval-tpl-desc-rt'),empresa_ids,preguntas,banner,activa:true,categoria,created_at:new Date().toISOString(),
-    desc_nivel_bajo:_nivelBajo||null,desc_nivel_medio:_nivelMedio||null,desc_nivel_alto:_nivelAlto||null};
+    tipo_informe:_tipoInf,plantilla_informe:_plantillaHtml||null};
   try{
     await saveRecord('evaluaciones',ev);
     const idx=DB.evaluaciones.findIndex(x=>x.id===id);
@@ -18241,16 +18266,6 @@ function verRespuestasProceso(envId){
       <div style="font-size:14px;font-weight:600;color:${color}">${res}</div>
       <div style="font-size:12px;color:var(--text3);margin-top:3px">${_subtitulo}</div>
     </div>`;
-    // Bloque de interpretación: si hay una sola prueba Likert con descripción de nivel
-    if(_todoProcLik&&(enviado.pruebas||[]).length===1){
-      const _pUnica=(enviado.pruebas||[])[0];
-      const _evUnica=(DB.evaluaciones||[]).find(x=>x.id===_pUnica?.evaluacion_id)||{};
-      const _descNivel=pct>=71?_evUnica.desc_nivel_alto:pct>=41?_evUnica.desc_nivel_medio:_evUnica.desc_nivel_bajo;
-      if(_descNivel){
-        const _borderColor=pct>=71?'#22c55e':pct>=41?'#f59e0b':'#ef4444';
-        html+=`<div style="border-left:4px solid ${_borderColor};background:var(--bg2);border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap">${_esc(_descNivel)}</div>`;
-      }
-    }
   }
   html+='<div style="display:flex;flex-direction:column;gap:12px">';
   for(const prueba of (enviado.pruebas||[])){
@@ -18262,20 +18277,21 @@ function verRespuestasProceso(envId){
         <div><span style="font-weight:600;font-size:14px">${_esc(prueba.nombre)}</span><span style="font-size:11px;color:var(--text3);margin-left:8px">Peso: ${prueba.peso}%</span></div>
         <div style="display:flex;align-items:center;gap:8px">${puntBadge}<span class="badge ${completada?'bg':'bp'}">${completada?'Completada':'Pendiente'}</span></div>
       </div>`;
-    // Interpretación de nivel para pruebas Likert con descripciones
-    if(completada&&prueba.es_likert_puro&&prueba.puntaje!=null){
-      const _pPct=prueba.puntaje;
-      const _descNivel=_pPct>=71?ev.desc_nivel_alto:_pPct>=41?ev.desc_nivel_medio:ev.desc_nivel_bajo;
-      if(_descNivel){
-        const _bc=_pPct>=71?'#22c55e':_pPct>=41?'#f59e0b':'#ef4444';
-        const _lbl=_pPct>=71?'Nivel de desarrollo alto':_pPct>=41?'Nivel de desarrollo medio':'Nivel de desarrollo bajo';
-        html+=`<div style="border-left:3px solid ${_bc};background:var(--bg);border-radius:0 6px 6px 0;padding:10px 14px;margin-bottom:10px">
-          <div style="font-size:11px;font-weight:700;color:${_bc};margin-bottom:4px">${_lbl}</div>
-          <div style="font-size:12px;color:var(--text);line-height:1.6;white-space:pre-wrap">${_esc(_descNivel)}</div>
-        </div>`;
-      }
-    }
-    if(completada&&ev.preguntas?.length){
+    // Plantilla personalizada de informe
+    if(completada&&ev.tipo_informe==='personalizado'&&ev.plantilla_informe){
+      const _pPct=prueba.puntaje??0;
+      const _todoPrLik=prueba.es_likert_puro;
+      const _nivelStr=_todoPrLik
+        ?(_pPct>=71?'Nivel de desarrollo alto':_pPct>=41?'Nivel de desarrollo medio':'Nivel de desarrollo bajo')
+        :(_pPct>=70?'Aprobado':_pPct>=50?'Regular':'No aprobado');
+      const _fechaStr=prueba.fecha_completada?new Date(prueba.fecha_completada).toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}):'—';
+      const _rendered=ev.plantilla_informe
+        .replace(/\{\{candidato\}\}/g,_esc(enviado.candidato_nombre||'—'))
+        .replace(/\{\{puntaje\}\}/g,prueba.puntaje!=null?prueba.puntaje.toFixed(1)+'%':'—')
+        .replace(/\{\{nivel\}\}/g,_nivelStr)
+        .replace(/\{\{fecha\}\}/g,_fechaStr);
+      html+=`<div style="font-size:13px;color:var(--text);line-height:1.7;padding:4px 0 6px">${_rendered}</div>`;
+    } else if(completada&&ev.preguntas?.length){
       html+='<div style="display:flex;flex-direction:column;gap:5px">';
       for(const q of ev.preguntas){
         if(q.tipo==='titulo'||q.tipo==='descripcion')continue;

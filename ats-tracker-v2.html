@@ -18631,7 +18631,7 @@ function verRespuestasProceso(envId){
 // ── Informe PDF con diseño de marca ──────────────────────────────
 const _INFORME_CSS = `:root{--navy:#001628;--ink:#0B2540;--cyan:#1397D5;--paper:#FAFAF8;--line:#DCE2E6;--amber:#C97A2B;--mint:#1E8F72;--muted:#6B7684;}
 @page{size:10.667in 15.086in;margin:0;}
-*{box-sizing:border-box;margin:0;padding:0;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
 html,body{width:1024px;}
 body{font-family:'Liberation Sans','Arial',sans-serif;color:var(--ink);background:var(--paper);}
 .page{width:1024px;height:1448.3px;position:relative;page-break-after:always;overflow:hidden;background:var(--paper);}

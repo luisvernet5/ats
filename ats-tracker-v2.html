@@ -1024,6 +1024,23 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <div class="fr full"><div class="fg"><label>Nombre de la evaluación *</label><input id="eval-tpl-nombre" placeholder="Ej. Evaluación Técnica Ventas"></div></div>
       <div class="fr full"><div class="fg"><label>Descripción</label><div id="eval-tpl-desc-wrap"></div></div></div>
       <div class="fr full"><div class="fg">
+        <label>Interpretación de resultados <span style="font-weight:400;color:var(--text3);font-size:11px">(opcional — se muestra en el informe cuando hay puntaje Likert)</span></label>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+          <div style="border-left:3px solid #ef4444;padding-left:10px">
+            <div style="font-size:11px;font-weight:700;color:#ef4444;margin-bottom:4px">Nivel bajo &nbsp;0–40%</div>
+            <textarea id="eval-tpl-nivel-bajo" rows="3" placeholder="Describe qué indica un puntaje bajo en esta evaluación..." style="resize:vertical;font-size:12px"></textarea>
+          </div>
+          <div style="border-left:3px solid #f59e0b;padding-left:10px">
+            <div style="font-size:11px;font-weight:700;color:#f59e0b;margin-bottom:4px">Nivel medio &nbsp;41–70%</div>
+            <textarea id="eval-tpl-nivel-medio" rows="3" placeholder="Describe qué indica un puntaje medio en esta evaluación..." style="resize:vertical;font-size:12px"></textarea>
+          </div>
+          <div style="border-left:3px solid #22c55e;padding-left:10px">
+            <div style="font-size:11px;font-weight:700;color:#22c55e;margin-bottom:4px">Nivel alto &nbsp;71–100%</div>
+            <textarea id="eval-tpl-nivel-alto" rows="3" placeholder="Describe qué indica un puntaje alto en esta evaluación..." style="resize:vertical;font-size:12px"></textarea>
+          </div>
+        </div>
+      </div></div>
+      <div class="fr full"><div class="fg">
         <label>Categoría</label>
         <div id="eval-tpl-cats" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
       </div></div>
@@ -16888,6 +16905,9 @@ function openEvalTemplateModal(id=null){
   document.getElementById('eval-tpl-nombre').value = '';
   document.getElementById('eval-tpl-desc-wrap').innerHTML = _rtBox('eval-tpl-desc-rt','','Instrucciones o contexto para el candidato...');
   document.getElementById('eval-tpl-desc-wrap').querySelector('.rt-body').style.minHeight='140px';
+  document.getElementById('eval-tpl-nivel-bajo').value='';
+  document.getElementById('eval-tpl-nivel-medio').value='';
+  document.getElementById('eval-tpl-nivel-alto').value='';
   document.getElementById('eval-preguntas-list').innerHTML = '';
   document.getElementById('eval-tpl-title').textContent = id ? 'Editar evaluación' : 'Nueva evaluación';
   evalRemoveBanner();
@@ -16909,6 +16929,9 @@ function openEvalTemplateModal(id=null){
       : (e.descripcion||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
     document.getElementById('eval-tpl-desc-wrap').innerHTML = _rtBox('eval-tpl-desc-rt',_descHtml,'Instrucciones o contexto para el candidato...');
     document.getElementById('eval-tpl-desc-wrap').querySelector('.rt-body').style.minHeight='140px';
+    document.getElementById('eval-tpl-nivel-bajo').value=e.desc_nivel_bajo||'';
+    document.getElementById('eval-tpl-nivel-medio').value=e.desc_nivel_medio||'';
+    document.getElementById('eval-tpl-nivel-alto').value=e.desc_nivel_alto||'';
     _evalSetBanner(e.banner||null);
     (e.preguntas||[]).forEach(q=>evalAddPregunta(q));
   } else {
@@ -17216,7 +17239,11 @@ async function saveEvalTemplate(){
   const anterior = esNueva ? null : DB.evaluaciones.find(x=>x.id===id);
   const banner = document.getElementById('eval-tpl-banner-data').value||null;
   const categoria = _evalGetCatSel();
-  const ev={id,nombre,descripcion:_rtGet('eval-tpl-desc-rt'),empresa_ids,preguntas,banner,activa:true,categoria,created_at:new Date().toISOString()};
+  const _nivelBajo=(document.getElementById('eval-tpl-nivel-bajo').value||'').trim();
+  const _nivelMedio=(document.getElementById('eval-tpl-nivel-medio').value||'').trim();
+  const _nivelAlto=(document.getElementById('eval-tpl-nivel-alto').value||'').trim();
+  const ev={id,nombre,descripcion:_rtGet('eval-tpl-desc-rt'),empresa_ids,preguntas,banner,activa:true,categoria,created_at:new Date().toISOString(),
+    desc_nivel_bajo:_nivelBajo||null,desc_nivel_medio:_nivelMedio||null,desc_nivel_alto:_nivelAlto||null};
   try{
     await saveRecord('evaluaciones',ev);
     const idx=DB.evaluaciones.findIndex(x=>x.id===id);
@@ -18214,6 +18241,16 @@ function verRespuestasProceso(envId){
       <div style="font-size:14px;font-weight:600;color:${color}">${res}</div>
       <div style="font-size:12px;color:var(--text3);margin-top:3px">${_subtitulo}</div>
     </div>`;
+    // Bloque de interpretación: si hay una sola prueba Likert con descripción de nivel
+    if(_todoProcLik&&(enviado.pruebas||[]).length===1){
+      const _pUnica=(enviado.pruebas||[])[0];
+      const _evUnica=(DB.evaluaciones||[]).find(x=>x.id===_pUnica?.evaluacion_id)||{};
+      const _descNivel=pct>=71?_evUnica.desc_nivel_alto:pct>=41?_evUnica.desc_nivel_medio:_evUnica.desc_nivel_bajo;
+      if(_descNivel){
+        const _borderColor=pct>=71?'#22c55e':pct>=41?'#f59e0b':'#ef4444';
+        html+=`<div style="border-left:4px solid ${_borderColor};background:var(--bg2);border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap">${_esc(_descNivel)}</div>`;
+      }
+    }
   }
   html+='<div style="display:flex;flex-direction:column;gap:12px">';
   for(const prueba of (enviado.pruebas||[])){
@@ -18225,6 +18262,19 @@ function verRespuestasProceso(envId){
         <div><span style="font-weight:600;font-size:14px">${_esc(prueba.nombre)}</span><span style="font-size:11px;color:var(--text3);margin-left:8px">Peso: ${prueba.peso}%</span></div>
         <div style="display:flex;align-items:center;gap:8px">${puntBadge}<span class="badge ${completada?'bg':'bp'}">${completada?'Completada':'Pendiente'}</span></div>
       </div>`;
+    // Interpretación de nivel para pruebas Likert con descripciones
+    if(completada&&prueba.es_likert_puro&&prueba.puntaje!=null){
+      const _pPct=prueba.puntaje;
+      const _descNivel=_pPct>=71?ev.desc_nivel_alto:_pPct>=41?ev.desc_nivel_medio:ev.desc_nivel_bajo;
+      if(_descNivel){
+        const _bc=_pPct>=71?'#22c55e':_pPct>=41?'#f59e0b':'#ef4444';
+        const _lbl=_pPct>=71?'Nivel de desarrollo alto':_pPct>=41?'Nivel de desarrollo medio':'Nivel de desarrollo bajo';
+        html+=`<div style="border-left:3px solid ${_bc};background:var(--bg);border-radius:0 6px 6px 0;padding:10px 14px;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:700;color:${_bc};margin-bottom:4px">${_lbl}</div>
+          <div style="font-size:12px;color:var(--text);line-height:1.6;white-space:pre-wrap">${_esc(_descNivel)}</div>
+        </div>`;
+      }
+    }
     if(completada&&ev.preguntas?.length){
       html+='<div style="display:flex;flex-direction:column;gap:5px">';
       for(const q of ev.preguntas){

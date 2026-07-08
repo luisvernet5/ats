@@ -18682,14 +18682,24 @@ body{font-family:'Liberation Sans','Arial',sans-serif;color:var(--ink);backgroun
 .pg-footer{position:absolute;bottom:0;left:0;right:0;padding:20.6px 72.2px;border-top:1.3px solid var(--line);font-size:11.6px;color:var(--muted);}
 .pg-footer .r{float:right;}
 @media print{.no-print{display:none!important}}
+.pg-candidato-label{font-size:13.5px;font-weight:bold;letter-spacing:2.6px;color:var(--cyan);text-transform:uppercase;margin-bottom:8px;}
+.pg-candidato-value{font-size:15.5px;font-weight:600;color:var(--navy);padding-bottom:20.6px;border-bottom:1.3px solid var(--line);margin-bottom:33px;}
+.score-row{display:flex;border-top:1.9px solid var(--navy);border-bottom:1.3px solid var(--line);padding:20.6px 0;margin-bottom:33px;}
+.score-col{flex:1;}
+.score-lbl{font-size:13.5px;font-weight:bold;letter-spacing:2.6px;color:var(--cyan);text-transform:uppercase;margin-bottom:10.3px;}
+.score-val{font-size:22px;font-weight:bold;color:var(--navy);}
+.score-val.result-aprobado{color:var(--mint);}
+.score-val.result-regular{color:var(--amber);}
+.score-val.result-reprobado{color:#C0524A;}
 .page-flow{width:1024px;position:relative;page-break-before:always;background:var(--paper);padding-bottom:80px;}
-.qa-list{margin-top:28px;}
-.qa-item{padding:13px 18px 13px 22px;border-radius:8px;margin-bottom:9px;border-left:4px solid #ccc;background:#f8f9fa;}
-.qa-item.correct{border-left-color:var(--mint);background:#f0faf7;}
-.qa-item.wrong{border-left-color:#dc2626;background:#fff5f5;}
-.qa-q{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:6px;}
-.qa-ans{font-size:13px;color:#444;}
-.qa-ans-correct{font-size:12px;color:var(--mint);margin-top:5px;font-weight:500;}`;
+.qcard-list{margin-top:8px;}
+.qcard{padding:14px 20px 14px 22px;margin-bottom:10px;border-left:3.9px solid var(--line);border-bottom:1px solid var(--line);}
+.qcard:last-child{border-bottom:none;}
+.qcard.correct{border-left-color:var(--mint);}
+.qcard.wrong{border-left-color:#C0524A;}
+.qcard-q{font-size:14.5px;font-weight:bold;color:var(--navy);margin-bottom:6px;line-height:1.45;}
+.qcard-ans{font-size:14px;color:var(--ink);}
+.qcard-correct{font-size:12.5px;color:var(--muted);margin-top:5px;}`;
 
 function generarInformePDF(envId){
   const enviado=(DB.procesosEnviados||[]).find(x=>x.id===envId);
@@ -18836,19 +18846,20 @@ function generarInformePDF(envId){
   </div>
 </div>`;
     } else {
-      // ── Objetiva: lista Q&A completa ──────────────────────────
+      // ── Objetiva: puntaje/resultado + preguntas correctas/incorrectas ──
       const pregsObj=(ev.preguntas||[]).filter(q=>!_EVAL_TEXTO_TIPOS.has(q.tipo));
       const resp=prueba.respuestas||{};
-      const qaHtml=pregsObj.map(q=>{
-        const candidatoResp=resp[q.id];
-        const tieneCorrecta=!!q.respuesta_correcta;
-        const esCorrecta=tieneCorrecta?_evalEsCorrecta(q,candidatoResp):null;
-        const cls=tieneCorrecta?(esCorrecta?'correct':'wrong'):'';
-        const respText=candidatoResp!=null?_esc(String(candidatoResp)):'<span style="color:#aaa;font-style:italic">Sin respuesta</span>';
-        const correctaLine=(tieneCorrecta&&!esCorrecta)?`<div class="qa-ans-correct">&#10003; Respuesta correcta: ${_esc(String(q.respuesta_correcta))}</div>`:'';
-        return `<div class="qa-item ${cls}">
-  <div class="qa-q">${_esc(q.texto||'')}</div>
-  <div class="qa-ans">${respText}</div>
+      const resultCls=pct>=70?'aprobado':pct>=50?'regular':'reprobado';
+      const qHtml=pregsObj.map((q,i)=>{
+        const candResp=resp[q.id];
+        const tieneClave=!!q.respuesta_correcta;
+        const esCorrecta=tieneClave?_evalEsCorrecta(q,candResp):null;
+        const cls=tieneClave?(esCorrecta?'correct':'wrong'):'';
+        const respText=candResp!=null?_esc(String(candResp)):'<span style="color:var(--muted);font-style:italic">Sin respuesta</span>';
+        const correctaLine=(tieneClave&&!esCorrecta)?`<div class="qcard-correct">Respuesta correcta: ${_esc(String(q.respuesta_correcta))}</div>`:'';
+        return `<div class="qcard ${cls}">
+  <div class="qcard-q">${i+1}. ${_esc(q.texto||'')}</div>
+  <div class="qcard-ans">${respText}</div>
   ${correctaLine}
 </div>`;
       }).join('');
@@ -18860,21 +18871,22 @@ function generarInformePDF(envId){
     <div class="pg-rule"></div>
   </div>
   <div class="pg-body">
+    <div class="pg-candidato-label">Candidato</div>
+    <div class="pg-candidato-value">${_esc(enviado.candidato_nombre||'—')}</div>
     <div class="pg-kicker">${_esc(kicker)}</div>
     <div class="pg-title">${_esc(prueba.nombre||'—')}</div>
     <p class="pg-desc">${_esc(compDesc)}</p>
-    <div class="route">
-      <div class="route-line"></div>
-      <div class="route-tick major" style="left:0%"></div>
-      <div class="route-ticklabel" style="left:0%">${escMin}</div>
-      <div class="route-tick major" style="left:100%"></div>
-      <div class="route-ticklabel" style="left:100%;margin-left:-20px">${escMax}</div>
-      <div class="route-pin" style="left:${scorePct}%"></div>
-      <div class="route-pin-dot" style="left:${scorePct}%"></div>
-      <div class="route-pin-score" style="left:${scorePct}%">${scoreValor}</div>
+    <div class="score-row">
+      <div class="score-col">
+        <div class="score-lbl">Puntaje</div>
+        <div class="score-val">${scoreValor}</div>
+      </div>
+      <div class="score-col">
+        <div class="score-lbl">Resultado</div>
+        <div class="score-val result-${resultCls}">${_esc(nivelLabel)}</div>
+      </div>
     </div>
-    <div class="route-zone"><b>${_esc(nivelLabel)}</b> — ${_esc(nivelDetalle)}</div>
-    <div class="qa-list">${qaHtml}</div>
+    <div class="qcard-list">${qHtml}</div>
   </div>
   <div class="pg-footer" style="position:relative;margin-top:40px">
     ATS Tracker · Informe generado automáticamente

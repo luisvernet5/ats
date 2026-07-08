@@ -18593,36 +18593,11 @@ function verRespuestasProceso(envId){
   html+='</div>';
   document.getElementById('pe-respuestas-body').innerHTML=html;
 
-  // Footer: botón PDF simple o dropdown según nº de pruebas
-  const pruebas = enviado.pruebas||[];
+  // Footer
   const footer = document.getElementById('pe-resp-footer');
   if(footer){
-    let pdfBtn = '';
-    if(pruebas.length <= 1){
-      pdfBtn = `<button class="btn btn-danger" onclick="exportProcesoPDF('${envId}',null)"><i class="fa fa-file-pdf"></i> Exportar PDF</button>`;
-    } else {
-      const opts = pruebas.map((p,i)=>`<button onclick="exportProcesoPDF('${envId}',${i});document.getElementById('pe-pdf-menu').style.display='none'"
-        style="width:100%;text-align:left;padding:9px 14px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--text)"
-        onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-        <i class="fa fa-file-alt" style="color:var(--text3);margin-right:6px"></i>${_esc(p.nombre)}
-      </button>`).join('');
-      pdfBtn = `<div style="position:relative;display:inline-block">
-        <button class="btn btn-danger" onclick="document.getElementById('pe-pdf-menu').style.display=document.getElementById('pe-pdf-menu').style.display==='none'?'block':'none'" style="display:flex;align-items:center;gap:6px">
-          <i class="fa fa-file-pdf"></i> Exportar PDF <i class="fa fa-chevron-up" style="font-size:10px"></i>
-        </button>
-        <div id="pe-pdf-menu" style="display:none;position:absolute;bottom:calc(100% + 6px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.18);min-width:200px;z-index:100;overflow:hidden">
-          <button onclick="exportProcesoPDF('${envId}',null);document.getElementById('pe-pdf-menu').style.display='none'"
-            style="width:100%;text-align:left;padding:9px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text)"
-            onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-            <i class="fa fa-file-pdf" style="color:#ef4444;margin-right:6px"></i> Informe completo
-          </button>
-          <div style="height:1px;background:var(--border)"></div>
-          ${opts}
-        </div>
-      </div>`;
-    }
     const informeBtn = `<button class="btn btn-outline" onclick="generarInformePDF('${envId}')" style="border-color:var(--primary);color:var(--primary)"><i class="fa fa-download"></i> Descargar informe</button>`;
-    footer.innerHTML = informeBtn + pdfBtn + `<button class="btn btn-ghost" onclick="closeModal('modal-proceso-respuestas')">Cerrar</button>`;
+    footer.innerHTML = informeBtn + `<button class="btn btn-ghost" onclick="closeModal('modal-proceso-respuestas')">Cerrar</button>`;
   }
 
   openModal('modal-proceso-respuestas');

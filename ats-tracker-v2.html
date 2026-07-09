@@ -15974,7 +15974,8 @@ function _eseRow(e, n){
   const motOpts = ESE_MOTIVOS_NO_COBRO.map(m=>`<option value="${m}" ${e.motivo_no_cobro===m?'selected':''}>${m}</option>`).join('');
   const cobradoCb = e.fecha_cobrado ? 'checked' : '';
   const pagadoCb  = e.fecha_pagado  ? 'checked' : '';
-  const motivoDisplay = (e.fecha_cobrado||!e.fecha_pagado) ? 'none' : 'block';
+  const noCobradoCb = e.motivo_no_cobro ? 'checked' : '';
+  const motivoDisplay = e.motivo_no_cobro ? 'block' : 'none';
   return `
   <tr style="cursor:pointer" onclick="toggleESERow('${e.id}')">
     <td style="color:var(--text3);font-size:12px">${n}</td>
@@ -16014,11 +16015,19 @@ function _eseRow(e, n){
           </div>
           <div>
             <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">Cobro</div>
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-              <input type="checkbox" id="ese-cobr-${e.id}" ${cobradoCb}
-                style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer"
-                onchange="eseToggleCobrado('${e.id}',this.checked)">
-              <label for="ese-cobr-${e.id}" style="margin:0;cursor:pointer;font-size:13px">Cobrado</label>
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="checkbox" id="ese-cobr-${e.id}" ${cobradoCb}
+                  style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer"
+                  onchange="eseToggleCobrado('${e.id}',this.checked)">
+                <label for="ese-cobr-${e.id}" style="margin:0;cursor:pointer;font-size:13px">Cobrado</label>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="checkbox" id="ese-nocobr-${e.id}" ${noCobradoCb}
+                  style="accent-color:var(--red);width:16px;height:16px;cursor:pointer"
+                  onchange="eseToggleNoCobrado('${e.id}',this.checked)">
+                <label for="ese-nocobr-${e.id}" style="margin:0;cursor:pointer;font-size:13px">No cobrado</label>
+              </div>
             </div>
             <div class="fg">
               <label>Fecha de cobro</label>
@@ -16070,17 +16079,33 @@ function eseTogglePagado(id, checked){
   const dateInput = document.getElementById('ese-fp-'+id);
   if(checked && dateInput && !dateInput.value) dateInput.value = today();
   if(!checked && dateInput) dateInput.value = '';
-  const mwrap = document.getElementById('ese-motivo-wrap-'+id);
-  if(mwrap) mwrap.style.display = (!checked) ? 'none' : (document.getElementById('ese-cobr-'+id)?.checked ? 'none' : 'block');
 }
 
 function eseToggleCobrado(id, checked){
   const dateInput = document.getElementById('ese-fc-'+id);
   if(checked && dateInput && !dateInput.value) dateInput.value = today();
   if(!checked && dateInput) dateInput.value = '';
+  if(checked){
+    const noCobrCb = document.getElementById('ese-nocobr-'+id);
+    if(noCobrCb?.checked){ noCobrCb.checked = false; eseToggleNoCobrado(id, false); }
+  }
+}
+
+function eseToggleNoCobrado(id, checked){
   const mwrap = document.getElementById('ese-motivo-wrap-'+id);
-  const pagadoCb = document.getElementById('ese-paid-'+id);
-  if(mwrap) mwrap.style.display = (!checked && pagadoCb?.checked) ? 'block' : 'none';
+  if(mwrap) mwrap.style.display = checked ? 'block' : 'none';
+  if(checked){
+    const cobrCb = document.getElementById('ese-cobr-'+id);
+    if(cobrCb?.checked){
+      cobrCb.checked = false;
+      const dateInput = document.getElementById('ese-fc-'+id);
+      if(dateInput) dateInput.value = '';
+    }
+  } else {
+    const motSel = document.getElementById('ese-mot-'+id); if(motSel) motSel.value = '';
+    const motTxt = document.getElementById('ese-mot-txt-'+id); if(motTxt) motTxt.value = '';
+    const motOtro = document.getElementById('ese-mot-otro-'+id); if(motOtro) motOtro.style.display = 'none';
+  }
 }
 
 async function saveESERow(id){
@@ -16088,13 +16113,15 @@ async function saveESERow(id){
   if(!rec) return;
   const pagadoCb = document.getElementById('ese-paid-'+id);
   const cobrCb   = document.getElementById('ese-cobr-'+id);
+  const noCobrCb = document.getElementById('ese-nocobr-'+id);
   const motSel   = document.getElementById('ese-mot-'+id);
   const motTxt   = document.getElementById('ese-mot-txt-'+id);
   const motivoSel = motSel?.value||'';
   const motivoTxt = motTxt?.value.trim()||'';
   rec.fecha_pagado  = pagadoCb?.checked ? (document.getElementById('ese-fp-'+id)?.value||null) : null;
   rec.fecha_cobrado = cobrCb?.checked  ? (document.getElementById('ese-fc-'+id)?.value||null) : null;
-  rec.motivo_no_cobro = motivoSel==='Otro' ? (motivoTxt||'Otro') : (motivoSel||null);
+  if(noCobrCb?.checked && !motivoSel){ showToast('Selecciona el motivo de no cobro','err'); return; }
+  rec.motivo_no_cobro = noCobrCb?.checked ? (motivoSel==='Otro' ? (motivoTxt||'Otro') : motivoSel) : null;
   rec.factura_proveedor = document.getElementById('ese-fprov-'+id)?.value.trim()||null;
   rec.factura_cliente   = document.getElementById('ese-fcli-'+id)?.value.trim()||null;
   rec.notas = document.getElementById('ese-not-'+id)?.value.trim()||null;

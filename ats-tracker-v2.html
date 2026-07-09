@@ -1569,8 +1569,28 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
           <div class="fg"><label>Logros destacados</label><textarea id="ei-emp-rec-logros" placeholder="Logros o resultados" style="height:68px"></textarea></div>
         </div>
         <div class="fr">
-          <div class="fg"><label>Motivo de salida</label><input type="text" id="ei-emp-rec-motivo" placeholder="Por qué dejó el empleo"></div>
+          <div class="fg"><label>Motivo de salida</label>
+            <select id="ei-emp-rec-motivo">
+              <option value="">Seleccionar...</option>
+              <option>Renuncia voluntaria</option>
+              <option>Despido justificado</option>
+              <option>Despido injustificado / Recorte de personal</option>
+              <option>Fin de contrato / Proyecto terminado</option>
+              <option>Mejor oferta laboral</option>
+              <option>Motivos personales o familiares</option>
+              <option>Motivos de salud</option>
+              <option>Cambio de residencia</option>
+              <option>Reestructuración de la empresa</option>
+              <option>Otro</option>
+            </select>
+          </div>
           <div></div>
+        </div>
+        <div class="fr">
+          <div class="fg" style="grid-column:1 / -1">
+            <label>Comentarios sobre el motivo de salida</label>
+            <textarea id="ei-emp-rec-motivo-com" placeholder="Detalles adicionales" style="height:60px"></textarea>
+          </div>
         </div>
         <div style="font-size:12px;font-weight:600;color:var(--text2);margin:14px 0 8px">Empleo anterior</div>
         <div class="fr">
@@ -1586,8 +1606,28 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
           <div class="fg"><label>Logros destacados</label><textarea id="ei-emp-ant-logros" placeholder="Logros o resultados" style="height:68px"></textarea></div>
         </div>
         <div class="fr">
-          <div class="fg"><label>Motivo de salida</label><input type="text" id="ei-emp-ant-motivo" placeholder="Por qué dejó el empleo"></div>
+          <div class="fg"><label>Motivo de salida</label>
+            <select id="ei-emp-ant-motivo">
+              <option value="">Seleccionar...</option>
+              <option>Renuncia voluntaria</option>
+              <option>Despido justificado</option>
+              <option>Despido injustificado / Recorte de personal</option>
+              <option>Fin de contrato / Proyecto terminado</option>
+              <option>Mejor oferta laboral</option>
+              <option>Motivos personales o familiares</option>
+              <option>Motivos de salud</option>
+              <option>Cambio de residencia</option>
+              <option>Reestructuración de la empresa</option>
+              <option>Otro</option>
+            </select>
+          </div>
           <div></div>
+        </div>
+        <div class="fr">
+          <div class="fg" style="grid-column:1 / -1">
+            <label>Comentarios sobre el motivo de salida</label>
+            <textarea id="ei-emp-ant-motivo-com" placeholder="Detalles adicionales" style="height:60px"></textarea>
+          </div>
         </div>
         <!-- IV. Competencias -->
         <div class="sep">IV — Competencias</div>
@@ -5809,8 +5849,8 @@ function _collectEntrevistaData(){
   return{
     fecha_nacimiento:v('ei-fecha-nac'),edad:v('ei-edad'),estado_civil:v('ei-estado-civil'),direccion:v('ei-direccion'),
     nivel_estudios:v('ei-nivel-estudios'),institucion_educativa:v('ei-institucion'),certificados:v('ei-certificados'),
-    emp_rec_puesto:v('ei-emp-rec-puesto'),emp_rec_empresa:v('ei-emp-rec-empresa'),emp_rec_inicio:v('ei-emp-rec-inicio'),emp_rec_termino:v('ei-emp-rec-termino'),emp_rec_resp:v('ei-emp-rec-resp'),emp_rec_logros:v('ei-emp-rec-logros'),emp_rec_motivo:v('ei-emp-rec-motivo'),
-    emp_ant_puesto:v('ei-emp-ant-puesto'),emp_ant_empresa:v('ei-emp-ant-empresa'),emp_ant_inicio:v('ei-emp-ant-inicio'),emp_ant_termino:v('ei-emp-ant-termino'),emp_ant_resp:v('ei-emp-ant-resp'),emp_ant_logros:v('ei-emp-ant-logros'),emp_ant_motivo:v('ei-emp-ant-motivo'),
+    emp_rec_puesto:v('ei-emp-rec-puesto'),emp_rec_empresa:v('ei-emp-rec-empresa'),emp_rec_inicio:v('ei-emp-rec-inicio'),emp_rec_termino:v('ei-emp-rec-termino'),emp_rec_resp:v('ei-emp-rec-resp'),emp_rec_logros:v('ei-emp-rec-logros'),emp_rec_motivo:v('ei-emp-rec-motivo'),emp_rec_motivo_com:v('ei-emp-rec-motivo-com'),
+    emp_ant_puesto:v('ei-emp-ant-puesto'),emp_ant_empresa:v('ei-emp-ant-empresa'),emp_ant_inicio:v('ei-emp-ant-inicio'),emp_ant_termino:v('ei-emp-ant-termino'),emp_ant_resp:v('ei-emp-ant-resp'),emp_ant_logros:v('ei-emp-ant-logros'),emp_ant_motivo:v('ei-emp-ant-motivo'),emp_ant_motivo_com:v('ei-emp-ant-motivo-com'),
     idioma_espanol:chk('ei-idioma-espanol'),idioma_ingles:chk('ei-idioma-ingles'),idioma_frances:chk('ei-idioma-frances'),idioma_aleman:chk('ei-idioma-aleman'),idioma_otros:chk('ei-idioma-otros'),
     herramientas:v('ei-herramientas'),
     hab_liderazgo:chk('ei-hab-liderazgo'),hab_equipo:chk('ei-hab-equipo'),hab_conflictos:chk('ei-hab-conflictos'),hab_organizacion:chk('ei-hab-organizacion'),hab_empatia:chk('ei-hab-empatia'),
@@ -5828,8 +5868,8 @@ function _loadEntrevistaData(c){
   s('entr-nombre',c.nombre);s('ei-contacto',c.contacto);
   s('ei-fecha-nac',c.fecha_nacimiento);s('ei-estado-civil',c.estado_civil);s('ei-direccion',c.direccion);
   s('ei-nivel-estudios',c.nivel_estudios);s('ei-institucion',c.institucion_educativa);s('ei-certificados',c.certificados);
-  s('ei-emp-rec-puesto',c.emp_rec_puesto);s('ei-emp-rec-empresa',c.emp_rec_empresa);s('ei-emp-rec-inicio',c.emp_rec_inicio);s('ei-emp-rec-termino',c.emp_rec_termino);s('ei-emp-rec-resp',c.emp_rec_resp);s('ei-emp-rec-logros',c.emp_rec_logros);s('ei-emp-rec-motivo',c.emp_rec_motivo);
-  s('ei-emp-ant-puesto',c.emp_ant_puesto);s('ei-emp-ant-empresa',c.emp_ant_empresa);s('ei-emp-ant-inicio',c.emp_ant_inicio);s('ei-emp-ant-termino',c.emp_ant_termino);s('ei-emp-ant-resp',c.emp_ant_resp);s('ei-emp-ant-logros',c.emp_ant_logros);s('ei-emp-ant-motivo',c.emp_ant_motivo);
+  s('ei-emp-rec-puesto',c.emp_rec_puesto);s('ei-emp-rec-empresa',c.emp_rec_empresa);s('ei-emp-rec-inicio',c.emp_rec_inicio);s('ei-emp-rec-termino',c.emp_rec_termino);s('ei-emp-rec-resp',c.emp_rec_resp);s('ei-emp-rec-logros',c.emp_rec_logros);s('ei-emp-rec-motivo',c.emp_rec_motivo);s('ei-emp-rec-motivo-com',c.emp_rec_motivo_com);
+  s('ei-emp-ant-puesto',c.emp_ant_puesto);s('ei-emp-ant-empresa',c.emp_ant_empresa);s('ei-emp-ant-inicio',c.emp_ant_inicio);s('ei-emp-ant-termino',c.emp_ant_termino);s('ei-emp-ant-resp',c.emp_ant_resp);s('ei-emp-ant-logros',c.emp_ant_logros);s('ei-emp-ant-motivo',c.emp_ant_motivo);s('ei-emp-ant-motivo-com',c.emp_ant_motivo_com);
   s('ei-edad',c.fecha_nacimiento?'':c.edad);
   sc('ei-idioma-espanol',c.idioma_espanol);sc('ei-idioma-ingles',c.idioma_ingles);sc('ei-idioma-frances',c.idioma_frances);sc('ei-idioma-aleman',c.idioma_aleman);sc('ei-idioma-otros',c.idioma_otros);
   s('ei-herramientas',c.herramientas);
@@ -13110,12 +13150,14 @@ async function exportEntrevistaPDF() {
   r1('Responsabilidades',val('ei-emp-rec-resp'));
   r1('Logros principales',val('ei-emp-rec-logros'));
   r1('Motivo de salida',val('ei-emp-rec-motivo'));
+  r1('Comentarios motivo de salida',val('ei-emp-rec-motivo-com'));
   chkPg(8);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(60);doc.text('Empleo anterior',M,y);y+=5;doc.setTextColor(0);
   r2('Puesto',val('ei-emp-ant-puesto'),'Empresa',val('ei-emp-ant-empresa'));
   r2('Inicio',val('ei-emp-ant-inicio'),'Término',val('ei-emp-ant-termino'));
   r1('Responsabilidades',val('ei-emp-ant-resp'));
   r1('Logros principales',val('ei-emp-ant-logros'));
   r1('Motivo de salida',val('ei-emp-ant-motivo'));
+  r1('Comentarios motivo de salida',val('ei-emp-ant-motivo-com'));
 
   sec('IV — Competencias y Habilidades');
   const idiomas=chks(['ei-idioma-espanol','ei-idioma-ingles','ei-idioma-frances','ei-idioma-aleman','ei-idioma-otros'],['Español','Inglés','Francés','Alemán','Otros']);

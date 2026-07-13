@@ -3188,7 +3188,7 @@ async function logActivity(accion, entidad, entidadId, detalle, anterior, nuevo)
           cambios.push(`${label}: "${antes}" → "${despues}"`);
         }
       }
-      if(cambios.length) detalleCompleto = cambios.join(' | ');
+      if(cambios.length) detalleCompleto = (detalle ? detalle+' — ' : '') + cambios.join(' | ');
     }
     await sbClient.from('activity_log').insert({
       id: Date.now()+'-'+Math.random().toString(36).substr(2,6),
@@ -5182,7 +5182,7 @@ async function saveVacante(){
       if(reclutador_id) notificarReclutador(_nv);
     }
     const _lv = id ? DB.vacantes.find(x=>x.id===id) : DB.vacantes[DB.vacantes.length-1];
-    const _lvDetalle = (_lv?.nombre||'') + (_lv?.folio&&!_vacAnterior ? ` — Folio: ${_lv.folio}` : '');
+    const _lvDetalle = (_lv?.nombre||'') + (_lv?.folio ? ` — Folio: ${_lv.folio}` : '');
     await logActivity(_lv&&_vacAnterior?'Editar vacante':'Nueva vacante','vacantes',_lv?.id,_lvDetalle,_vacAnterior,_lv);
     closeModal('modal-vacante');
     setTimeout(()=>{

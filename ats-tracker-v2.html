@@ -3144,7 +3144,7 @@ function filtrarLog(){
       </td>
       <td><span style="font-size:11px;font-weight:600;color:${col};background:${col}18;padding:3px 8px;border-radius:20px">${d.accion||'—'}</span></td>
       <td style="font-size:11px;color:var(--text3)">${d.entidad||'—'}</td>
-      <td style="font-size:12px">${(()=>{let det=d.detalle||'—';if(d.entidad==='vacantes'&&(d.accion==='Nueva vacante'||d.accion==='Editar vacante')&&d.entidad_id&&det!=='—'&&!det.includes('Folio:')){const vac=DB.vacantes?.find(v=>v.id===d.entidad_id);if(vac?.folio)det+=` — Folio: ${vac.folio}`;}return det;})()}</td>
+      <td style="font-size:12px">${(()=>{let det=d.detalle||'—';if(det==='—'||!d.entidad_id||det.includes('Folio:'))return det;if(d.entidad==='vacantes'&&(d.accion==='Nueva vacante'||d.accion==='Editar vacante')){const vac=DB.vacantes?.find(v=>v.id===d.entidad_id);if(vac?.folio)det+=` — Folio: ${vac.folio}`;}else if(d.entidad==='candidatos'&&d.accion==='Cambio de etapa'){const cand=DB.candidatos?.find(c=>c.id===d.entidad_id);const vac=cand?DB.vacantes?.find(v=>v.id===cand.vacante_id):null;if(vac?.folio)det+=` — Folio: ${vac.folio}`;}return det;})()}</td>
     </tr>`;
   }).join('');
 
@@ -7888,7 +7888,8 @@ async function saveCandEtapa(cid){
   });
   openCandRows.delete(cid);
   await saveRecord('candidatos', c);
-  await logActivity('Cambio de etapa','candidatos',cid,`${_candEtapaAnterior.nombre||cid}: "${etapaAntes}" → "${etapa}"`,null,null);
+  const _etapaFolio=v.folio?` — Folio: ${v.folio}`:'';
+  await logActivity('Cambio de etapa','candidatos',cid,`${_candEtapaAnterior.nombre||cid}${_etapaFolio}: "${etapaAntes}" → "${etapa}"`,null,null);
   showToast('Guardado ✓');
   renderCandidatosTable();
 }

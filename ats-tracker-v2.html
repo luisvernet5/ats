@@ -9501,6 +9501,7 @@ async function renderHCEmpresa(empId){
         ${!isRhC?`<button class="btn btn-ghost btn-sm" onclick="renderHeadCount()"><i class="fa fa-arrow-left"></i> Empresas</button><div style="width:1px;height:20px;background:var(--border2)"></div>`:''}
         ${logoHtml}
         <span style="font-weight:700;font-size:15px">${_esc(emp.nombre)}</span>
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="openEmpresaDetail('${empId}')"><i class="fa fa-circle-info"></i> Detalle de empresa</button>
       </div>
       <select id="hc-emp-sel" style="display:none"><option value="${empId}" selected></option></select>
       <input type="hidden" id="hc-semana">

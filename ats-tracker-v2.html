@@ -13222,11 +13222,12 @@ function _refResolveCandNombre(){
   const cand=DB.candidatos.find(x=>x.id===candId)||{};
   return cand.nombre || document.getElementById('cand-nombre')?.value?.trim() || 'Candidato';
 }
-// Dibuja una palomita (check) en (cx,cy) — se usa en vez de un círculo relleno para marcar la calificación seleccionada.
+// Dibuja una palomita (check) discreta en (cx,cy) — se usa en vez de un círculo relleno para marcar la calificación seleccionada.
+// Deja el draw color/line width en negro al salir; el llamador debe re-establecer su propio color ANTES de dibujar cualquier línea/borde posterior.
 function _pdfCheckMark(doc,cx,cy,s){
-  doc.setDrawColor(42,170,222);doc.setLineWidth(s*0.28);doc.setLineCap?.(1);
-  doc.line(cx-s*0.55,cy+s*0.05,cx-s*0.15,cy+s*0.45);
-  doc.line(cx-s*0.15,cy+s*0.45,cx+s*0.55,cy-s*0.45);
+  doc.setDrawColor(40,40,40);doc.setLineWidth(s*0.2);doc.setLineCap?.(1);
+  doc.line(cx-s*0.5,cy+s*0.05,cx-s*0.12,cy+s*0.4);
+  doc.line(cx-s*0.12,cy+s*0.4,cx+s*0.5,cy-s*0.4);
 }
 async function exportRefLaboralesPDF() {
   if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
@@ -13474,10 +13475,9 @@ async function exportRefNuimCamPDF(){
       doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(0);
       doc.text(comp,tblX+ncW-1.5,y+rH/2+1.1,{align:'right'});
       doc.setDrawColor(150);doc.line(tblX+ncW,y,tblX+ncW,y+rH);
-      NIVS.forEach((niv,i)=>{
-        if(i>0)doc.line(tblX+ncW+i*ratW,y,tblX+ncW+i*ratW,y+rH);
-        if(niv===sel)_pdfCheckMark(doc,tblX+ncW+(i+0.5)*ratW,y+rH/2,2.2);
-      });
+      for(let i=1;i<NIVS.length;i++)doc.line(tblX+ncW+i*ratW,y,tblX+ncW+i*ratW,y+rH);
+      const selIdx=NIVS.indexOf(sel);
+      if(selIdx>=0)_pdfCheckMark(doc,tblX+ncW+(selIdx+0.5)*ratW,y+rH/2,2.2);
       y+=rH;
     });
     y+=3;

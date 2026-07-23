@@ -13365,10 +13365,10 @@ async function exportRefNuimCamPDF(){
   let y=PM;
 
   const candNombre=_refResolveCandNombre();
-  const candContacto=(document.getElementById('cand-contacto')?.value||'').trim();
-  const emp=_refResolveEmp();
   const candId=document.getElementById('cand-id')?.value;
   const cand=DB.candidatos.find(x=>x.id===candId)||{};
+  const candContacto=(cand.contacto||document.getElementById('cand-contacto')?.value||'').trim();
+  const emp=_refResolveEmp();
   const recId=document.getElementById('cand-reclutador')?.value||cand.reclutador_id||'';
   const rec=DB.reclutadores.find(r=>r.id===recId)||{};
 

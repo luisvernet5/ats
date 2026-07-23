@@ -13274,9 +13274,9 @@ async function exportRefLaboralesPDF() {
   };
   if(!cards.length){doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(150);doc.text('Sin referencias laborales',W/2,y,{align:'center'});}
   cards.forEach((card,idx)=>{
+    if(idx>0){doc.addPage();y=M;}
     const n=card.id.replace('ref-lab-card-','');
     const g=id=>document.getElementById(id)?.value||'';
-    chkPg(50);
     doc.setFillColor(232,248,252);doc.setDrawColor(42,170,222);doc.rect(M,y,CW,7,'FD');
     doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(42,170,222);
     doc.text(`Referencia ${idx+1}`,M+2,y+5);doc.setTextColor(0);y+=10;
@@ -13337,10 +13337,10 @@ async function exportRefPersonalesPDF() {
   const r1=(l,v)=>{chkPg(10);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.setTextColor(100);doc.text(l+':',M,y);doc.setFont('helvetica','normal');doc.setTextColor(30);const w=doc.splitTextToSize(v||'—',CW);doc.text(w,M,y+4);y+=w.length*4+6;};
   if(!cards.length){doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(150);doc.text('Sin referencias personales',W/2,y,{align:'center'});}
   cards.forEach((card,idx)=>{
+    if(idx>0){doc.addPage();y=M;}
     const n=card.id.replace('ref-per-card-','');
     const g=id=>document.getElementById(id)?.value||'';
     const rad=name=>card.querySelector(`input[name="${name}"]:checked`)?.value||'—';
-    chkPg(50);
     doc.setFillColor(232,248,252);doc.setDrawColor(42,170,222);doc.rect(M,y,CW,7,'FD');
     doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(42,170,222);
     doc.text(`Referencia ${idx+1}`,M+2,y+5);doc.setTextColor(0);y+=10;
@@ -13462,7 +13462,10 @@ async function exportRefNuimCamPDF(){
   const LW_LAB=45,LW2=25;
 
   // ── REFERENCIAS LABORALES ──
+  let _pdfIsFirstRef=true;
   document.querySelectorAll('#ref-lab-list .ref-card').forEach((card)=>{
+    if(!_pdfIsFirstRef){doc.addPage();y=PM;}
+    _pdfIsFirstRef=false;
     const n=card.id.replace('ref-lab-card-','');
     const gf=id=>document.getElementById(id)?.value||'';
     secHdr('Referencias laborales');
@@ -13507,6 +13510,8 @@ async function exportRefNuimCamPDF(){
   // ── REFERENCIAS PERSONALES ──
   const LW_PER=55,LW2P=25;
   document.querySelectorAll('#ref-per-list .ref-card').forEach((card)=>{
+    if(!_pdfIsFirstRef){doc.addPage();y=PM;}
+    _pdfIsFirstRef=false;
     const n=card.id.replace('ref-per-card-','');
     const gf=id=>document.getElementById(id)?.value||'';
     secHdr('Referencias personales');

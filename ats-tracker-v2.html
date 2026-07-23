@@ -5444,6 +5444,7 @@ function openEntrevistaModal(id){
 async function openReferenciasModal(id){
   const c=DB.candidatos.find(x=>x.id===id);if(!c)return;
   document.getElementById('cand-id').value=id;
+  document.getElementById('cand-nombre').value=c.nombre||'';
   document.getElementById('cand-remp-alert').innerHTML='';
   _refLabNextId=0;_refLabCount=0;_refPerNextId=0;_refPerCount=0;
   document.getElementById('ref-lab-list').innerHTML='';
@@ -5479,6 +5480,7 @@ async function openReferenciasModal(id){
       const n=_refLabNextId-1;
       _setField(`ref-lab-${n}-contacto`,rf(r,'nombre_contacto'));
       _setField(`ref-lab-${n}-telefono`,rf(r,'telefono'));
+      _setField(`ref-lab-${n}-correo`,rf(r,'correo_contacto'));
       _setField(`ref-lab-${n}-empresa`,rf(r,'empresa'));
       _setField(`ref-lab-${n}-puesto-contacto`,rf(r,'puesto_contacto'));
       _setField(`ref-lab-${n}-tiempo-laborado`,rf(r,'tiempo_laborado','tiempo_laboral','tiempo_laborado_en'));
@@ -5696,6 +5698,7 @@ function _refLabCardHTML(n,num){
   </div>
   <div class="fr"><div class="fg"><label>Nombre del candidato</label><input type="text" id="ref-lab-${n}-candidato" value="${cnom}" class="form-control" style="font-size:13px"></div><div class="fg"><label>Empresa</label><input type="text" id="ref-lab-${n}-empresa" class="form-control" style="font-size:13px"></div></div>
   <div class="fr"><div class="fg"><label>Nombre del contacto</label><input type="text" id="ref-lab-${n}-contacto" class="form-control" style="font-size:13px"></div><div class="fg"><label>Teléfono del contacto</label><input type="text" id="ref-lab-${n}-telefono" class="form-control" style="font-size:13px"></div></div>
+  <div class="fr"><div class="fg full"><label>Correo electrónico del contacto</label><input type="text" id="ref-lab-${n}-correo" class="form-control" style="font-size:13px"></div></div>
   <div class="fr"><div class="fg"><label>Puesto del contacto</label><input type="text" id="ref-lab-${n}-puesto-contacto" class="form-control" style="font-size:13px"></div><div class="fg"><label>Tiempo laborado</label><input type="text" id="ref-lab-${n}-tiempo-laborado" class="form-control" style="font-size:13px"></div></div>
   <div class="fr"><div class="fg"><label>Puestos ocupados</label><input type="text" id="ref-lab-${n}-puestos" class="form-control" style="font-size:13px"></div><div class="fg"><label>Causa de separación</label><input type="text" id="ref-lab-${n}-separacion" class="form-control" style="font-size:13px"></div></div>
   <div class="fr"><div class="fg full"><label>¿Cómo describe su desempeño?</label><textarea id="ref-lab-${n}-desempeno" rows="2" class="form-control" style="font-size:13px;resize:vertical"></textarea></div></div>
@@ -5750,6 +5753,7 @@ function _collectRefLaborales(candidato_id){
       candidato_id,tipo:'laboral',
       nombre_contacto:document.getElementById(`ref-lab-${n}-contacto`)?.value||'',
       telefono:document.getElementById(`ref-lab-${n}-telefono`)?.value||'',
+      correo_contacto:document.getElementById(`ref-lab-${n}-correo`)?.value||'',
       empresa:document.getElementById(`ref-lab-${n}-empresa`)?.value||'',
       puesto_contacto:document.getElementById(`ref-lab-${n}-puesto-contacto`)?.value||'',
       tiempo_laborado:document.getElementById(`ref-lab-${n}-tiempo-laborado`)?.value||'',
@@ -13439,7 +13443,7 @@ async function exportRefNuimCamPDF(){
   rowF('Nombre',candNombre,30);
   // Teléfono/Fecha: custom 2-col (left 58%, right 42%)
   {
-    const lw1=25,w1=PCW*0.58,lw2=20;
+    const lw1=30,w1=PCW*0.58,lw2=20;
     const h=MRH;chk(h);
     doc.setDrawColor(140);doc.setLineWidth(BD);
     doc.setFillColor(...BGL);doc.rect(PM,y,lw1,h,'FD');doc.rect(PM+lw1,y,w1-lw1,h,'D');
@@ -13464,7 +13468,7 @@ async function exportRefNuimCamPDF(){
     secHdr('Referencias laborales');
     rowF('Nombre o razón social',gf(`ref-lab-${n}-empresa`),LW_LAB);
     row2('Nombre del contacto',gf(`ref-lab-${n}-contacto`),'Puesto',gf(`ref-lab-${n}-puesto-contacto`),LW2);
-    row2('Correo electrónico','','Teléfono',gf(`ref-lab-${n}-telefono`),LW2);
+    row2('Correo electrónico',gf(`ref-lab-${n}-correo`),'Teléfono',gf(`ref-lab-${n}-telefono`),LW2);
     rowF('Relación laboral','Si',LW_LAB);
     rowF('Tiempo laborado',gf(`ref-lab-${n}-tiempo-laborado`),LW_LAB);
     rowF('Puestos ocupados',gf(`ref-lab-${n}-puestos`),LW_LAB);

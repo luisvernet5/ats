@@ -6501,6 +6501,19 @@ async function confirmarCierreVacante(){
   setTimeout(()=>renderVacantesTable(),100);
 }
 
+async function reabrirVacante(vacId){
+  const vi=DB.vacantes.findIndex(x=>x.id===vacId);
+  if(vi<0)return;
+  if(!confirm(`¿Reactivar "${DB.vacantes[vi].nombre}"? Volverá a estado Abierta.`))return;
+  const vAnterior={...DB.vacantes[vi]};
+  DB.vacantes[vi].estado='Abierta';
+  const vFinal=DB.vacantes[vi];
+  await saveRecord('vacantes',vFinal);
+  await logActivity('Reactivar vacante','vacantes',vacId,vFinal.nombre||vacId,vAnterior,vFinal);
+  showToast('Vacante reactivada ✓');
+  renderVacantesTable();
+}
+
 function editarFechaCierre(vacId){
   const v=DB.vacantes.find(x=>x.id===vacId);
   if(!v)return;
@@ -6835,7 +6848,8 @@ function renderVacantesTable(){
       <td style="white-space:nowrap;min-width:120px">
         <button class="btn btn-ghost btn-sm" style="padding:4px" onclick="openVacanteModal('${v.id}')"><i class="fa fa-edit" style="font-size:13px"></i></button>
         <button class="btn btn-primary btn-sm" style="padding:4px" onclick="openCandModal('${v.id}')"><i class="fa fa-user-plus" style="font-size:13px"></i></button>
-        ${v.estado==='Abierta'?`<button class="btn btn-ghost btn-sm" style="padding:4px" onclick="abrirCierreVacante('${v.id}')" title="Cerrar vacante"><i class="fa fa-times-circle" style="font-size:13px"></i></button>`:`<span class="badge ${v.estado==='Cubierta'?'bg':'br'}">${v.estado}</span>`}
+        ${v.estado==='Abierta'?`<button class="btn btn-ghost btn-sm" style="padding:4px" onclick="abrirCierreVacante('${v.id}')" title="Cerrar vacante"><i class="fa fa-times-circle" style="font-size:13px"></i></button>`:''}
+        ${v.estado==='Cancelada'?`<button class="btn btn-green btn-sm" style="padding:4px" onclick="reabrirVacante('${v.id}')" title="Reactivar vacante"><i class="fa fa-undo" style="font-size:13px"></i></button>`:''}
         ${currentUserData?.rol==='admin'?`<button class="btn btn-danger btn-sm" style="padding:4px" onclick="eliminarVacante('${v.id}')" title="Eliminar vacante"><i class="fa fa-trash" style="font-size:13px"></i></button>`:''}
         ${currentUserData?.rol==='admin'&&v.estado==='Cubierta'?`<button class="btn btn-ghost btn-sm" style="padding:4px" onclick="editarFechaCierre('${v.id}')" title="Editar fecha de contratación"><i class="fa fa-calendar-alt" style="font-size:13px;color:var(--accent)"></i></button>`:''}
       </td>
@@ -7010,6 +7024,7 @@ function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {
             <button class="btn btn-ghost btn-sm" onclick="openVacanteModal('${vacId}')"><i class="fa fa-edit"></i> Editar</button>
             <button class="btn btn-green btn-sm" onclick="exportarCandidatosVacante('${vacId}')"><i class="fa fa-download"></i> Exportar</button>
             ${v.estado==='Abierta'?`<button class="btn btn-danger btn-sm" onclick="abrirCierreVacante('${vacId}')"><i class="fa fa-times-circle"></i> Cerrar vacante</button>`:''}
+            ${v.estado==='Cancelada'?`<button class="btn btn-green btn-sm" onclick="reabrirVacante('${vacId}')"><i class="fa fa-undo"></i> Reactivar vacante</button>`:''}
           </div>
         </div>
       </div>

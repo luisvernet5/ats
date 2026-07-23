@@ -3144,7 +3144,7 @@ function filtrarLog(){
       </td>
       <td><span style="font-size:11px;font-weight:600;color:${col};background:${col}18;padding:3px 8px;border-radius:20px">${d.accion||'—'}</span></td>
       <td style="font-size:11px;color:var(--text3)">${d.entidad||'—'}</td>
-      <td style="font-size:12px">${(()=>{let det=d.detalle||'—';if(det==='—'||!d.entidad_id||det.includes('Folio:'))return det;if(d.entidad==='vacantes'&&(d.accion==='Nueva vacante'||d.accion==='Editar vacante')){const vac=DB.vacantes?.find(v=>v.id===d.entidad_id);if(vac?.folio)det+=` — Folio: ${vac.folio}`;}else if(d.entidad==='candidatos'&&d.accion==='Cambio de etapa'){const cand=DB.candidatos?.find(c=>c.id===d.entidad_id);const vac=cand?DB.vacantes?.find(v=>v.id===cand.vacante_id):null;if(vac?.folio)det+=` — Folio: ${vac.folio}`;}return det;})()}</td>
+      <td style="font-size:12px">${(()=>{let det=d.detalle||'—';if(det==='—'||!d.entidad_id||det.includes('Folio:'))return det;if(d.entidad==='vacantes'){const vac=DB.vacantes?.find(v=>v.id===d.entidad_id);if(vac?.folio)det+=` — Folio: ${vac.folio}`;}else if(d.entidad==='candidatos'&&d.accion==='Cambio de etapa'){const cand=DB.candidatos?.find(c=>c.id===d.entidad_id);const vac=cand?DB.vacantes?.find(v=>v.id===cand.vacante_id):null;if(vac?.folio)det+=` — Folio: ${vac.folio}`;}return det;})()}</td>
     </tr>`;
   }).join('');
 
@@ -6495,7 +6495,8 @@ async function confirmarCierreVacante(){
   const vFinal=DB.vacantes[vi];
   await saveRecord('vacantes',vFinal);
   const accionLog=vFinal.estado==='Cubierta'?'Cerrar vacante (Cubierta)':'Cerrar vacante (Cancelada)';
-  await logActivity(accionLog,'vacantes',vacId,vFinal.nombre||vacId);
+  const _cierreDetalle=(vFinal.nombre||vacId)+(vFinal.folio?` — Folio: ${vFinal.folio}`:'');
+  await logActivity(accionLog,'vacantes',vacId,_cierreDetalle);
   closeModal('modal-cierre-vacante');
   showToast('Vacante cerrada ✓');
   setTimeout(()=>renderVacantesTable(),100);
@@ -6509,7 +6510,8 @@ async function reabrirVacante(vacId){
   DB.vacantes[vi].estado='Abierta';
   const vFinal=DB.vacantes[vi];
   await saveRecord('vacantes',vFinal);
-  await logActivity('Reactivar vacante','vacantes',vacId,vFinal.nombre||vacId,vAnterior,vFinal);
+  const _reactDetalle=(vFinal.nombre||vacId)+(vFinal.folio?` — Folio: ${vFinal.folio}`:'');
+  await logActivity('Reactivar vacante','vacantes',vacId,_reactDetalle,vAnterior,vFinal);
   showToast('Vacante reactivada ✓');
   renderVacantesTable();
 }

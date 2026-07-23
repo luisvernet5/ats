@@ -13253,7 +13253,7 @@ function _pdfCheckMark(doc,cx,cy,s){
 async function exportRefLaboralesPDF() {
   if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
   const emp=_refResolveEmp();
-  if(emp.nombre?.toLowerCase().includes('nuim')) return exportRefNuimCamPDF();
+  if(emp.nombre?.toLowerCase().includes('nuim')) return exportRefNuimCamPDF('lab');
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
   const W=216,M=20,CW=176;
@@ -13315,7 +13315,7 @@ async function exportRefLaboralesPDF() {
 async function exportRefPersonalesPDF() {
   if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
   const emp=_refResolveEmp();
-  if(emp.nombre?.toLowerCase().includes('nuim')) return exportRefNuimCamPDF();
+  if(emp.nombre?.toLowerCase().includes('nuim')) return exportRefNuimCamPDF('per');
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
   const W=216,M=20,CW=176;
@@ -13357,7 +13357,7 @@ async function exportRefPersonalesPDF() {
 }
 
 /* ── NuimCam — Verificación de referencias laborales y personales ── */
-async function exportRefNuimCamPDF(){
+async function exportRefNuimCamPDF(tipo='lab'){
   if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
@@ -13375,8 +13375,8 @@ async function exportRefNuimCamPDF(){
   // ── HEADER ──
   if(emp?.logo){const b64=await urlToBase64(emp.logo);if(b64){try{const{w,h}=await _imgFit(b64,30,14);doc.addImage(b64,'PNG',PM,y,w,h);}catch(e){}}}
   doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(0);
-  doc.text('Verificación de referencias laborales y',PW/2,y+5,{align:'center'});
-  doc.text('personales',PW/2,y+11,{align:'center'});
+  doc.text('Verificación de referencias',PW/2,y+5,{align:'center'});
+  doc.text(tipo==='per'?'personales':'laborales',PW/2,y+11,{align:'center'});
   const bX=PW-PM-37,bW=37,bH=17;
   doc.setDrawColor(160);doc.setLineWidth(0.3);doc.rect(bX,y,bW,bH);
   doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(50);
@@ -13463,7 +13463,9 @@ async function exportRefNuimCamPDF(){
 
   // ── REFERENCIAS LABORALES ──
   let _pdfIsFirstRef=true;
-  document.querySelectorAll('#ref-lab-list .ref-card').forEach((card)=>{
+  const _labCards=tipo==='lab'?document.querySelectorAll('#ref-lab-list .ref-card'):[];
+  if(tipo==='lab'&&!_labCards.length){doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(140);doc.text('Sin referencias laborales registradas.',PW/2,y+6,{align:'center'});y+=12;}
+  _labCards.forEach((card)=>{
     if(!_pdfIsFirstRef){doc.addPage();y=PM;}
     _pdfIsFirstRef=false;
     const n=card.id.replace('ref-lab-card-','');
@@ -13509,7 +13511,9 @@ async function exportRefNuimCamPDF(){
 
   // ── REFERENCIAS PERSONALES ──
   const LW_PER=55,LW2P=25;
-  document.querySelectorAll('#ref-per-list .ref-card').forEach((card)=>{
+  const _perCards=tipo==='per'?document.querySelectorAll('#ref-per-list .ref-card'):[];
+  if(tipo==='per'&&!_perCards.length){doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(140);doc.text('Sin referencias personales registradas.',PW/2,y+6,{align:'center'});y+=12;}
+  _perCards.forEach((card)=>{
     if(!_pdfIsFirstRef){doc.addPage();y=PM;}
     _pdfIsFirstRef=false;
     const n=card.id.replace('ref-per-card-','');
@@ -13537,8 +13541,9 @@ async function exportRefNuimCamPDF(){
   doc.text('Validó información',PM+vW/2,y+4.5,{align:'center'});
   if(rec?.nombre){doc.setFont('helvetica','normal');doc.setFontSize(7);doc.text(rec.nombre,PM+vW/2,y+10,{align:'center'});}
 
-  doc.save(`RefVerificacion_NuimCam_${candNombre.replace(/[^a-zA-Z0-9]/g,'_')}_${today()}.pdf`);
-  showToast('PDF NuimCam generado ✓');
+  const _sufijoTipo=tipo==='per'?'Personales':'Laborales';
+  doc.save(`RefVerificacion_NuimCam_${_sufijoTipo}_${candNombre.replace(/[^a-zA-Z0-9]/g,'_')}_${today()}.pdf`);
+  showToast(`PDF NuimCam (${tipo==='per'?'referencias personales':'referencias laborales'}) generado ✓`);
 }
 
 /* ============================================================

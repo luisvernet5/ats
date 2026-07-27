@@ -9190,7 +9190,7 @@ async function doExportGarantias(){
   if(recId) vacs = vacs.filter(v=>v.reclutador_id===recId);
 
   const rows = [];
-  const header = ['Vacante','Folio','Empresa','Reclutador','Días garantía','Inicio garantía','Vencimiento','Estatus','Anticipo pagado','Monto anticipo','Fecha anticipo','Factura anticipo','Finiquito pagado','Monto finiquito','Fecha finiquito','Factura finiquito'];
+  const header = ['Vacante','Folio','Empresa','Reclutador','Días garantía','Inicio garantía','Vencimiento','Estatus','Anticipo pagado','Monto anticipo','Fecha anticipo','Factura anticipo','Finiquito pagado','Monto finiquito','Fecha finiquito','Factura finiquito','Veces en garantía','Últimas reincidencias'];
   rows.push(header);
 
   for(const v of vacs){
@@ -9203,11 +9203,14 @@ async function doExportGarantias(){
     if(f2 && inicio && inicio > f2) continue;
     const hoy = today();
     const estatus = !venc ? 'Sin inicio' : venc < hoy ? 'Vencida' : 'Vigente';
+    const reincidencias = g?.reincidencias||[];
+    const reincResumen = reincidencias.map(r=>`${r.fecha?fmt(r.fecha):''}: ${r.candidato_original||'—'} → ${r.candidato_nuevo||'—'}`).join(' | ');
     rows.push([
       v.nombre||'', v.folio||'', emp.nombre||'', rec.nombre||'',
       v.garantia_dias||'', inicio, venc, estatus,
       g?.anticipo_pagado?'Sí':'No', g?.anticipo_monto||'', g?.anticipo_fecha||'', g?.anticipo_factura||'',
-      g?.finiquito_pagado?'Sí':'No', g?.finiquito_monto||'', g?.finiquito_fecha||'', g?.finiquito_factura||''
+      g?.finiquito_pagado?'Sí':'No', g?.finiquito_monto||'', g?.finiquito_fecha||'', g?.finiquito_factura||'',
+      reincidencias.length+1, reincResumen
     ]);
   }
 
@@ -9285,6 +9288,9 @@ async function renderGarantias(){
 
     const camposHabilitados = !!inicioG;
     const disabled = camposHabilitados ? '' : 'disabled';
+    const reincidencias = g.reincidencias||[];
+    const candOriginal = DB.candidatos.find(c=>c.id===v.candidato_contratado)||{};
+    const reincOrigDefault = reincidencias.length ? (reincidencias[reincidencias.length-1].candidato_nuevo||'') : (candOriginal.nombre||'');
 
     return`
       <tr style="cursor:pointer"
@@ -9305,9 +9311,10 @@ async function renderGarantias(){
         <td>${estatusBadge}</td>
         <td>${g.anticipo_pagado?'<span class="badge bg">Pagado</span>':'<span class="badge bx">Pendiente</span>'}</td>
         <td>${g.finiquito_pagado?'<span class="badge bg">Pagado</span>':'<span class="badge bx">Pendiente</span>'}</td>
+        <td>${(g.reincidencias||[]).length?`<span class="badge ba">${g.reincidencias.length}</span>`:'<span class="badge bx">0</span>'}</td>
       </tr>
       <tr id="grow-${v.id}" style="display:none">
-        <td colspan="10" style="padding:0;background:var(--surface2)">
+        <td colspan="11" style="padding:0;background:var(--surface2)">
           <div style="padding:16px 20px">
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">
               <div class="fg">
@@ -9370,9 +9377,36 @@ async function renderGarantias(){
                 </div>
               </div>
             </div>
-            <div style="display:flex;justify-content:flex-end;margin-top:12px">
+            <div style="display:flex;justify-content:flex-end;margin-top:12px;margin-bottom:20px">
               <button class="btn btn-primary btn-sm" onclick="saveGarantiaRow('${v.id}')">
                 <i class="fa fa-save"></i> Guardar
+              </button>
+            </div>
+            <div class="sep">Reincidencias de garantía</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <span class="badge ${reincidencias.length?'ba':'bx'}">Van ${reincidencias.length+1} ${reincidencias.length+1===1?'vez':'veces'} en esta garantía</span>
+            </div>
+            ${reincidencias.length?`<div class="table-wrap" style="margin-bottom:14px"><table>
+              <thead><tr><th style="width:36px;text-align:center">#</th><th>Fecha</th><th>Candidato original</th><th>Candidato nuevo</th><th></th></tr></thead>
+              <tbody>${reincidencias.map((r,ri)=>`<tr>
+                <td style="text-align:center;font-size:12px;color:var(--text3)">${ri+1}</td>
+                <td>${r.fecha?fmt(r.fecha):'—'}</td>
+                <td>${_esc(r.candidato_original||'—')}</td>
+                <td class="td-p">${_esc(r.candidato_nuevo||'—')}</td>
+                <td><button class="btn btn-ghost btn-sm" onclick="quitarReincidencia('${v.id}',${ri})" title="Quitar"><i class="fa fa-trash" style="font-size:12px"></i></button></td>
+              </tr>`).join('')}</tbody>
+            </table></div>`:''}
+            <div class="fr">
+              <div class="fg"><label>Candidato original (el que se va)</label><input type="text" id="g-reinc-orig-${v.id}" value="${_esc(reincOrigDefault)}" placeholder="Nombre del candidato que sale"></div>
+              <div class="fg"><label>Candidato nuevo (reemplazo)</label><input type="text" id="g-reinc-nuevo-${v.id}" placeholder="Nombre del candidato de reemplazo"></div>
+            </div>
+            <div class="fr">
+              <div class="fg"><label>Fecha en que reingresó a garantía</label><input type="date" id="g-reinc-fecha-${v.id}" value="${today()}"></div>
+              <div></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end">
+              <button class="btn btn-ghost btn-sm" onclick="agregarReincidencia('${v.id}')">
+                <i class="fa fa-plus"></i> Registrar reincidencia
               </button>
             </div>
           </div>
@@ -9404,7 +9438,7 @@ async function renderGarantias(){
         <thead><tr>
           <th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th>
           <th>Días</th><th>Inicio</th><th>Vence</th><th>Estatus</th>
-          <th>Anticipo</th><th>Finiquito</th>
+          <th>Anticipo</th><th>Finiquito</th><th>Reincidencias</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -9463,6 +9497,32 @@ async function saveGarantiaRow(vacId){
   if(error){ showToast('Error: '+error.message,'err'); return; }
   logActivity('Actualizar garantía','garantias',vacId,v.nombre||vacId);
   showToast('Garantía guardada ✓');
+  renderGarantias();
+}
+
+async function agregarReincidencia(vacId){
+  const orig=(document.getElementById('g-reinc-orig-'+vacId)?.value||'').trim();
+  const nuevo=(document.getElementById('g-reinc-nuevo-'+vacId)?.value||'').trim();
+  const fecha=document.getElementById('g-reinc-fecha-'+vacId)?.value||today();
+  if(!nuevo){ showToast('Indica el nombre del candidato de reemplazo','err'); return; }
+  const { data:gActual } = await sbClient.from('garantias').select('reincidencias').eq('id',vacId).maybeSingle();
+  const reincidencias=[...(gActual?.reincidencias||[]),{fecha,candidato_original:orig,candidato_nuevo:nuevo}];
+  const { error } = await sbClient.from('garantias').upsert({id:vacId,vacante_id:vacId,reincidencias});
+  if(error){ showToast('Error: '+error.message,'err'); return; }
+  const v=DB.vacantes.find(x=>x.id===vacId)||{};
+  logActivity('Reincidencia de garantía','garantias',vacId,`${v.nombre||vacId} — ${orig||'—'} → ${nuevo}`);
+  showToast('Reincidencia registrada ✓');
+  renderGarantias();
+}
+
+async function quitarReincidencia(vacId, idx){
+  if(!confirm('¿Quitar este registro de reincidencia?')) return;
+  const { data:gActual } = await sbClient.from('garantias').select('reincidencias').eq('id',vacId).maybeSingle();
+  const reincidencias=[...(gActual?.reincidencias||[])];
+  reincidencias.splice(idx,1);
+  const { error } = await sbClient.from('garantias').upsert({id:vacId,vacante_id:vacId,reincidencias});
+  if(error){ showToast('Error: '+error.message,'err'); return; }
+  showToast('Reincidencia eliminada ✓');
   renderGarantias();
 }
 

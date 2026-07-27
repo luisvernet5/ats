@@ -11202,7 +11202,7 @@ function exportContratados(){
     const wn = getWeekNumber(fechaCont);
     const diasTotal = daysBetween(v.fecha_apertura, fechaCont||today());
     const diasCliente = clienteDays(c);
-    return [i+1,v.nombre||'',v.folio||'',emp.nombre||'',rec.nombre||'',c.nombre||'',v.departamento||'',v.proyecto||'',v.fecha_apertura||'',fechaCont||'',wn?`S${wn.week} (${wn.year})`:'',diasTotal!==null?diasTotal+'d':'',diasCliente!==null?diasCliente+'d':''];
+    return [i+1,v.nombre||'',v.folio||'',emp.nombre||'',rec.nombre||'',c.nombre||'',v.departamento||'',v.proyecto||'',v.fecha_apertura?fmt(v.fecha_apertura):'',fechaCont?fmt(fechaCont):'',wn?`S${wn.week} (${wn.year})`:'',diasTotal!==null?diasTotal+'d':'',diasCliente!==null?diasCliente+'d':''];
   });
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([header,...rows]),'Contratados');

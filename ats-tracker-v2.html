@@ -90,7 +90,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .g2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
 .g2>*{min-width:0;overflow:hidden}
 .sec-title{font-size:14px;font-weight:600;margin-bottom:14px;color:var(--text)}
-.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:clip}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse}
 thead tr{background:var(--surface2)}
 th{padding:10px 14px;text-align:left;font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;position:sticky;top:0;z-index:2;background:var(--surface2);box-shadow:0 1px 0 var(--border)}
@@ -236,6 +236,19 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
 .vac-expand-icon.expanded{transform:rotate(90deg)}
 .cand-expand-td{border-left:3px solid var(--accent)!important;background:var(--surface2)}
 
+/* =====================================================
+   TABLETS (iPad y similares) — 769px a 1024px
+   Menos agresivo que el breakpoint de móvil: solo oculta
+   columnas redundantes (ya filtrables arriba) para que la
+   tabla de Garantías quepa sin scroll horizontal de toda la página.
+   ===================================================== */
+@media (max-width: 1024px) {
+  #garantias-table-wrap th:nth-child(4),
+  #garantias-table-wrap td:nth-child(4),
+  #garantias-table-wrap th:nth-child(5),
+  #garantias-table-wrap td:nth-child(5) { display: none; }
+}
+
 @media (max-width: 768px) {
   /* SIDEBAR — drawer oculto por defecto */
   .sidebar {
@@ -342,6 +355,17 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
   #candidatos-table td:nth-child(6),
   #candidatos-table th:nth-child(7),
   #candidatos-table td:nth-child(7) { display: none; }
+
+  /* =====================================================
+     GARANTÍAS TABLE — en móvil oculta también Días, Anticipo y Finiquito
+     (Empresa/Reclutador ya se ocultan desde el breakpoint de tablet de arriba)
+     ===================================================== */
+  #garantias-table-wrap th:nth-child(6),
+  #garantias-table-wrap td:nth-child(6),
+  #garantias-table-wrap th:nth-child(10),
+  #garantias-table-wrap td:nth-child(10),
+  #garantias-table-wrap th:nth-child(11),
+  #garantias-table-wrap td:nth-child(11) { display: none; }
 
   /* =====================================================
      PANEL KPI DETALLE (vista empresa)

@@ -19686,6 +19686,9 @@ function _procCard(p,color){
   const previewBtn=esSubido
     ?`<button class="btn btn-ghost btn-sm" onclick="openProcArchivo('${p.id}')" title="Ver archivo"><i class="fa fa-eye"></i></button>`
     :`<button class="btn btn-ghost btn-sm" onclick="previewProcedimiento('${p.id}')" title="Vista previa"><i class="fa fa-eye"></i></button>`;
+  const downloadBtn=esSubido
+    ?`<a class="btn btn-ghost btn-sm" href="${_esc(p.archivo_url||'')}" download="${_esc(p.archivo_nombre||'')}" title="Descargar archivo"><i class="fa fa-download"></i></a>`
+    :`<button class="btn btn-ghost btn-sm" onclick="descargarProcedimientoPDF('${p.id}')" title="Descargar PDF"><i class="fa fa-file-pdf"></i></button>`;
   const editFn=esSubido?`openProcSubirModal('${p.id}')`:`openProcCrearModal('${p.id}')`;
   return`<div class="card" style="display:flex;flex-direction:column;gap:10px;padding:18px">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
@@ -19698,6 +19701,7 @@ function _procCard(p,color){
       </div>
       <div style="display:flex;gap:3px;flex-shrink:0">
         ${previewBtn}
+        ${downloadBtn}
         ${currentUserData?.rol==='coordinador'?'':`<button class="btn btn-ghost btn-sm" onclick="${editFn}" title="Editar"><i class="fa fa-pencil"></i></button>
         <button class="btn btn-ghost btn-sm" onclick="deleteProcedimiento('${p.id}')" title="Eliminar" style="color:var(--red,#ef4444)"><i class="fa fa-trash"></i></button>`}
       </div>
@@ -20126,6 +20130,79 @@ function previewProcedimiento(id){
       </div>
     </div>
   </div>`;
+}
+
+async function descargarProcedimientoPDF(id){
+  if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
+  const p=(DB.procedimientos||[]).find(x=>x.id===id);
+  if(!p)return;
+  const emp=DB.empresas.find(e=>e.id===p.empresa_id)||{};
+  const perfil=DB.perfilesPuesto.find(x=>x.id===p.perfil_id)||{};
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
+  const W=216,M=18,CW=180;
+  let y=M;
+  const chkPg=(n=10)=>{if(y+n>270){doc.addPage();y=M;}};
+
+  if(emp.logo){const b64=await urlToBase64(emp.logo);if(b64){try{const{w,h}=await _imgFit(b64,26,16);doc.addImage(b64,'PNG',M,y,w,h);}catch(e){}}}
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(0);
+  doc.text('PROCEDIMIENTO',W/2,y+7,{align:'center'});
+  doc.setFontSize(11);doc.setFont('helvetica','normal');
+  doc.text(p.titulo||'',W/2,y+13,{align:'center'});
+  y+=22;
+  doc.setDrawColor(200);doc.setLineWidth(0.3);doc.line(M,y,W-M,y);y+=6;
+
+  doc.setFontSize(8.5);doc.setTextColor(80);
+  const metaLine=[
+    perfil.nombre_puesto?`Puesto: ${perfil.nombre_puesto}`:'',
+    `Fecha elaboración: ${p.fecha_elaboracion||'—'}`,
+    `Fecha revisión: ${p.fecha_revision||'—'}`,
+    `Cambios: ${p.cambios??0}`,
+    p.version?`Versión: ${p.version}`:''
+  ].filter(Boolean).join('   |   ');
+  const metaL=doc.splitTextToSize(metaLine,CW);
+  doc.text(metaL,M,y);y+=metaL.length*4+6;
+
+  const section=(titulo,texto)=>{
+    if(!texto)return;
+    chkPg(14);
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(0);
+    doc.text(titulo,M,y);y+=5;
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(40);
+    const w=doc.splitTextToSize(texto,CW);
+    chkPg(w.length*4.2+4);
+    doc.text(w,M,y);y+=w.length*4.2+8;
+  };
+  section('OBJETIVO',p.objetivo);
+  section('ALCANCE',p.alcance);
+
+  const secuencia=p.secuencia||[];
+  if(secuencia.length){
+    chkPg(14);
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(0);
+    doc.text('SECUENCIA',M,y);y+=6;
+    const cNo=12,cResp=32,cAct=CW-cNo-cResp;
+    secuencia.forEach(s=>{
+      const acts=(s.actividades||[]);
+      const bloqueTxt=(s.titulo_bloque?s.titulo_bloque+'\n':'')+acts.map((a,i)=>`${i+1}. ${a}`).join('\n');
+      const actLines=doc.splitTextToSize(bloqueTxt,cAct-4);
+      const respLines=doc.splitTextToSize(s.responsable||'',cResp-4);
+      const h=Math.max(8,Math.max(actLines.length,respLines.length)*4.2+4);
+      chkPg(h);
+      doc.setDrawColor(180);doc.setLineWidth(0.25);
+      doc.rect(M,y,cNo,h,'D');doc.rect(M+cNo,y,cResp,h,'D');doc.rect(M+cNo+cResp,y,cAct,h,'D');
+      doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(0);
+      doc.text(String(s.no||''),M+cNo/2,y+h/2+1.2,{align:'center'});
+      doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(30);
+      doc.text(respLines,M+cNo+2,y+4);
+      doc.text(actLines,M+cNo+cResp+2,y+4);
+      y+=h;
+    });
+  }
+
+  const nombreArchivo=(p.titulo||'Procedimiento').replace(/[^a-zA-Z0-9]/g,'_');
+  doc.save(`${nombreArchivo}.pdf`);
+  showToast('PDF generado ✓');
 }
 
 function openProcArchivo(id){

@@ -12398,6 +12398,7 @@ async function _renderPermisosTab(){
   const rolBadge=u=>u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':u.rol==='coordinador'?'bx':u.rol==='facturacion'?'ba':'bg';
   const userRows=list.map(u=>`
     <div id="perm-usr-${u.id}" onclick="_permisosSelectUser('${u.id}')"
+      data-search="${_esc((u.nombre||'').toLowerCase())} ${_esc((u.email||'').toLowerCase())}"
       style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;cursor:pointer;transition:background .12s;border:1px solid transparent">
       <div style="width:34px;height:34px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600;flex-shrink:0">
         ${(u.nombre||u.email||'?')[0].toUpperCase()}
@@ -12412,8 +12413,11 @@ async function _renderPermisosTab(){
   content.innerHTML=`
     <div style="display:grid;grid-template-columns:300px 1fr;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;height:calc(100vh - 190px);min-height:600px">
       <div style="border-right:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;min-height:0">
-        <div style="padding:12px 14px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);flex-shrink:0">Usuarios</div>
-        <div style="overflow-y:auto;flex:1;padding:6px">${userRows}</div>
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border);flex-shrink:0">
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Usuarios</div>
+          <input type="text" id="perm-usr-search" placeholder="Buscar por nombre o email..." oninput="_permisosFilterUsers(this.value)" style="font-size:13px">
+        </div>
+        <div id="perm-usr-list" style="overflow-y:auto;flex:1;padding:6px">${userRows}</div>
       </div>
       <div id="perm-detail" style="padding:24px;background:var(--bg);overflow-y:auto">
         <div style="color:var(--text3);font-size:13px;padding-top:40px;text-align:center">
@@ -12480,6 +12484,13 @@ async function _permisosSelectUser(userId){
       ${hasSaved?'<i class="fa fa-check-circle" style="color:var(--green)"></i> Permisos personalizados activos':'<i class="fa fa-info-circle"></i> Sin personalización — usando permisos por defecto del rol'}
     </div>
     <div>${gruposHTML}</div>`;
+}
+
+function _permisosFilterUsers(q){
+  const term=q.trim().toLowerCase();
+  document.querySelectorAll('#perm-usr-list [data-search]').forEach(el=>{
+    el.style.display=!term||el.dataset.search.includes(term)?'':'none';
+  });
 }
 
 function _permisosToggleAll(check){

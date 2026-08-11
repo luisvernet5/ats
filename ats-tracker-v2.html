@@ -7528,6 +7528,7 @@ function _mfOnChange(id){
   else if(id==='ed-flt-proy'||id==='ed-flt-dep'||id==='ed-flt-rec') filtrarVacantesEmpresa();
   else if(id==='pf-flt-proy'||id==='pf-flt-dep') _pfRenderTabla();
   else if(id==='procpe-proy'||id==='procpe-dep') _procpeRenderTabla(_procEmpId);
+  else if(id==='usr-flt-rol'||id==='usr-flt-emp') _usrRenderTabla();
 }
 
 function _mfReset(...ids){
@@ -12934,30 +12935,57 @@ function openInviteParaCoordinador(coordId){
   }, 40);
 }
 
+let _usrAllList=[];
 async function loadUsuarios() {
   const wrap = document.getElementById('usuarios-config-wrap');
   if(wrap && !document.getElementById('usuarios-table')){
     wrap.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">
         <div class="sec-title" style="margin:0">Gestión de usuarios</div>
-        <div style="display:flex;gap:10px;align-items:center">
-          <input type="text" id="usr-search" placeholder="Buscar por nombre o email..." oninput="_filterTableRows(this.value,'usr-tbody')" style="width:260px">
-          <button class="btn btn-primary btn-sm" onclick="openUsuarioModal()">
-            <i class="fa fa-user-plus"></i> Nuevo usuario
-          </button>
-        </div>
+        <button class="btn btn-primary btn-sm" onclick="openUsuarioModal()">
+          <i class="fa fa-user-plus"></i> Nuevo usuario
+        </button>
+      </div>
+      <div class="fbar" style="margin-bottom:14px">
+        <input type="text" id="usr-search" placeholder="Buscar por nombre o email..." oninput="_usrRenderTabla()" style="width:220px">
+        <div id="wrap-usr-flt-rol" style="flex:none"><button id="btn-usr-flt-rol" onclick="_mfOpen('usr-flt-rol',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:130px;justify-content:space-between"><span id="lbl-usr-flt-rol">Todos los roles</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+        <div id="wrap-usr-flt-emp" style="flex:none"><button id="btn-usr-flt-emp" onclick="_mfOpen('usr-flt-emp',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between"><span id="lbl-usr-flt-emp">Todas las empresas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
+        <button class="btn btn-ghost btn-sm" onclick="_usrLimpiarFiltros()">× Limpiar</button>
       </div>
       <div class="table-wrap" id="usuarios-table"></div>
       <div id="usuarios-count" style="font-size:12px;color:var(--text3);padding:8px 0;"></div>`;
   }
   const { data: usuarios } = await sbClient.from('usuarios').select('*');
-  const list = usuarios || [];
+  _usrAllList = (usuarios||[]).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
+  const rolOpts=[...new Set(_usrAllList.map(u=>u.rol).filter(Boolean))].sort().map(r=>({value:r,label:r}));
+  _mfPopulate('usr-flt-rol',rolOpts,'Todos los roles');
+  const empOpts=[...new Set(_usrAllList.map(u=>u.empresa_id).filter(Boolean))]
+    .map(id=>({value:id,label:DB.empresas.find(e=>e.id===id)?.nombre||id}))
+    .sort((a,b)=>a.label.localeCompare(b.label,'es',{sensitivity:'base'}));
+  _mfPopulate('usr-flt-emp',empOpts,'Todas las empresas');
+  _usrRenderTabla();
+}
+
+function _usrLimpiarFiltros(){
+  document.getElementById('usr-search').value='';
+  _mfReset('usr-flt-rol','usr-flt-emp');
+  _usrRenderTabla();
+}
+
+function _usrRenderTabla() {
+  const q=(document.getElementById('usr-search')?.value||'').trim().toLowerCase();
+  const mfRol=_mfGet('usr-flt-rol');
+  const mfEmp=_mfGet('usr-flt-emp');
+  let list=_usrAllList;
+  if(q) list=list.filter(u=>(u.nombre||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q));
+  if(mfRol) list=list.filter(u=>mfRol.has(u.rol||''));
+  if(mfEmp) list=list.filter(u=>mfEmp.has(u.empresa_id||''));
   const rows = list.map((u,i) => {
     const emp = DB.empresas.find(e=>e.id===u.empresa_id)||{};
     const rec = DB.reclutadores.find(r=>r.id===u.reclutador_id)||{};
     const rolBadge = u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':u.rol==='coordinador'?'bx':u.rol==='facturacion'?'ba':'bg';
     const esSelf = u.id === currentUser?.id;
-    return `<tr style="${u.activo===false?'opacity:.55':''}" data-search="${_esc((u.nombre||'').toLowerCase())} ${_esc((u.email||'').toLowerCase())}">
+    return `<tr style="${u.activo===false?'opacity:.55':''}">
       <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
       <td class="td-p">${u.nombre||'—'}</td>
       <td>${u.email||'—'}</td>

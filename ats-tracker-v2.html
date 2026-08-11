@@ -12760,7 +12760,7 @@ async function renderCoordinadoresConfig(){
     const emp = DB.empresas.find(e=>e.id===c.empresa_id);
     const hasUser = DB.usuarios.some(u=>u.coordinador_id===c.id);
     const area = _coordAreaLabel(c);
-    return`<tr style="${c.activo===false?'opacity:.55':''}">
+    return`<tr style="${c.activo===false?'opacity:.55':''}" data-search="${_esc((c.nombre||'').toLowerCase())}">
       <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
       <td class="td-p" style="font-weight:500">${_esc(c.nombre||'—')}</td>
       <td style="font-size:13px;color:var(--text2)">${_esc(area)}</td>
@@ -12788,8 +12788,11 @@ async function renderCoordinadoresConfig(){
     </tr>`;
   }).join('');
   content.innerHTML=`
-    <div style="max-width:920px">
-      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Registra los coordinadores o jefes de departamento. Después asígnalos a los perfiles de puesto y procedimientos que deben visualizar. Usa <b>Invitar</b> para darles acceso al sistema.</p>
+    <div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;max-width:920px">Registra los coordinadores o jefes de departamento. Después asígnalos a los perfiles de puesto y procedimientos que deben visualizar. Usa <b>Invitar</b> para darles acceso al sistema.</p>
+      <div class="fg" style="max-width:320px;margin-bottom:14px">
+        <input type="text" id="coord-search" placeholder="Buscar coordinador por nombre..." oninput="_filterTableRows(this.value,'coord-tbody')">
+      </div>
       ${coords.length===0
         ?`<div style="text-align:center;padding:40px 0;color:var(--text3)"><i class="fa fa-user-check" style="font-size:36px;display:block;margin-bottom:10px"></i>No hay coordinadores registrados</div>`
         :`<div class="table-wrap" style="margin-bottom:16px"><table>
@@ -12800,12 +12803,19 @@ async function renderCoordinadoresConfig(){
             <th style="text-align:center">Acceso</th>
             <th></th>
           </tr></thead>
-          <tbody>${rows}</tbody>
+          <tbody id="coord-tbody">${rows}</tbody>
         </table></div>`}
       <button class="btn btn-primary btn-sm" onclick="openCoordinadorModal()">
         <i class="fa fa-user-plus"></i> Agregar coordinador
       </button>
     </div>`;
+}
+
+function _filterTableRows(term,tbodyId){
+  term=(term||'').trim().toLowerCase();
+  document.querySelectorAll('#'+tbodyId+' tr[data-search]').forEach(tr=>{
+    tr.style.display=!term||tr.dataset.search.includes(term)?'':'none';
+  });
 }
 
 function _coordSelSet(existing,plural,singular){
@@ -12928,11 +12938,14 @@ async function loadUsuarios() {
   const wrap = document.getElementById('usuarios-config-wrap');
   if(wrap && !document.getElementById('usuarios-table')){
     wrap.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">
         <div class="sec-title" style="margin:0">Gestión de usuarios</div>
-        <button class="btn btn-primary btn-sm" onclick="openUsuarioModal()">
-          <i class="fa fa-user-plus"></i> Nuevo usuario
-        </button>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="text" id="usr-search" placeholder="Buscar por nombre o email..." oninput="_filterTableRows(this.value,'usr-tbody')" style="width:260px">
+          <button class="btn btn-primary btn-sm" onclick="openUsuarioModal()">
+            <i class="fa fa-user-plus"></i> Nuevo usuario
+          </button>
+        </div>
       </div>
       <div class="table-wrap" id="usuarios-table"></div>
       <div id="usuarios-count" style="font-size:12px;color:var(--text3);padding:8px 0;"></div>`;
@@ -12944,7 +12957,7 @@ async function loadUsuarios() {
     const rec = DB.reclutadores.find(r=>r.id===u.reclutador_id)||{};
     const rolBadge = u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':u.rol==='coordinador'?'bx':u.rol==='facturacion'?'ba':'bg';
     const esSelf = u.id === currentUser?.id;
-    return `<tr style="${u.activo===false?'opacity:.55':''}">
+    return `<tr style="${u.activo===false?'opacity:.55':''}" data-search="${_esc((u.nombre||'').toLowerCase())} ${_esc((u.email||'').toLowerCase())}">
       <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
       <td class="td-p">${u.nombre||'—'}</td>
       <td>${u.email||'—'}</td>
@@ -12963,7 +12976,7 @@ async function loadUsuarios() {
   const tableEl = document.getElementById('usuarios-table');
   if(tableEl) tableEl.innerHTML = `<table>
     <thead><tr><th style="width:36px;text-align:center">#</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Asignado a</th><th style="text-align:center">Activo</th><th>Acción</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Sin usuarios registrados</td></tr>'}</tbody>
+    <tbody id="usr-tbody">${rows||'<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Sin usuarios registrados</td></tr>'}</tbody>
   </table>`;
   const _ucnt = document.getElementById('usuarios-count');
   if(_ucnt) _ucnt.innerHTML = `Mostrando <strong>${list.length}</strong> registros`;

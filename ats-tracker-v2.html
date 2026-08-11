@@ -14200,6 +14200,7 @@ function renderPerfilesEmpresa(empId){
         <span style="font-size:15px;font-weight:600">${_esc(emp.nombre||'')}</span>
       </div>
       <span style="flex:1"></span>
+      ${todosPerfiles.length>0?`<button class="btn btn-green btn-sm" onclick="descargarTodosPerfilesPDF('${empId}')"><i class="fa fa-file-archive"></i> Descargar todo</button>`:''}
       <button class="btn btn-ghost btn-sm" onclick="openExportPerfilesModal()"><i class="fa fa-download"></i> Exportar</button>
       ${currentUserData?.rol==='coordinador'?'':`<button class="btn btn-primary btn-sm" onclick="openPerfilModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo perfil</button>`}
     </div>
@@ -15647,11 +15648,8 @@ ${summarySection}
   else setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
 
-async function generarPDFPerfil(id){
-  const p=DB.perfilesPuesto.find(x=>x.id===id);
-  if(!p){showToast('Perfil no encontrado','err');return;}
+async function _buildPerfilPDFDoc(p){
   const emp=DB.empresas.find(e=>e.id===p.empresa_id)||{};
-  if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const W=210, ml=14, mr=196;
@@ -15947,8 +15945,47 @@ async function generarPDFPerfil(id){
 
   const clean=s=>(s||'').trim().replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s]/g,'').trim();
   const fname=`Perfil de puesto ${clean(p.nombre_puesto)} ${clean(emp.nombre)}.pdf`;
+  return {doc,fname};
+}
+
+async function generarPDFPerfil(id){
+  const p=DB.perfilesPuesto.find(x=>x.id===id);
+  if(!p){showToast('Perfil no encontrado','err');return;}
+  if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
+  const {doc,fname}=await _buildPerfilPDFDoc(p);
   doc.save(fname);
   showToast('PDF generado ✓');
+}
+
+async function descargarTodosPerfilesPDF(empId){
+  if(typeof JSZip==='undefined'){showToast('JSZip no disponible','err');return;}
+  if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const _isCoord=currentUserData?.rol==='coordinador';
+  const perfiles=DB.perfilesPuesto.filter(p=>p.empresa_id===empId&&(_isCoord?_coordAssigned(p):true));
+  const mfP=_mfGet('pf-flt-proy'),mfD=_mfGet('pf-flt-dep');
+  const perfilesFiltrados=perfiles.filter(p=>{
+    if(mfP&&!mfP.has(p.proyecto||''))return false;
+    if(mfD&&!mfD.has(p.departamento||''))return false;
+    return true;
+  });
+  if(!perfilesFiltrados.length){showToast('No hay perfiles para descargar','err');return;}
+  showToast('Generando ZIP, esto puede tardar unos segundos...');
+  const safeName=s=>((s||'archivo').replace(/[\\/:*?"<>|]/g,'_').trim())||'archivo';
+  const zip=new JSZip();
+  for(const p of perfilesFiltrados){
+    try{
+      const {doc,fname}=await _buildPerfilPDFDoc(p);
+      zip.file(safeName(fname),doc.output('blob'));
+    }catch(e){ console.warn('No se pudo incluir en el ZIP:',p.nombre_puesto,e); }
+  }
+  const zipBlob=await zip.generateAsync({type:'blob'});
+  const url=URL.createObjectURL(zipBlob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`Perfiles_${safeName(emp.nombre)}_${today()}.zip`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+  showToast('ZIP descargado ✓');
 }
 
 /* ── Página Documentación ── */

@@ -2125,7 +2125,12 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       </div>
       <div id="usr-empresa-field" style="display:none" class="fr full">
         <div class="fg"><label>Empresa cliente asignada *</label>
-          <select id="usr-empresa-sel"><option value="">Seleccionar empresa...</option></select>
+          <select id="usr-empresa-sel" onchange="onUsrEmpresaChange()"><option value="">Seleccionar empresa...</option></select>
+        </div>
+      </div>
+      <div id="usr-coordinador-field" style="display:none" class="fr full">
+        <div class="fg"><label>Coordinador vinculado * <span style="font-size:10px;color:var(--text3)">(gobierna qué departamentos/proyectos ve)</span></label>
+          <select id="usr-coordinador-sel"><option value="">Seleccionar coordinador...</option></select>
         </div>
       </div>
       <div id="usr-edit-note" style="display:none" class="alert alert-i"></div>
@@ -3650,6 +3655,14 @@ function _coordAreaLabel(coord){
   const parts=[..._coordDeptos(coord),..._coordProyectos(coord)];
   return parts.length?parts.join(' / ') : '—';
 }
+function _coordScopeWarning(){
+  if(currentUserData?.rol!=='coordinador') return '';
+  const coord=_coordRecord();
+  if(!coord) return `<div style="text-align:center;color:var(--red,#ef4444);font-size:12px;padding:10px 0"><i class="fa fa-triangle-exclamation"></i> Tu usuario no está vinculado a ningún coordinador. Contacta al administrador.</div>`;
+  const deps=_coordDeptos(coord), proys=_coordProyectos(coord);
+  if(!deps.length && !proys.length) return `<div style="text-align:center;color:#d97706;font-size:12px;padding:10px 0"><i class="fa fa-triangle-exclamation"></i> No tienes ningún departamento o proyecto asignado — pide al administrador que te asigne al menos uno en Configuración → Coordinadores.</div>`;
+  return '';
+}
 function _coordVacanteMatch(v){
   if(currentUserData?.rol!=='coordinador') return true;
   const coord=_coordRecord();
@@ -3663,11 +3676,14 @@ function _coordAssigned(item){
   const coordId=currentUserData?.coordinador_id;
   if(!coordId) return false;
   // Procedimientos heredan acceso del perfil de puesto padre
-  if(item?.perfil_id){
-    const perfil=DB.perfilesPuesto.find(p=>p.id===item.perfil_id);
-    return (perfil?.coordinadores_ids||[]).includes(coordId);
-  }
-  return (item?.coordinadores_ids||[]).includes(coordId);
+  const perfil=item?.perfil_id?DB.perfilesPuesto.find(p=>p.id===item.perfil_id):item;
+  const viaChecklist=(perfil?.coordinadores_ids||[]).includes(coordId);
+  if(viaChecklist) return true;
+  // También se concede acceso automáticamente si el departamento/proyecto del perfil
+  // coincide con el/los departamento(s)/proyecto(s) asignados al coordinador.
+  const coord=_coordRecord();
+  const deps=_coordDeptos(coord), proys=_coordProyectos(coord);
+  return !!(perfil && ((perfil.departamento && deps.includes(perfil.departamento)) || (perfil.proyecto && proys.includes(perfil.proyecto))));
 }
 function esColocado(c){
   if(!c) return false;
@@ -6443,7 +6459,7 @@ function renderPipeline(){
 
   const board=document.getElementById('pipeline-board');
   board.className='pipeline';
-  if(!Object.keys(stageMap).length){board.innerHTML='<div style="color:var(--text3);padding:20px;font-size:13px">Sin candidatos en el pipeline con los filtros seleccionados.</div>';return;}
+  if(!Object.keys(stageMap).length){board.innerHTML=`<div style="color:var(--text3);padding:20px;font-size:13px">Sin candidatos en el pipeline con los filtros seleccionados.${_coordScopeWarning()}</div>`;return;}
 
   const hidden=window._pipHiddenStages;
   window._pipAllStages=Object.entries(stageMap).map(([key,s])=>({key,label:s.label,color:s.color,count:s.cands.length}));
@@ -6962,7 +6978,7 @@ function renderVacantesTable(){
 
   document.getElementById('vacantes-table').innerHTML=`<table>
     <thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Folio</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>F. Cierre</th><th>SLA</th><th>Días</th><th>Cands.</th><th style="min-width:120px">Acción</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="14" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. <button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button></td></tr>'}</tbody>
+    <tbody>${rows||`<tr><td colspan="14" style="text-align:center;color:var(--text3);padding:32px">Sin vacantes. ${currentUserData?.rol==='coordinador'?'':'<button class="btn btn-primary btn-sm" onclick="openVacanteModal()">+ Nueva</button>'}${_coordScopeWarning()}</td></tr>`}</tbody>
   </table>`;
   _applyVacColVis();
   const _vcnt=document.getElementById('vacantes-count');
@@ -7897,7 +7913,7 @@ function renderCandidatosTable(){
   }).join('');
   document.getElementById('candidatos-table').innerHTML=`<table>
     <thead><tr><th style="width:36px;text-align:center">#</th><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Fecha inicio</th><th>Etapa</th><th>Días proceso</th><th>Días cliente</th><th>Acción</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos</td></tr>'}</tbody>
+    <tbody>${rows||`<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:24px">Sin candidatos${_coordScopeWarning()}</td></tr>`}</tbody>
   </table>`;
   _applyCandColVis();
   const _pager=document.getElementById('cand-pager');
@@ -12535,6 +12551,20 @@ function onUsrRolChange() {
   const rol = document.getElementById('usr-rol').value;
   document.getElementById('usr-reclutador-field').style.display = rol==='reclutador' ? 'grid' : 'none';
   document.getElementById('usr-empresa-field').style.display = (rol==='rh_cliente'||rol==='coordinador') ? 'grid' : 'none';
+  document.getElementById('usr-coordinador-field').style.display = rol==='coordinador' ? 'grid' : 'none';
+  if(rol==='coordinador') onUsrEmpresaChange();
+}
+
+function onUsrEmpresaChange() {
+  const rol = document.getElementById('usr-rol').value;
+  if(rol!=='coordinador') return;
+  const empId = document.getElementById('usr-empresa-sel').value;
+  const coordSel = document.getElementById('usr-coordinador-sel');
+  const prev = coordSel.value;
+  const coords = (DB.coordinadores||[]).filter(c=>!empId||c.empresa_id===empId);
+  coordSel.innerHTML = '<option value="">Seleccionar coordinador...</option>'
+    + coords.map(c=>`<option value="${c.id}">${_esc(c.nombre)}${_coordAreaLabel(c)!=='—'?' — '+_esc(_coordAreaLabel(c)):''}</option>`).join('');
+  if(coords.some(c=>c.id===prev)) coordSel.value = prev;
 }
 
 function toggleInviteMode() {
@@ -12569,6 +12599,7 @@ function openUsuarioModal(usrId=null) {
   const empSel = document.getElementById('usr-empresa-sel');
   empSel.innerHTML = '<option value="">Seleccionar empresa...</option>';
   DB.empresas.forEach(e => empSel.innerHTML += `<option value="${e.id}">${e.nombre}</option>`);
+  document.getElementById('usr-coordinador-sel').innerHTML = '<option value="">Seleccionar coordinador...</option>';
   if(usrId) {
     sbClient.from('usuarios').select('*').eq('id', usrId).single().then(({data}) => {
       if(!data) return;
@@ -12578,6 +12609,10 @@ function openUsuarioModal(usrId=null) {
       onUsrRolChange();
       if(data.reclutador_id) document.getElementById('usr-reclutador-sel').value = data.reclutador_id;
       if(data.empresa_id) document.getElementById('usr-empresa-sel').value = data.empresa_id;
+      if(data.rol==='coordinador'){
+        onUsrEmpresaChange();
+        document.getElementById('usr-coordinador-sel').value = data.coordinador_id||'';
+      }
       document.getElementById('usr-edit-note').innerHTML = `
         <i class="fa fa-info-circle"></i>
         <div>
@@ -12612,9 +12647,12 @@ async function saveUsuario() {
   if(!nombre || !email || !rol) { showToast('Completa nombre, email y rol', 'err'); return; }
   const reclutador_id = rol==='reclutador' ? document.getElementById('usr-reclutador-sel').value : null;
   const empresa_id = (rol==='rh_cliente'||rol==='coordinador') ? document.getElementById('usr-empresa-sel').value : null;
-  const coordinador_id = document.getElementById('usr-coordinador-id-hidden').value || null;
+  const coordinador_id = rol==='coordinador'
+    ? (document.getElementById('usr-coordinador-sel').value || document.getElementById('usr-coordinador-id-hidden').value || null)
+    : null;
   if(rol==='reclutador' && !reclutador_id) { showToast('Selecciona el reclutador', 'err'); return; }
   if((rol==='rh_cliente'||rol==='coordinador') && !empresa_id) { showToast('Selecciona la empresa', 'err'); return; }
+  if(rol==='coordinador' && !coordinador_id) { showToast('Selecciona el coordinador vinculado', 'err'); return; }
   try {
     if(!usrId) {
       const sendInvite = document.getElementById('usr-send-invite').checked;
@@ -14184,7 +14222,7 @@ function _pfRenderTabla(){
     <thead><tr>
       <th style="width:36px;text-align:center">#</th><th>Nombre del puesto</th><th>Proyecto</th><th>Departamento</th><th style="white-space:nowrap">Últ. modificación</th><th></th>
     </tr></thead>
-    <tbody>${rows||`<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin perfiles${(mfP||mfD)?' que coincidan con los filtros':' registrados — agrega el primero'}</td></tr>`}</tbody>
+    <tbody>${rows||`<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin perfiles${(mfP||mfD)?' que coincidan con los filtros':' registrados — agrega el primero'}${_coordScopeWarning()}</td></tr>`}</tbody>
   </table></div>`;
 }
 
@@ -19678,7 +19716,7 @@ function _procpeRenderTabla(empId){
       <th>Nombre del puesto</th><th>Proyecto</th><th>Departamento</th>
       <th style="text-align:center">Procedimientos</th><th></th>
     </tr></thead>
-    <tbody>${rows||`<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin perfiles que coincidan con los filtros</td></tr>`}</tbody>
+    <tbody>${rows||`<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin perfiles que coincidan con los filtros${_coordScopeWarning()}</td></tr>`}</tbody>
   </table></div>`;
 }
 

@@ -2541,7 +2541,7 @@ function adaptUIToRole() {
       });
     }
   } else if(rol === 'coordinador') {
-    ['nav-empresas','nav-pipeline','nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-config','nav-headcount','nav-ese'].forEach(id => {
+    ['nav-empresas','nav-reclutadores','nav-tiempos','nav-ranking','nav-desercion','nav-config','nav-headcount','nav-ese'].forEach(id => {
       const el = document.getElementById(id); if(el) el.style.display='none';
     });
     const topbarActCo = document.querySelector('.topbar-actions');
@@ -3634,6 +3634,18 @@ function getEmpresaEtapas(empId){
 function _isEmpresaRole(){ return ['rh_cliente','coordinador'].includes(currentUserData?.rol); }
 function _userEmpresaId(){ return _isEmpresaRole() ? (currentUserData?.empresa_id||null) : null; }
 function _coordsEmpresa(empId){ return (DB.coordinadores||[]).filter(c=>c.empresa_id===empId&&c.activo!==false); }
+function _coordRecord(){
+  if(currentUserData?.rol!=='coordinador') return null;
+  return (DB.coordinadores||[]).find(c=>c.id===currentUserData?.coordinador_id)||null;
+}
+function _coordVacanteMatch(v){
+  if(currentUserData?.rol!=='coordinador') return true;
+  const coord=_coordRecord();
+  if(!coord) return false;
+  const dep=coord.departamento||'', proy=coord.proyecto||'';
+  if(!dep && !proy) return false; // coordinador sin departamento/proyecto asignado: no ve vacantes
+  return (dep && v.departamento===dep) || (proy && v.proyecto===proy);
+}
 function _coordAssigned(item){
   if(currentUserData?.rol!=='coordinador') return true;
   const coordId=currentUserData?.coordinador_id;
@@ -6382,11 +6394,12 @@ function renderPipeline(){
   const pipEmpOpts=(_empIdPip?DB.empresas.filter(e=>e.id===_empIdPip):DB.empresas).map(e=>({value:e.id,label:e.nombre}));
   _mfPopulate('flt-pip-emp',pipEmpOpts,'Todas las empresas');
   _mfPopulate('flt-pip-rec',DB.reclutadores.map(r=>({value:r.id,label:r.nombre})),'Todos los reclutadores');
-  const pipVacOpts=(_empIdPip?DB.vacantes.filter(v=>v.empresa_id===_empIdPip):DB.vacantes).map(v=>({value:v.id,label:v.nombre}));
-  _mfPopulate('flt-pip-vac',pipVacOpts,'Todas las vacantes');
   const _recIdP = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   const _empIdP = _userEmpresaId();
-  const _vacsP = _recIdP ? DB.vacantes.filter(v=>v.reclutador_id===_recIdP) : _empIdP ? DB.vacantes.filter(v=>v.empresa_id===_empIdP) : DB.vacantes;
+  let _vacsP = _recIdP ? DB.vacantes.filter(v=>v.reclutador_id===_recIdP) : _empIdP ? DB.vacantes.filter(v=>v.empresa_id===_empIdP) : DB.vacantes;
+  if(currentUserData?.rol==='coordinador') _vacsP = _vacsP.filter(_coordVacanteMatch);
+  const pipVacOpts=_vacsP.map(v=>({value:v.id,label:v.nombre}));
+  _mfPopulate('flt-pip-vac',pipVacOpts,'Todas las vacantes');
   let cands = (_recIdP||_empIdP) ? DB.candidatos.filter(c=>_vacsP.find(v=>v.id===c.vacante_id)) : DB.candidatos;
   const mfPipEmp=_mfGet('flt-pip-emp');if(mfPipEmp){const vids=_vacsP.filter(v=>mfPipEmp.has(v.empresa_id||'')).map(v=>v.id);cands=cands.filter(c=>vids.includes(c.vacante_id));}
   const mfPipRec=_mfGet('flt-pip-rec');if(mfPipRec)cands=cands.filter(c=>mfPipRec.has(c.reclutador_id||''));
@@ -6830,7 +6843,8 @@ function renderVacantesTable(){
   const hastaFlt=(document.getElementById('flt-vac-hasta')||{}).value||'';
   const _recIdV = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   const _empIdV = _userEmpresaId();
-  const base = _recIdV ? DB.vacantes.filter(v=>v.reclutador_id===_recIdV) : _empIdV ? DB.vacantes.filter(v=>v.empresa_id===_empIdV) : DB.vacantes;
+  let base = _recIdV ? DB.vacantes.filter(v=>v.reclutador_id===_recIdV) : _empIdV ? DB.vacantes.filter(v=>v.empresa_id===_empIdV) : DB.vacantes;
+  if(currentUserData?.rol==='coordinador') base = base.filter(_coordVacanteMatch);
   // populate multi-select filters
   const empOpts=(_isEmpresaRole()?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).map(e=>({value:e.id,label:e.nombre}));
   _mfPopulate('flt-vac-emp',empOpts,'Todas las empresas');
@@ -7714,7 +7728,8 @@ function renderCandidatosTable(){
 
   const _recIdC = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   const _empIdC = _userEmpresaId();
-  const _vacsC = _recIdC ? DB.vacantes.filter(v=>v.reclutador_id===_recIdC) : _empIdC ? DB.vacantes.filter(v=>v.empresa_id===_empIdC) : DB.vacantes;
+  let _vacsC = _recIdC ? DB.vacantes.filter(v=>v.reclutador_id===_recIdC) : _empIdC ? DB.vacantes.filter(v=>v.empresa_id===_empIdC) : DB.vacantes;
+  if(currentUserData?.rol==='coordinador') _vacsC = _vacsC.filter(_coordVacanteMatch);
   // populate proyecto and departamento filters
   _mfPopulate('flt-cand-proy',[...new Set(_vacsC.map(v=>v.proyecto).filter(Boolean))].sort().map(p=>({value:p,label:p})),'Proyecto');
   _mfPopulate('flt-cand-dep',[...new Set(_vacsC.map(v=>v.departamento).filter(Boolean))].sort().map(d=>({value:d,label:d})),'Departamento');

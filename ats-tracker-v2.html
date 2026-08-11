@@ -12410,12 +12410,12 @@ async function _renderPermisosTab(){
       <span class="badge ${rolBadge(u)}" style="font-size:10px;flex-shrink:0">${u.rol}</span>
     </div>`).join('');
   content.innerHTML=`
-    <div style="display:grid;grid-template-columns:280px 1fr;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;min-height:480px">
-      <div style="border-right:1px solid var(--border);background:var(--surface)">
-        <div style="padding:12px 14px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)">Usuarios</div>
-        <div style="overflow-y:auto;max-height:480px;padding:6px">${userRows}</div>
+    <div style="display:grid;grid-template-columns:300px 1fr;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;height:calc(100vh - 190px);min-height:600px">
+      <div style="border-right:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;min-height:0">
+        <div style="padding:12px 14px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);flex-shrink:0">Usuarios</div>
+        <div style="overflow-y:auto;flex:1;padding:6px">${userRows}</div>
       </div>
-      <div id="perm-detail" style="padding:24px;background:var(--bg)">
+      <div id="perm-detail" style="padding:24px;background:var(--bg);overflow-y:auto">
         <div style="color:var(--text3);font-size:13px;padding-top:40px;text-align:center">
           <i class="fa fa-lock" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3"></i>
           Selecciona un usuario para configurar sus permisos
@@ -12469,7 +12469,9 @@ async function _permisosSelectUser(userId){
         <div style="font-size:15px;font-weight:600">${u.nombre||'—'}</div>
         <div style="font-size:12px;color:var(--text3)">${u.email||''} · <span class="badge ${rolBadge}">${u.rol}</span>${empNombre?` · <i class="fa fa-building" style="margin-left:4px;opacity:.6"></i> <span style="color:var(--text2)">${empNombre}</span>`:''}</div>
       </div>
-      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="_permisosToggleAll(true)" title="Marcar todas las secciones"><i class="fa fa-check-double"></i> Activar todos</button>
+        <button class="btn btn-ghost btn-sm" onclick="_permisosToggleAll(false)" title="Desmarcar todas las secciones"><i class="fa fa-square"></i> Desactivar todos</button>
         <button class="btn btn-ghost btn-sm" onclick="_permisosClearUser('${userId}')" title="Quitar permisos personalizados (usar defaults del rol)"><i class="fa fa-undo"></i> Restaurar defaults</button>
         <button class="btn btn-primary btn-sm" onclick="_permisosGuardar('${userId}')"><i class="fa fa-save"></i> Guardar permisos</button>
       </div>
@@ -12477,7 +12479,11 @@ async function _permisosSelectUser(userId){
     <div style="font-size:12px;color:var(--text3);margin-bottom:16px">
       ${hasSaved?'<i class="fa fa-check-circle" style="color:var(--green)"></i> Permisos personalizados activos':'<i class="fa fa-info-circle"></i> Sin personalización — usando permisos por defecto del rol'}
     </div>
-    <div style="overflow-y:auto;max-height:340px;padding-right:4px">${gruposHTML}</div>`;
+    <div>${gruposHTML}</div>`;
+}
+
+function _permisosToggleAll(check){
+  document.querySelectorAll('[id^="perm-chk-"]').forEach(c=>c.checked=check);
 }
 
 async function _permisosGuardar(userId){

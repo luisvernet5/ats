@@ -3638,13 +3638,25 @@ function _coordRecord(){
   if(currentUserData?.rol!=='coordinador') return null;
   return (DB.coordinadores||[]).find(c=>c.id===currentUserData?.coordinador_id)||null;
 }
+function _coordDeptos(coord){
+  if(Array.isArray(coord?.departamentos)&&coord.departamentos.length) return coord.departamentos;
+  return coord?.departamento?[coord.departamento]:[];
+}
+function _coordProyectos(coord){
+  if(Array.isArray(coord?.proyectos)&&coord.proyectos.length) return coord.proyectos;
+  return coord?.proyecto?[coord.proyecto]:[];
+}
+function _coordAreaLabel(coord){
+  const parts=[..._coordDeptos(coord),..._coordProyectos(coord)];
+  return parts.length?parts.join(' / ') : '—';
+}
 function _coordVacanteMatch(v){
   if(currentUserData?.rol!=='coordinador') return true;
   const coord=_coordRecord();
   if(!coord) return false;
-  const dep=coord.departamento||'', proy=coord.proyecto||'';
-  if(!dep && !proy) return false; // coordinador sin departamento/proyecto asignado: no ve vacantes
-  return (dep && v.departamento===dep) || (proy && v.proyecto===proy);
+  const deps=_coordDeptos(coord), proys=_coordProyectos(coord);
+  if(!deps.length && !proys.length) return false; // coordinador sin departamentos/proyectos asignados: no ve vacantes
+  return (v.departamento && deps.includes(v.departamento)) || (v.proyecto && proys.includes(v.proyecto));
 }
 function _coordAssigned(item){
   if(currentUserData?.rol!=='coordinador') return true;
@@ -12692,7 +12704,7 @@ async function renderCoordinadoresConfig(){
   const rows = coords.map((c,i)=>{
     const emp = DB.empresas.find(e=>e.id===c.empresa_id);
     const hasUser = DB.usuarios.some(u=>u.coordinador_id===c.id);
-    const area = [c.departamento,c.proyecto].filter(Boolean).join(' / ') || '—';
+    const area = _coordAreaLabel(c);
     return`<tr style="${c.activo===false?'opacity:.55':''}">
       <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
       <td class="td-p" style="font-weight:500">${_esc(c.nombre||'—')}</td>
@@ -12741,13 +12753,26 @@ async function renderCoordinadoresConfig(){
     </div>`;
 }
 
+function _coordSelSet(existing,plural,singular){
+  const arr=existing?.[plural];
+  if(Array.isArray(arr)&&arr.length) return new Set(arr);
+  return new Set(existing?.[singular]?[existing[singular]]:[]);
+}
+function _coordChecklistHTML(items,selSet,name){
+  if(!items.length) return `<div style="font-size:12px;color:var(--text3);padding:4px 2px">Sin opciones configuradas para esta empresa</div>`;
+  return items.map((v,i)=>`<label style="display:flex;align-items:center;gap:8px;padding:4px 2px;font-size:13px;cursor:pointer">
+    <input type="checkbox" class="${name}-cb" value="${_esc(v)}" ${selSet.has(v)?'checked':''} style="width:auto;accent-color:var(--accent)"> ${_esc(v)}
+  </label>`).join('');
+}
 function openCoordinadorModal(id=null){
   const existing = id ? (DB.coordinadores||[]).find(c=>c.id===id) : null;
   const empOpts = DB.empresas.map(e=>`<option value="${e.id}" ${existing?.empresa_id===e.id?'selected':''}>${_esc(e.nombre)}</option>`).join('');
   const firstEmpId = existing?.empresa_id || DB.empresas[0]?.id || '';
   const emp = DB.empresas.find(e=>e.id===firstEmpId)||{};
-  const deptoOpts = (emp.departamentos||[]).map(d=>`<option value="${d}" ${existing?.departamento===d?'selected':''}>${d}</option>`).join('');
-  const proyOpts = (emp.proyectos||[]).map(p=>`<option value="${p}" ${existing?.proyecto===p?'selected':''}>${p}</option>`).join('');
+  const deptoSel = _coordSelSet(existing,'departamentos','departamento');
+  const proySel = _coordSelSet(existing,'proyectos','proyecto');
+  const deptoChecks = _coordChecklistHTML(emp.departamentos||[],deptoSel,'coord-depto');
+  const proyChecks = _coordChecklistHTML(emp.proyectos||[],proySel,'coord-proy');
   const modal = document.createElement('div');
   modal.id = 'modal-coordinador';
   modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3000;display:flex;align-items:center;justify-content:center';
@@ -12770,16 +12795,12 @@ function openCoordinadorModal(id=null){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
         <div class="fg">
-          <label>Departamento</label>
-          <select id="coord-departamento">
-            <option value="">— Ninguno —</option>${deptoOpts}
-          </select>
+          <label>Departamentos <span style="font-weight:400;color:var(--text3)">(varios, vacío = ninguno)</span></label>
+          <div id="coord-departamentos-list" style="max-height:140px;overflow-y:auto;border:1px solid var(--border2);border-radius:7px;padding:6px 8px;background:var(--surface2)">${deptoChecks}</div>
         </div>
         <div class="fg">
-          <label>Proyecto</label>
-          <select id="coord-proyecto">
-            <option value="">— Ninguno —</option>${proyOpts}
-          </select>
+          <label>Proyectos <span style="font-weight:400;color:var(--text3)">(varios, vacío = ninguno)</span></label>
+          <div id="coord-proyectos-list" style="max-height:140px;overflow-y:auto;border:1px solid var(--border2);border-radius:7px;padding:6px 8px;background:var(--surface2)">${proyChecks}</div>
         </div>
       </div>
       <div style="display:flex;justify-content:flex-end;gap:10px">
@@ -12794,21 +12815,19 @@ function openCoordinadorModal(id=null){
 function onCoordEmpresaChange(){
   const empId = document.getElementById('coord-empresa').value;
   const emp = DB.empresas.find(e=>e.id===empId)||{};
-  document.getElementById('coord-departamento').innerHTML =
-    `<option value="">— Ninguno —</option>`+(emp.departamentos||[]).map(d=>`<option value="${d}">${d}</option>`).join('');
-  document.getElementById('coord-proyecto').innerHTML =
-    `<option value="">— Ninguno —</option>`+(emp.proyectos||[]).map(p=>`<option value="${p}">${p}</option>`).join('');
+  document.getElementById('coord-departamentos-list').innerHTML = _coordChecklistHTML(emp.departamentos||[],new Set(),'coord-depto');
+  document.getElementById('coord-proyectos-list').innerHTML = _coordChecklistHTML(emp.proyectos||[],new Set(),'coord-proy');
 }
 
 async function saveCoordinador(){
   const id = document.getElementById('coord-id').value;
   const nombre = document.getElementById('coord-nombre').value.trim();
   const empresa_id = document.getElementById('coord-empresa').value;
-  const departamento = document.getElementById('coord-departamento').value||null;
-  const proyecto = document.getElementById('coord-proyecto').value||null;
+  const departamentos = [...document.querySelectorAll('.coord-depto-cb:checked')].map(cb=>cb.value);
+  const proyectos = [...document.querySelectorAll('.coord-proy-cb:checked')].map(cb=>cb.value);
   if(!nombre){ showToast('El nombre es obligatorio','err'); return; }
   if(!empresa_id){ showToast('Selecciona una empresa','err'); return; }
-  const payload = { nombre, empresa_id, departamento, proyecto };
+  const payload = { nombre, empresa_id, departamentos, proyectos, departamento:null, proyecto:null };
   let error;
   if(id){
     ({error} = await sbClient.from('coordinadores').update(payload).eq('id',id));

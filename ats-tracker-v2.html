@@ -2507,6 +2507,13 @@ async function initSession() {
     if(errEl){ errEl.textContent='Tu cuenta ha sido desactivada. Contacta al administrador.'; errEl.style.display='block'; }
     return;
   }
+  // Blindaje: el Modo Sandbox vive en localStorage del navegador (no ligado al usuario/rol).
+  // Si un navegador compartido quedó en sandbox por otra sesión (ej. un admin probando),
+  // un usuario no-admin nunca debe heredarlo silenciosamente.
+  if(currentUserData.rol!=='admin' && SANDBOX_MODE){
+    SANDBOX_MODE=false;
+    localStorage.setItem('sandbox_mode','false');
+  }
   document.getElementById('auth-screen').style.display = 'none';
   await loadDB();
   _setupRealtime();

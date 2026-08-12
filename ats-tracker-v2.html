@@ -3195,6 +3195,7 @@ function logIrPagina(n){
 }
 
 async function logActivity(accion, entidad, entidadId, detalle, anterior, nuevo){
+  if(SANDBOX_MODE) return; // en modo local, el registro no debe aparentar ser un cambio compartido
   try {
     let detalleCompleto = detalle||'';
     if(anterior && nuevo){

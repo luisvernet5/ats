@@ -6886,11 +6886,14 @@ function renderVacantesTable(){
   const empOpts=(_isEmpresaRole()?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).map(e=>({value:e.id,label:e.nombre}));
   _mfPopulate('flt-vac-emp',empOpts,'Todas las empresas');
   _mfPopulate('flt-vac-est',['Abierta','Cubierta','Cancelada'].map(s=>({value:s,label:s})),'Todos los estados');
-  const rIdsV=[...new Set(base.map(v=>v.reclutador_id).filter(Boolean))];
+  // Reclutador/Proyecto/Departamento deben salir solo de las empresas actualmente seleccionadas en el filtro de Empresa
+  const mfVacEmpPre=_mfGet('flt-vac-emp');
+  const baseForOpts = mfVacEmpPre ? base.filter(v=>mfVacEmpPre.has(v.empresa_id||'')) : base;
+  const rIdsV=[...new Set(baseForOpts.map(v=>v.reclutador_id).filter(Boolean))];
   _mfPopulate('flt-vac-rec',rIdsV.map(id=>{const r=DB.reclutadores.find(x=>x.id===id)||{};return{value:id,label:r.nombre||id};}),'Reclutador');
-  const proyectos=[...new Set(base.map(v=>v.proyecto).filter(Boolean))].sort();
+  const proyectos=[...new Set(baseForOpts.map(v=>v.proyecto).filter(Boolean))].sort();
   _mfPopulate('flt-vac-proy',proyectos.map(p=>({value:p,label:p})),'Proyecto');
-  const deptos=[...new Set(base.map(v=>v.departamento).filter(Boolean))].sort();
+  const deptos=[...new Set(baseForOpts.map(v=>v.departamento).filter(Boolean))].sort();
   _mfPopulate('flt-vac-dep',deptos.map(d=>({value:d,label:d})),'Departamento');
   let list=base.filter(v=>{const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};if(v.proyecto&&(emp.proyectos_inactivos||[]).includes(v.proyecto))return false;if(v.departamento&&(emp.departamentos_inactivos||[]).includes(v.departamento))return false;return true;});
   if(q)list=list.filter(v=>v.nombre.toLowerCase().includes(q.toLowerCase()));
@@ -7758,9 +7761,11 @@ function renderCandidatosTable(){
   // populate empresa multi-select filter
   const cEmpOpts=(_isEmpresaRole()?DB.empresas.filter(e=>e.id===currentUserData?.empresa_id):DB.empresas).map(e=>({value:e.id,label:e.nombre}));
   _mfPopulate('flt-cand-emp',cEmpOpts,'Empresa');
-  // populate reclutador multi-select filter (scoped for rh_cliente)
+  const mfCandEmpPre=_mfGet('flt-cand-emp');
+  // populate reclutador multi-select filter (scoped para rh_cliente/coordinador y para la empresa seleccionada en el filtro)
   const _empIdCRec=_userEmpresaId();
-  const vacsForRec=_empIdCRec?DB.vacantes.filter(v=>v.empresa_id===_empIdCRec):DB.vacantes;
+  let vacsForRec=_empIdCRec?DB.vacantes.filter(v=>v.empresa_id===_empIdCRec):DB.vacantes;
+  if(mfCandEmpPre) vacsForRec=vacsForRec.filter(v=>mfCandEmpPre.has(v.empresa_id||''));
   const cRIds=[...new Set(vacsForRec.map(v=>v.reclutador_id).filter(Boolean))];
   _mfPopulate('flt-cand-rec',cRIds.map(id=>{const r=DB.reclutadores.find(x=>x.id===id)||{};return{value:id,label:r.nombre||id};}),'Reclutador');
 
@@ -7768,9 +7773,10 @@ function renderCandidatosTable(){
   const _empIdC = _userEmpresaId();
   let _vacsC = _recIdC ? DB.vacantes.filter(v=>v.reclutador_id===_recIdC) : _empIdC ? DB.vacantes.filter(v=>v.empresa_id===_empIdC) : DB.vacantes;
   if(currentUserData?.rol==='coordinador') _vacsC = _vacsC.filter(_coordVacanteMatch);
-  // populate proyecto and departamento filters
-  _mfPopulate('flt-cand-proy',[...new Set(_vacsC.map(v=>v.proyecto).filter(Boolean))].sort().map(p=>({value:p,label:p})),'Proyecto');
-  _mfPopulate('flt-cand-dep',[...new Set(_vacsC.map(v=>v.departamento).filter(Boolean))].sort().map(d=>({value:d,label:d})),'Departamento');
+  // populate proyecto y departamento solo con las empresas seleccionadas en el filtro de Empresa
+  const _vacsCParaOpts = mfCandEmpPre ? _vacsC.filter(v=>mfCandEmpPre.has(v.empresa_id||'')) : _vacsC;
+  _mfPopulate('flt-cand-proy',[...new Set(_vacsCParaOpts.map(v=>v.proyecto).filter(Boolean))].sort().map(p=>({value:p,label:p})),'Proyecto');
+  _mfPopulate('flt-cand-dep',[...new Set(_vacsCParaOpts.map(v=>v.departamento).filter(Boolean))].sort().map(d=>({value:d,label:d})),'Departamento');
   let list = (_recIdC||_empIdC) ? DB.candidatos.filter(c=>_vacsC.find(v=>v.id===c.vacante_id)) : DB.candidatos;
   list=list.filter(c=>{const v=_vacsC.find(x=>x.id===c.vacante_id)||{};const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};if(v.proyecto&&(emp.proyectos_inactivos||[]).includes(v.proyecto))return false;if(v.departamento&&(emp.departamentos_inactivos||[]).includes(v.departamento))return false;return true;});
   if(!window._filtroMostrarDescartados) list = list.filter(c=>!_esCandDescartado(c));

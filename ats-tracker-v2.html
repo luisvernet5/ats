@@ -7986,12 +7986,24 @@ async function saveCandEtapa(cid){
   const fecha_salida=isSalida?(fsalidaEl&&fsalidaEl.value?fsalidaEl.value:c.fecha_salida||today()):c.fecha_salida;
   Object.assign(c,{etapa,motivo_desercion,fecha_salida,activo:!isSalida});
   const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
-  getEmpresaEtapas(v.empresa_id).forEach((_,i)=>{
+  const _etapas=getEmpresaEtapas(v.empresa_id);
+  _etapas.forEach((_,i)=>{
     const el=document.getElementById('ci-f-'+cid+'-'+i);
     if(el)c['f_'+i]=el.value||null;
   });
   openCandRows.delete(cid);
   await saveRecord('candidatos', c);
+  // Si este candidato es el contratado oficial de la vacante, mantener sincronizada
+  // la fecha de contratación de la vacante con la fecha de la etapa de cierre del candidato
+  // (evita que Vacantes y Contratados muestren fechas distintas para el mismo evento).
+  if(v.id && v.candidato_contratado===cid){
+    const finalIdx=_etapas.findIndex(e=>e.tipo==='cierre');
+    const fechaFinal=finalIdx>=0?c['f_'+finalIdx]:null;
+    if(fechaFinal && fechaFinal!==v.fecha_cierre){
+      const vi=DB.vacantes.findIndex(x=>x.id===v.id);
+      if(vi>=0){ DB.vacantes[vi].fecha_cierre=fechaFinal; await saveRecord('vacantes',DB.vacantes[vi]); }
+    }
+  }
   const _etapaFolio=v.folio?` — Folio: ${v.folio}`:'';
   await logActivity('Cambio de etapa','candidatos',cid,`${_candEtapaAnterior.nombre||cid}${_etapaFolio}: "${etapaAntes}" → "${etapa}"`,null,null);
   showToast('Guardado ✓');

@@ -3582,13 +3582,16 @@ function getWeekNumber(dateStr){
   return{week:Math.ceil(((thu-yearStart)/86400000+1)/7),year:thu.getFullYear()};
 }
 function getFechaContratacion(v, contratado){
+  // Fuente autoritativa: la fecha de cierre de la vacante (capturada al cerrarla).
+  // La fecha en el timeline individual del candidato es solo informativa y únicamente
+  // se usa como respaldo si la vacante no tiene fecha de cierre capturada.
+  if(v.fecha_cierre) return v.fecha_cierre;
   if(contratado&&contratado.id){
     const etapas=getEmpresaEtapas(v.empresa_id);
     const finalIdx=etapas.findIndex(e=>e.tipo==='cierre');
     if(finalIdx>=0 && contratado['f_'+finalIdx]) return contratado['f_'+finalIdx];
     for(let i=etapas.length-1;i>=0;i--){ if(contratado['f_'+i]) return contratado['f_'+i]; }
   }
-  if(v.fecha_cierre) return v.fecha_cierre;
   return null;
 }
 function showToast(msg,t='ok'){const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${t==='ok'?'tok':'terr'} show`;setTimeout(()=>el.className='toast',2800)}
@@ -7986,24 +7989,15 @@ async function saveCandEtapa(cid){
   const fecha_salida=isSalida?(fsalidaEl&&fsalidaEl.value?fsalidaEl.value:c.fecha_salida||today()):c.fecha_salida;
   Object.assign(c,{etapa,motivo_desercion,fecha_salida,activo:!isSalida});
   const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
-  const _etapas=getEmpresaEtapas(v.empresa_id);
-  _etapas.forEach((_,i)=>{
+  // Estas fechas por etapa (incluida la de cierre) son solo el timeline informativo del
+  // candidato. La fecha oficial de contratación vive únicamente en vacante.fecha_cierre y
+  // se captura al cerrar la vacante (o editarla desde ahí) — nunca se sobrescribe desde aquí.
+  getEmpresaEtapas(v.empresa_id).forEach((_,i)=>{
     const el=document.getElementById('ci-f-'+cid+'-'+i);
     if(el)c['f_'+i]=el.value||null;
   });
   openCandRows.delete(cid);
   await saveRecord('candidatos', c);
-  // Si este candidato es el contratado oficial de la vacante, mantener sincronizada
-  // la fecha de contratación de la vacante con la fecha de la etapa de cierre del candidato
-  // (evita que Vacantes y Contratados muestren fechas distintas para el mismo evento).
-  if(v.id && v.candidato_contratado===cid){
-    const finalIdx=_etapas.findIndex(e=>e.tipo==='cierre');
-    const fechaFinal=finalIdx>=0?c['f_'+finalIdx]:null;
-    if(fechaFinal && fechaFinal!==v.fecha_cierre){
-      const vi=DB.vacantes.findIndex(x=>x.id===v.id);
-      if(vi>=0){ DB.vacantes[vi].fecha_cierre=fechaFinal; await saveRecord('vacantes',DB.vacantes[vi]); }
-    }
-  }
   const _etapaFolio=v.folio?` — Folio: ${v.folio}`:'';
   await logActivity('Cambio de etapa','candidatos',cid,`${_candEtapaAnterior.nombre||cid}${_etapaFolio}: "${etapaAntes}" → "${etapa}"`,null,null);
   showToast('Guardado ✓');

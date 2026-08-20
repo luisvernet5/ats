@@ -11496,23 +11496,18 @@ function abrirColaboradorModal(empId,id=null){
   modal.id='modal-colaborador';
   modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px';
   modal.innerHTML=`
-    <div style="background:var(--surface);border-radius:12px;width:560px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 32px #0004">
+    <div style="background:var(--surface);border-radius:12px;width:760px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 32px #0004">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
         <div style="font-weight:700;font-size:16px">${id?'Editar colaborador':'Nuevo colaborador'} — ${_esc(emp.nombre||'')}</div>
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-colaborador').remove()"><i class="fa fa-times"></i></button>
       </div>
       <input type="hidden" id="colab-id" value="${id||''}">
       <input type="hidden" id="colab-emp-id" value="${empId}">
-      <div class="fr">
+
+      <div class="sep" style="margin-top:0">Datos generales</div>
+      <div class="fr g3c">
         <div class="fg"><label>Nombre completo *</label><input type="text" id="colab-nombre" value="${_esc(existing?.nombre||'')}" placeholder="Nombre del colaborador"></div>
         <div class="fg"><label>Puesto</label><input type="text" id="colab-puesto" value="${_esc(existing?.puesto||'')}" placeholder="Puesto"></div>
-      </div>
-      <div class="fr">
-        <div class="fg"><label>Proyecto</label><select id="colab-proyecto"><option value="">Sin asignar</option>${proyOpts}</select></div>
-        <div class="fg"><label>Departamento</label><select id="colab-departamento"><option value="">Sin asignar</option>${depOpts}</select></div>
-      </div>
-      <div class="fr">
-        <div class="fg"><label>Fecha de ingreso</label><input type="date" id="colab-fecha-ingreso" value="${existing?.fecha_ingreso||''}"></div>
         <div class="fg"><label>Estado</label>
           <select id="colab-estado">
             <option value="Activo" ${!existing||existing?.estado==='Activo'?'selected':''}>Activo</option>
@@ -11520,29 +11515,45 @@ function abrirColaboradorModal(empId,id=null){
           </select>
         </div>
       </div>
-      <div class="fr">
+      <div class="fr g3c">
+        <div class="fg"><label>Proyecto</label><select id="colab-proyecto"><option value="">Sin asignar</option>${proyOpts}</select></div>
+        <div class="fg"><label>Departamento</label><select id="colab-departamento"><option value="">Sin asignar</option>${depOpts}</select></div>
+        <div class="fg"><label>Fecha de ingreso</label><input type="date" id="colab-fecha-ingreso" value="${existing?.fecha_ingreso||''}"></div>
+      </div>
+      <div class="fr g3c" style="margin-bottom:16px">
+        <div class="fg"><label>Salario mensual</label><input type="text" id="colab-salario" value="${_esc(existing?.salario_mensual||'')}" placeholder="$0.00"></div>
+        <div class="fg"><label>Talla de uniforme</label><input type="text" id="colab-talla-uniforme" value="${_esc(existing?.talla_uniforme||'')}" placeholder="Ej. CH, M, G, 32"></div>
+        <div></div>
+      </div>
+
+      <div class="sep">Contacto</div>
+      <div class="fr" style="margin-bottom:16px">
         <div class="fg"><label>Teléfono</label><input type="text" id="colab-telefono" value="${_esc(existing?.telefono||'')}"></div>
         <div class="fg"><label>Correo</label><input type="email" id="colab-correo" value="${_esc(existing?.correo||'')}"></div>
       </div>
-      <div class="fg" style="margin-bottom:14px"><label>Notas</label><textarea id="colab-notas" style="height:60px">${_esc(existing?.notas||'')}</textarea></div>
 
-      <div class="sep">Datos personales y RH</div>
-      <div class="fr">
+      <div class="sep">Datos personales</div>
+      <div class="fr g3c" style="margin-bottom:16px">
         <div class="fg"><label>Fecha de nacimiento</label><input type="date" id="colab-fecha-nacimiento" value="${existing?.fecha_nacimiento||''}"></div>
         <div class="fg"><label>CURP</label><input type="text" id="colab-curp" value="${_esc(existing?.curp||'')}"></div>
-      </div>
-      <div class="fr">
         <div class="fg"><label>RFC</label><input type="text" id="colab-rfc" value="${_esc(existing?.rfc||'')}"></div>
+      </div>
+
+      <div class="sep">Datos bancarios y domicilio</div>
+      <div class="fr" style="margin-bottom:16px">
         <div class="fg"><label>Banco</label><input type="text" id="colab-banco" value="${_esc(existing?.banco||'')}"></div>
-      </div>
-      <div class="fr">
         <div class="fg"><label>Cuenta / CLABE</label><input type="text" id="colab-cuenta-clabe" value="${_esc(existing?.cuenta_clabe||'')}"></div>
-        <div class="fg"><label>Dirección</label><input type="text" id="colab-direccion" value="${_esc(existing?.direccion||'')}" placeholder="Calle, colonia, ciudad, CP"></div>
       </div>
-      <div class="fr" style="margin-bottom:14px">
-        <div class="fg"><label>Contacto de emergencia</label><input type="text" id="colab-emerg-nombre" value="${_esc(existing?.contacto_emergencia_nombre||'')}" placeholder="Nombre"></div>
-        <div class="fg"><label>Teléfono de emergencia</label><input type="text" id="colab-emerg-telefono" value="${_esc(existing?.contacto_emergencia_telefono||'')}"></div>
+      <div class="fg" style="margin-bottom:16px"><label>Dirección</label><input type="text" id="colab-direccion" value="${_esc(existing?.direccion||'')}" placeholder="Calle, colonia, ciudad, CP"></div>
+
+      <div class="sep">Contacto de emergencia</div>
+      <div class="fr" style="margin-bottom:16px">
+        <div class="fg"><label>Nombre</label><input type="text" id="colab-emerg-nombre" value="${_esc(existing?.contacto_emergencia_nombre||'')}"></div>
+        <div class="fg"><label>Teléfono</label><input type="text" id="colab-emerg-telefono" value="${_esc(existing?.contacto_emergencia_telefono||'')}"></div>
       </div>
+
+      <div class="sep">Notas</div>
+      <div class="fg" style="margin-bottom:14px"><textarea id="colab-notas" style="height:56px">${_esc(existing?.notas||'')}</textarea></div>
 
       <div id="colab-campos-extra-wrap">
         ${camposCustom.length?`<div class="sep">Campos adicionales <span style="font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0">(arrastra para reordenar)</span></div><div id="colab-extra-list" style="display:flex;flex-direction:column;gap:10px">${camposExtraHTML}</div>`:''}
@@ -11678,6 +11689,8 @@ async function guardarColaborador(){
     departamento:document.getElementById('colab-departamento').value||null,
     fecha_ingreso:document.getElementById('colab-fecha-ingreso').value||null,
     estado:document.getElementById('colab-estado').value||'Activo',
+    salario_mensual:(document.getElementById('colab-salario').value||'').trim()||null,
+    talla_uniforme:(document.getElementById('colab-talla-uniforme').value||'').trim()||null,
     telefono:(document.getElementById('colab-telefono').value||'').trim()||null,
     correo:(document.getElementById('colab-correo').value||'').trim()||null,
     notas:(document.getElementById('colab-notas').value||'').trim()||null,

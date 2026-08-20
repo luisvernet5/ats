@@ -11525,6 +11525,25 @@ function abrirColaboradorModal(empId,id=null){
         <div class="fg"><label>Correo</label><input type="email" id="colab-correo" value="${_esc(existing?.correo||'')}"></div>
       </div>
       <div class="fg" style="margin-bottom:14px"><label>Notas</label><textarea id="colab-notas" style="height:60px">${_esc(existing?.notas||'')}</textarea></div>
+
+      <div class="sep">Datos personales y RH</div>
+      <div class="fr">
+        <div class="fg"><label>Fecha de nacimiento</label><input type="date" id="colab-fecha-nacimiento" value="${existing?.fecha_nacimiento||''}"></div>
+        <div class="fg"><label>CURP</label><input type="text" id="colab-curp" value="${_esc(existing?.curp||'')}"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>RFC</label><input type="text" id="colab-rfc" value="${_esc(existing?.rfc||'')}"></div>
+        <div class="fg"><label>Banco</label><input type="text" id="colab-banco" value="${_esc(existing?.banco||'')}"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Cuenta / CLABE</label><input type="text" id="colab-cuenta-clabe" value="${_esc(existing?.cuenta_clabe||'')}"></div>
+        <div class="fg"><label>Dirección</label><input type="text" id="colab-direccion" value="${_esc(existing?.direccion||'')}" placeholder="Calle, colonia, ciudad, CP"></div>
+      </div>
+      <div class="fr" style="margin-bottom:14px">
+        <div class="fg"><label>Contacto de emergencia</label><input type="text" id="colab-emerg-nombre" value="${_esc(existing?.contacto_emergencia_nombre||'')}" placeholder="Nombre"></div>
+        <div class="fg"><label>Teléfono de emergencia</label><input type="text" id="colab-emerg-telefono" value="${_esc(existing?.contacto_emergencia_telefono||'')}"></div>
+      </div>
+
       <div id="colab-campos-extra-wrap">
         ${camposCustom.length?`<div class="sep">Campos adicionales <span style="font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0">(arrastra para reordenar)</span></div><div id="colab-extra-list" style="display:flex;flex-direction:column;gap:10px">${camposExtraHTML}</div>`:''}
       </div>
@@ -11662,6 +11681,14 @@ async function guardarColaborador(){
     telefono:(document.getElementById('colab-telefono').value||'').trim()||null,
     correo:(document.getElementById('colab-correo').value||'').trim()||null,
     notas:(document.getElementById('colab-notas').value||'').trim()||null,
+    fecha_nacimiento:document.getElementById('colab-fecha-nacimiento').value||null,
+    curp:(document.getElementById('colab-curp').value||'').trim()||null,
+    rfc:(document.getElementById('colab-rfc').value||'').trim()||null,
+    banco:(document.getElementById('colab-banco').value||'').trim()||null,
+    cuenta_clabe:(document.getElementById('colab-cuenta-clabe').value||'').trim()||null,
+    direccion:(document.getElementById('colab-direccion').value||'').trim()||null,
+    contacto_emergencia_nombre:(document.getElementById('colab-emerg-nombre').value||'').trim()||null,
+    contacto_emergencia_telefono:(document.getElementById('colab-emerg-telefono').value||'').trim()||null,
     campos_extra,
   };
   const btn=document.getElementById('btn-guardar-colaborador');

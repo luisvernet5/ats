@@ -11491,11 +11491,7 @@ function abrirColaboradorModal(empId,id=null){
   const camposCustom=emp.colab_campos_custom||[];
   const proyOpts=(emp.proyectos||[]).map(p=>`<option value="${_esc(p)}" ${existing?.proyecto===p?'selected':''}>${_esc(p)}</option>`).join('');
   const depOpts=(emp.departamentos||[]).map(d=>`<option value="${_esc(d)}" ${existing?.departamento===d?'selected':''}>${_esc(d)}</option>`).join('');
-  const camposExtraHTML=camposCustom.map(cf=>`
-    <div class="fg">
-      <label>${_esc(cf.label)}</label>
-      <input type="text" id="colab-extra-${cf.key}" value="${_esc((existing?.campos_extra||{})[cf.key]||'')}">
-    </div>`).join('');
+  const camposExtraHTML=camposCustom.map((cf,i)=>_colabCamposExtraRowHTML(cf,i,empId,(existing?.campos_extra||{})[cf.key])).join('');
   const modal=document.createElement('div');
   modal.id='modal-colaborador';
   modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px';
@@ -11530,7 +11526,7 @@ function abrirColaboradorModal(empId,id=null){
       </div>
       <div class="fg" style="margin-bottom:14px"><label>Notas</label><textarea id="colab-notas" style="height:60px">${_esc(existing?.notas||'')}</textarea></div>
       <div id="colab-campos-extra-wrap">
-        ${camposCustom.length?`<div class="sep">Campos adicionales</div><div class="fr" id="colab-extra-fr" style="grid-template-columns:1fr 1fr">${camposExtraHTML}</div>`:''}
+        ${camposCustom.length?`<div class="sep">Campos adicionales <span style="font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0">(arrastra para reordenar)</span></div><div id="colab-extra-list" style="display:flex;flex-direction:column;gap:10px">${camposExtraHTML}</div>`:''}
       </div>
       <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px;margin-bottom:18px">
         <div style="display:flex;gap:8px;align-items:center">
@@ -11548,6 +11544,84 @@ function abrirColaboradorModal(empId,id=null){
   document.body.appendChild(modal);
 }
 
+// ── Campos adicionales del colaborador: agregar / renombrar / reordenar / quitar ──
+function _colabCamposExtraRowHTML(cf,idx,empId,value){
+  return `<div class="fg" id="colab-extra-row-${cf.key}" draggable="true"
+    ondragstart="colabExtraDragStart(event,${idx})"
+    ondragover="colabExtraDragOver(event,this)"
+    ondragleave="this.style.outline=''"
+    ondrop="colabExtraDrop(event,'${empId}',${idx})"
+    ondragend="colabExtraDragEnd('${empId}')"
+    style="cursor:grab">
+    <label style="display:flex;align-items:center;gap:6px">
+      <i class="fa fa-grip-lines" style="font-size:9px;color:var(--text3);opacity:.5;flex-shrink:0"></i>
+      <span id="colab-extra-lbl-${cf.key}" style="flex:1">${_esc(cf.label)}</span>
+      <button type="button" onclick="event.stopPropagation();colabExtraRename('${empId}','${cf.key}')" title="Renombrar" style="background:none;border:none;cursor:pointer;padding:2px 3px;color:var(--text3);font-size:10px;line-height:1" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text3)'"><i class="fa fa-pencil-alt"></i></button>
+      <button type="button" onclick="event.stopPropagation();colabExtraQuitar('${empId}','${cf.key}')" title="Quitar campo" style="background:none;border:none;cursor:pointer;padding:0 0 0 2px;color:var(--text3);font-size:15px;line-height:1" onmouseover="this.style.color='var(--danger,#e74c3c)'" onmouseout="this.style.color='var(--text3)'">×</button>
+    </label>
+    <input type="text" id="colab-extra-${cf.key}" value="${_esc(value||'')}">
+  </div>`;
+}
+async function _colabGuardarCamposCustom(empId,campos){
+  const emp=DB.empresas.find(x=>x.id===empId); if(!emp)return false;
+  const {error}=await sbClient.from('empresas').update({colab_campos_custom:campos}).eq('id',empId);
+  if(error){showToast('Error: '+error.message,'err');return false;}
+  emp.colab_campos_custom=campos;
+  return true;
+}
+function _colabRefrescarCamposExtra(empId){
+  const emp=DB.empresas.find(x=>x.id===empId); if(!emp)return;
+  const campos=emp.colab_campos_custom||[];
+  // conservar lo que el usuario ya haya escrito antes de re-renderizar
+  const valores={};
+  campos.forEach(cf=>{ const el=document.getElementById('colab-extra-'+cf.key); if(el) valores[cf.key]=el.value; });
+  const wrap=document.getElementById('colab-campos-extra-wrap');
+  if(!wrap)return;
+  wrap.innerHTML=campos.length
+    ?`<div class="sep">Campos adicionales <span style="font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0">(arrastra para reordenar)</span></div><div id="colab-extra-list" style="display:flex;flex-direction:column;gap:10px">${campos.map((cf,i)=>_colabCamposExtraRowHTML(cf,i,empId,valores[cf.key])).join('')}</div>`
+    :'';
+}
+let _colabExtraDragIdx=null;
+function colabExtraDragStart(e,idx){_colabExtraDragIdx=idx;}
+function colabExtraDragOver(e,el){e.preventDefault();e.dataTransfer.dropEffect='move';el.style.outline='2px solid var(--accent)';}
+async function colabExtraDrop(e,empId,targetIdx){
+  e.preventDefault();
+  if(e.currentTarget?.style)e.currentTarget.style.outline='';
+  if(_colabExtraDragIdx===null||_colabExtraDragIdx===targetIdx)return;
+  const emp=DB.empresas.find(x=>x.id===empId); if(!emp)return;
+  const campos=[...(emp.colab_campos_custom||[])];
+  const [moved]=campos.splice(_colabExtraDragIdx,1);
+  campos.splice(targetIdx,0,moved);
+  _colabExtraDragIdx=null;
+  await _colabGuardarCamposCustom(empId,campos);
+  _colabRefrescarCamposExtra(empId);
+}
+function colabExtraDragEnd(empId){_colabExtraDragIdx=null;_colabRefrescarCamposExtra(empId);}
+function colabExtraRename(empId,key){
+  const span=document.getElementById('colab-extra-lbl-'+key);
+  const emp=DB.empresas.find(x=>x.id===empId);
+  const cf=emp?.colab_campos_custom?.find(c=>c.key===key);
+  if(!span||!cf)return;
+  span.innerHTML=`<input type="text" value="${_esc(cf.label)}" style="width:100%;font-size:12px;padding:1px 6px;border:1px solid var(--accent);border-radius:4px;background:var(--surface);color:var(--text)" onkeydown="if(event.key==='Enter'){this.blur()}else if(event.key==='Escape'){_colabRefrescarCamposExtra('${empId}')}" onblur="colabExtraSaveRename('${empId}','${key}',this.value)">`;
+  const inp=span.querySelector('input'); inp.focus(); inp.select();
+}
+async function colabExtraSaveRename(empId,key,newLabel){
+  const val=(newLabel||'').trim();
+  const emp=DB.empresas.find(x=>x.id===empId); if(!emp)return;
+  const campos=[...(emp.colab_campos_custom||[])];
+  const cf=campos.find(c=>c.key===key);
+  if(!cf||!val||val===cf.label){_colabRefrescarCamposExtra(empId);return;}
+  cf.label=val;
+  await _colabGuardarCamposCustom(empId,campos);
+  _colabRefrescarCamposExtra(empId);
+}
+async function colabExtraQuitar(empId,key){
+  if(!confirm('¿Quitar este campo del formulario? Los datos ya guardados de colaboradores no se borran, pero dejarán de mostrarse.'))return;
+  const emp=DB.empresas.find(x=>x.id===empId); if(!emp)return;
+  const campos=(emp.colab_campos_custom||[]).filter(c=>c.key!==key);
+  await _colabGuardarCamposCustom(empId,campos);
+  _colabRefrescarCamposExtra(empId);
+}
 async function agregarCampoCustomColaborador(empId){
   const input=document.getElementById('colab-nuevo-campo');
   const label=(input?.value||'').trim();
@@ -11558,20 +11632,9 @@ async function agregarCampoCustomColaborador(empId){
   if(campos.some(c=>c.label.toLowerCase()===label.toLowerCase())){showToast('Ya existe un campo con ese nombre','err');return;}
   const key=_normKey(label)+'_'+Date.now().toString(36).slice(-4);
   campos.push({key,label});
-  const {error}=await sbClient.from('empresas').update({colab_campos_custom:campos}).eq('id',empId);
-  if(error){showToast('Error: '+error.message,'err');return;}
-  emp.colab_campos_custom=campos;
-  const wrap=document.getElementById('colab-campos-extra-wrap');
-  if(wrap){
-    if(!document.getElementById('colab-extra-fr')){
-      wrap.innerHTML=`<div class="sep">Campos adicionales</div><div class="fr" id="colab-extra-fr" style="grid-template-columns:1fr 1fr"></div>`;
-    }
-    const fr=document.getElementById('colab-extra-fr');
-    const div=document.createElement('div');
-    div.className='fg';
-    div.innerHTML=`<label>${_esc(label)}</label><input type="text" id="colab-extra-${key}">`;
-    fr.appendChild(div);
-  }
+  const ok=await _colabGuardarCamposCustom(empId,campos);
+  if(!ok)return;
+  _colabRefrescarCamposExtra(empId);
   input.value='';
   showToast('Campo agregado ✓');
 }

@@ -2710,6 +2710,28 @@ function adaptUIToRole() {
     }
   } */
 
+  // ADMINISTRADOR DE PERSONAL (módulo nuevo, independiente del de "Base de datos" de arriba)
+  if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-personal')){
+    const navEl = document.querySelector('.sb-nav');
+    if(navEl){
+      const perItem = document.createElement('div');
+      perItem.className = 'nav-item';
+      perItem.id = 'nav-personal';
+      perItem.dataset.tooltip = 'Administrador de personal';
+      perItem.innerHTML = '<i class="fa fa-id-badge"></i><span class="nav-item-text"> Administrador de personal</span>';
+      perItem.setAttribute('onclick', "showPage('personal')");
+      const anchor = document.getElementById('nav-documentacion') || document.getElementById('nav-candidatos');
+      if(anchor) anchor.parentNode.insertBefore(perItem, anchor.nextSibling);
+      else navEl.appendChild(perItem);
+    }
+    if(!document.getElementById('page-personal')){
+      const pg=document.createElement('div');
+      pg.className='page';
+      pg.id='page-personal';
+      document.querySelector('.main').appendChild(pg);
+    }
+  }
+
   // Perfiles de puesto — visible para admin, reclutador y rh_cliente
   if(!document.getElementById('nav-perfiles')){
     const navEl = document.querySelector('.sb-nav');
@@ -3335,6 +3357,7 @@ async function doLogout() {
   DB.perfilesPuesto=[]; DB.perfilesEliminados=[];
   DB._candidatosFull=false; DB._vacantesFull=false;
   DB._evaluacionesFull=false; DB._perfilesFull=false;
+  DB.colaboradores=[]; _persLoaded=false; _persOpenEmpId=null; _persQ='';
   document.getElementById('auth-screen').style.display = 'flex';
   const loginBtn = document.getElementById('login-btn');
   if(loginBtn){ loginBtn.disabled = false; loginBtn.textContent = 'Entrar'; }
@@ -3474,6 +3497,7 @@ const DB={
   docPlantillas:[],
   docCandidato:[],
   personal:[],
+  colaboradores:[],
   evaluaciones:[],
   evaluacionesEliminadas:[],
   evaluacionesEnviadas:[],
@@ -3515,6 +3539,7 @@ const PERMISOS_SECCIONES=[
   {key:'ranking',                label:'Ranking reclutadores',    grupo:'Análisis',   icon:'fa-trophy'},
   {key:'desercion',              label:'Deserción',               grupo:'Análisis',   icon:'fa-door-open'},
   {key:'garantias',              label:'Garantías',               grupo:'Gestión',    icon:'fa-shield-alt'},
+  {key:'personal',               label:'Administrador de personal', grupo:'Gestión',  icon:'fa-id-badge'},
   {key:'ese',                    label:'ESE',                     grupo:'Gestión',    icon:'fa-file-alt'},
   {key:'candidatos-descartados', navId:'descartados',           label:'Candidatos descartados',  grupo:'Gestión',    icon:'fa-user-times'},
   {key:'vacantes-eliminadas',    label:'Vacantes eliminadas',     grupo:'Gestión',    icon:'fa-briefcase'},
@@ -3754,7 +3779,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',kpis:'KPIs',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount',perfiles:'Perfiles de puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal',procedimientos:'Procedimientos'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',kpis:'KPIs',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount',perfiles:'Perfiles de puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal',personal:'Administrador de personal',procedimientos:'Procedimientos'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);
@@ -3789,6 +3814,7 @@ async function renderPage(p){
   if(p==='perfiles'){await _ensurePerfilesPuesto();renderPerfiles();return;}
   if(p==='perfiles-eliminados'){await _ensurePerfilesPuesto();renderPerfilesEliminados();return;}
   // if(p==='basedatos')renderBaseDatos(); // desactivado temporalmente
+  if(p==='personal'){renderPersonal();return;}
 }
 
 /* ============================================================
@@ -11359,7 +11385,268 @@ function exportContratados(){
 }
 
 /* ============================================================
-   BASE DE DATOS DE PERSONAL
+   ADMINISTRADOR DE PERSONAL (módulo nuevo — independiente de
+   "Base de datos de personal" de abajo, que sigue desactivado)
+   ============================================================ */
+let _persOpenEmpId=null,_persQ='',_persLoaded=false,_persSearchTimer=null;
+
+async function renderPersonal(){
+  const page=document.getElementById('page-personal'); if(!page) return;
+  if(!_persLoaded){
+    page.innerHTML='<div style="padding:60px;text-align:center;color:var(--text3)"><i class="fa fa-spinner fa-spin" style="font-size:22px;margin-bottom:12px;display:block"></i>Cargando...</div>';
+    if(!SANDBOX_MODE){
+      try{
+        const {data,error}=await sbClient.from('colaboradores').select('*');
+        if(error) throw new Error(error.message);
+        DB.colaboradores=data||[];
+      }catch(e){
+        page.innerHTML=`<div style="padding:40px;text-align:center;color:var(--red)"><i class="fa fa-exclamation-triangle"></i> Error al cargar: ${e.message}</div>`;
+        return;
+      }
+    }
+    _persLoaded=true;
+  }
+  if(_persOpenEmpId){_persRenderDetalle(_persOpenEmpId);return;}
+  _persRenderDashboard();
+}
+
+function _persRenderDashboard(){
+  const page=document.getElementById('page-personal'); if(!page) return;
+  const cards=DB.empresas.map(emp=>{
+    const color=emp.color||'#2AAADE';
+    const n=(DB.colaboradores||[]).filter(c=>c.empresa_id===emp.id).length;
+    const activos=(DB.colaboradores||[]).filter(c=>c.empresa_id===emp.id&&c.estado!=='Baja').length;
+    return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px;transition:box-shadow .15s" onclick="personalOpenEmpresa('${emp.id}')" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,.12)'" onmouseleave="this.style.boxShadow=''">
+      <div style="display:flex;align-items:center;gap:12px">
+        ${emp.logo?`<img src="${emp.logo}" style="width:40px;height:40px;object-fit:contain;border-radius:8px;flex-shrink:0">`:`<div style="width:40px;height:40px;flex-shrink:0;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color};font-size:18px"></i></div>`}
+        <div style="min-width:0">
+          <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(emp.nombre)}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">${n} colaborador${n!==1?'es':''}${n?` · ${activos} activo${activos!==1?'s':''}`:''}</div>
+        </div>
+      </div>
+      <div style="height:3px;border-radius:2px;background:${color}33;overflow:hidden"><div style="height:100%;width:100%;background:${color};border-radius:2px"></div></div>
+    </div>`;
+  }).join('');
+  page.innerHTML=`<div style="padding:24px 28px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">
+      ${cards||'<div style="color:var(--text3);font-size:13px;grid-column:1/-1;text-align:center;padding:40px"><i class="fa fa-building" style="font-size:28px;display:block;margin-bottom:12px;opacity:.4"></i>Sin empresas registradas</div>'}
+    </div>
+  </div>`;
+}
+function personalOpenEmpresa(empId){_persQ='';_persOpenEmpId=empId;renderPersonal();}
+function personalBack(){_persQ='';_persOpenEmpId=null;renderPersonal();}
+
+function _persColabList(empId){
+  const q=_persQ.trim().toLowerCase();
+  let list=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId);
+  if(q) list=list.filter(c=>(c.nombre||'').toLowerCase().includes(q)||(c.puesto||'').toLowerCase().includes(q));
+  return list.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
+}
+function _persSearchDebounce(empId){clearTimeout(_persSearchTimer);_persSearchTimer=setTimeout(()=>_persRenderDetalle(empId),220);}
+
+function _persRenderDetalle(empId){
+  const page=document.getElementById('page-personal'); if(!page) return;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const color=emp.color||'#2AAADE';
+  const camposCustom=emp.colab_campos_custom||[];
+  const lista=_persColabList(empId);
+  const rows=lista.map((c,i)=>`<tr>
+    <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
+    <td class="td-p">${_esc(c.nombre||'—')}</td>
+    <td>${_esc(c.puesto||'—')}</td>
+    <td style="font-size:12px;color:var(--text2)">${_esc(c.proyecto||'—')}</td>
+    <td style="font-size:12px;color:var(--text2)">${_esc(c.departamento||'—')}</td>
+    <td>${c.fecha_ingreso?fmt(c.fecha_ingreso):'—'}</td>
+    <td><span class="badge ${c.estado==='Baja'?'br':'bg'}">${_esc(c.estado||'Activo')}</span></td>
+    ${camposCustom.map(cf=>`<td style="font-size:12px;color:var(--text2)">${_esc((c.campos_extra||{})[cf.key]||'—')}</td>`).join('')}
+    <td style="text-align:right;white-space:nowrap">
+      <button class="btn btn-ghost btn-sm" onclick="abrirColaboradorModal('${empId}','${c.id}')" title="Editar"><i class="fa fa-edit"></i></button>
+      <button class="btn btn-danger btn-sm" onclick="eliminarColaborador('${c.id}','${empId}')" title="Eliminar"><i class="fa fa-trash"></i></button>
+    </td>
+  </tr>`).join('');
+  page.innerHTML=`<div style="padding:24px 28px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="personalBack()"><i class="fa fa-arrow-left"></i> Empresas</button>
+      ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
+      <span style="font-size:16px;font-weight:700">${_esc(emp.nombre||'')}</span>
+      <span style="flex:1"></span>
+      <input type="text" placeholder="Buscar nombre o puesto..." value="${_esc(_persQ)}" oninput="_persQ=this.value;_persSearchDebounce('${empId}')" style="width:240px">
+      <button class="btn btn-primary btn-sm" onclick="abrirColaboradorModal('${empId}')"><i class="fa fa-user-plus"></i> Agregar colaborador</button>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th style="width:36px;text-align:center">#</th><th>Nombre</th><th>Puesto</th><th>Proyecto</th><th>Departamento</th><th>Fecha ingreso</th><th>Estado</th>
+        ${camposCustom.map(cf=>`<th>${_esc(cf.label)}</th>`).join('')}
+        <th></th>
+      </tr></thead>
+      <tbody>${rows||`<tr><td colspan="${8+camposCustom.length}" style="text-align:center;color:var(--text3);padding:32px">Sin colaboradores registrados — agrega el primero</td></tr>`}</tbody>
+    </table></div>
+    <div style="font-size:12px;color:var(--text3);padding:8px 0">Mostrando <strong>${lista.length}</strong> registros</div>
+  </div>`;
+}
+
+function abrirColaboradorModal(empId,id=null){
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const existing=id?(DB.colaboradores||[]).find(c=>c.id===id):null;
+  const camposCustom=emp.colab_campos_custom||[];
+  const proyOpts=(emp.proyectos||[]).map(p=>`<option value="${_esc(p)}" ${existing?.proyecto===p?'selected':''}>${_esc(p)}</option>`).join('');
+  const depOpts=(emp.departamentos||[]).map(d=>`<option value="${_esc(d)}" ${existing?.departamento===d?'selected':''}>${_esc(d)}</option>`).join('');
+  const camposExtraHTML=camposCustom.map(cf=>`
+    <div class="fg">
+      <label>${_esc(cf.label)}</label>
+      <input type="text" id="colab-extra-${cf.key}" value="${_esc((existing?.campos_extra||{})[cf.key]||'')}">
+    </div>`).join('');
+  const modal=document.createElement('div');
+  modal.id='modal-colaborador';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`
+    <div style="background:var(--surface);border-radius:12px;width:560px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 32px #0004">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-weight:700;font-size:16px">${id?'Editar colaborador':'Nuevo colaborador'} — ${_esc(emp.nombre||'')}</div>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-colaborador').remove()"><i class="fa fa-times"></i></button>
+      </div>
+      <input type="hidden" id="colab-id" value="${id||''}">
+      <input type="hidden" id="colab-emp-id" value="${empId}">
+      <div class="fr">
+        <div class="fg"><label>Nombre completo *</label><input type="text" id="colab-nombre" value="${_esc(existing?.nombre||'')}" placeholder="Nombre del colaborador"></div>
+        <div class="fg"><label>Puesto</label><input type="text" id="colab-puesto" value="${_esc(existing?.puesto||'')}" placeholder="Puesto"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Proyecto</label><select id="colab-proyecto"><option value="">Sin asignar</option>${proyOpts}</select></div>
+        <div class="fg"><label>Departamento</label><select id="colab-departamento"><option value="">Sin asignar</option>${depOpts}</select></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Fecha de ingreso</label><input type="date" id="colab-fecha-ingreso" value="${existing?.fecha_ingreso||''}"></div>
+        <div class="fg"><label>Estado</label>
+          <select id="colab-estado">
+            <option value="Activo" ${!existing||existing?.estado==='Activo'?'selected':''}>Activo</option>
+            <option value="Baja" ${existing?.estado==='Baja'?'selected':''}>Baja</option>
+          </select>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Teléfono</label><input type="text" id="colab-telefono" value="${_esc(existing?.telefono||'')}"></div>
+        <div class="fg"><label>Correo</label><input type="email" id="colab-correo" value="${_esc(existing?.correo||'')}"></div>
+      </div>
+      <div class="fg" style="margin-bottom:14px"><label>Notas</label><textarea id="colab-notas" style="height:60px">${_esc(existing?.notas||'')}</textarea></div>
+      <div id="colab-campos-extra-wrap">
+        ${camposCustom.length?`<div class="sep">Campos adicionales</div><div class="fr" id="colab-extra-fr" style="grid-template-columns:1fr 1fr">${camposExtraHTML}</div>`:''}
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px;margin-bottom:18px">
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="colab-nuevo-campo" placeholder="Nombre del campo nuevo (ej. Talla de playera)" style="flex:1">
+          <button class="btn btn-ghost btn-sm" onclick="agregarCampoCustomColaborador('${empId}')"><i class="fa fa-plus"></i> Agregar campo</button>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px">El campo queda guardado para esta empresa y aparecerá para todos sus colaboradores.</div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px">
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-colaborador').remove()">Cancelar</button>
+        <button class="btn btn-primary" id="btn-guardar-colaborador" onclick="guardarColaborador()"><i class="fa fa-save"></i> Guardar</button>
+      </div>
+    </div>`;
+  document.getElementById('modal-colaborador')?.remove();
+  document.body.appendChild(modal);
+}
+
+async function agregarCampoCustomColaborador(empId){
+  const input=document.getElementById('colab-nuevo-campo');
+  const label=(input?.value||'').trim();
+  if(!label){showToast('Escribe el nombre del campo','err');return;}
+  const emp=DB.empresas.find(e=>e.id===empId);
+  if(!emp)return;
+  const campos=[...(emp.colab_campos_custom||[])];
+  if(campos.some(c=>c.label.toLowerCase()===label.toLowerCase())){showToast('Ya existe un campo con ese nombre','err');return;}
+  const key=_normKey(label)+'_'+Date.now().toString(36).slice(-4);
+  campos.push({key,label});
+  const {error}=await sbClient.from('empresas').update({colab_campos_custom:campos}).eq('id',empId);
+  if(error){showToast('Error: '+error.message,'err');return;}
+  emp.colab_campos_custom=campos;
+  const wrap=document.getElementById('colab-campos-extra-wrap');
+  if(wrap){
+    if(!document.getElementById('colab-extra-fr')){
+      wrap.innerHTML=`<div class="sep">Campos adicionales</div><div class="fr" id="colab-extra-fr" style="grid-template-columns:1fr 1fr"></div>`;
+    }
+    const fr=document.getElementById('colab-extra-fr');
+    const div=document.createElement('div');
+    div.className='fg';
+    div.innerHTML=`<label>${_esc(label)}</label><input type="text" id="colab-extra-${key}">`;
+    fr.appendChild(div);
+  }
+  input.value='';
+  showToast('Campo agregado ✓');
+}
+
+async function guardarColaborador(){
+  const id=document.getElementById('colab-id').value;
+  const empId=document.getElementById('colab-emp-id').value;
+  const nombre=(document.getElementById('colab-nombre').value||'').trim();
+  if(!nombre){showToast('El nombre es obligatorio','err');return;}
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const camposCustom=emp.colab_campos_custom||[];
+  const campos_extra={};
+  camposCustom.forEach(cf=>{
+    const v=(document.getElementById('colab-extra-'+cf.key)?.value||'').trim();
+    if(v) campos_extra[cf.key]=v;
+  });
+  const registro={
+    empresa_id:empId,
+    nombre,
+    puesto:(document.getElementById('colab-puesto').value||'').trim()||null,
+    proyecto:document.getElementById('colab-proyecto').value||null,
+    departamento:document.getElementById('colab-departamento').value||null,
+    fecha_ingreso:document.getElementById('colab-fecha-ingreso').value||null,
+    estado:document.getElementById('colab-estado').value||'Activo',
+    telefono:(document.getElementById('colab-telefono').value||'').trim()||null,
+    correo:(document.getElementById('colab-correo').value||'').trim()||null,
+    notas:(document.getElementById('colab-notas').value||'').trim()||null,
+    campos_extra,
+  };
+  const btn=document.getElementById('btn-guardar-colaborador');
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Guardando...';}
+  try{
+    if(id){
+      if(!SANDBOX_MODE){
+        const {error}=await sbClient.from('colaboradores').update(registro).eq('id',id);
+        if(error)throw new Error(error.message);
+      }
+      const idx=(DB.colaboradores||[]).findIndex(c=>c.id===id);
+      if(idx>=0) DB.colaboradores[idx]={...DB.colaboradores[idx],...registro};
+      showToast('Colaborador actualizado ✓');
+    } else {
+      const nuevo={id:'col-'+Date.now()+'-'+Math.random().toString(36).substr(2,6),...registro};
+      if(!SANDBOX_MODE){
+        const {error}=await sbClient.from('colaboradores').insert(nuevo);
+        if(error)throw new Error(error.message);
+      }
+      DB.colaboradores.push(nuevo);
+      showToast('Colaborador agregado ✓');
+    }
+    document.getElementById('modal-colaborador')?.remove();
+    _persRenderDetalle(empId);
+  }catch(e){
+    showToast('Error al guardar: '+e.message,'err');
+  }finally{
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="fa fa-save"></i> Guardar';}
+  }
+}
+
+async function eliminarColaborador(id,empId){
+  if(!confirm('¿Eliminar este colaborador?'))return;
+  try{
+    if(!SANDBOX_MODE){
+      const {error}=await sbClient.from('colaboradores').delete().eq('id',id);
+      if(error)throw new Error(error.message);
+    }
+    DB.colaboradores=(DB.colaboradores||[]).filter(c=>c.id!==id);
+    showToast('Colaborador eliminado ✓');
+    _persRenderDetalle(empId);
+  }catch(e){
+    showToast('Error: '+e.message,'err');
+  }
+}
+
+/* ============================================================
+   BASE DE DATOS DE PERSONAL — módulo viejo, desactivado
    ============================================================ */
 let _bdOpenEmpId=null,_bdQ='',_bdPersonalLoaded=false,_bdSearchTimer=null;
 function _bdSearchDebounce(empId){clearTimeout(_bdSearchTimer);_bdSearchTimer=setTimeout(()=>_bdRenderDetail(empId),220);}

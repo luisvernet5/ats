@@ -11439,7 +11439,7 @@ function personalBack(){_persQ='';_persOpenEmpId=null;renderPersonal();}
 function _persColabList(empId){
   const q=_persQ.trim().toLowerCase();
   let list=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId);
-  if(q) list=list.filter(c=>(c.nombre||'').toLowerCase().includes(q)||(c.puesto||'').toLowerCase().includes(q));
+  if(q) list=list.filter(c=>(c.nombre||'').toLowerCase().includes(q)||(c.puesto||'').toLowerCase().includes(q)||(c.numero_colaborador||'').toLowerCase().includes(q));
   return list.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
 }
 function _persSearchDebounce(empId){clearTimeout(_persSearchTimer);_persSearchTimer=setTimeout(()=>_persRenderDetalle(empId),220);}
@@ -11452,6 +11452,7 @@ function _persRenderDetalle(empId){
   const lista=_persColabList(empId);
   const rows=lista.map((c,i)=>`<tr>
     <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
+    <td style="font-size:12px;font-family:var(--mono);color:var(--text2)">${_esc(c.numero_colaborador||'—')}</td>
     <td class="td-p">${_esc(c.nombre||'—')}</td>
     <td>${_esc(c.puesto||'—')}</td>
     <td style="font-size:12px;color:var(--text2)">${_esc(c.proyecto||'—')}</td>
@@ -11470,7 +11471,7 @@ function _persRenderDetalle(empId){
       ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
       <span style="font-size:16px;font-weight:700">${_esc(emp.nombre||'')}</span>
       <span style="flex:1"></span>
-      <input type="text" placeholder="Buscar nombre o puesto..." value="${_esc(_persQ)}" oninput="_persQ=this.value;_persSearchDebounce('${empId}')" style="width:240px">
+      <input type="text" placeholder="Buscar nombre, puesto o número..." value="${_esc(_persQ)}" oninput="_persQ=this.value;_persSearchDebounce('${empId}')" style="width:240px">
       <button class="btn btn-ghost btn-sm" onclick="personalDescargarPlantilla('${empId}')"><i class="fa fa-download"></i> Plantilla</button>
       <button class="btn btn-ghost btn-sm" onclick="abrirImportColaboradoresModal('${empId}')"><i class="fa fa-upload"></i> Carga masiva</button>
       <button class="btn btn-green btn-sm" onclick="personalExportarExcel('${empId}')"><i class="fa fa-file-excel"></i> Exportar</button>
@@ -11478,11 +11479,11 @@ function _persRenderDetalle(empId){
     </div>
     <div class="table-wrap"><table>
       <thead><tr>
-        <th style="width:36px;text-align:center">#</th><th>Nombre</th><th>Puesto</th><th>Proyecto</th><th>Departamento</th><th>Fecha ingreso</th><th>Estado</th>
+        <th style="width:36px;text-align:center">#</th><th>No. Colaborador</th><th>Nombre</th><th>Puesto</th><th>Proyecto</th><th>Departamento</th><th>Fecha ingreso</th><th>Estado</th>
         ${camposCustom.map(cf=>`<th>${_esc(cf.label)}</th>`).join('')}
         <th></th>
       </tr></thead>
-      <tbody>${rows||`<tr><td colspan="${8+camposCustom.length}" style="text-align:center;color:var(--text3);padding:32px">Sin colaboradores registrados — agrega el primero</td></tr>`}</tbody>
+      <tbody>${rows||`<tr><td colspan="${9+camposCustom.length}" style="text-align:center;color:var(--text3);padding:32px">Sin colaboradores registrados — agrega el primero</td></tr>`}</tbody>
     </table></div>
     <div style="font-size:12px;color:var(--text3);padding:8px 0">Mostrando <strong>${lista.length}</strong> registros</div>
   </div>`;
@@ -11509,24 +11510,24 @@ function abrirColaboradorModal(empId,id=null){
 
       <div class="sep" style="margin-top:0">Datos generales</div>
       <div class="fr g3c">
+        <div class="fg"><label>Número de colaborador</label><input type="text" id="colab-numero" value="${_esc(existing?.numero_colaborador||'')}" placeholder="Ej. 001"></div>
         <div class="fg"><label>Nombre completo *</label><input type="text" id="colab-nombre" value="${_esc(existing?.nombre||'')}" placeholder="Nombre del colaborador"></div>
         <div class="fg"><label>Puesto</label><input type="text" id="colab-puesto" value="${_esc(existing?.puesto||'')}" placeholder="Puesto"></div>
+      </div>
+      <div class="fr g3c">
         <div class="fg"><label>Estado</label>
           <select id="colab-estado">
             <option value="Activo" ${!existing||existing?.estado==='Activo'?'selected':''}>Activo</option>
             <option value="Baja" ${existing?.estado==='Baja'?'selected':''}>Baja</option>
           </select>
         </div>
-      </div>
-      <div class="fr g3c">
         <div class="fg"><label>Proyecto</label><select id="colab-proyecto"><option value="">Sin asignar</option>${proyOpts}</select></div>
         <div class="fg"><label>Departamento</label><select id="colab-departamento"><option value="">Sin asignar</option>${depOpts}</select></div>
-        <div class="fg"><label>Fecha de ingreso</label><input type="date" id="colab-fecha-ingreso" value="${existing?.fecha_ingreso||''}"></div>
       </div>
       <div class="fr g3c" style="margin-bottom:16px">
+        <div class="fg"><label>Fecha de ingreso</label><input type="date" id="colab-fecha-ingreso" value="${existing?.fecha_ingreso||''}"></div>
         <div class="fg"><label>Salario mensual</label><input type="text" id="colab-salario" value="${_esc(existing?.salario_mensual||'')}" placeholder="$0.00"></div>
         <div class="fg"><label>Talla de uniforme</label><input type="text" id="colab-talla-uniforme" value="${_esc(existing?.talla_uniforme||'')}" placeholder="Ej. CH, M, G, 32"></div>
-        <div></div>
       </div>
 
       <div class="sep">Contacto</div>
@@ -11686,6 +11687,7 @@ async function guardarColaborador(){
   });
   const registro={
     empresa_id:empId,
+    numero_colaborador:(document.getElementById('colab-numero').value||'').trim()||null,
     nombre,
     puesto:(document.getElementById('colab-puesto').value||'').trim()||null,
     proyecto:document.getElementById('colab-proyecto').value||null,
@@ -11754,6 +11756,7 @@ async function eliminarColaborador(id,empId){
 // ── Exportar / plantilla / carga masiva ──────────────────────
 function _personalCamposBase(){
   return [
+    {label:'Número de colaborador',field:'numero_colaborador'},
     {label:'Nombre*',field:'nombre'},
     {label:'Puesto',field:'puesto'},
     {label:'Proyecto',field:'proyecto'},
@@ -11803,7 +11806,7 @@ function personalDescargarPlantilla(empId){
   const camposCustom=emp.colab_campos_custom||[];
   const base=_personalCamposBase();
   const header=[...base.map(c=>c.label),...camposCustom.map(cf=>cf.label)];
-  const ejemplo=['Juan Pérez López','Auxiliar','','',today(),'Activo','$8,000','CH','2221234567','juan@correo.com','1995-04-12','PELJ950412HPLXXX01','PELJ950412XX1','BBVA','012180001234567890','Calle 1 #23, Col. Centro, Puebla, CP 72000','María Pérez','2227654321','Ejemplo de nota'];
+  const ejemplo=['001','Juan Pérez López','Auxiliar','','',today(),'Activo','$8,000','CH','2221234567','juan@correo.com','1995-04-12','PELJ950412HPLXXX01','PELJ950412XX1','BBVA','012180001234567890','Calle 1 #23, Col. Centro, Puebla, CP 72000','María Pérez','2227654321','Ejemplo de nota'];
   const fila=header.map((_,i)=>ejemplo[i]||'');
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet([header,fila]);
@@ -11894,6 +11897,7 @@ function handleImportColabFile(e,empId){
         customIdx.forEach(cf=>{ const v=get(cf.idx); if(v) campos_extra[cf.key]=v; });
         _impColabRows.push({
           _row:i+1,_errors:errors,
+          numero_colaborador:get(colIdx.numero_colaborador)||null,
           nombre, puesto:get(colIdx.puesto)||null, proyecto:get(colIdx.proyecto)||null, departamento:get(colIdx.departamento)||null,
           fecha_ingreso:normFecha(r[colIdx.fecha_ingreso])||null, estado,
           salario_mensual:get(colIdx.salario_mensual)||null, talla_uniforme:get(colIdx.talla_uniforme)||null,
@@ -11924,7 +11928,7 @@ function _impColabRenderPreview(empId){
     +(errR.length?`&nbsp;&nbsp;<span style="color:var(--red)"><i class="fa fa-exclamation-circle"></i> ${errR.length} con errores</span>`:'');
   const thead=document.querySelector('#imp-colab-table thead');
   const tbody=document.querySelector('#imp-colab-table tbody');
-  thead.innerHTML=`<tr>${['#','Nombre','Puesto','Proyecto','Departamento','Fecha ingreso','Estado','Status'].map(h=>`<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">${h}</th>`).join('')}</tr>`;
+  thead.innerHTML=`<tr>${['#','No. Colab.','Nombre','Puesto','Proyecto','Departamento','Fecha ingreso','Estado','Status'].map(h=>`<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">${h}</th>`).join('')}</tr>`;
   tbody.innerHTML=_impColabRows.map(r=>{
     const isOk=r._errors.length===0;
     const bg=isOk?'':'background:rgba(239,68,68,.07)';
@@ -11933,6 +11937,7 @@ function _impColabRenderPreview(empId){
       :`<span style="color:var(--red);font-size:11px" title="${_esc(r._errors.join('; '))}"><i class="fa fa-times"></i> ${_esc(r._errors.join('; '))}</span>`;
     return `<tr style="${bg}">
       <td style="padding:5px 8px;color:var(--text3)">${r._row}</td>
+      <td style="padding:5px 8px">${_esc(r.numero_colaborador)||'—'}</td>
       <td style="padding:5px 8px">${_esc(r.nombre)||'—'}</td>
       <td style="padding:5px 8px">${_esc(r.puesto)||'—'}</td>
       <td style="padding:5px 8px">${_esc(r.proyecto)||'—'}</td>

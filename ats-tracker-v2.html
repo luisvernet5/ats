@@ -17732,13 +17732,19 @@ function _agruparPorDimension(prueba,ev,debug){
     if(q.tipo!=='escala_lineal') continue;
     nEscalaLineal++;
     if(q.cuenta_calificacion===false) continue;
-    const m=rx.exec(q.texto||'');
-    if(!m){
-      if(debug) console.warn(`[Reporte PDF][debug] Pregunta escala_lineal SIN prefijo "[Competencia]" (se ignora para score_*/light_*): "${(q.texto||'').slice(0,60)}"`);
-      continue;
+    // Fuente principal: el selector "Competencia" del editor (q.competencia, no visible al candidato).
+    // Respaldo por compatibilidad: el prefijo "[Competencia] " al inicio de q.texto, si alguna pregunta
+    // vieja lo trae así en lugar de usar el selector.
+    let label=(q.competencia||'').trim();
+    if(!label){
+      const m=rx.exec(q.texto||'');
+      if(!m){
+        if(debug) console.warn(`[Reporte PDF][debug] Pregunta escala_lineal sin competencia asignada (ni selector ni prefijo "[Competencia]"): "${(q.texto||'').slice(0,60)}"`);
+        continue;
+      }
+      label=m[1].trim();
     }
     nConPrefijo++;
-    const label=m[1].trim();
     if(!label) continue;
     const respuesta=respuestas[q.id];
     if(respuesta==null||respuesta==='') continue; // sin contestar: se excluye del promedio, no cuenta como 0
@@ -17754,7 +17760,7 @@ function _agruparPorDimension(prueba,ev,debug){
     resultado[_normKey(g.label)]={label:g.label,promedio1a5};
   });
   if(debug){
-    console.log(`[Reporte PDF][debug] preguntas escala_lineal=${nEscalaLineal} · con prefijo "[Competencia]"=${nConPrefijo} · respondidas y usadas=${nRespondidas} · competencias detectadas=${Object.keys(resultado).length}`);
+    console.log(`[Reporte PDF][debug] preguntas escala_lineal=${nEscalaLineal} · con competencia asignada=${nConPrefijo} · respondidas y usadas=${nRespondidas} · competencias detectadas=${Object.keys(resultado).length}`);
     console.log('[Reporte PDF][debug] competencias detectadas:', Object.values(resultado).map(d=>`${d.label} (promedio 1-5=${d.promedio1a5.toFixed(2)})`));
   }
   return resultado;
@@ -18529,6 +18535,8 @@ function evalChangeTipo(qId){
   document.getElementById('epc_'+qId).innerHTML=_evalGetOpcContent(qId,tipo,null);
   const footer=document.getElementById('epfoot_'+qId);
   if(footer) footer.style.display=isDecorativo?'none':'flex';
+  const compWrap=document.getElementById('epcompwrap_'+qId);
+  if(compWrap) compWrap.style.display=tipo==='escala_lineal'?'flex':'none';
   const textoInp=document.querySelector(`#ep_${qId} [data-field="texto"]`);
   if(textoInp) textoInp.placeholder=tipo==='titulo'?'Título':tipo==='descripcion'?'Descripción':'Pregunta sin título';
   // ajustar tamaño de fuente del input pregunta
@@ -18608,6 +18616,13 @@ function evalAddPregunta(q=null){
         <input type="checkbox" data-qid="${qId}" data-field="cuenta_calificacion" ${q?.cuenta_calificacion!==false?'checked':''}>
         Cuenta para calificación
       </label>
+      <div id="epcompwrap_${qId}" style="display:${tipo==='escala_lineal'?'flex':'none'};align-items:center;gap:5px;font-size:12px;white-space:nowrap" title="Para reportes con puntaje y semáforo por competencia — no se muestra al candidato">
+        <i class="fa fa-layer-group" style="color:var(--text3)"></i>
+        <select data-qid="${qId}" data-field="competencia" style="font-size:12px;padding:3px 6px;max-width:220px">
+          <option value="">Sin competencia</option>
+          ${_DIMENSION_CATALOGO.map(([label])=>`<option value="${_esc(label)}" ${q?.competencia===label?'selected':''}>${_esc(label)}</option>`).join('')}
+        </select>
+      </div>
       <span style="flex:1"></span>
       <button class="btn btn-ghost btn-sm" title="Agregar imagen" onclick="_evalImgToggle('${qId}')"><i class="fa fa-image"></i></button>
       <button class="btn btn-ghost btn-sm" style="padding:4px 10px;color:var(--red)" onclick="document.getElementById('ep_${qId}').remove();_evalRenumber()"><i class="fa fa-trash"></i></button>
@@ -18660,7 +18675,7 @@ async function saveEvalTemplate(){
     const requerida=document.querySelector(`[data-qid="${qId}"][data-field="requerida"]`)?.checked!==false;
     const puntos=parseInt(document.querySelector(`[data-qid="${qId}"][data-field="puntos"]`)?.value||'0')||0;
     const cuenta_calificacion=document.querySelector(`[data-qid="${qId}"][data-field="cuenta_calificacion"]`)?.checked!==false;
-    let opciones=[],opciones_imagenes=[],respuesta_correcta=null,escala_min,escala_max,escala_min_label,escala_max_label;
+    let opciones=[],opciones_imagenes=[],respuesta_correcta=null,escala_min,escala_max,escala_min_label,escala_max_label,competencia=null;
     if(['opcion_multiple','casillas','desplegable'].includes(tipo)){
       const optEls=[...document.querySelectorAll(`#opts_${qId} [data-field="opcion"]`)].filter(i=>i.value.trim());
       opciones=optEls.map(i=>i.value.trim());
@@ -18678,9 +18693,10 @@ async function saveEvalTemplate(){
       escala_min_label=document.querySelector(`[data-qid="${qId}"][data-field="escala_min_label"]`)?.value||'';
       escala_max_label=document.querySelector(`[data-qid="${qId}"][data-field="escala_max_label"]`)?.value||'';
       respuesta_correcta=document.querySelector(`input[name="correct_esc_${qId}"]:checked`)?.value||null;
+      competencia=document.querySelector(`[data-qid="${qId}"][data-field="competencia"]`)?.value||null;
     }
     const imagen = document.getElementById('epimgval_'+qId)?.value||null;
-    preguntas.push({id:qId,tipo,texto,opciones,opciones_imagenes:opciones_imagenes.length?opciones_imagenes:null,respuesta_correcta,puntos,cuenta_calificacion,requerida,escala_min,escala_max,escala_min_label,escala_max_label,imagen:imagen||null});
+    preguntas.push({id:qId,tipo,texto,opciones,opciones_imagenes:opciones_imagenes.length?opciones_imagenes:null,respuesta_correcta,puntos,cuenta_calificacion,requerida,escala_min,escala_max,escala_min_label,escala_max_label,competencia,imagen:imagen||null});
   });
   const pregsConPregunta=preguntas.filter(p=>!_EVAL_TEXTO_TIPOS.has(p.tipo));
   if(!pregsConPregunta.length){showToast('Agrega al menos una pregunta','err');return;}

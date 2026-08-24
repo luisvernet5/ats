@@ -17722,20 +17722,27 @@ _DIMENSION_CATALOGO.forEach(([label,slug])=>{ _DIMENSION_SLUG_MAP[_normKey(label
 // por cada grupo, el promedio Likert CRUDO 1-5 (solo de las respondidas — sin contestar se excluye, no
 // cuenta como 0). Si ninguna pregunta trae el prefijo, regresa {} y _reporteVarsForPrueba se comporta
 // exactamente como antes de este cambio.
-function _agruparPorDimension(prueba,ev){
+function _agruparPorDimension(prueba,ev,debug){
   const preguntas=ev?.preguntas||[];
   const respuestas=prueba?.respuestas||{};
   const rx=/^\[(.+?)\]\s*/;
   const grupos={}; // normKey(label) → {label, valores:[valor1a5,...]}
+  let nEscalaLineal=0,nConPrefijo=0,nRespondidas=0;
   for(const q of preguntas){
     if(q.tipo!=='escala_lineal') continue;
+    nEscalaLineal++;
     if(q.cuenta_calificacion===false) continue;
     const m=rx.exec(q.texto||'');
-    if(!m) continue;
+    if(!m){
+      if(debug) console.warn(`[Reporte PDF][debug] Pregunta escala_lineal SIN prefijo "[Competencia]" (se ignora para score_*/light_*): "${(q.texto||'').slice(0,60)}"`);
+      continue;
+    }
+    nConPrefijo++;
     const label=m[1].trim();
     if(!label) continue;
     const respuesta=respuestas[q.id];
     if(respuesta==null||respuesta==='') continue; // sin contestar: se excluye del promedio, no cuenta como 0
+    nRespondidas++;
     const key=_normKey(label);
     if(!grupos[key]) grupos[key]={label,valores:[]};
     grupos[key].valores.push(parseFloat(respuesta)||0);
@@ -17746,6 +17753,10 @@ function _agruparPorDimension(prueba,ev){
     const promedio1a5=g.valores.reduce((s,v)=>s+v,0)/g.valores.length;
     resultado[_normKey(g.label)]={label:g.label,promedio1a5};
   });
+  if(debug){
+    console.log(`[Reporte PDF][debug] preguntas escala_lineal=${nEscalaLineal} · con prefijo "[Competencia]"=${nConPrefijo} · respondidas y usadas=${nRespondidas} · competencias detectadas=${Object.keys(resultado).length}`);
+    console.log('[Reporte PDF][debug] competencias detectadas:', Object.values(resultado).map(d=>`${d.label} (promedio 1-5=${d.promedio1a5.toFixed(2)})`));
+  }
   return resultado;
 }
 
@@ -17759,7 +17770,7 @@ function _semaforoDesdeGrado(grado){
   return grado<=3?'rojo':grado<=7?'amarillo':'verde';
 }
 
-function _reporteVarsForPrueba(prueba,ev,enviado){
+function _reporteVarsForPrueba(prueba,ev,enviado,debug){
   const pct=prueba.puntaje??0;
   const isLikert=!!prueba.es_likert_puro;
   const nivel=isLikert
@@ -17774,7 +17785,7 @@ function _reporteVarsForPrueba(prueba,ev,enviado){
   };
   // Puntaje (1-10) + semáforo por competencia — solo aparecen si alguna pregunta usa el prefijo "[Competencia] ";
   // para evaluaciones sin ese prefijo (ej. Comunicación) esto no agrega ninguna clave y nada cambia.
-  const dims=_agruparPorDimension(prueba,ev);
+  const dims=_agruparPorDimension(prueba,ev,debug);
   Object.values(dims).forEach(d=>{
     const slug=_DIMENSION_SLUG_MAP[_normKey(d.label)];
     if(!slug){
@@ -17787,6 +17798,7 @@ function _reporteVarsForPrueba(prueba,ev,enviado){
     // simplemente no se agregan al objeto (rellenarYDescargarReportePdf los deja sin tocar → quedan unchecked).
     vars['light_'+slug+'_'+_semaforoDesdeGrado(grado)]=true;
   });
+  if(debug) console.log('[Reporte PDF][debug] variables finales generadas para el PDF:', vars);
   return vars;
 }
 async function rellenarYDescargarReportePdf(envId,pruebaIdx){
@@ -17801,7 +17813,8 @@ async function rellenarYDescargarReportePdf(envId,pruebaIdx){
     const bytes=await fetch(urlData.publicUrl).then(r=>r.arrayBuffer());
     const pdfDoc=await PDFLib.PDFDocument.load(bytes);
     const form=pdfDoc.getForm();
-    const vars=_reporteVarsForPrueba(prueba,ev,enviado);
+    const vars=_reporteVarsForPrueba(prueba,ev,enviado,true);
+    console.log('[Reporte PDF][debug] mapeo guardado (ev.reporte_pdf_campos):', ev.reporte_pdf_campos);
     for(const map of (ev.reporte_pdf_campos||[])){
       if(!map.variable) continue;
       const valor=vars[map.variable];
@@ -17811,10 +17824,14 @@ async function rellenarYDescargarReportePdf(envId,pruebaIdx){
           // Solo se activa si el valor es exactamente true (semáforo que corresponde a esta competencia).
           // Si es undefined/false, se deja SIN TOCAR — permanece unchecked, que es su estado por defecto.
           if(valor===true) field.check();
+          else if(/^(score_|light_)/.test(map.variable)) console.warn(`[Reporte PDF][debug] Checkbox "${map.pdfField}" mapeado a "${map.variable}" pero ese valor no llegó como true (llegó: ${JSON.stringify(valor)}) → queda sin marcar.`);
         } else {
+          if(valor===undefined && /^(score_|light_)/.test(map.variable)) console.warn(`[Reporte PDF][debug] Campo "${map.pdfField}" mapeado a "${map.variable}" pero esa variable no se generó (undefined) → quedará vacío. Revisa el log de competencias detectadas arriba.`);
           field.setText(String(valor??''));
         }
-      }catch(e){}
+      }catch(e){
+        console.warn(`[Reporte PDF][debug] No se pudo llenar el campo "${map.pdfField}" (variable "${map.variable}"): ${e.message}`);
+      }
     }
     form.flatten();
     const outBytes=await pdfDoc.save();

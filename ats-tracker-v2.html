@@ -17531,19 +17531,29 @@ function renderEvalPlantillas(){
 }
 
 // ── Tipos de Reportes: PDF de plantilla por evaluación ────────
+// Única fuente de verdad para las 8 competencias: [nombre tal como va en el prefijo "[Nombre] ", slug del campo AcroForm].
+// La usan tanto REPORTE_PDF_VARS (abajo) como _DIMENSION_SLUG_MAP (más adelante en el archivo) — así nunca se desalinean.
+const _DIMENSION_CATALOGO=[
+  ['Liderazgo y dirección de equipos','liderazgo'],
+  ['Comunicación organizacional','comunicacion'],
+  ['Toma de decisiones y resolución de problemas','decisiones'],
+  ['Inteligencia emocional y autorregulación','inteligencia_emocional'],
+  ['Delegación y desarrollo de talento','delegacion'],
+  ['Negociación e influencia','negociacion'],
+  ['Adaptabilidad y manejo del cambio','adaptabilidad'],
+  ['Visión estratégica y orientación a resultados','estrategica'],
+];
 const REPORTE_PDF_VARS=[
   {value:'candidato',label:'Candidato'},
   {value:'puntaje',label:'Puntaje'},
   {value:'nivel',label:'Nivel'},
   {value:'fecha',label:'Fecha'},
-  {value:'score_liderazgo',label:'Puntaje — Liderazgo y dirección de equipos'},
-  {value:'score_comunicacion',label:'Puntaje — Comunicación organizacional'},
-  {value:'score_decisiones',label:'Puntaje — Toma de decisiones y resolución de problemas'},
-  {value:'score_inteligencia_emocional',label:'Puntaje — Inteligencia emocional y autorregulación'},
-  {value:'score_delegacion',label:'Puntaje — Delegación y desarrollo de talento'},
-  {value:'score_negociacion',label:'Puntaje — Negociación e influencia'},
-  {value:'score_adaptabilidad',label:'Puntaje — Adaptabilidad y manejo del cambio'},
-  {value:'score_estrategica',label:'Puntaje — Visión estratégica y orientación a resultados'},
+  ..._DIMENSION_CATALOGO.flatMap(([label,slug])=>[
+    {value:'score_'+slug,label:`Puntaje 1-10 — ${label}`},
+    {value:'light_'+slug+'_rojo',label:`Semáforo rojo (1-3) — ${label}`},
+    {value:'light_'+slug+'_amarillo',label:`Semáforo amarillo (4-7) — ${label}`},
+    {value:'light_'+slug+'_verde',label:`Semáforo verde (8-10) — ${label}`},
+  ]),
 ];
 let _reportePdfBucketReady=false;
 let _reportePdfNewFile=null;
@@ -17605,9 +17615,9 @@ function openReporteAsignarModal(evId){
 }
 function _guessVariableReporte(fieldName){
   const n=(fieldName||'').toLowerCase();
-  // Campos de puntaje por dimensión (ej. score_liderazgo) van primero: si no, "score" haría que
-  // /punt|score|calif/ los confundiera con el puntaje global.
-  if(/^score_/.test(n) && REPORTE_PDF_VARS.some(v=>v.value===n)) return n;
+  // Campos de puntaje/semáforo por dimensión (ej. score_liderazgo, light_liderazgo_verde) van primero:
+  // si no, "score" haría que /punt|score|calif/ los confundiera con el puntaje global.
+  if(/^(score_|light_)/.test(n) && REPORTE_PDF_VARS.some(v=>v.value===n)) return n;
   if(/candidat|nombre/.test(n)) return 'candidato';
   if(/punt|score|calif/.test(n)) return 'puntaje';
   if(/nivel|result|estatus|status/.test(n)) return 'nivel';
@@ -17644,7 +17654,10 @@ async function onReportePdfFileChange(input){
     const bytes=await file.arrayBuffer();
     const pdfDoc=await PDFLib.PDFDocument.load(bytes);
     const form=pdfDoc.getForm();
-    const fieldNames=form.getFields().filter(f=>f instanceof PDFLib.PDFTextField).map(f=>f.getName());
+    // Detecta tanto campos de texto (score_*, candidato, puntaje...) como checkboxes /Btn (light_*_rojo/amarillo/verde).
+    const fieldNames=form.getFields()
+      .filter(f=>f instanceof PDFLib.PDFTextField||f instanceof PDFLib.PDFCheckBox)
+      .map(f=>f.getName());
     _reportePdfNewFile=file;
     document.getElementById('reporte-pdf-archivo-actual').textContent=`Nuevo: ${file.name}`;
     statusEl.style.color='var(--green)';
@@ -17698,33 +17711,22 @@ async function quitarReportePdf(evId){
     renderReportesTipos();
   }catch(e){showToast('Error: '+e.message,'err');}
 }
-// Mapa fijo: competencia (tal como aparece dentro de "[Competencia] " al inicio de q.texto) → variable/campo AcroForm.
+// Mapa fijo: competencia (tal como aparece dentro de "[Competencia] " al inicio de q.texto) → slug de campo AcroForm.
 // La clave está normalizada con _normKey (minúsculas, sin acentos, espacios→_) para que no importe cómo se
-// capitalizó exactamente en la plantilla de preguntas. Evaluaciones futuras con competencias que NO estén en
-// este mapa igual funcionan: caen al fallback genérico 'score_'+_normKey(nombre) dentro de _reporteVarsForPrueba,
-// que nunca colisiona entre sí porque usa el nombre completo normalizado (no un slug truncado ni un hash).
-const _DIMENSION_FIELD_MAP={};
-[
-  ['Liderazgo y dirección de equipos','score_liderazgo'],
-  ['Comunicación organizacional','score_comunicacion'],
-  ['Toma de decisiones y resolución de problemas','score_decisiones'],
-  ['Inteligencia emocional y autorregulación','score_inteligencia_emocional'],
-  ['Delegación y desarrollo de talento','score_delegacion'],
-  ['Negociación e influencia','score_negociacion'],
-  ['Adaptabilidad y manejo del cambio','score_adaptabilidad'],
-  ['Visión estratégica y orientación a resultados','score_estrategica'],
-].forEach(([label,field])=>{ _DIMENSION_FIELD_MAP[_normKey(label)]=field; });
+// capitalizó exactamente en la plantilla de preguntas. Los 32 campos del PDF (8 score_<slug> de texto + 24
+// light_<slug>_<color> checkbox) se derivan de este slug — ver _reporteVarsForPrueba.
+const _DIMENSION_SLUG_MAP={};
+_DIMENSION_CATALOGO.forEach(([label,slug])=>{ _DIMENSION_SLUG_MAP[_normKey(label)]=slug; });
 
-// Agrupa las preguntas tipo escala_lineal de `ev` por el prefijo "[Competencia] " en q.texto, y calcula
-// el promedio de cada grupo normalizado 0-100 con la MISMA fórmula que ya usa el puntaje global
-// (valor/escala_max*100 por pregunta, promediado) — ver submitProcesoPrueba(). Preguntas sin contestar
-// se excluyen del promedio de su dimensión (no cuentan como 0). Si ninguna pregunta trae el prefijo,
-// regresa {} y el comportamiento de _reporteVarsForPrueba es idéntico al de antes.
+// Agrupa las preguntas tipo escala_lineal de `ev` por el prefijo "[Competencia] " en q.texto y regresa,
+// por cada grupo, el promedio Likert CRUDO 1-5 (solo de las respondidas — sin contestar se excluye, no
+// cuenta como 0). Si ninguna pregunta trae el prefijo, regresa {} y _reporteVarsForPrueba se comporta
+// exactamente como antes de este cambio.
 function _agruparPorDimension(prueba,ev){
   const preguntas=ev?.preguntas||[];
   const respuestas=prueba?.respuestas||{};
   const rx=/^\[(.+?)\]\s*/;
-  const grupos={}; // normKey(label) → {label, valores:[{valor,escalaMax}]}
+  const grupos={}; // normKey(label) → {label, valores:[valor1a5,...]}
   for(const q of preguntas){
     if(q.tipo!=='escala_lineal') continue;
     if(q.cuenta_calificacion===false) continue;
@@ -17736,15 +17738,25 @@ function _agruparPorDimension(prueba,ev){
     if(respuesta==null||respuesta==='') continue; // sin contestar: se excluye del promedio, no cuenta como 0
     const key=_normKey(label);
     if(!grupos[key]) grupos[key]={label,valores:[]};
-    grupos[key].valores.push({valor:parseFloat(respuesta)||0,escalaMax:q.escala_max||5});
+    grupos[key].valores.push(parseFloat(respuesta)||0);
   }
   const resultado={};
   Object.values(grupos).forEach(g=>{
     if(!g.valores.length) return;
-    const pct=Math.round(g.valores.reduce((s,v)=>s+(v.valor/v.escalaMax)*100,0)/g.valores.length);
-    resultado[_normKey(g.label)]={label:g.label,pct};
+    const promedio1a5=g.valores.reduce((s,v)=>s+v,0)/g.valores.length;
+    resultado[_normKey(g.label)]={label:g.label,promedio1a5};
   });
   return resultado;
+}
+
+// promedio 1-5 → grado 1-10 (mismo criterio lineal que ya usa la app para pasar de 1-5 a 0-100, pero
+// aquí el destino es 1-10): grado = 1 + ((promedio-1)/4)*9, redondeado a entero.
+function _gradoDesdePromedioLikert(promedio1a5){
+  return Math.round(1+((promedio1a5-1)/4)*9);
+}
+// grado 1-10 → rango de semáforo. Los cortes son inclusivos y no dejan huecos: 1-3 rojo, 4-7 amarillo, 8-10 verde.
+function _semaforoDesdeGrado(grado){
+  return grado<=3?'rojo':grado<=7?'amarillo':'verde';
 }
 
 function _reporteVarsForPrueba(prueba,ev,enviado){
@@ -17760,12 +17772,20 @@ function _reporteVarsForPrueba(prueba,ev,enviado){
     nivel,
     fecha
   };
-  // Puntajes por dimensión/competencia — solo aparecen si alguna pregunta usa el prefijo "[Competencia] ";
+  // Puntaje (1-10) + semáforo por competencia — solo aparecen si alguna pregunta usa el prefijo "[Competencia] ";
   // para evaluaciones sin ese prefijo (ej. Comunicación) esto no agrega ninguna clave y nada cambia.
   const dims=_agruparPorDimension(prueba,ev);
-  Object.entries(dims).forEach(([key,d])=>{
-    const field=_DIMENSION_FIELD_MAP[key]||('score_'+key);
-    vars[field]=d.pct.toFixed(1)+'%';
+  Object.values(dims).forEach(d=>{
+    const slug=_DIMENSION_SLUG_MAP[_normKey(d.label)];
+    if(!slug){
+      console.warn(`[Reporte PDF] La competencia "${d.label}" (tomada del prefijo "[${d.label}]" en una pregunta) no coincide con ninguno de los 8 slugs conocidos — revisa que el texto esté escrito exactamente igual al catálogo. No se llenará ningún campo score_*/light_* para ella.`);
+      return;
+    }
+    const grado=_gradoDesdePromedioLikert(d.promedio1a5);
+    vars['score_'+slug]=String(grado);
+    // Solo se marca TRUE el checkbox del color que corresponde; los otros 2 de la misma competencia
+    // simplemente no se agregan al objeto (rellenarYDescargarReportePdf los deja sin tocar → quedan unchecked).
+    vars['light_'+slug+'_'+_semaforoDesdeGrado(grado)]=true;
   });
   return vars;
 }
@@ -17784,7 +17804,17 @@ async function rellenarYDescargarReportePdf(envId,pruebaIdx){
     const vars=_reporteVarsForPrueba(prueba,ev,enviado);
     for(const map of (ev.reporte_pdf_campos||[])){
       if(!map.variable) continue;
-      try{ form.getTextField(map.pdfField).setText(String(vars[map.variable]??'')); }catch(e){}
+      const valor=vars[map.variable];
+      try{
+        const field=form.getField(map.pdfField);
+        if(field instanceof PDFLib.PDFCheckBox){
+          // Solo se activa si el valor es exactamente true (semáforo que corresponde a esta competencia).
+          // Si es undefined/false, se deja SIN TOCAR — permanece unchecked, que es su estado por defecto.
+          if(valor===true) field.check();
+        } else {
+          field.setText(String(valor??''));
+        }
+      }catch(e){}
     }
     form.flatten();
     const outBytes=await pdfDoc.save();

@@ -1234,6 +1234,28 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
   </div>
 </div>
 
+<!-- ===== MODAL ASIGNAR COMPETENCIAS EN LOTE ===== -->
+<div class="modal-overlay" id="modal-comp-lote">
+  <div class="modal" style="width:720px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column">
+    <div class="mh"><h3>Asignar competencias en lote</h3><button class="xbtn" onclick="closeModal('modal-comp-lote')"><i class="fa fa-times"></i></button></div>
+    <div class="mb" style="flex:1;overflow-y:auto;min-height:0">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px">
+        1) Copia la lista de preguntas de abajo (o pásaselas a Claude) para que te devuelva un número de competencia por línea, en el mismo orden.<br>
+        2) Pega esa lista de números en el segundo cuadro y haz clic en "Aplicar".
+      </div>
+      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Preguntas de escala lineal (en orden) — cópialas</label>
+      <textarea id="comp-lote-preguntas" readonly style="width:100%;height:180px;font-size:12px;font-family:inherit;resize:vertical;margin-bottom:6px" onclick="this.select()"></textarea>
+      <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text3);margin-bottom:14px" id="comp-lote-catalogo"></div>
+      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Pega aquí la lista de números (uno por línea, mismo orden)</label>
+      <textarea id="comp-lote-respuesta" placeholder="1&#10;2&#10;3&#10;..." style="width:100%;height:140px;font-size:13px;font-family:inherit;resize:vertical"></textarea>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('modal-comp-lote')">Cancelar</button>
+      <button class="btn btn-primary" onclick="evalAplicarCompetenciasLote()"><i class="fa fa-check"></i> Aplicar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== MODAL ENVIAR EVALUACIÓN ===== -->
 <div class="modal-overlay" id="modal-enviar-eval">
   <div class="modal" style="width:520px;max-width:96vw">
@@ -18675,12 +18697,19 @@ function evalAsignarCompetenciasLote(){
   );
   if(!rows.length){ showToast('No hay preguntas de tipo "Escala lineal" en esta evaluación','err'); return; }
   const listado=rows.map((div,i)=>`${i+1}. ${div.querySelector('[data-field="texto"]')?.value||'(sin texto)'}`).join('\n');
-  const catalogoTxt=_DIMENSION_CATALOGO.map(([label],i)=>`${i+1} = ${label}`).join('\n');
-  const instrucciones=`Hay ${rows.length} preguntas de escala lineal, en este orden:\n\n${listado}\n\nPega abajo UNA LÍNEA POR PREGUNTA (mismo orden) con el NÚMERO de competencia:\n${catalogoTxt}`;
-  const respuesta=prompt(instrucciones,'');
-  if(respuesta==null) return;
+  const catalogoTxt='Catálogo de competencias:\n'+_DIMENSION_CATALOGO.map(([label],i)=>`${i+1} = ${label}`).join('\n');
+  document.getElementById('comp-lote-preguntas').value=listado;
+  document.getElementById('comp-lote-catalogo').textContent=catalogoTxt;
+  document.getElementById('comp-lote-respuesta').value='';
+  openModal('modal-comp-lote');
+}
+function evalAplicarCompetenciasLote(){
+  const rows=[...document.querySelectorAll('#eval-preguntas-list > div')].filter(div=>
+    div.querySelector('select[data-field="tipo"]')?.value==='escala_lineal'
+  );
+  const respuesta=document.getElementById('comp-lote-respuesta').value||'';
   const lineas=respuesta.split(/\r?\n/).map(l=>l.trim()).filter(l=>l!=='');
-  if(!lineas.length){ showToast('No se pegó nada','err'); return; }
+  if(!lineas.length){ showToast('Pega la lista de números primero','err'); return; }
   if(lineas.length!==rows.length && !confirm(`Pegaste ${lineas.length} línea(s) pero hay ${rows.length} pregunta(s) de escala lineal. Si continúas, se emparejan en el mismo orden hasta donde alcance (puede desalinearse). ¿Continuar de todos modos?`)) return;
   let aplicadas=0; const sinMatch=[];
   rows.forEach((div,i)=>{
@@ -18698,6 +18727,7 @@ function evalAsignarCompetenciasLote(){
     if(label){ sel.value=label; aplicadas++; }
     else sinMatch.push(`${i+1}: "${linea}"`);
   });
+  closeModal('modal-comp-lote');
   showToast(`${aplicadas} de ${rows.length} preguntas actualizadas. Revisa y haz clic en "Guardar" para conservar los cambios.`);
   if(sinMatch.length) setTimeout(()=>alert(`No se reconoció la competencia en estas líneas (revísalas manualmente):\n\n${sinMatch.join('\n')}`),300);
 }

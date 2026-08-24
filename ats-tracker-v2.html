@@ -17535,7 +17535,15 @@ const REPORTE_PDF_VARS=[
   {value:'candidato',label:'Candidato'},
   {value:'puntaje',label:'Puntaje'},
   {value:'nivel',label:'Nivel'},
-  {value:'fecha',label:'Fecha'}
+  {value:'fecha',label:'Fecha'},
+  {value:'score_liderazgo',label:'Puntaje — Liderazgo y dirección de equipos'},
+  {value:'score_comunicacion',label:'Puntaje — Comunicación organizacional'},
+  {value:'score_decisiones',label:'Puntaje — Toma de decisiones y resolución de problemas'},
+  {value:'score_inteligencia_emocional',label:'Puntaje — Inteligencia emocional y autorregulación'},
+  {value:'score_delegacion',label:'Puntaje — Delegación y desarrollo de talento'},
+  {value:'score_negociacion',label:'Puntaje — Negociación e influencia'},
+  {value:'score_adaptabilidad',label:'Puntaje — Adaptabilidad y manejo del cambio'},
+  {value:'score_estrategica',label:'Puntaje — Visión estratégica y orientación a resultados'},
 ];
 let _reportePdfBucketReady=false;
 let _reportePdfNewFile=null;
@@ -17597,6 +17605,9 @@ function openReporteAsignarModal(evId){
 }
 function _guessVariableReporte(fieldName){
   const n=(fieldName||'').toLowerCase();
+  // Campos de puntaje por dimensión (ej. score_liderazgo) van primero: si no, "score" haría que
+  // /punt|score|calif/ los confundiera con el puntaje global.
+  if(/^score_/.test(n) && REPORTE_PDF_VARS.some(v=>v.value===n)) return n;
   if(/candidat|nombre/.test(n)) return 'candidato';
   if(/punt|score|calif/.test(n)) return 'puntaje';
   if(/nivel|result|estatus|status/.test(n)) return 'nivel';
@@ -17687,6 +17698,55 @@ async function quitarReportePdf(evId){
     renderReportesTipos();
   }catch(e){showToast('Error: '+e.message,'err');}
 }
+// Mapa fijo: competencia (tal como aparece dentro de "[Competencia] " al inicio de q.texto) → variable/campo AcroForm.
+// La clave está normalizada con _normKey (minúsculas, sin acentos, espacios→_) para que no importe cómo se
+// capitalizó exactamente en la plantilla de preguntas. Evaluaciones futuras con competencias que NO estén en
+// este mapa igual funcionan: caen al fallback genérico 'score_'+_normKey(nombre) dentro de _reporteVarsForPrueba,
+// que nunca colisiona entre sí porque usa el nombre completo normalizado (no un slug truncado ni un hash).
+const _DIMENSION_FIELD_MAP={};
+[
+  ['Liderazgo y dirección de equipos','score_liderazgo'],
+  ['Comunicación organizacional','score_comunicacion'],
+  ['Toma de decisiones y resolución de problemas','score_decisiones'],
+  ['Inteligencia emocional y autorregulación','score_inteligencia_emocional'],
+  ['Delegación y desarrollo de talento','score_delegacion'],
+  ['Negociación e influencia','score_negociacion'],
+  ['Adaptabilidad y manejo del cambio','score_adaptabilidad'],
+  ['Visión estratégica y orientación a resultados','score_estrategica'],
+].forEach(([label,field])=>{ _DIMENSION_FIELD_MAP[_normKey(label)]=field; });
+
+// Agrupa las preguntas tipo escala_lineal de `ev` por el prefijo "[Competencia] " en q.texto, y calcula
+// el promedio de cada grupo normalizado 0-100 con la MISMA fórmula que ya usa el puntaje global
+// (valor/escala_max*100 por pregunta, promediado) — ver submitProcesoPrueba(). Preguntas sin contestar
+// se excluyen del promedio de su dimensión (no cuentan como 0). Si ninguna pregunta trae el prefijo,
+// regresa {} y el comportamiento de _reporteVarsForPrueba es idéntico al de antes.
+function _agruparPorDimension(prueba,ev){
+  const preguntas=ev?.preguntas||[];
+  const respuestas=prueba?.respuestas||{};
+  const rx=/^\[(.+?)\]\s*/;
+  const grupos={}; // normKey(label) → {label, valores:[{valor,escalaMax}]}
+  for(const q of preguntas){
+    if(q.tipo!=='escala_lineal') continue;
+    if(q.cuenta_calificacion===false) continue;
+    const m=rx.exec(q.texto||'');
+    if(!m) continue;
+    const label=m[1].trim();
+    if(!label) continue;
+    const respuesta=respuestas[q.id];
+    if(respuesta==null||respuesta==='') continue; // sin contestar: se excluye del promedio, no cuenta como 0
+    const key=_normKey(label);
+    if(!grupos[key]) grupos[key]={label,valores:[]};
+    grupos[key].valores.push({valor:parseFloat(respuesta)||0,escalaMax:q.escala_max||5});
+  }
+  const resultado={};
+  Object.values(grupos).forEach(g=>{
+    if(!g.valores.length) return;
+    const pct=Math.round(g.valores.reduce((s,v)=>s+(v.valor/v.escalaMax)*100,0)/g.valores.length);
+    resultado[_normKey(g.label)]={label:g.label,pct};
+  });
+  return resultado;
+}
+
 function _reporteVarsForPrueba(prueba,ev,enviado){
   const pct=prueba.puntaje??0;
   const isLikert=!!prueba.es_likert_puro;
@@ -17694,12 +17754,20 @@ function _reporteVarsForPrueba(prueba,ev,enviado){
     ?(pct>=71?'Nivel de desarrollo alto':pct>=41?'Nivel de desarrollo medio':'Nivel de desarrollo bajo')
     :(pct>=70?'Aprobado':pct>=50?'Regular':'No aprobado');
   const fecha=prueba.fecha_completada?new Date(prueba.fecha_completada).toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}):'—';
-  return{
+  const vars={
     candidato:enviado.candidato_nombre||'—',
     puntaje:prueba.puntaje!=null?prueba.puntaje.toFixed(1)+'%':'—',
     nivel,
     fecha
   };
+  // Puntajes por dimensión/competencia — solo aparecen si alguna pregunta usa el prefijo "[Competencia] ";
+  // para evaluaciones sin ese prefijo (ej. Comunicación) esto no agrega ninguna clave y nada cambia.
+  const dims=_agruparPorDimension(prueba,ev);
+  Object.entries(dims).forEach(([key,d])=>{
+    const field=_DIMENSION_FIELD_MAP[key]||('score_'+key);
+    vars[field]=d.pct.toFixed(1)+'%';
+  });
+  return vars;
 }
 async function rellenarYDescargarReportePdf(envId,pruebaIdx){
   const enviado=(DB.procesosEnviados||[]).find(x=>x.id===envId);

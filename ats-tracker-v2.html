@@ -3096,7 +3096,8 @@ async function renderActivityLog(){
   logPaginaActual = 1;
 
   const logUserOptsList = [...new Map(data.map(d=>[d.usuario_email, d.usuario_nombre])).entries()]
-    .map(([email, nombre])=>({value:email,label:nombre||email}));
+    .map(([email, nombre])=>({value:email,label:nombre||email}))
+    .sort((a,b)=>a.label.localeCompare(b.label,'es',{sensitivity:'base'}));
   const logAccionOptsList = [...new Set(data.map(d=>d.accion))]
     .map(a=>({value:a,label:a}));
 

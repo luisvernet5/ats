@@ -3013,11 +3013,13 @@ async function cargarResumen(){
   content.innerHTML='<div style="color:var(--text3)">Cargando...</div>';
   try{
 
-  let query = sbClient.from('activity_log').select('*').order('created_at',{ascending:false});
-  if(f1) query = query.gte('created_at', f1+'T00:00:00');
-  if(f2) query = query.lte('created_at', f2+'T23:59:59');
-  const { data: logs, error: logErr } = await query;
-  if(logErr) throw logErr;
+  const buildLogQuery = () => {
+    let q = sbClient.from('activity_log').select('*').order('created_at',{ascending:false});
+    if(f1) q = q.gte('created_at', f1+'T00:00:00');
+    if(f2) q = q.lte('created_at', f2+'T23:59:59');
+    return q;
+  };
+  const logs = await _fetchAllRows(buildLogQuery);
   if(!logs?.length){ content.innerHTML='<div style="color:var(--text3)">Sin actividad en ese período.</div>'; return; }
 
   // Obtener roles de usuarios
@@ -3077,17 +3079,31 @@ function exportarResumen(){
 
 let logPaginaActual = 1;
 
+// Supabase/PostgREST limita cada request a un máximo de filas configurado en el proyecto
+// (por defecto 1000), sin importar el .limit() que pida el cliente — por eso el log se
+// quedaba trunco. Esto pagina con .range() hasta traer todo, sin depender de esa config.
+async function _fetchAllRows(buildQuery, pageSize=1000){
+  let all=[], from=0;
+  while(true){
+    const {data, error} = await buildQuery().range(from, from+pageSize-1);
+    if(error) throw error;
+    all = all.concat(data||[]);
+    if(!data || data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 async function renderActivityLog(){
   console.log('renderActivityLog ejecutado');
   const page = document.getElementById('page-activity-log');
   if(!page) return;
   page.innerHTML='<div style="padding:24px 28px;color:var(--text3)">Cargando...</div>';
 
-  const { data, error } = await sbClient
-    .from('activity_log')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(5000);
+  let data, error;
+  try{
+    data = await _fetchAllRows(()=>sbClient.from('activity_log').select('*').order('created_at',{ascending:false}));
+  }catch(e){ error = e; }
 
   if(error){ page.innerHTML=`<div style="padding:24px 28px;color:var(--err)">${error.message}</div>`; return; }
   if(!data?.length){ page.innerHTML='<div style="padding:24px 28px;color:var(--text3);font-size:13px">Sin actividad registrada.</div>'; return; }

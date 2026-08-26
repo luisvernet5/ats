@@ -4063,17 +4063,22 @@ function empColorPickerSel(col){
 }
 
 function empColorHexInput(val){
-  if(/^#[0-9A-Fa-f]{6}$/.test(val)){
-    empColorSel=val;
+  let v=(val||'').trim();
+  if(v && v[0]!=='#') v='#'+v; // el usuario suele escribir el código sin el "#" inicial
+  if(/^#[0-9A-Fa-f]{6}$/.test(v)){
+    v=v.toUpperCase();
+    empColorSel=v;
+    const hexInput=document.getElementById('emp-color-hex');
     const native=document.getElementById('emp-color-native');
     const preview=document.getElementById('emp-color-preview');
     const circles=document.querySelectorAll('#emp-color-circles div');
-    if(native) native.value=val;
-    if(preview) preview.style.background=val;
+    if(hexInput && hexInput.value!==v) hexInput.value=v;
+    if(native) native.value=v;
+    if(preview) preview.style.background=v;
     EMPRESA_COLORS.forEach((c,i)=>{
       if(!circles[i]) return;
-      circles[i].style.border=`3px solid ${c===val?'#fff':'transparent'}`;
-      circles[i].style.boxShadow=c===val?`0 0 0 2px ${c}`:'none';
+      circles[i].style.border=`3px solid ${c===v?'#fff':'transparent'}`;
+      circles[i].style.boxShadow=c===v?`0 0 0 2px ${c}`:'none';
     });
   }
 }

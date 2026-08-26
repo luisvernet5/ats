@@ -3264,6 +3264,12 @@ async function logActivity(accion, entidad, entidadId, detalle, anterior, nuevo)
         etapa:'Etapa', contacto:'Contacto', fuente:'Fuente', notas:'Notas',
         tel:'Teléfono', dir:'Dirección', sector:'Sector',
         rol:'Rol', email:'Email',
+        numero_colaborador:'Número de colaborador', puesto:'Puesto',
+        fecha_ingreso:'Fecha de ingreso', salario_mensual:'Salario mensual',
+        talla_uniforme:'Talla de uniforme', telefono:'Teléfono', correo:'Correo',
+        fecha_nacimiento:'Fecha de nacimiento', curp:'CURP', rfc:'RFC', banco:'Banco',
+        cuenta_clabe:'Cuenta / CLABE', direccion:'Dirección',
+        contacto_emergencia_nombre:'Contacto de emergencia', contacto_emergencia_telefono:'Tel. de emergencia',
       };
       for(const key of Object.keys(camposLegibles)){
         const vAntes = anterior[key]??'';
@@ -11711,6 +11717,7 @@ async function agregarCampoCustomColaborador(empId){
   _colabRefrescarCamposExtra(empId);
   input.value='';
   showToast('Campo agregado ✓');
+  await logActivity('Agregar campo personalizado','colaboradores',empId,`Campo "${label}" agregado a colaboradores — ${emp.nombre||empId}`);
 }
 
 async function guardarColaborador(){
@@ -11753,13 +11760,15 @@ async function guardarColaborador(){
   if(btn){btn.disabled=true;btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Guardando...';}
   try{
     if(id){
+      const idx=(DB.colaboradores||[]).findIndex(c=>c.id===id);
+      const anterior=idx>=0?{...DB.colaboradores[idx]}:null;
       if(!SANDBOX_MODE){
         const {error}=await sbClient.from('colaboradores').update(registro).eq('id',id);
         if(error)throw new Error(error.message);
       }
-      const idx=(DB.colaboradores||[]).findIndex(c=>c.id===id);
       if(idx>=0) DB.colaboradores[idx]={...DB.colaboradores[idx],...registro};
       showToast('Colaborador actualizado ✓');
+      await logActivity('Editar colaborador','colaboradores',id,`${nombre} — ${emp.nombre||empId}`,anterior,registro);
     } else {
       const nuevo={id:'col-'+Date.now()+'-'+Math.random().toString(36).substr(2,6),...registro};
       if(!SANDBOX_MODE){
@@ -11768,6 +11777,7 @@ async function guardarColaborador(){
       }
       DB.colaboradores.push(nuevo);
       showToast('Colaborador agregado ✓');
+      await logActivity('Nuevo colaborador','colaboradores',nuevo.id,`${nombre} — ${registro.puesto||'Sin puesto'} (${emp.nombre||empId})`);
     }
     document.getElementById('modal-colaborador')?.remove();
     _persRenderDetalle(empId);
@@ -11780,6 +11790,8 @@ async function guardarColaborador(){
 
 async function eliminarColaborador(id,empId){
   if(!confirm('¿Eliminar este colaborador?'))return;
+  const col=(DB.colaboradores||[]).find(c=>c.id===id);
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
   try{
     if(!SANDBOX_MODE){
       const {error}=await sbClient.from('colaboradores').delete().eq('id',id);
@@ -11787,6 +11799,7 @@ async function eliminarColaborador(id,empId){
     }
     DB.colaboradores=(DB.colaboradores||[]).filter(c=>c.id!==id);
     showToast('Colaborador eliminado ✓');
+    await logActivity('Eliminar colaborador','colaboradores',id,`${col?.nombre||id} — ${emp.nombre||empId}`);
     _persRenderDetalle(empId);
   }catch(e){
     showToast('Error: '+e.message,'err');
@@ -12009,6 +12022,9 @@ async function doImportColaboradores(empId){
     }
     DB.colaboradores.push(...nuevos);
     showToast(`${nuevos.length} colaborador${nuevos.length!==1?'es':''} importado${nuevos.length!==1?'s':''} ✓`);
+    const _empImp=DB.empresas.find(e=>e.id===empId)||{};
+    const _nombresImp=nuevos.slice(0,10).map(n=>n.nombre).join(', ')+(nuevos.length>10?` y ${nuevos.length-10} más`:'');
+    await logActivity('Importar colaboradores','colaboradores',empId,`${nuevos.length} colaborador${nuevos.length!==1?'es':''} importado${nuevos.length!==1?'s':''} — ${_empImp.nombre||empId}: ${_nombresImp}`);
     document.getElementById('modal-import-colaboradores')?.remove();
     _persRenderDetalle(empId);
   }catch(e){

@@ -8180,7 +8180,8 @@ function openReclutadorDetail(recId) {
   _rdRecId = recId;
 
   const rdEmpOptsList = [...new Set(vacs.map(v=>v.empresa_id).filter(Boolean))]
-    .map(eid=>{const e=DB.empresas.find(x=>x.id===eid)||{};return{value:eid,label:e.nombre||eid};});
+    .map(eid=>{const e=DB.empresas.find(x=>x.id===eid)||{};return{value:eid,label:e.nombre||eid};})
+    .sort((a,b)=>a.label.localeCompare(b.label,'es',{sensitivity:'base'}));
   const rdProyOptsList = [...new Set(vacs.map(v=>v.proyecto).filter(Boolean))].sort()
     .map(p=>({value:p,label:p}));
   const rdDepOptsList = [...new Set(vacs.map(v=>v.departamento).filter(Boolean))].sort()
@@ -9598,7 +9599,8 @@ async function renderGarantias(){
   }).join('');
 
   const gEmpOptsList = [...new Set(vacsConGarantia.map(v=>v.empresa_id))]
-    .map(eid=>{ const e=DB.empresas.find(x=>x.id===eid)||{}; return {value:eid,label:e.nombre||eid}; });
+    .map(eid=>{ const e=DB.empresas.find(x=>x.id===eid)||{}; return {value:eid,label:e.nombre||eid}; })
+    .sort((a,b)=>a.label.localeCompare(b.label,'es',{sensitivity:'base'}));
   const gRecOptsList = [...new Set(vacsConGarantia.map(v=>v.reclutador_id).filter(Boolean))]
     .map(rid=>{ const r=DB.reclutadores.find(x=>x.id===rid)||{}; return {value:rid,label:r.nombre||rid}; });
 
@@ -11221,7 +11223,8 @@ function renderContratados(){
   if(empIdC) candsColocados = candsColocados.filter(c=>{ const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{}; return v.empresa_id===empIdC; });
 
   const ctEmpOptsList = [...new Set(candsColocados.map(c=>{ const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{}; return v.empresa_id; }).filter(Boolean))]
-    .map(eid=>{ const e=DB.empresas.find(x=>x.id===eid)||{}; return {value:eid,label:e.nombre||eid}; });
+    .map(eid=>{ const e=DB.empresas.find(x=>x.id===eid)||{}; return {value:eid,label:e.nombre||eid}; })
+    .sort((a,b)=>a.label.localeCompare(b.label,'es',{sensitivity:'base'}));
   const ctRecOptsList = [...new Set(candsColocados.map(c=>{ const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{}; return v.reclutador_id; }).filter(Boolean))]
     .map(rid=>{ const r=DB.reclutadores.find(x=>x.id===rid)||{}; return {value:rid,label:r.nombre||rid}; });
 

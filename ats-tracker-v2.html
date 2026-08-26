@@ -3399,6 +3399,9 @@ async function _ensurePerfilesPuesto(){/* no-op — loadDB loads everything */}
 function _sortEmpresas(){
   DB.empresas.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
 }
+function _sortReclutadores(){
+  DB.reclutadores.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
+}
 async function loadDB(silent=false){
   try{
     if(SANDBOX_MODE){
@@ -3410,6 +3413,7 @@ async function loadDB(silent=false){
       DB._evaluacionesFull=true;DB._perfilesFull=true;
       if(!DB.empresas.length&&!DB.reclutadores.length)seedData();
       _sortEmpresas();
+      _sortReclutadores();
       updateSandboxUI();
       return;
     }
@@ -3437,6 +3441,7 @@ async function loadDB(silent=false){
     DB.vacantesEliminadas=_allVacs.filter(v=>v.estado==='Eliminada');
     DB.candidatos=(cand.data||[]).map(r=>r.data).filter(Boolean);
     DB.reclutadores=(rec.data||[]).map(r=>r.data).filter(Boolean);
+    _sortReclutadores();
     _candConRefs=new Set((refs.data||[]).flatMap(r=>{
       const ids=[];
       if(r.candidato_id&&(r.nombre_contacto||r.empresa||r.telefono||'').trim())ids.push(r.candidato_id);
@@ -6113,6 +6118,7 @@ async function saveReclutador(){
   if(!nombre){showToast('Ingresa el nombre','err');return}
   DB.reclutadores.push({id:uid(),nombre,email:document.getElementById('rec-email').value});
   await saveRecord('reclutadores',DB.reclutadores[DB.reclutadores.length-1]);
+  _sortReclutadores();
   showToast('Reclutador agregado ✓');
   closeModal('modal-reclutador');
   setTimeout(()=>renderConfig(),100);

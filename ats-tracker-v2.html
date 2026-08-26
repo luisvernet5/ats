@@ -12840,66 +12840,32 @@ function updateSandboxUI(){
   }
 }
 
+// Todas las tablas que respaldan/restauran datos reales de la app. Se centraliza aquí para
+// que agregar una tabla nueva a futuro sea un solo cambio (exportarRespaldo e importarRespaldo
+// leen de esta misma lista). Se excluye 'bd_personal' — módulo viejo desactivado.
+const RESPALDO_TABLAS = [
+  'empresas','reclutadores','usuarios','vacantes','candidatos','garantias','referencias',
+  'hc_plantilla','hc_resumen','hc_historico','hc_plantilla_historico','ese',
+  'doc_plantillas','doc_candidato','perfiles_puesto',
+  'evaluaciones','evaluaciones_enviadas','procesos_evaluacion','procesos_enviados',
+  'kpis','procedimientos','coordinadores','colaboradores','permisos_usuarios','activity_log',
+];
+
 async function exportarRespaldo(){
   showToast('Generando respaldo...');
   try {
-    const [
-      vacantes, candidatos, empresas, reclutadores, garantias, usuarios,
-      referencias, hc_plantilla, hc_resumen, hc_historico, hc_plantilla_historico,
-      ese, doc_plantillas, doc_candidato, perfiles_puesto,
-      evaluaciones, evaluaciones_enviadas, procesos_evaluacion, procesos_enviados,
-      kpis, procedimientos, coordinadores
-    ] = await Promise.all([
-      sbClient.from('vacantes').select('*'),
-      sbClient.from('candidatos').select('*'),
-      sbClient.from('empresas').select('*'),
-      sbClient.from('reclutadores').select('*'),
-      sbClient.from('garantias').select('*'),
-      sbClient.from('usuarios').select('*'),
-      sbClient.from('referencias').select('*'),
-      sbClient.from('hc_plantilla').select('*'),
-      sbClient.from('hc_resumen').select('*'),
-      sbClient.from('hc_historico').select('*'),
-      sbClient.from('hc_plantilla_historico').select('*'),
-      sbClient.from('ese').select('*'),
-      sbClient.from('doc_plantillas').select('*'),
-      sbClient.from('doc_candidato').select('*'),
-      sbClient.from('perfiles_puesto').select('*'),
-      sbClient.from('evaluaciones').select('*'),
-      sbClient.from('evaluaciones_enviadas').select('*'),
-      sbClient.from('procesos_evaluacion').select('*'),
-      sbClient.from('procesos_enviados').select('*'),
-      sbClient.from('kpis').select('*'),
-      sbClient.from('procedimientos').select('*'),
-      sbClient.from('coordinadores').select('*'),
-    ]);
+    const resultados = await Promise.all(
+      RESPALDO_TABLAS.map(tabla=>
+        _fetchAllRows(()=>sbClient.from(tabla).select('*')).catch(e=>{
+          console.warn(`[Respaldo] Error leyendo "${tabla}": ${e.message}`);
+          return [];
+        })
+      )
+    );
     const backup = {
-      version: '2.3',
+      version: '2.4',
       fecha: new Date().toISOString(),
-      tablas: {
-        empresas: empresas.data||[],
-        reclutadores: reclutadores.data||[],
-        usuarios: usuarios.data||[],
-        vacantes: vacantes.data||[],
-        candidatos: candidatos.data||[],
-        garantias: garantias.data||[],
-        referencias: referencias.data||[],
-        hc_plantilla: hc_plantilla.data||[],
-        hc_resumen: hc_resumen.data||[],
-        hc_historico: hc_historico.data||[],
-        hc_plantilla_historico: hc_plantilla_historico.data||[],
-        ese: ese.data||[],
-        doc_plantillas: doc_plantillas.data||[],
-        doc_candidato: doc_candidato.data||[],
-        perfiles_puesto: perfiles_puesto.data||[],
-        evaluaciones: evaluaciones.data||[],
-        evaluaciones_enviadas: evaluaciones_enviadas.data||[],
-        procesos_evaluacion: procesos_evaluacion.data||[],
-        procesos_enviados: procesos_enviados.data||[],
-        kpis: kpis.data||[],
-        procedimientos: procedimientos.data||[],
-        coordinadores: coordinadores.data||[],
-      }
+      tablas: Object.fromEntries(RESPALDO_TABLAS.map((tabla,i)=>[tabla, resultados[i]||[]])),
     };
     const counts = Object.entries(backup.tablas).map(([k,v])=>`${k}: ${v.length}`).join(', ');
     const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
@@ -12922,8 +12888,7 @@ async function importarRespaldo(input){
     const backup = JSON.parse(text);
     if(!backup.tablas) throw new Error('Archivo de respaldo inválido');
     showToast('Importando datos...');
-    const tablas = ['empresas','reclutadores','usuarios','vacantes','candidatos','garantias','referencias','hc_plantilla','hc_resumen','hc_historico','hc_plantilla_historico','ese','doc_plantillas','doc_candidato','perfiles_puesto','evaluaciones','evaluaciones_enviadas','procesos_evaluacion','procesos_enviados','kpis','procedimientos','coordinadores'];
-    for(const tabla of tablas){
+    for(const tabla of RESPALDO_TABLAS){
       const registros = backup.tablas[tabla];
       if(!registros?.length) continue;
       const chunkSize = 50;

@@ -3396,6 +3396,9 @@ async function _ensureVacantesFull(){/* no-op — loadDB loads everything */}
 async function _ensureEvaluaciones(){/* no-op — loadDB loads everything */}
 async function _ensurePerfilesPuesto(){/* no-op — loadDB loads everything */}
 
+function _sortEmpresas(){
+  DB.empresas.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
+}
 async function loadDB(silent=false){
   try{
     if(SANDBOX_MODE){
@@ -3406,6 +3409,7 @@ async function loadDB(silent=false){
       DB._candidatosFull=true;DB._vacantesFull=true;
       DB._evaluacionesFull=true;DB._perfilesFull=true;
       if(!DB.empresas.length&&!DB.reclutadores.length)seedData();
+      _sortEmpresas();
       updateSandboxUI();
       return;
     }
@@ -3427,6 +3431,7 @@ async function loadDB(silent=false){
       sbClient.from('procesos_enviados').select('*'),
     ]);
     DB.empresas=(emp.data||[]).map(r=>r.data).filter(Boolean);
+    _sortEmpresas();
     const _allVacs=(vac.data||[]).map(r=>r.data).filter(Boolean);
     DB.vacantes=_allVacs.filter(v=>v.estado!=='Eliminada');
     DB.vacantesEliminadas=_allVacs.filter(v=>v.estado==='Eliminada');
@@ -4199,6 +4204,7 @@ async function saveEmpresa(){
   if(id){const i=DB.empresas.findIndex(e=>e.id===id);DB.empresas[i]={...DB.empresas[i],...data};showToast('Empresa actualizada ✓')}
   else{DB.empresas.push({id:uid(),...data,etapas:DEFAULT_ETAPAS.map(e=>({...e,id:uid()}))});showToast('Empresa creada ✓')}
   const _eObj=id?DB.empresas.find(e=>e.id===id):DB.empresas[DB.empresas.length-1];
+  _sortEmpresas();
   if(_eObj){
     try {
       const logoUrl = await uploadEmpLogo(_eObj.id);
@@ -4233,6 +4239,7 @@ async function deleteEmpresa(id){
 function renderEmpresas(){
   const q=(document.getElementById('flt-emp-q')||{}).value||'';
   let list=DB.empresas.filter(e=>!q||e.nombre.toLowerCase().includes(q.toLowerCase()));
+  list=[...list].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
   const grid=document.getElementById('empresas-grid');
   if(!list.length){grid.innerHTML='<div style="color:var(--text3);padding:20px">Sin empresas registradas. Crea la primera.</div>';return}
   grid.innerHTML=list.map(e=>{
@@ -13834,6 +13841,7 @@ function seedData(){
     ]},
     {id:'e3',nombre:'Grupo Bernal',sector:'Servicios',contacto:'Lic. Bernal',tel:'',dir:'Puebla, Pue.',color:'#22C55E',notas:'',etapas:null},
   ];
+  _sortEmpresas();
   DB.vacantes=[
     {id:'v1',nombre:'Gerente de Logística',empresa_id:'e1',reclutador_id:'r1',fecha_apertura:'2025-03-01',salario:'$35,000',estado:'Abierta',descripcion:''},
     {id:'v2',nombre:'Analista de Nómina',empresa_id:'e2',reclutador_id:'r2',fecha_apertura:'2025-03-10',salario:'$18,000',estado:'Abierta',descripcion:''},

@@ -9813,8 +9813,16 @@ async function renderHeadCount(){
   // Roles empresa van directo a su empresa
   if(isRhC && rhEmpId){ await renderHCEmpresa(rhEmpId); return; }
   const empresas = DB.empresas;
+  const {data:semanasRows} = await sbClient.from('hc_resumen').select('empresa_id,semana,anio');
+  const semanasPorEmpresa = new Map();
+  (semanasRows||[]).forEach(r=>{
+    if(!r.empresa_id) return;
+    if(!semanasPorEmpresa.has(r.empresa_id)) semanasPorEmpresa.set(r.empresa_id, new Set());
+    semanasPorEmpresa.get(r.empresa_id).add(r.anio+'-W'+r.semana);
+  });
   const cards = empresas.map(emp=>{
     const color = emp.color||'#2AAADE';
+    const nSemanas = semanasPorEmpresa.get(emp.id)?.size||0;
     const logoHtml = emp.logo
       ? `<img src="${emp.logo}" style="width:40px;height:40px;object-fit:contain;border-radius:8px;flex-shrink:0">`
       : `<div style="width:40px;height:40px;flex-shrink:0;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color};font-size:18px"></i></div>`;
@@ -9823,7 +9831,7 @@ async function renderHeadCount(){
         ${logoHtml}
         <div style="min-width:0">
           <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(emp.nombre)}</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:2px">HeadCount</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">HeadCount · ${nSemanas} semana${nSemanas!==1?'s':''} creada${nSemanas!==1?'s':''}</div>
         </div>
       </div>
       <div style="height:3px;border-radius:2px;background:${color}33;overflow:hidden"><div style="height:100%;width:100%;background:${color};border-radius:2px"></div></div>

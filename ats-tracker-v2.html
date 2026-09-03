@@ -3285,7 +3285,7 @@ async function logActivity(accion, entidad, entidadId, detalle, anterior, nuevo)
         fecha_ingreso:'Fecha de ingreso', salario_mensual:'Salario mensual',
         talla_uniforme:'Talla de uniforme', telefono:'Teléfono', correo:'Correo',
         fecha_nacimiento:'Fecha de nacimiento', curp:'CURP', rfc:'RFC', nss:'NSS', banco:'Banco',
-        cuenta_clabe:'Cuenta / CLABE', direccion:'Dirección',
+        cuenta:'Número de cuenta', clabe:'CLABE', direccion:'Dirección',
         contacto_emergencia_nombre:'Contacto de emergencia', contacto_emergencia_telefono:'Tel. de emergencia',
       };
       for(const key of Object.keys(camposLegibles)){
@@ -11658,10 +11658,18 @@ function _persRenderDetalle(empId){
   </div>`;
 }
 
+const _BANCOS_MX=['BBVA','Citibanamex','Santander','Banorte','HSBC','Scotiabank','Inbursa','Banco Azteca','BanBajío','Banregio','Afirme','Multiva','Mifel','Invex','Banco del Bienestar','Bancoppel','Compartamos Banco','Nu México','STP'];
+function _colabBancoToggle(){
+  const sel=document.getElementById('colab-banco-sel');
+  const otro=document.getElementById('colab-banco-otro');
+  if(!sel||!otro) return;
+  otro.style.display=sel.value==='__otro__'?'block':'none';
+}
 function abrirColaboradorModal(empId,id=null){
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const existing=id?(DB.colaboradores||[]).find(c=>c.id===id):null;
   const camposCustom=emp.colab_campos_custom||[];
+  const _bancoEsOtro=!!(existing?.banco && !_BANCOS_MX.includes(existing.banco));
   const proyOpts=(emp.proyectos||[]).map(p=>`<option value="${_esc(p)}" ${existing?.proyecto===p?'selected':''}>${_esc(p)}</option>`).join('');
   const depOpts=(emp.departamentos||[]).map(d=>`<option value="${_esc(d)}" ${existing?.departamento===d?'selected':''}>${_esc(d)}</option>`).join('');
   const camposExtraHTML=camposCustom.map((cf,i)=>_colabCamposExtraRowHTML(cf,i,empId,(existing?.campos_extra||{})[cf.key])).join('');
@@ -11714,9 +11722,18 @@ function abrirColaboradorModal(empId,id=null){
       </div>
 
       <div class="sep">Datos bancarios y domicilio</div>
-      <div class="fr" style="margin-bottom:16px">
-        <div class="fg"><label>Banco</label><input type="text" id="colab-banco" value="${_esc(existing?.banco||'')}"></div>
-        <div class="fg"><label>Cuenta / CLABE</label><input type="text" id="colab-cuenta-clabe" value="${_esc(existing?.cuenta_clabe||'')}"></div>
+      <div class="fr g3c" style="margin-bottom:16px">
+        <div class="fg">
+          <label>Banco</label>
+          <select id="colab-banco-sel" onchange="_colabBancoToggle()">
+            <option value="">Selecciona...</option>
+            ${_BANCOS_MX.map(b=>`<option value="${_esc(b)}" ${existing?.banco===b?'selected':''}>${_esc(b)}</option>`).join('')}
+            <option value="__otro__" ${_bancoEsOtro?'selected':''}>Otro</option>
+          </select>
+          <input type="text" id="colab-banco-otro" value="${_bancoEsOtro?_esc(existing.banco):''}" placeholder="Nombre del banco" style="display:${_bancoEsOtro?'block':'none'};margin-top:6px">
+        </div>
+        <div class="fg"><label>Número de cuenta</label><input type="text" id="colab-cuenta" value="${_esc(existing?.cuenta||existing?.cuenta_clabe||'')}"></div>
+        <div class="fg"><label>CLABE</label><input type="text" id="colab-clabe" value="${_esc(existing?.clabe||'')}" maxlength="18" inputmode="numeric" placeholder="18 dígitos"></div>
       </div>
       <div class="fg" style="margin-bottom:16px"><label>Dirección</label><input type="text" id="colab-direccion" value="${_esc(existing?.direccion||'')}" placeholder="Calle, colonia, ciudad, CP"></div>
 
@@ -11855,6 +11872,8 @@ async function guardarColaborador(){
   if(curpVal && curpVal.length!==18){showToast('El CURP debe tener 18 caracteres (tiene '+curpVal.length+')','err');return;}
   if(rfcVal && rfcVal.length!==12 && rfcVal.length!==13){showToast('El RFC debe tener 12 o 13 caracteres (tiene '+rfcVal.length+')','err');return;}
   if(nssVal && (nssVal.length!==11 || !/^\d+$/.test(nssVal))){showToast('El NSS debe tener 11 dígitos numéricos','err');return;}
+  const bancoSelVal=document.getElementById('colab-banco-sel').value;
+  const bancoVal=bancoSelVal==='__otro__'?(document.getElementById('colab-banco-otro').value||'').trim():bancoSelVal;
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const camposCustom=emp.colab_campos_custom||[];
   const campos_extra={};
@@ -11880,8 +11899,9 @@ async function guardarColaborador(){
     curp:curpVal||null,
     rfc:rfcVal||null,
     nss:nssVal||null,
-    banco:(document.getElementById('colab-banco').value||'').trim()||null,
-    cuenta_clabe:(document.getElementById('colab-cuenta-clabe').value||'').trim()||null,
+    banco:bancoVal||null,
+    cuenta:(document.getElementById('colab-cuenta').value||'').trim()||null,
+    clabe:(document.getElementById('colab-clabe').value||'').trim()||null,
     direccion:(document.getElementById('colab-direccion').value||'').trim()||null,
     contacto_emergencia_nombre:(document.getElementById('colab-emerg-nombre').value||'').trim()||null,
     contacto_emergencia_telefono:(document.getElementById('colab-emerg-telefono').value||'').trim()||null,
@@ -11956,7 +11976,8 @@ function _personalCamposBase(){
     {label:'RFC',field:'rfc'},
     {label:'NSS',field:'nss'},
     {label:'Banco',field:'banco'},
-    {label:'Cuenta / CLABE',field:'cuenta_clabe'},
+    {label:'Número de cuenta',field:'cuenta'},
+    {label:'CLABE',field:'clabe'},
     {label:'Dirección',field:'direccion'},
     {label:'Contacto emergencia - nombre',field:'contacto_emergencia_nombre'},
     {label:'Contacto emergencia - teléfono',field:'contacto_emergencia_telefono'},
@@ -11991,7 +12012,7 @@ function personalDescargarPlantilla(empId){
   const camposCustom=emp.colab_campos_custom||[];
   const base=_personalCamposBase();
   const header=[...base.map(c=>c.label),...camposCustom.map(cf=>cf.label)];
-  const ejemplo=['001','Juan Pérez López','Auxiliar','','',today(),'Activo','$8,000','CH','2221234567','juan@correo.com','1995-04-12','PELJ950412HPLXXX01','PELJ950412XX1','12345678901','BBVA','012180001234567890','Calle 1 #23, Col. Centro, Puebla, CP 72000','María Pérez','2227654321','Ejemplo de nota'];
+  const ejemplo=['001','Juan Pérez López','Auxiliar','','',today(),'Activo','$8,000','CH','2221234567','juan@correo.com','1995-04-12','PELJ950412HPLXXX01','PELJ950412XX1','12345678901','BBVA','1234567890','012180001234567890','Calle 1 #23, Col. Centro, Puebla, CP 72000','María Pérez','2227654321','Ejemplo de nota'];
   const fila=header.map((_,i)=>ejemplo[i]||'');
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet([header,fila]);
@@ -12095,7 +12116,7 @@ function handleImportColabFile(e,empId){
           telefono:get(colIdx.telefono)||null, correo:get(colIdx.correo)||null,
           fecha_nacimiento:normFecha(r[colIdx.fecha_nacimiento])||null,
           curp:curpImp||null, rfc:rfcImp||null, nss:nssImp||null,
-          banco:get(colIdx.banco)||null, cuenta_clabe:get(colIdx.cuenta_clabe)||null,
+          banco:get(colIdx.banco)||null, cuenta:get(colIdx.cuenta)||null, clabe:get(colIdx.clabe)||null,
           direccion:get(colIdx.direccion)||null,
           contacto_emergencia_nombre:get(colIdx.contacto_emergencia_nombre)||null,
           contacto_emergencia_telefono:get(colIdx.contacto_emergencia_telefono)||null,

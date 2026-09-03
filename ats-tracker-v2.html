@@ -11712,7 +11712,7 @@ const EXPEDIENTE_CATEGORIAS=['INE / Identificación oficial','CURP','RFC','NSS /
 // Se usan como valor por defecto SOLO si la empresa no tiene su propia lista guardada en
 // emp.expediente_categorias (editable desde el botón "Personalizar categorías").
 const _EXPEDIENTE_CATEGORIAS_EMPRESA={
-  'Ford':['CV','Solicitud de empleo (formato amarillo), con fotografía reciente','Copia de acta de nacimiento','Constancia de Situación Fiscal (actualizada)','Copia de CURP','Copia de identificación oficial (vigente)','Copia de licencia de conducir (si amerita el puesto)','Copia de comprobante de domicilio (reciente)','Copia de carta de no antecedentes penales','Copia de afiliación al IMSS','Copia de aviso de retención INFONAVIT (en caso de contar con crédito)','Copia de aviso de retención FONACOT (en caso de contar con crédito)','Constancia de cursos de capacitación','Copia de estado de cuenta (BBVA)','Copia del comprobante del último grado de estudios'],
+  'Ford':['CV','Solicitud de empleo (formato amarillo), con fotografía reciente','Contrato de trabajo determinado','Contrato de trabajo indeterminado','Copia de acta de nacimiento','Constancia de Situación Fiscal (actualizada)','Copia de CURP','Copia de identificación oficial (vigente)','Copia de licencia de conducir (si amerita el puesto)','Copia de comprobante de domicilio (reciente)','Copia de carta de no antecedentes penales','Copia de afiliación al IMSS','Copia de aviso de retención INFONAVIT (en caso de contar con crédito)','Copia de aviso de retención FONACOT (en caso de contar con crédito)','Constancia de cursos de capacitación','Copia de estado de cuenta (BBVA)','Copia del comprobante del último grado de estudios'],
 };
 function _expCategoriasEmpresa(emp){
   if(Array.isArray(emp?.expediente_categorias)&&emp.expediente_categorias.length) return emp.expediente_categorias;
@@ -11858,6 +11858,8 @@ function _expRenderDetalle(empId){
   const rows=lista.map((c,i)=>{
     const docsMap=_expDocsPorColaborador[c.id]||{};
     const nSubidos=categorias.filter(cat=>docsMap[cat]).length;
+    const pct=categorias.length?Math.round(nSubidos/categorias.length*100):0;
+    const pctBadge=pct===100?'bg':pct===0?'bx':'ba';
     const iconos=categorias.map((cat,ci)=>{
       const doc=docsMap[cat];
       const ok=!!doc;
@@ -11871,6 +11873,7 @@ function _expRenderDetalle(empId){
         <div style="font-weight:600;font-size:13px">${_esc(c.nombre||'—')}</div>
         <div style="font-size:11px;color:var(--text3)">${_esc(c.puesto||'Sin puesto')}${c.numero_colaborador?' · #'+_esc(c.numero_colaborador):''} · ${nSubidos}/${categorias.length} docs</div>
       </td>
+      <td style="text-align:center;width:70px"><span class="badge ${pctBadge}">${pct}%</span></td>
       <td><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${iconos}</div></td>
       <td style="text-align:center;width:36px"><i class="fa fa-chevron-right" style="color:var(--text3);font-size:12px"></i></td>
     </tr>`;
@@ -11885,8 +11888,8 @@ function _expRenderDetalle(empId){
       <button class="btn btn-ghost btn-sm" onclick="abrirPersonalizarCategoriasExpediente('${empId}')" title="Elegir qué documentos aplican para esta empresa"><i class="fa fa-list-check"></i> Personalizar categorías</button>
     </div>
     <div class="table-wrap"><table>
-      <thead><tr><th style="width:36px;text-align:center">#</th><th>Colaborador</th><th>Documentos</th><th></th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:32px">Sin colaboradores registrados en esta empresa. Agrégalos desde "Administrador de personal".</td></tr>'}</tbody>
+      <thead><tr><th style="width:36px;text-align:center">#</th><th>Colaborador</th><th style="text-align:center">% Completo</th><th>Documentos</th><th></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:32px">Sin colaboradores registrados en esta empresa. Agrégalos desde "Administrador de personal".</td></tr>'}</tbody>
     </table></div>
   </div>`;
 }
@@ -11926,7 +11929,11 @@ function _expIconoCategoria(categoria){
   if(/estado de cuenta|\bbanco\b/.test(t)) return 'fa-building-columns';
   if(/estudios/.test(t)) return 'fa-graduation-cap';
   if(/fotograf/.test(t)) return 'fa-camera';
-  if(/contrato/.test(t)) return 'fa-file-signature';
+  if(/contrato/.test(t)){
+    if(/indeterminado/.test(t)) return 'fa-infinity';       // permanente / sin fecha de fin
+    if(/determinado/.test(t)) return 'fa-hourglass-half';   // duración fija / temporal
+    return 'fa-file-signature';
+  }
   if(/m[ée]dic/.test(t)) return 'fa-notes-medical';
   return 'fa-file';
 }

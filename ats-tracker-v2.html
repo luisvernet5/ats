@@ -928,6 +928,12 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
         <button class="btn btn-ghost btn-sm" onclick="addEmpChip('proyectos')"><i class="fa fa-plus"></i> Agregar</button>
       </div>
       <div id="emp-proy-chips" style="display:flex;flex-direction:column;gap:4px;min-height:24px;margin-bottom:4px"></div>
+      <div class="sep">Razones sociales</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input id="emp-razon-input" placeholder="Ej. Ford Servicios de Puebla, S.A. de C.V." style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addEmpChip('razones')}">
+        <button class="btn btn-ghost btn-sm" onclick="addEmpChip('razones')"><i class="fa fa-plus"></i> Agregar</button>
+      </div>
+      <div id="emp-razon-chips" style="display:flex;flex-direction:column;gap:4px;min-height:24px;margin-bottom:4px"></div>
       <div class="sep">Color de identificación</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap" id="emp-color-picker"></div>
     </div>
@@ -3663,8 +3669,10 @@ let selReason=null;
 let empColorSel=EMPRESA_COLORS[0];
 let empDepartamentos=[];
 let empProyectos=[];
+let empRazones=[];
 let empProyectosInactivos=new Set();
 let empDepartamentosInactivos=new Set();
+let empRazonesInactivos=new Set();
 let charts={};
 let dragIdx=null;
 let openCandRows=new Set();
@@ -4104,11 +4112,16 @@ function empColorHexInput(val){
   }
 }
 
+const _EMP_CHIP_TYPES={
+  departamentos:{arr:()=>empDepartamentos, inact:()=>empDepartamentosInactivos, inputId:'emp-depto-input', listId:'emp-depto-chips'},
+  proyectos:    {arr:()=>empProyectos,     inact:()=>empProyectosInactivos,     inputId:'emp-proy-input',  listId:'emp-proy-chips'},
+  razones:      {arr:()=>empRazones,       inact:()=>empRazonesInactivos,       inputId:'emp-razon-input', listId:'emp-razon-chips'},
+};
 let _empDragIdx=null,_empDragType=null;
 function renderEmpChips(type){
-  const arr=type==='departamentos'?empDepartamentos:empProyectos;
-  const inact=type==='departamentos'?empDepartamentosInactivos:empProyectosInactivos;
-  const el=document.getElementById(type==='departamentos'?'emp-depto-chips':'emp-proy-chips');
+  const arr=_EMP_CHIP_TYPES[type].arr();
+  const inact=_EMP_CHIP_TYPES[type].inact();
+  const el=document.getElementById(_EMP_CHIP_TYPES[type].listId);
   if(!el)return;
   el.innerHTML=arr.map((d,i)=>{
     const off=inact.has(d);
@@ -4140,7 +4153,7 @@ function empChipDragOver(e,el){
 function empChipDrop(e,type,targetIdx){
   e.preventDefault();
   if(_empDragIdx===null||_empDragType!==type||_empDragIdx===targetIdx)return;
-  const arr=type==='departamentos'?empDepartamentos:empProyectos;
+  const arr=_EMP_CHIP_TYPES[type].arr();
   const[moved]=arr.splice(_empDragIdx,1);
   arr.splice(targetIdx,0,moved);
   _empDragIdx=null;
@@ -4148,30 +4161,30 @@ function empChipDrop(e,type,targetIdx){
 }
 function empChipDragEnd(type){_empDragIdx=null;renderEmpChips(type);}
 function addEmpChip(type){
-  const inputId=type==='departamentos'?'emp-depto-input':'emp-proy-input';
+  const inputId=_EMP_CHIP_TYPES[type].inputId;
   const val=document.getElementById(inputId).value.trim();
   if(!val)return;
-  const arr=type==='departamentos'?empDepartamentos:empProyectos;
+  const arr=_EMP_CHIP_TYPES[type].arr();
   if(!arr.includes(val))arr.push(val);
   document.getElementById(inputId).value='';
   renderEmpChips(type);
 }
 function removeEmpChip(type,idx){
-  const arr=type==='departamentos'?empDepartamentos:empProyectos;
-  const inact=type==='departamentos'?empDepartamentosInactivos:empProyectosInactivos;
+  const arr=_EMP_CHIP_TYPES[type].arr();
+  const inact=_EMP_CHIP_TYPES[type].inact();
   inact.delete(arr[idx]);
   arr.splice(idx,1);
   renderEmpChips(type);
 }
 function empChipToggle(type,idx){
-  const arr=type==='departamentos'?empDepartamentos:empProyectos;
-  const inact=type==='departamentos'?empDepartamentosInactivos:empProyectosInactivos;
+  const arr=_EMP_CHIP_TYPES[type].arr();
+  const inact=_EMP_CHIP_TYPES[type].inact();
   const name=arr[idx];
   if(inact.has(name))inact.delete(name);else inact.add(name);
   renderEmpChips(type);
 }
 function empChipEdit(type,idx){
-  const arr=type==='departamentos'?empDepartamentos:empProyectos;
+  const arr=_EMP_CHIP_TYPES[type].arr();
   const nm=document.getElementById(`emp-chip-nm-${type}-${idx}`);
   if(!nm)return;
   const cur=arr[idx];
@@ -4182,8 +4195,8 @@ function empChipEdit(type,idx){
 function empChipSaveEdit(type,idx,newVal){
   const val=newVal.trim();
   if(!val){renderEmpChips(type);return;}
-  const arr=type==='departamentos'?empDepartamentos:empProyectos;
-  const inact=type==='departamentos'?empDepartamentosInactivos:empProyectosInactivos;
+  const arr=_EMP_CHIP_TYPES[type].arr();
+  const inact=_EMP_CHIP_TYPES[type].inact();
   const old=arr[idx];
   if(old!==val){
     if(inact.has(old)){inact.delete(old);inact.add(val);}
@@ -4213,13 +4226,16 @@ async function uploadEmpLogo(empId){
 function openEmpresaModal(id=null){
   document.getElementById('mod-emp-title').textContent=id?'Editar Empresa':'Nueva Empresa Cliente';
   document.getElementById('emp-id').value='';
-  ['emp-nombre','emp-sector','emp-contacto','emp-tel','emp-dir','emp-notas','emp-depto-input','emp-proy-input'].forEach(i=>document.getElementById(i).value='');
+  ['emp-nombre','emp-sector','emp-contacto','emp-tel','emp-dir','emp-notas','emp-depto-input','emp-proy-input','emp-razon-input'].forEach(i=>document.getElementById(i).value='');
   empDepartamentos=[];
   empProyectos=[];
+  empRazones=[];
   empProyectosInactivos=new Set();
   empDepartamentosInactivos=new Set();
+  empRazonesInactivos=new Set();
   renderEmpChips('departamentos');
   renderEmpChips('proyectos');
+  renderEmpChips('razones');
   empColorSel=EMPRESA_COLORS[DB.empresas.length%EMPRESA_COLORS.length];
   buildColorPicker(empColorSel);
   if(id){
@@ -4234,10 +4250,13 @@ function openEmpresaModal(id=null){
       document.getElementById('emp-notas').value=e.notas||'';
       empDepartamentos=[...(e.departamentos||[])];
       empProyectos=[...(e.proyectos||[])];
+      empRazones=[...(e.razones_sociales||[])];
       empProyectosInactivos=new Set(e.proyectos_inactivos||[]);
       empDepartamentosInactivos=new Set(e.departamentos_inactivos||[]);
+      empRazonesInactivos=new Set(e.razones_sociales_inactivos||[]);
       renderEmpChips('departamentos');
       renderEmpChips('proyectos');
+      renderEmpChips('razones');
       empColorSel=e.color||EMPRESA_COLORS[0];
       buildColorPicker(empColorSel);
       const preview = document.getElementById('emp-logo-preview');
@@ -4253,7 +4272,7 @@ async function saveEmpresa(){
   const nombre=document.getElementById('emp-nombre').value.trim();
   if(!nombre){showToast('Ingresa el nombre de la empresa','err');return}
   const id=document.getElementById('emp-id').value;
-  const data={nombre,sector:document.getElementById('emp-sector').value,contacto:document.getElementById('emp-contacto').value,tel:document.getElementById('emp-tel').value,dir:document.getElementById('emp-dir').value,notas:document.getElementById('emp-notas').value,color:empColorSel,departamentos:[...empDepartamentos],proyectos:[...empProyectos],proyectos_inactivos:[...empProyectosInactivos],departamentos_inactivos:[...empDepartamentosInactivos]};
+  const data={nombre,sector:document.getElementById('emp-sector').value,contacto:document.getElementById('emp-contacto').value,tel:document.getElementById('emp-tel').value,dir:document.getElementById('emp-dir').value,notas:document.getElementById('emp-notas').value,color:empColorSel,departamentos:[...empDepartamentos],proyectos:[...empProyectos],razones_sociales:[...empRazones],proyectos_inactivos:[...empProyectosInactivos],departamentos_inactivos:[...empDepartamentosInactivos],razones_sociales_inactivos:[...empRazonesInactivos]};
   const _empAnterior = id ? {...(DB.empresas.find(x=>x.id===id)||{})} : null;
   if(id){const i=DB.empresas.findIndex(e=>e.id===id);DB.empresas[i]={...DB.empresas[i],...data};showToast('Empresa actualizada ✓')}
   else{DB.empresas.push({id:uid(),...data,etapas:DEFAULT_ETAPAS.map(e=>({...e,id:uid()}))});showToast('Empresa creada ✓')}

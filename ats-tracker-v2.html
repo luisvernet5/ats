@@ -3284,7 +3284,7 @@ async function logActivity(accion, entidad, entidadId, detalle, anterior, nuevo)
         numero_colaborador:'Número de colaborador', puesto:'Puesto',
         fecha_ingreso:'Fecha de ingreso', salario_mensual:'Salario mensual',
         talla_uniforme:'Talla de uniforme', telefono:'Teléfono', correo:'Correo',
-        fecha_nacimiento:'Fecha de nacimiento', curp:'CURP', rfc:'RFC', banco:'Banco',
+        fecha_nacimiento:'Fecha de nacimiento', curp:'CURP', rfc:'RFC', nss:'NSS', banco:'Banco',
         cuenta_clabe:'Cuenta / CLABE', direccion:'Dirección',
         contacto_emergencia_nombre:'Contacto de emergencia', contacto_emergencia_telefono:'Tel. de emergencia',
       };
@@ -11708,8 +11708,9 @@ function abrirColaboradorModal(empId,id=null){
       <div class="sep">Datos personales</div>
       <div class="fr g3c" style="margin-bottom:16px">
         <div class="fg"><label>Fecha de nacimiento</label><input type="date" id="colab-fecha-nacimiento" value="${existing?.fecha_nacimiento||''}"></div>
-        <div class="fg"><label>CURP</label><input type="text" id="colab-curp" value="${_esc(existing?.curp||'')}"></div>
-        <div class="fg"><label>RFC</label><input type="text" id="colab-rfc" value="${_esc(existing?.rfc||'')}"></div>
+        <div class="fg"><label>CURP</label><input type="text" id="colab-curp" value="${_esc(existing?.curp||'')}" maxlength="18" style="text-transform:uppercase" placeholder="18 caracteres"></div>
+        <div class="fg"><label>RFC</label><input type="text" id="colab-rfc" value="${_esc(existing?.rfc||'')}" maxlength="13" style="text-transform:uppercase" placeholder="12 o 13 caracteres"></div>
+        <div class="fg"><label>NSS</label><input type="text" id="colab-nss" value="${_esc(existing?.nss||'')}" maxlength="11" inputmode="numeric" placeholder="11 dígitos"></div>
       </div>
 
       <div class="sep">Datos bancarios y domicilio</div>
@@ -11848,6 +11849,12 @@ async function guardarColaborador(){
   const empId=document.getElementById('colab-emp-id').value;
   const nombre=(document.getElementById('colab-nombre').value||'').trim();
   if(!nombre){showToast('El nombre es obligatorio','err');return;}
+  const curpVal=(document.getElementById('colab-curp').value||'').trim().toUpperCase();
+  const rfcVal=(document.getElementById('colab-rfc').value||'').trim().toUpperCase();
+  const nssVal=(document.getElementById('colab-nss').value||'').trim();
+  if(curpVal && curpVal.length!==18){showToast('El CURP debe tener 18 caracteres (tiene '+curpVal.length+')','err');return;}
+  if(rfcVal && rfcVal.length!==12 && rfcVal.length!==13){showToast('El RFC debe tener 12 o 13 caracteres (tiene '+rfcVal.length+')','err');return;}
+  if(nssVal && (nssVal.length!==11 || !/^\d+$/.test(nssVal))){showToast('El NSS debe tener 11 dígitos numéricos','err');return;}
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const camposCustom=emp.colab_campos_custom||[];
   const campos_extra={};
@@ -11870,8 +11877,9 @@ async function guardarColaborador(){
     correo:(document.getElementById('colab-correo').value||'').trim()||null,
     notas:(document.getElementById('colab-notas').value||'').trim()||null,
     fecha_nacimiento:document.getElementById('colab-fecha-nacimiento').value||null,
-    curp:(document.getElementById('colab-curp').value||'').trim()||null,
-    rfc:(document.getElementById('colab-rfc').value||'').trim()||null,
+    curp:curpVal||null,
+    rfc:rfcVal||null,
+    nss:nssVal||null,
     banco:(document.getElementById('colab-banco').value||'').trim()||null,
     cuenta_clabe:(document.getElementById('colab-cuenta-clabe').value||'').trim()||null,
     direccion:(document.getElementById('colab-direccion').value||'').trim()||null,
@@ -11946,6 +11954,7 @@ function _personalCamposBase(){
     {label:'Fecha nacimiento (AAAA-MM-DD)',field:'fecha_nacimiento'},
     {label:'CURP',field:'curp'},
     {label:'RFC',field:'rfc'},
+    {label:'NSS',field:'nss'},
     {label:'Banco',field:'banco'},
     {label:'Cuenta / CLABE',field:'cuenta_clabe'},
     {label:'Dirección',field:'direccion'},
@@ -11982,7 +11991,7 @@ function personalDescargarPlantilla(empId){
   const camposCustom=emp.colab_campos_custom||[];
   const base=_personalCamposBase();
   const header=[...base.map(c=>c.label),...camposCustom.map(cf=>cf.label)];
-  const ejemplo=['001','Juan Pérez López','Auxiliar','','',today(),'Activo','$8,000','CH','2221234567','juan@correo.com','1995-04-12','PELJ950412HPLXXX01','PELJ950412XX1','BBVA','012180001234567890','Calle 1 #23, Col. Centro, Puebla, CP 72000','María Pérez','2227654321','Ejemplo de nota'];
+  const ejemplo=['001','Juan Pérez López','Auxiliar','','',today(),'Activo','$8,000','CH','2221234567','juan@correo.com','1995-04-12','PELJ950412HPLXXX01','PELJ950412XX1','12345678901','BBVA','012180001234567890','Calle 1 #23, Col. Centro, Puebla, CP 72000','María Pérez','2227654321','Ejemplo de nota'];
   const fila=header.map((_,i)=>ejemplo[i]||'');
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet([header,fila]);
@@ -12067,6 +12076,12 @@ function handleImportColabFile(e,empId){
         const nombre=get(colIdx.nombre);
         const errors=[];
         if(!nombre) errors.push('Nombre vacío');
+        const curpImp=get(colIdx.curp).toUpperCase();
+        const rfcImp=get(colIdx.rfc).toUpperCase();
+        const nssImp=get(colIdx.nss);
+        if(curpImp && curpImp.length!==18) errors.push('CURP debe tener 18 caracteres (tiene '+curpImp.length+')');
+        if(rfcImp && rfcImp.length!==12 && rfcImp.length!==13) errors.push('RFC debe tener 12 o 13 caracteres (tiene '+rfcImp.length+')');
+        if(nssImp && (nssImp.length!==11 || !/^\d+$/.test(nssImp))) errors.push('NSS debe tener 11 dígitos numéricos');
         const estadoRaw=get(colIdx.estado);
         const estado=/baja/i.test(estadoRaw)?'Baja':'Activo';
         const campos_extra={};
@@ -12079,7 +12094,7 @@ function handleImportColabFile(e,empId){
           salario_mensual:get(colIdx.salario_mensual)||null, talla_uniforme:get(colIdx.talla_uniforme)||null,
           telefono:get(colIdx.telefono)||null, correo:get(colIdx.correo)||null,
           fecha_nacimiento:normFecha(r[colIdx.fecha_nacimiento])||null,
-          curp:get(colIdx.curp)||null, rfc:get(colIdx.rfc)||null,
+          curp:curpImp||null, rfc:rfcImp||null, nss:nssImp||null,
           banco:get(colIdx.banco)||null, cuenta_clabe:get(colIdx.cuenta_clabe)||null,
           direccion:get(colIdx.direccion)||null,
           contacto_emergencia_nombre:get(colIdx.contacto_emergencia_nombre)||null,

@@ -11688,6 +11688,60 @@ function _persRenderDetalle(empId){
    ============================================================ */
 let _expOpenEmpId=null,_expQ='',_expSearchTimer=null,_expBucketReady=false,_expDocsCache=[];
 const EXPEDIENTE_CATEGORIAS=['INE / Identificación oficial','CURP','RFC','NSS / Alta IMSS','Acta de nacimiento','Comprobante de domicilio','Comprobante de estudios','Contrato','Fotografía','Certificado médico','Otro'];
+// Listas específicas por empresa (checklist real de "documentación de ingreso" de esa empresa).
+// Se usan como valor por defecto SOLO si la empresa no tiene su propia lista guardada en
+// emp.expediente_categorias (editable desde el botón "Personalizar categorías").
+const _EXPEDIENTE_CATEGORIAS_EMPRESA={
+  'Ford':['CV','Solicitud de empleo (formato amarillo), con fotografía reciente','Copia de acta de nacimiento','Constancia de Situación Fiscal (actualizada)','Copia de CURP','Copia de identificación oficial (vigente)','Copia de licencia de conducir (si amerita el puesto)','Copia de comprobante de domicilio (reciente)','Copia de carta de no antecedentes penales','Copia de afiliación al IMSS','Copia de aviso de retención INFONAVIT (en caso de contar con crédito)','Copia de aviso de retención FONACOT (en caso de contar con crédito)','Constancia de cursos de capacitación','Copia de estado de cuenta (BBVA)','Copia del comprobante del último grado de estudios'],
+};
+function _expCategoriasEmpresa(emp){
+  if(Array.isArray(emp?.expediente_categorias)&&emp.expediente_categorias.length) return emp.expediente_categorias;
+  return _EXPEDIENTE_CATEGORIAS_EMPRESA[emp?.nombre]||EXPEDIENTE_CATEGORIAS;
+}
+function abrirPersonalizarCategoriasExpediente(empId){
+  const emp=DB.empresas.find(e=>e.id===empId); if(!emp)return;
+  document.getElementById('modal-exp-cats')?.remove();
+  const actuales=_expCategoriasEmpresa(emp);
+  const modal=document.createElement('div');
+  modal.id='modal-exp-cats';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3100;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`
+    <div style="background:var(--surface);border-radius:12px;width:520px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 32px #0004">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-weight:700;font-size:16px">Categorías de expediente — ${_esc(emp.nombre||'')}</div>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-exp-cats').remove()"><i class="fa fa-times"></i></button>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Una categoría por línea. Estas son las que aparecerán en el desplegable al subir un documento para colaboradores de esta empresa.</div>
+      <textarea id="exp-cats-textarea" style="width:100%;height:220px;font-family:inherit;font-size:13px">${_esc(actuales.join('\n'))}</textarea>
+      <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px">
+        <button class="btn btn-ghost btn-sm" onclick="_guardarCategoriasExpedienteEmpresa('${empId}',true)"><i class="fa fa-undo"></i> Restablecer a la lista general</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="document.getElementById('modal-exp-cats').remove()">Cancelar</button>
+          <button class="btn btn-primary" onclick="_guardarCategoriasExpedienteEmpresa('${empId}',false)"><i class="fa fa-save"></i> Guardar</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+async function _guardarCategoriasExpedienteEmpresa(empId,resetear){
+  const emp=DB.empresas.find(e=>e.id===empId); if(!emp)return;
+  if(resetear){
+    delete emp.expediente_categorias;
+  } else {
+    const raw=(document.getElementById('exp-cats-textarea').value||'');
+    const lista=raw.split('\n').map(l=>l.trim()).filter(Boolean);
+    if(!lista.length){showToast('Escribe al menos una categoría','err');return;}
+    emp.expediente_categorias=lista;
+  }
+  try{
+    await saveRecord('empresas',emp);
+    await logActivity('Personalizar categorías de expediente','empresas',empId,`${emp.nombre||empId}: ${resetear?'restablecidas a la lista general':emp.expediente_categorias.length+' categorías guardadas'}`);
+    showToast(resetear?'Restablecido a la lista general ✓':'Categorías guardadas ✓');
+    document.getElementById('modal-exp-cats')?.remove();
+  }catch(e){
+    showToast('Error al guardar: '+e.message,'err');
+  }
+}
 
 async function _expEnsureBucket(){
   if(_expBucketReady) return;
@@ -11770,6 +11824,7 @@ function _expRenderDetalle(empId){
       <span style="font-size:16px;font-weight:700">${_esc(emp.nombre||'')}</span>
       <span style="flex:1"></span>
       <input type="text" placeholder="Buscar nombre, puesto o número..." value="${_esc(_expQ)}" oninput="_expQ=this.value;_expSearchDebounce('${empId}')" style="width:240px">
+      <button class="btn btn-ghost btn-sm" onclick="abrirPersonalizarCategoriasExpediente('${empId}')" title="Elegir qué documentos aplican para esta empresa"><i class="fa fa-list-check"></i> Personalizar categorías</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">
       ${cards||'<div style="color:var(--text3);font-size:13px;grid-column:1/-1;text-align:center;padding:40px">Sin colaboradores registrados en esta empresa. Agrégalos desde "Administrador de personal".</div>'}
@@ -11794,6 +11849,8 @@ function _expIconoArchivo(nombre){
 
 async function abrirExpedienteColaborador(colabId,empId){
   const c=(DB.colaboradores||[]).find(x=>x.id===colabId); if(!c)return;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const categorias=_expCategoriasEmpresa(emp);
   document.getElementById('modal-expediente')?.remove();
   const modal=document.createElement('div');
   modal.id='modal-expediente';
@@ -11810,7 +11867,7 @@ async function abrirExpedienteColaborador(colabId,empId){
       <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:14px;background:var(--surface2);border-radius:10px;margin-bottom:16px">
         <div class="fg" style="flex:1;min-width:170px;margin-bottom:0">
           <label>Categoría</label>
-          <select id="exp-doc-categoria">${EXPEDIENTE_CATEGORIAS.map(cat=>`<option value="${_esc(cat)}">${_esc(cat)}</option>`).join('')}</select>
+          <select id="exp-doc-categoria">${categorias.map(cat=>`<option value="${_esc(cat)}">${_esc(cat)}</option>`).join('')}</select>
         </div>
         <div class="fg" style="flex:1;min-width:180px;margin-bottom:0">
           <label>Archivo</label>

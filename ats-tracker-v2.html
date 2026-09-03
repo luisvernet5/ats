@@ -11844,7 +11844,7 @@ function _expRenderDetalle(empId){
       const ok=!!doc;
       const fecha=doc?.created_at?new Date(doc.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}):null;
       const tip=`${cat} — ${ok?'subido'+(fecha?' el '+fecha:''):'pendiente'}`;
-      return `<i class="fa ${ok?'fa-file-circle-check':'fa-file'}" style="font-size:15px;color:${ok?'#22c55e':'#9ca3af'};cursor:pointer" title="${_esc(tip)}" onclick="event.stopPropagation();abrirDocumentoIndividual('${c.id}','${empId}',${ci})"></i>`;
+      return `<button type="button" class="btn btn-ghost btn-sm" style="padding:6px 8px" title="${_esc(tip)}" onclick="event.stopPropagation();abrirDocumentoIndividual('${c.id}','${empId}',${ci})"><i class="fa ${_expIconoCategoria(cat)}" style="font-size:14px;color:${ok?'#22c55e':'#9ca3af'}"></i></button>`;
     }).join('');
     return`<tr style="cursor:pointer" onclick="abrirExpedienteColaborador('${c.id}','${empId}')">
       <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
@@ -11852,7 +11852,7 @@ function _expRenderDetalle(empId){
         <div style="font-weight:600;font-size:13px">${_esc(c.nombre||'—')}</div>
         <div style="font-size:11px;color:var(--text3)">${_esc(c.puesto||'Sin puesto')}${c.numero_colaborador?' · #'+_esc(c.numero_colaborador):''} · ${nSubidos}/${categorias.length} docs</div>
       </td>
-      <td><div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">${iconos}</div></td>
+      <td><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${iconos}</div></td>
       <td style="text-align:center;width:36px"><i class="fa fa-chevron-right" style="color:var(--text3);font-size:12px"></i></td>
     </tr>`;
   }).join('');
@@ -11884,6 +11884,31 @@ function _expIconoArchivo(nombre){
   if(ext==='pdf') return 'fa-file-pdf';
   if(['doc','docx'].includes(ext)) return 'fa-file-word';
   if(['xls','xlsx'].includes(ext)) return 'fa-file-excel';
+  return 'fa-file';
+}
+// Icono representativo según el TIPO de documento (categoría), para que no todos se vean iguales
+// en la lista — por palabras clave, así funciona tanto con la lista genérica como con listas
+// personalizadas por empresa (ej. la de Ford).
+function _expIconoCategoria(categoria){
+  const t=(categoria||'').toLowerCase();
+  if(/\bcv\b|curr[ií]culum/.test(t)) return 'fa-user-tie';
+  if(/solicitud de empleo/.test(t)) return 'fa-file-signature';
+  if(/acta de nacimiento/.test(t)) return 'fa-baby';
+  if(/situaci[oó]n fiscal|\brfc\b/.test(t)) return 'fa-file-invoice-dollar';
+  if(/\bcurp\b/.test(t)) return 'fa-address-card';
+  if(/identificaci[oó]n|\bine\b/.test(t)) return 'fa-id-card';
+  if(/licencia de conducir/.test(t)) return 'fa-id-card-clip';
+  if(/domicilio/.test(t)) return 'fa-house';
+  if(/antecedentes penales/.test(t)) return 'fa-gavel';
+  if(/infonavit/.test(t)) return 'fa-house-chimney-window';
+  if(/fonacot/.test(t)) return 'fa-money-check-dollar';
+  if(/imss|seguro social|\bnss\b/.test(t)) return 'fa-notes-medical';
+  if(/capacitaci[oó]n|curso/.test(t)) return 'fa-chalkboard-user';
+  if(/estado de cuenta|\bbanco\b/.test(t)) return 'fa-building-columns';
+  if(/estudios/.test(t)) return 'fa-graduation-cap';
+  if(/fotograf/.test(t)) return 'fa-camera';
+  if(/contrato/.test(t)) return 'fa-file-signature';
+  if(/m[ée]dic/.test(t)) return 'fa-notes-medical';
   return 'fa-file';
 }
 

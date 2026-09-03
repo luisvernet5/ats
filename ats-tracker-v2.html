@@ -11826,25 +11826,22 @@ function _expRenderDetalle(empId){
   const color=emp.color||'#2AAADE';
   const categorias=_expCategoriasEmpresa(emp);
   const lista=_expColabList(empId);
-  const cards=lista.map(c=>{
-    const ini=(c.nombre||'?').trim().split(/\s+/).map(n=>n[0]).join('').substr(0,2).toUpperCase();
+  const rows=lista.map((c,i)=>{
     const subidas=_expDocsPorColaborador[c.id]||new Set();
     const nSubidos=categorias.filter(cat=>subidas.has(cat)).length;
     const iconos=categorias.map(cat=>{
       const ok=subidas.has(cat);
-      return `<i class="fa ${ok?'fa-file-circle-check':'fa-file'}" style="font-size:12px;color:${ok?'#22c55e':'#9ca3af'}" title="${_esc(cat)} — ${ok?'subido':'pendiente'}"></i>`;
+      return `<i class="fa ${ok?'fa-file-circle-check':'fa-file'}" style="font-size:14px;color:${ok?'#22c55e':'#9ca3af'}" title="${_esc(cat)} — ${ok?'subido':'pendiente'}"></i>`;
     }).join('');
-    return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px" onclick="abrirExpedienteColaborador('${c.id}','${empId}')">
-      <div style="display:flex;align-items:center;gap:12px">
-        <div style="width:38px;height:38px;border-radius:50%;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">${ini||'?'}</div>
-        <div style="min-width:0;flex:1">
-          <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(c.nombre||'—')}</div>
-          <div style="font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(c.puesto||'Sin puesto')}${c.numero_colaborador?' · #'+_esc(c.numero_colaborador):''} · ${nSubidos}/${categorias.length} docs</div>
-        </div>
-        <i class="fa fa-chevron-right" style="color:var(--text3);font-size:12px;flex-shrink:0"></i>
-      </div>
-      <div style="display:flex;gap:5px;flex-wrap:wrap;padding-left:2px">${iconos}</div>
-    </div>`;
+    return`<tr style="cursor:pointer" onclick="abrirExpedienteColaborador('${c.id}','${empId}')">
+      <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
+      <td class="td-p" style="min-width:180px">
+        <div style="font-weight:600;font-size:13px">${_esc(c.nombre||'—')}</div>
+        <div style="font-size:11px;color:var(--text3)">${_esc(c.puesto||'Sin puesto')}${c.numero_colaborador?' · #'+_esc(c.numero_colaborador):''} · ${nSubidos}/${categorias.length} docs</div>
+      </td>
+      <td><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">${iconos}</div></td>
+      <td style="text-align:center;width:36px"><i class="fa fa-chevron-right" style="color:var(--text3);font-size:12px"></i></td>
+    </tr>`;
   }).join('');
   page.innerHTML=`<div style="padding:24px 28px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
@@ -11855,9 +11852,10 @@ function _expRenderDetalle(empId){
       <input type="text" placeholder="Buscar nombre, puesto o número..." value="${_esc(_expQ)}" oninput="_expQ=this.value;_expSearchDebounce('${empId}')" style="width:240px">
       <button class="btn btn-ghost btn-sm" onclick="abrirPersonalizarCategoriasExpediente('${empId}')" title="Elegir qué documentos aplican para esta empresa"><i class="fa fa-list-check"></i> Personalizar categorías</button>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">
-      ${cards||'<div style="color:var(--text3);font-size:13px;grid-column:1/-1;text-align:center;padding:40px">Sin colaboradores registrados en esta empresa. Agrégalos desde "Administrador de personal".</div>'}
-    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th style="width:36px;text-align:center">#</th><th>Colaborador</th><th>Documentos</th><th></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:32px">Sin colaboradores registrados en esta empresa. Agrégalos desde "Administrador de personal".</td></tr>'}</tbody>
+    </table></div>
   </div>`;
 }
 

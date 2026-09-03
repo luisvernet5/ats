@@ -11687,7 +11687,7 @@ function _persRenderDetalle(empId){
    EXPEDIENTES DE COLABORADORES
    ============================================================ */
 let _expOpenEmpId=null,_expQ='',_expSearchTimer=null,_expBucketReady=false,_expDocsCache=[];
-let _expDocsPorColaborador={}; // colaborador_id -> Set(categoria) — para pintar los iconos de estado en la lista
+let _expDocsPorColaborador={}; // colaborador_id -> {categoria: documento} — estado + detalle para los iconos de la lista
 const EXPEDIENTE_CATEGORIAS=['INE / Identificación oficial','CURP','RFC','NSS / Alta IMSS','Acta de nacimiento','Comprobante de domicilio','Comprobante de estudios','Contrato','Fotografía','Certificado médico','Otro'];
 // Listas específicas por empresa (checklist real de "documentación de ingreso" de esa empresa).
 // Se usan como valor por defecto SOLO si la empresa no tiene su propia lista guardada en
@@ -11753,13 +11753,23 @@ async function _expEnsureBucket(){
 async function _expCargarDocsEmpresa(empId){
   if(SANDBOX_MODE) return;
   try{
-    const {data,error}=await sbClient.from('expediente_documentos').select('colaborador_id,categoria').eq('empresa_id',empId);
+    const {data,error}=await sbClient.from('expediente_documentos').select('*').eq('empresa_id',empId).order('created_at',{ascending:false});
     if(error) throw error;
     (data||[]).forEach(d=>{
-      if(!_expDocsPorColaborador[d.colaborador_id]) _expDocsPorColaborador[d.colaborador_id]=new Set();
-      _expDocsPorColaborador[d.colaborador_id].add(d.categoria);
+      if(!_expDocsPorColaborador[d.colaborador_id]) _expDocsPorColaborador[d.colaborador_id]={};
+      if(!_expDocsPorColaborador[d.colaborador_id][d.categoria]) _expDocsPorColaborador[d.colaborador_id][d.categoria]=d; // más reciente primero (order desc) → el primero que llega por categoría gana
     });
   }catch(e){ console.warn('[Expedientes] Error al cargar estado de documentos:',e.message); }
+}
+async function _expRefrescarColaborador(colabId,empId){
+  try{
+    const {data,error}=await sbClient.from('expediente_documentos').select('*').eq('colaborador_id',colabId).order('created_at',{ascending:false});
+    if(error) throw error;
+    const map={};
+    (data||[]).forEach(d=>{ if(!map[d.categoria]) map[d.categoria]=d; });
+    _expDocsPorColaborador[colabId]=map;
+  }catch(e){ console.warn('[Expedientes] Error al refrescar documentos:',e.message); }
+  if(_expOpenEmpId===empId) _expRenderDetalle(empId);
 }
 
 async function renderExpedientes(){
@@ -11827,11 +11837,14 @@ function _expRenderDetalle(empId){
   const categorias=_expCategoriasEmpresa(emp);
   const lista=_expColabList(empId);
   const rows=lista.map((c,i)=>{
-    const subidas=_expDocsPorColaborador[c.id]||new Set();
-    const nSubidos=categorias.filter(cat=>subidas.has(cat)).length;
-    const iconos=categorias.map(cat=>{
-      const ok=subidas.has(cat);
-      return `<i class="fa ${ok?'fa-file-circle-check':'fa-file'}" style="font-size:14px;color:${ok?'#22c55e':'#9ca3af'}" title="${_esc(cat)} — ${ok?'subido':'pendiente'}"></i>`;
+    const docsMap=_expDocsPorColaborador[c.id]||{};
+    const nSubidos=categorias.filter(cat=>docsMap[cat]).length;
+    const iconos=categorias.map((cat,ci)=>{
+      const doc=docsMap[cat];
+      const ok=!!doc;
+      const fecha=doc?.created_at?new Date(doc.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}):null;
+      const tip=`${cat} — ${ok?'subido'+(fecha?' el '+fecha:''):'pendiente'}`;
+      return `<i class="fa ${ok?'fa-file-circle-check':'fa-file'}" style="font-size:15px;color:${ok?'#22c55e':'#9ca3af'};cursor:pointer" title="${_esc(tip)}" onclick="event.stopPropagation();abrirDocumentoIndividual('${c.id}','${empId}',${ci})"></i>`;
     }).join('');
     return`<tr style="cursor:pointer" onclick="abrirExpedienteColaborador('${c.id}','${empId}')">
       <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
@@ -11839,7 +11852,7 @@ function _expRenderDetalle(empId){
         <div style="font-weight:600;font-size:13px">${_esc(c.nombre||'—')}</div>
         <div style="font-size:11px;color:var(--text3)">${_esc(c.puesto||'Sin puesto')}${c.numero_colaborador?' · #'+_esc(c.numero_colaborador):''} · ${nSubidos}/${categorias.length} docs</div>
       </td>
-      <td><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">${iconos}</div></td>
+      <td><div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">${iconos}</div></td>
       <td style="text-align:center;width:36px"><i class="fa fa-chevron-right" style="color:var(--text3);font-size:12px"></i></td>
     </tr>`;
   }).join('');
@@ -11918,7 +11931,9 @@ async function _expCargarDocumentos(colabId){
     const {data,error}=await sbClient.from('expediente_documentos').select('*').eq('colaborador_id',colabId).order('created_at',{ascending:false});
     if(error) throw new Error(error.message);
     _expDocsCache=data||[];
-    _expDocsPorColaborador[colabId]=new Set(_expDocsCache.map(d=>d.categoria));
+    const _map={};
+    _expDocsCache.forEach(d=>{ if(!_map[d.categoria]) _map[d.categoria]=d; }); // ya viene ordenado desc: el primero por categoría es el más reciente
+    _expDocsPorColaborador[colabId]=_map;
     _expOpenEmpId && _expRenderDetalle(_expOpenEmpId); // refresca los iconos de la lista detrás del modal
   }catch(e){
     wrap.innerHTML=`<div style="text-align:center;color:var(--red);padding:16px;font-size:13px"><i class="fa fa-exclamation-triangle"></i> Error al cargar documentos: ${e.message}</div>`;
@@ -11944,6 +11959,32 @@ function _expRenderDocsList(colabId){
     </div>`).join('')}</div>`;
 }
 
+// Sube (o reemplaza, si ya había un documento en esa categoría) un archivo y guarda su registro.
+// Compartido entre el modal completo del expediente y la acción rápida por icono.
+async function _expSubirArchivo(colabId,empId,categoria,file){
+  await _expEnsureBucket();
+  const existente=(_expDocsPorColaborador[colabId]||{})[categoria];
+  if(existente){
+    if(existente.storage_path) await sbClient.storage.from('expedientes').remove([existente.storage_path]).catch(()=>{});
+    await sbClient.from('expediente_documentos').delete().eq('id',existente.id);
+  }
+  const docId='exp-'+Date.now()+'-'+Math.random().toString(36).substr(2,6);
+  const ext=(file.name.split('.').pop()||'bin');
+  const path=`${empId}/${colabId}/${docId}.${ext}`;
+  const {error:upErr}=await sbClient.storage.from('expedientes').upload(path,file,{upsert:true});
+  if(upErr) throw new Error(upErr.message);
+  const {data:urlData}=sbClient.storage.from('expedientes').getPublicUrl(path);
+  const registro={
+    id:docId, colaborador_id:colabId, empresa_id:empId,
+    nombre:file.name, categoria, storage_path:path, url:urlData.publicUrl,
+    tamano_bytes:file.size, subido_por:currentUserData?.nombre||currentUser?.email||null,
+    created_at:new Date().toISOString(),
+  };
+  const {error:insErr}=await sbClient.from('expediente_documentos').insert(registro);
+  if(insErr) throw new Error(insErr.message);
+  return {registro,reemplazo:!!existente};
+}
+
 async function subirDocumentoExpediente(colabId,empId){
   if(SANDBOX_MODE){showToast('La carga de documentos no está disponible en modo de prueba','err');return;}
   const fileInput=document.getElementById('exp-doc-file');
@@ -11953,23 +11994,9 @@ async function subirDocumentoExpediente(colabId,empId){
   const btn=document.getElementById('btn-exp-subir');
   if(btn){btn.disabled=true;btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Subiendo...';}
   try{
-    await _expEnsureBucket();
-    const docId='exp-'+Date.now()+'-'+Math.random().toString(36).substr(2,6);
-    const ext=(file.name.split('.').pop()||'bin');
-    const path=`${empId}/${colabId}/${docId}.${ext}`;
-    const {error:upErr}=await sbClient.storage.from('expedientes').upload(path,file,{upsert:true});
-    if(upErr) throw new Error(upErr.message);
-    const {data:urlData}=sbClient.storage.from('expedientes').getPublicUrl(path);
-    const registro={
-      id:docId, colaborador_id:colabId, empresa_id:empId,
-      nombre:file.name, categoria, storage_path:path, url:urlData.publicUrl,
-      tamano_bytes:file.size, subido_por:currentUserData?.nombre||currentUser?.email||null,
-      created_at:new Date().toISOString(),
-    };
-    const {error:insErr}=await sbClient.from('expediente_documentos').insert(registro);
-    if(insErr) throw new Error(insErr.message);
+    const {reemplazo}=await _expSubirArchivo(colabId,empId,categoria,file);
     const c=(DB.colaboradores||[]).find(x=>x.id===colabId);
-    await logActivity('Subir documento de expediente','colaboradores',colabId,`${file.name} (${categoria}) — ${c?.nombre||colabId}`);
+    await logActivity(reemplazo?'Reemplazar documento de expediente':'Subir documento de expediente','colaboradores',colabId,`${file.name} (${categoria}) — ${c?.nombre||colabId}`);
     showToast('Documento subido ✓');
     fileInput.value='';
     await _expCargarDocumentos(colabId);
@@ -11991,6 +12018,91 @@ async function eliminarDocumentoExpediente(docId,colabId){
     await logActivity('Eliminar documento de expediente','colaboradores',colabId,`${doc?.nombre||docId} — ${c?.nombre||colabId}`);
     showToast('Documento eliminado ✓');
     await _expCargarDocumentos(colabId);
+  }catch(e){
+    showToast('Error: '+e.message,'err');
+  }
+}
+
+/* ── Acción rápida por icono (subir / resubir / eliminar un solo documento) ── */
+function abrirDocumentoIndividual(colabId,empId,catIndex){
+  const c=(DB.colaboradores||[]).find(x=>x.id===colabId); if(!c)return;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const categoria=_expCategoriasEmpresa(emp)[catIndex];
+  if(!categoria)return;
+  const doc=(_expDocsPorColaborador[colabId]||{})[categoria]||null;
+  document.getElementById('modal-exp-doc')?.remove();
+  const modal=document.createElement('div');
+  modal.id='modal-exp-doc';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3200;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`
+    <div style="background:var(--surface);border-radius:12px;width:420px;max-width:96vw;padding:22px;box-shadow:0 8px 32px #0004">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:10px">
+        <div>
+          <div style="font-weight:700;font-size:15px">${_esc(categoria)}</div>
+          <div style="font-size:12px;color:var(--text3)">${_esc(c.nombre||'')}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-exp-doc').remove()"><i class="fa fa-times"></i></button>
+      </div>
+      ${doc?`
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;margin-bottom:14px">
+          <i class="fa ${_expIconoArchivo(doc.nombre)}" style="font-size:20px;color:#22c55e;flex-shrink:0"></i>
+          <div style="min-width:0;flex:1">
+            <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(doc.nombre||'')}</div>
+            <div style="font-size:11px;color:var(--text3)">Subido el ${doc.created_at?new Date(doc.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}):'—'}${_expFmtSize(doc.tamano_bytes)?' · '+_expFmtSize(doc.tamano_bytes):''}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <a class="btn btn-ghost btn-sm" href="${doc.url}" target="_blank" rel="noopener" style="flex:1;justify-content:center"><i class="fa fa-eye"></i> Ver / descargar</a>
+          <button class="btn btn-danger btn-sm" onclick="eliminarDocumentoExpedienteInd('${colabId}','${empId}',${catIndex})" style="flex:1;justify-content:center"><i class="fa fa-trash"></i> Eliminar</button>
+        </div>
+        <div class="sep" style="margin-top:0">Reemplazar archivo</div>
+      `:`<div style="font-size:12px;color:var(--text3);margin-bottom:12px">Todavía no se ha subido ningún documento en esta categoría.</div>`}
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <input type="file" id="exp-doc-ind-file" style="flex:1" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
+        <button class="btn btn-primary btn-sm" id="btn-exp-ind-subir" onclick="subirDocumentoExpedienteInd('${colabId}','${empId}',${catIndex})"><i class="fa fa-upload"></i> ${doc?'Resubir':'Subir'}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function subirDocumentoExpedienteInd(colabId,empId,catIndex){
+  if(SANDBOX_MODE){showToast('La carga de documentos no está disponible en modo de prueba','err');return;}
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const categoria=_expCategoriasEmpresa(emp)[catIndex];
+  const fileInput=document.getElementById('exp-doc-ind-file');
+  const file=fileInput?.files?.[0];
+  if(!file){showToast('Selecciona un archivo','err');return;}
+  const btn=document.getElementById('btn-exp-ind-subir');
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Subiendo...';}
+  try{
+    const {reemplazo}=await _expSubirArchivo(colabId,empId,categoria,file);
+    const c=(DB.colaboradores||[]).find(x=>x.id===colabId);
+    await logActivity(reemplazo?'Reemplazar documento de expediente':'Subir documento de expediente','colaboradores',colabId,`${file.name} (${categoria}) — ${c?.nombre||colabId}`);
+    showToast('Documento subido ✓');
+    await _expRefrescarColaborador(colabId,empId);
+    document.getElementById('modal-exp-doc')?.remove();
+  }catch(e){
+    showToast('Error al subir: '+e.message,'err');
+  }finally{
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="fa fa-upload"></i> Subir';}
+  }
+}
+
+async function eliminarDocumentoExpedienteInd(colabId,empId,catIndex){
+  if(!confirm('¿Eliminar este documento del expediente?'))return;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const categoria=_expCategoriasEmpresa(emp)[catIndex];
+  const doc=(_expDocsPorColaborador[colabId]||{})[categoria];
+  if(!doc)return;
+  try{
+    if(doc.storage_path) await sbClient.storage.from('expedientes').remove([doc.storage_path]);
+    const {error}=await sbClient.from('expediente_documentos').delete().eq('id',doc.id);
+    if(error) throw new Error(error.message);
+    const c=(DB.colaboradores||[]).find(x=>x.id===colabId);
+    await logActivity('Eliminar documento de expediente','colaboradores',colabId,`${doc.nombre||doc.id} — ${c?.nombre||colabId}`);
+    showToast('Documento eliminado ✓');
+    await _expRefrescarColaborador(colabId,empId);
+    document.getElementById('modal-exp-doc')?.remove();
   }catch(e){
     showToast('Error: '+e.message,'err');
   }

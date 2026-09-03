@@ -780,14 +780,15 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
         <button id="petab-enviados" class="btn btn-ghost btn-sm" onclick="peSetTab('enviados')"><i class="fa fa-paper-plane"></i> Enviados</button>
         <button id="petab-respuestas" class="btn btn-ghost btn-sm" onclick="peSetTab('respuestas')"><i class="fa fa-check-double"></i> Respuestas</button>
       </div>
-      <div style="display:flex;gap:6px">
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="pe-flt-empresa" onchange="renderPEProcesos()" style="width:auto;min-width:170px"><option value="">Todas las empresas</option></select>
         <button class="btn btn-ghost btn-sm" id="btn-pe-refresh" onclick="peRecargarDatos()"><i class="fa fa-sync"></i> Actualizar</button>
         <button class="btn btn-primary btn-sm" onclick="openProcesoEvalModal()"><i class="fa fa-plus"></i> Nuevo proceso</button>
       </div>
     </div>
     <div id="pe-panel-procesos">
       <div class="table-wrap"><table class="table" id="pe-procesos-table">
-        <thead><tr><th>Nombre</th><th>Evaluaciones</th><th>Enviados</th><th>Estado</th><th>Creado</th><th></th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Empresa</th><th>Evaluaciones</th><th>Enviados</th><th>Estado</th><th>Creado</th><th></th></tr></thead>
         <tbody id="pe-procesos-tbody"></tbody>
       </table></div>
     </div>
@@ -1312,6 +1313,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     <div class="mb" style="flex:1;overflow-y:auto;min-height:0">
       <input type="hidden" id="pe-id">
       <div class="fr full"><div class="fg"><label>Nombre del proceso *</label><input id="pe-nombre" placeholder="Ej. Proceso Evaluación Ventas 2024"></div></div>
+      <div class="fr full"><div class="fg"><label>Empresa <span style="font-size:11px;color:var(--text3)">(deja "Todas" para que esté disponible sin importar la empresa)</span></label><select id="pe-empresa"><option value="">Todas las empresas</option></select></div></div>
       <div class="fr full"><div class="fg"><label>Descripción</label><textarea id="pe-desc" rows="2" placeholder="Descripción del proceso..." style="resize:vertical"></textarea></div></div>
       <div style="margin-top:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -19937,19 +19939,38 @@ function peLimpiarFiltro(){
 function renderPEProcesos(){
   const tbody=document.getElementById('pe-procesos-tbody');
   if(!tbody)return;
-  const list=DB.procesosEval||[];
+  const flt=document.getElementById('pe-flt-empresa');
+  const fltWrap=flt?.parentElement;
+  if(flt && !_isEmpresaRole()){
+    if(fltWrap) fltWrap.style.display='';
+    if(!flt.dataset.populated){
+      flt.innerHTML='<option value="">Todas las empresas</option>'+[...DB.empresas].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(e=>`<option value="${e.id}">${_esc(e.nombre)}</option>`).join('');
+      flt.dataset.populated='1';
+    }
+  } else if(fltWrap){
+    fltWrap.style.display='none'; // rh_cliente/coordinador ya están limitados a su empresa; el filtro no aporta nada
+  }
+  let list=DB.procesosEval||[];
+  const empIdUsuario=_userEmpresaId();
+  if(empIdUsuario){
+    list=list.filter(p=>!p.empresa_id||p.empresa_id===empIdUsuario);
+  } else if(flt?.value){
+    list=list.filter(p=>p.empresa_id===flt.value);
+  }
   if(!list.length){
-    tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin procesos. Crea el primero con "+ Nuevo proceso".</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Sin procesos. Crea el primero con "+ Nuevo proceso".</td></tr>`;
     return;
   }
   tbody.innerHTML=list.map(p=>{
     const enviados=(DB.procesosEnviados||[]).filter(e=>e.proceso_id===p.id).length;
     const pruebasHTML=(p.pruebas||[]).map(pr=>`<span style="display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;background:var(--primary-light,#e8f0fe);color:var(--primary);border:1px solid var(--primary);margin:1px">${_esc(pr.nombre)} (${pr.peso}%)</span>`).join('')||'—';
+    const empNombre=p.empresa_id?(DB.empresas.find(e=>e.id===p.empresa_id)?.nombre||'—'):null;
     return `<tr>
       <td>
         <strong onclick="peVerEnviados('${p.id}')" style="cursor:pointer;color:var(--primary)">${_esc(p.nombre)}</strong>
         ${p.descripcion?`<div style="font-size:11px;color:var(--text3)">${_esc(p.descripcion)}</div>`:''}
       </td>
+      <td>${empNombre?`<span style="display:inline-block;font-size:11px;padding:1px 8px;border-radius:10px;background:var(--surface2);color:var(--text2);border:1px solid var(--border2)">${_esc(empNombre)}</span>`:`<span style="font-size:11px;color:var(--text3)">Todas</span>`}</td>
       <td style="max-width:280px;line-height:1.6">${pruebasHTML}</td>
       <td style="text-align:center">${enviados}</td>
       <td><span class="badge ${p.activa!==false?'bg':'br'}">${p.activa!==false?'Activo':'Inactivo'}</span></td>
@@ -20132,6 +20153,8 @@ function openProcesoEvalModal(id=null){
   document.getElementById('proceso-eval-title').textContent=proc?'Editar proceso':'Nuevo proceso de evaluación';
   document.getElementById('pe-nombre').value=proc?.nombre||'';
   document.getElementById('pe-desc').value=proc?.descripcion||'';
+  const empSel=document.getElementById('pe-empresa');
+  empSel.innerHTML='<option value="">Todas las empresas</option>'+[...DB.empresas].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(e=>`<option value="${e.id}" ${proc?.empresa_id===e.id?'selected':''}>${_esc(e.nombre)}</option>`).join('');
   window._peCatFilt=null;
   const list=document.getElementById('pe-pruebas-list');
   list.innerHTML='';
@@ -20241,6 +20264,7 @@ function saveProcesoEval(){
   const proc={
     id:existId||uid(),
     nombre,
+    empresa_id:document.getElementById('pe-empresa').value||null,
     descripcion:document.getElementById('pe-desc').value.trim(),
     pruebas,
     activa:true,
@@ -20275,8 +20299,9 @@ function deleteProcesoEnviado(id){
 // ── Enviar proceso ────────────────────────────────────────────
 function openEnviarProcesoModal(procesoId=null){
   const sel=document.getElementById('env-pe-proc');
+  const _empIdEnv=_userEmpresaId();
   sel.innerHTML='<option value="">Seleccionar...</option>'+
-    (DB.procesosEval||[]).filter(p=>p.activa!==false).map(p=>`<option value="${p.id}">${_esc(p.nombre)}</option>`).join('');
+    (DB.procesosEval||[]).filter(p=>p.activa!==false&&(!_empIdEnv||!p.empresa_id||p.empresa_id===_empIdEnv)).map(p=>`<option value="${p.id}">${_esc(p.nombre)}</option>`).join('');
   if(procesoId)sel.value=procesoId;
   const vacSel=document.getElementById('env-pe-vac');
   vacSel.innerHTML='<option value="">Sin vacante</option>'+

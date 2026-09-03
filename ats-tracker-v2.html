@@ -3756,17 +3756,13 @@ function _coordScopeWarning(){
   if(currentUserData?.rol!=='coordinador') return '';
   const coord=_coordRecord();
   if(!coord) return `<div style="text-align:center;color:var(--red,#ef4444);font-size:12px;padding:10px 0"><i class="fa fa-triangle-exclamation"></i> Tu usuario no está vinculado a ningún coordinador. Contacta al administrador.</div>`;
-  const deps=_coordDeptos(coord), proys=_coordProyectos(coord);
-  if(!deps.length && !proys.length) return `<div style="text-align:center;color:#d97706;font-size:12px;padding:10px 0"><i class="fa fa-triangle-exclamation"></i> No tienes ningún departamento o proyecto asignado — pide al administrador que te asigne al menos uno en Configuración → Coordinadores.</div>`;
   return '';
 }
 function _coordVacanteMatch(v){
-  if(currentUserData?.rol!=='coordinador') return true;
-  const coord=_coordRecord();
-  if(!coord) return false;
-  const deps=_coordDeptos(coord), proys=_coordProyectos(coord);
-  if(!deps.length && !proys.length) return false; // coordinador sin departamentos/proyectos asignados: no ve vacantes
-  return (v.departamento && deps.includes(v.departamento)) || (v.proyecto && proys.includes(v.proyecto));
+  // Restricción por departamento/proyecto desactivada a pedido: un coordinador ve todas las
+  // vacantes/candidatos/etc. de su empresa (mismo alcance que rh_cliente), no solo las de su
+  // departamento o proyecto asignado. La empresa sigue restringida vía _userEmpresaId().
+  return true;
 }
 function _coordAssigned(item){
   if(currentUserData?.rol!=='coordinador') return true;

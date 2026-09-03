@@ -3311,7 +3311,7 @@ async function logActivity(accion, entidad, entidadId, detalle, anterior, nuevo)
         etapa:'Etapa', contacto:'Contacto', fuente:'Fuente', notas:'Notas',
         tel:'Teléfono', dir:'Dirección', sector:'Sector',
         rol:'Rol', email:'Email',
-        numero_colaborador:'Número de colaborador', puesto:'Puesto',
+        numero_colaborador:'Número de colaborador', puesto:'Puesto', razon_social:'Razón social',
         fecha_ingreso:'Fecha de ingreso', salario_mensual:'Salario mensual',
         talla_uniforme:'Talla de uniforme', telefono:'Teléfono', correo:'Correo',
         fecha_nacimiento:'Fecha de nacimiento', curp:'CURP', rfc:'RFC', nss:'NSS', banco:'Banco',
@@ -12174,6 +12174,9 @@ function abrirColaboradorModal(empId,id=null){
   const _bancoEsOtro=!!(existing?.banco && !_BANCOS_MX.includes(existing.banco));
   const proyOpts=(emp.proyectos||[]).map(p=>`<option value="${_esc(p)}" ${existing?.proyecto===p?'selected':''}>${_esc(p)}</option>`).join('');
   const depOpts=(emp.departamentos||[]).map(d=>`<option value="${_esc(d)}" ${existing?.departamento===d?'selected':''}>${_esc(d)}</option>`).join('');
+  const razonSocialField=(emp.razones_sociales&&emp.razones_sociales.length)
+    ? `<select id="colab-razon-social"><option value="">Sin asignar</option>${emp.razones_sociales.map(r=>`<option value="${_esc(r)}" ${existing?.razon_social===r?'selected':''}>${_esc(r)}</option>`).join('')}</select>`
+    : `<input type="text" id="colab-razon-social" value="${_esc(existing?.razon_social||'')}" placeholder="Razón social">`;
   const camposExtraHTML=camposCustom.map((cf,i)=>_colabCamposExtraRowHTML(cf,i,empId,(existing?.campos_extra||{})[cf.key])).join('');
   const modal=document.createElement('div');
   modal.id='modal-colaborador';
@@ -12202,6 +12205,7 @@ function abrirColaboradorModal(empId,id=null){
         </div>
         <div class="fg"><label>Proyecto</label><select id="colab-proyecto"><option value="">Sin asignar</option>${proyOpts}</select></div>
         <div class="fg"><label>Departamento</label><select id="colab-departamento"><option value="">Sin asignar</option>${depOpts}</select></div>
+        <div class="fg"><label>Razón social</label>${razonSocialField}</div>
       </div>
       <div class="fr g3c" style="margin-bottom:16px">
         <div class="fg"><label>Fecha de ingreso</label><input type="date" id="colab-fecha-ingreso" value="${existing?.fecha_ingreso||''}"></div>
@@ -12390,6 +12394,7 @@ async function guardarColaborador(){
     puesto:(document.getElementById('colab-puesto').value||'').trim()||null,
     proyecto:document.getElementById('colab-proyecto').value||null,
     departamento:document.getElementById('colab-departamento').value||null,
+    razon_social:(document.getElementById('colab-razon-social').value||'').trim()||null,
     fecha_ingreso:document.getElementById('colab-fecha-ingreso').value||null,
     estado:document.getElementById('colab-estado').value||'Activo',
     salario_mensual:(document.getElementById('colab-salario').value||'').trim()||null,
@@ -12467,6 +12472,7 @@ function _personalCamposBase(){
     {label:'Puesto',field:'puesto'},
     {label:'Proyecto',field:'proyecto'},
     {label:'Departamento',field:'departamento'},
+    {label:'Razón social',field:'razon_social'},
     {label:'Fecha ingreso (AAAA-MM-DD)',field:'fecha_ingreso'},
     {label:'Estado (Activo/Baja)',field:'estado'},
     {label:'Salario mensual',field:'salario_mensual'},
@@ -12514,7 +12520,7 @@ function personalDescargarPlantilla(empId){
   const camposCustom=emp.colab_campos_custom||[];
   const base=_personalCamposBase();
   const header=[...base.map(c=>c.label),...camposCustom.map(cf=>cf.label)];
-  const ejemplo=['001','Juan Pérez López','Auxiliar','','',today(),'Activo','$8,000','CH','2221234567','juan@correo.com','1995-04-12','PELJ950412HPLXXX01','PELJ950412XX1','12345678901','BBVA','1234567890','012180001234567890','Calle 1 #23, Col. Centro, Puebla, CP 72000','María Pérez','2227654321','Ejemplo de nota'];
+  const ejemplo=['001','Juan Pérez López','Auxiliar','','','',today(),'Activo','$8,000','CH','2221234567','juan@correo.com','1995-04-12','PELJ950412HPLXXX01','PELJ950412XX1','12345678901','BBVA','1234567890','012180001234567890','Calle 1 #23, Col. Centro, Puebla, CP 72000','María Pérez','2227654321','Ejemplo de nota'];
   const fila=header.map((_,i)=>ejemplo[i]||'');
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet([header,fila]);
@@ -12612,7 +12618,7 @@ function handleImportColabFile(e,empId){
         _impColabRows.push({
           _row:i+1,_errors:errors,
           numero_colaborador:get(colIdx.numero_colaborador)||null,
-          nombre, puesto:get(colIdx.puesto)||null, proyecto:get(colIdx.proyecto)||null, departamento:get(colIdx.departamento)||null,
+          nombre, puesto:get(colIdx.puesto)||null, proyecto:get(colIdx.proyecto)||null, departamento:get(colIdx.departamento)||null, razon_social:get(colIdx.razon_social)||null,
           fecha_ingreso:normFecha(r[colIdx.fecha_ingreso])||null, estado,
           salario_mensual:get(colIdx.salario_mensual)||null, talla_uniforme:get(colIdx.talla_uniforme)||null,
           telefono:get(colIdx.telefono)||null, correo:get(colIdx.correo)||null,

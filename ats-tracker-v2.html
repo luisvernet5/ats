@@ -11912,6 +11912,7 @@ function _expRenderDetalle(empId){
         <div style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px">${_esc(c.puesto||'Sin puesto')}${c.numero_colaborador?' · #'+_esc(c.numero_colaborador):''} · ${nSubidos}/${categorias.length} docs <span class="badge ${pctBadge}">${pct}%</span></div>
       </td>
       <td><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${iconos}</div></td>
+      <td style="text-align:center;width:44px"><button type="button" class="btn btn-ghost btn-sm" style="padding:6px 8px" title="Descargar expediente completo en un solo PDF" ${nSubidos?'':'disabled'} onclick="event.stopPropagation();descargarExpedienteCompleto('${c.id}','${empId}')"><i class="fa fa-file-pdf" style="color:${nSubidos?'#ef4444':'#9ca3af'}"></i></button></td>
       <td style="text-align:center;width:36px"><i class="fa fa-chevron-right" style="color:var(--text3);font-size:12px"></i></td>
     </tr>`;
   }).join('');
@@ -11925,10 +11926,62 @@ function _expRenderDetalle(empId){
       <button class="btn btn-ghost btn-sm" onclick="abrirPersonalizarCategoriasExpediente('${empId}')" title="Elegir qué documentos aplican para esta empresa"><i class="fa fa-list-check"></i> Personalizar categorías</button>
     </div>
     <div class="table-wrap"><table>
-      <thead><tr><th style="width:36px;text-align:center">#</th><th>Colaborador</th><th>Documentos</th><th></th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:32px">Sin colaboradores registrados en esta empresa. Agrégalos desde "Administrador de personal".</td></tr>'}</tbody>
+      <thead><tr><th style="width:36px;text-align:center">#</th><th>Colaborador</th><th>Documentos</th><th></th><th></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:32px">Sin colaboradores registrados en esta empresa. Agrégalos desde "Administrador de personal".</td></tr>'}</tbody>
     </table></div>
   </div>`;
+}
+
+async function descargarExpedienteCompleto(colabId,empId){
+  const c=(DB.colaboradores||[]).find(x=>x.id===colabId);
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const categorias=_expCategoriasEmpresa(emp);
+  const docsMap=_expDocsPorColaborador[colabId]||{};
+  const docs=categorias.map(cat=>docsMap[cat]).filter(Boolean);
+  if(!docs.length){showToast('Este colaborador no tiene documentos subidos','err');return;}
+  showToast('Generando PDF del expediente…','info');
+  try{
+    const merged=await PDFLib.PDFDocument.create();
+    const font=await merged.embedFont(PDFLib.StandardFonts.Helvetica);
+    const A4W=595,A4H=842;
+    for(const doc of docs){
+      try{
+        const res=await fetch(doc.url);
+        if(!res.ok) throw new Error('No se pudo descargar el archivo');
+        const bytes=await res.arrayBuffer();
+        const ext=(doc.nombre||'').split('.').pop().toLowerCase();
+        if(ext==='pdf'){
+          const src=await PDFLib.PDFDocument.load(bytes,{ignoreEncryption:true});
+          const pages=await merged.copyPages(src,src.getPageIndices());
+          pages.forEach(p=>merged.addPage(p));
+        }else if(['jpg','jpeg','png'].includes(ext)){
+          const img=ext==='png'?await merged.embedPng(bytes):await merged.embedJpg(bytes);
+          const scale=Math.min((A4W-60)/img.width,(A4H-60)/img.height,1);
+          const w=img.width*scale,h=img.height*scale;
+          const page=merged.addPage([A4W,A4H]);
+          page.drawText(doc.categoria||'',{x:30,y:A4H-30,size:11,font,color:PDFLib.rgb(0.3,0.3,0.3)});
+          page.drawImage(img,{x:(A4W-w)/2,y:(A4H-h)/2-10,width:w,height:h});
+        }else{
+          const page=merged.addPage([A4W,A4H]);
+          page.drawText(`${doc.categoria||''}\n\nArchivo: ${doc.nombre||''}\n\nEste tipo de archivo no se puede incluir automáticamente en el PDF combinado.\nDescárgalo por separado desde el expediente.`,{x:40,y:A4H-80,size:12,font,lineHeight:18,maxWidth:A4W-80});
+        }
+      }catch(errDoc){
+        const page=merged.addPage([A4W,A4H]);
+        page.drawText(`No se pudo incluir: ${doc.categoria||doc.nombre||''}\n${errDoc.message||''}`,{x:40,y:A4H-80,size:12,font,lineHeight:18,maxWidth:A4W-80});
+      }
+    }
+    const pdfBytes=await merged.save();
+    const blob=new Blob([pdfBytes],{type:'application/pdf'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=`Expediente_${(c?.nombre||'colaborador').replace(/[^\w\-]+/g,'_')}.pdf`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+    showToast('Expediente descargado','ok');
+  }catch(e){
+    console.error(e);
+    showToast('Error al generar el PDF: '+(e.message||e),'err');
+  }
 }
 
 function _expFmtSize(bytes){

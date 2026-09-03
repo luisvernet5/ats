@@ -11687,6 +11687,7 @@ function _persRenderDetalle(empId){
    EXPEDIENTES DE COLABORADORES
    ============================================================ */
 let _expOpenEmpId=null,_expQ='',_expSearchTimer=null,_expBucketReady=false,_expDocsCache=[];
+let _expDocsPorColaborador={}; // colaborador_id -> Set(categoria) — para pintar los iconos de estado en la lista
 const EXPEDIENTE_CATEGORIAS=['INE / Identificación oficial','CURP','RFC','NSS / Alta IMSS','Acta de nacimiento','Comprobante de domicilio','Comprobante de estudios','Contrato','Fotografía','Certificado médico','Otro'];
 // Listas específicas por empresa (checklist real de "documentación de ingreso" de esa empresa).
 // Se usan como valor por defecto SOLO si la empresa no tiene su propia lista guardada en
@@ -11749,6 +11750,18 @@ async function _expEnsureBucket(){
   _expBucketReady=true;
 }
 
+async function _expCargarDocsEmpresa(empId){
+  if(SANDBOX_MODE) return;
+  try{
+    const {data,error}=await sbClient.from('expediente_documentos').select('colaborador_id,categoria').eq('empresa_id',empId);
+    if(error) throw error;
+    (data||[]).forEach(d=>{
+      if(!_expDocsPorColaborador[d.colaborador_id]) _expDocsPorColaborador[d.colaborador_id]=new Set();
+      _expDocsPorColaborador[d.colaborador_id].add(d.categoria);
+    });
+  }catch(e){ console.warn('[Expedientes] Error al cargar estado de documentos:',e.message); }
+}
+
 async function renderExpedientes(){
   const page=document.getElementById('page-expedientes'); if(!page) return;
   if(!_persLoaded){
@@ -11790,7 +11803,13 @@ function _expRenderDashboard(){
     </div>
   </div>`;
 }
-function expOpenEmpresa(empId){_expQ='';_expOpenEmpId=empId;renderExpedientes();}
+async function expOpenEmpresa(empId){
+  _expQ='';_expOpenEmpId=empId;
+  const page=document.getElementById('page-expedientes');
+  if(page) page.innerHTML='<div style="padding:60px;text-align:center;color:var(--text3)"><i class="fa fa-spinner fa-spin" style="font-size:22px;margin-bottom:12px;display:block"></i>Cargando...</div>';
+  await _expCargarDocsEmpresa(empId);
+  renderExpedientes();
+}
 function expBack(){_expQ='';_expOpenEmpId=null;renderExpedientes();}
 
 function _expColabList(empId){
@@ -11805,16 +11824,26 @@ function _expRenderDetalle(empId){
   const page=document.getElementById('page-expedientes'); if(!page) return;
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const color=emp.color||'#2AAADE';
+  const categorias=_expCategoriasEmpresa(emp);
   const lista=_expColabList(empId);
   const cards=lista.map(c=>{
     const ini=(c.nombre||'?').trim().split(/\s+/).map(n=>n[0]).join('').substr(0,2).toUpperCase();
-    return`<div class="card" style="cursor:pointer;display:flex;align-items:center;gap:12px" onclick="abrirExpedienteColaborador('${c.id}','${empId}')">
-      <div style="width:38px;height:38px;border-radius:50%;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">${ini||'?'}</div>
-      <div style="min-width:0;flex:1">
-        <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(c.nombre||'—')}</div>
-        <div style="font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(c.puesto||'Sin puesto')}${c.numero_colaborador?' · #'+_esc(c.numero_colaborador):''}</div>
+    const subidas=_expDocsPorColaborador[c.id]||new Set();
+    const nSubidos=categorias.filter(cat=>subidas.has(cat)).length;
+    const iconos=categorias.map(cat=>{
+      const ok=subidas.has(cat);
+      return `<i class="fa ${ok?'fa-file-circle-check':'fa-file'}" style="font-size:12px;color:${ok?'#22c55e':'#9ca3af'}" title="${_esc(cat)} — ${ok?'subido':'pendiente'}"></i>`;
+    }).join('');
+    return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px" onclick="abrirExpedienteColaborador('${c.id}','${empId}')">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:38px;height:38px;border-radius:50%;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">${ini||'?'}</div>
+        <div style="min-width:0;flex:1">
+          <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(c.nombre||'—')}</div>
+          <div style="font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(c.puesto||'Sin puesto')}${c.numero_colaborador?' · #'+_esc(c.numero_colaborador):''} · ${nSubidos}/${categorias.length} docs</div>
+        </div>
+        <i class="fa fa-chevron-right" style="color:var(--text3);font-size:12px;flex-shrink:0"></i>
       </div>
-      <i class="fa fa-chevron-right" style="color:var(--text3);font-size:12px;flex-shrink:0"></i>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;padding-left:2px">${iconos}</div>
     </div>`;
   }).join('');
   page.innerHTML=`<div style="padding:24px 28px">
@@ -11891,6 +11920,8 @@ async function _expCargarDocumentos(colabId){
     const {data,error}=await sbClient.from('expediente_documentos').select('*').eq('colaborador_id',colabId).order('created_at',{ascending:false});
     if(error) throw new Error(error.message);
     _expDocsCache=data||[];
+    _expDocsPorColaborador[colabId]=new Set(_expDocsCache.map(d=>d.categoria));
+    _expOpenEmpId && _expRenderDetalle(_expOpenEmpId); // refresca los iconos de la lista detrás del modal
   }catch(e){
     wrap.innerHTML=`<div style="text-align:center;color:var(--red);padding:16px;font-size:13px"><i class="fa fa-exclamation-triangle"></i> Error al cargar documentos: ${e.message}</div>`;
     return;

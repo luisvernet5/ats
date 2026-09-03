@@ -12612,15 +12612,18 @@ function handleImportColabFile(e,empId){
         const curpImp=get(colIdx.curp).toUpperCase();
         const rfcImp=get(colIdx.rfc).toUpperCase();
         const nssImp=get(colIdx.nss);
-        if(curpImp && curpImp.length!==18) errors.push('CURP debe tener 18 caracteres (tiene '+curpImp.length+')');
-        if(rfcImp && rfcImp.length!==12 && rfcImp.length!==13) errors.push('RFC debe tener 12 o 13 caracteres (tiene '+rfcImp.length+')');
-        if(nssImp && (nssImp.length!==11 || !/^\d+$/.test(nssImp))) errors.push('NSS debe tener 11 dígitos numéricos');
+        const curpOk=!curpImp||curpImp.length===18;
+        const rfcOk=!rfcImp||rfcImp.length===12||rfcImp.length===13;
+        const nssOk=!nssImp||(nssImp.length===11&&/^\d+$/.test(nssImp));
+        if(!curpOk) errors.push('CURP debe tener 18 caracteres (tiene '+curpImp.length+')');
+        if(!rfcOk) errors.push('RFC debe tener 12 o 13 caracteres (tiene '+rfcImp.length+')');
+        if(!nssOk) errors.push('NSS debe tener 11 dígitos numéricos');
         const estadoRaw=get(colIdx.estado);
         const estado=/baja/i.test(estadoRaw)?'Baja':'Activo';
         const campos_extra={};
         customIdx.forEach(cf=>{ const v=get(cf.idx); if(v) campos_extra[cf.key]=v; });
         _impColabRows.push({
-          _row:i+1,_errors:errors,
+          _row:i+1,_errors:errors,_curpOk:curpOk,_rfcOk:rfcOk,_nssOk:nssOk,
           numero_colaborador:get(colIdx.numero_colaborador)||null,
           nombre, puesto:get(colIdx.puesto)||null, proyecto:get(colIdx.proyecto)||null, departamento:get(colIdx.departamento)||null, razon_social:get(colIdx.razon_social)||null,
           fecha_ingreso:normFecha(r[colIdx.fecha_ingreso])||null, estado,
@@ -12652,7 +12655,8 @@ function _impColabRenderPreview(empId){
     +(errR.length?`&nbsp;&nbsp;<span style="color:var(--red)"><i class="fa fa-exclamation-circle"></i> ${errR.length} con errores</span>`:'');
   const thead=document.querySelector('#imp-colab-table thead');
   const tbody=document.querySelector('#imp-colab-table tbody');
-  thead.innerHTML=`<tr>${['#','No. Colab.','Nombre','Puesto','Proyecto','Departamento','Fecha ingreso','Estado','Status'].map(h=>`<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">${h}</th>`).join('')}</tr>`;
+  thead.innerHTML=`<tr>${['#','No. Colab.','Nombre','CURP','RFC','NSS','Puesto','Proyecto','Departamento','Fecha ingreso','Estado','Status'].map(h=>`<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">${h}</th>`).join('')}</tr>`;
+  const badCell='background:rgba(239,68,68,.15);color:var(--red);font-weight:600;border-radius:4px';
   tbody.innerHTML=_impColabRows.map(r=>{
     const isOk=r._errors.length===0;
     const bg=isOk?'':'background:rgba(239,68,68,.07)';
@@ -12663,6 +12667,9 @@ function _impColabRenderPreview(empId){
       <td style="padding:5px 8px;color:var(--text3)">${r._row}</td>
       <td style="padding:5px 8px">${_esc(r.numero_colaborador)||'—'}</td>
       <td style="padding:5px 8px">${_esc(r.nombre)||'—'}</td>
+      <td style="padding:5px 8px;${r._curpOk?'':badCell}" title="${r._curpOk?'':'CURP inválido: debe tener 18 caracteres'}">${_esc(r.curp)||'—'}</td>
+      <td style="padding:5px 8px;${r._rfcOk?'':badCell}" title="${r._rfcOk?'':'RFC inválido: debe tener 12 o 13 caracteres'}">${_esc(r.rfc)||'—'}</td>
+      <td style="padding:5px 8px;${r._nssOk?'':badCell}" title="${r._nssOk?'':'NSS inválido: debe tener 11 dígitos numéricos'}">${_esc(r.nss)||'—'}</td>
       <td style="padding:5px 8px">${_esc(r.puesto)||'—'}</td>
       <td style="padding:5px 8px">${_esc(r.proyecto)||'—'}</td>
       <td style="padding:5px 8px">${_esc(r.departamento)||'—'}</td>

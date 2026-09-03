@@ -15028,7 +15028,7 @@ function _pfRenderTabla(){
   if(!wrap||!empId) return;
   const mfP=_mfGet('pf-flt-proy'), mfD=_mfGet('pf-flt-dep');
   const _isCoord=currentUserData?.rol==='coordinador';
-  const todosPerfiles=DB.perfilesPuesto.filter(p=>p.empresa_id===empId&&(_isCoord?_coordAssigned(p):true));
+  const todosPerfiles=DB.perfilesPuesto.filter(p=>p.empresa_id===empId);
   let perfiles=todosPerfiles.filter(p=>{
     if(mfP&&!mfP.has(p.proyecto||'')) return false;
     if(mfD&&!mfD.has(p.departamento||'')) return false;
@@ -16754,8 +16754,7 @@ async function descargarTodosPerfilesPDF(empId){
   if(typeof JSZip==='undefined'){showToast('JSZip no disponible','err');return;}
   if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
   const emp=DB.empresas.find(e=>e.id===empId)||{};
-  const _isCoord=currentUserData?.rol==='coordinador';
-  const perfiles=DB.perfilesPuesto.filter(p=>p.empresa_id===empId&&(_isCoord?_coordAssigned(p):true));
+  const perfiles=DB.perfilesPuesto.filter(p=>p.empresa_id===empId);
   const mfP=_mfGet('pf-flt-proy'),mfD=_mfGet('pf-flt-dep');
   const perfilesFiltrados=perfiles.filter(p=>{
     if(mfP&&!mfP.has(p.proyecto||''))return false;

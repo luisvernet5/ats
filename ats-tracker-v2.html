@@ -11604,6 +11604,7 @@ function exportContratados(){
    "Base de datos de personal" de abajo, que sigue desactivado)
    ============================================================ */
 let _persOpenEmpId=null,_persQ='',_persLoaded=false,_persSearchTimer=null;
+let _persFiltRazon='',_persFiltProyecto='',_persFiltDepto='',_persFiltFechaDesde='',_persFiltFechaHasta='',_persFiltEstado='';
 
 async function renderPersonal(){
   const page=document.getElementById('page-personal'); if(!page) return;
@@ -11655,9 +11656,28 @@ function _persColabList(empId){
   const q=_persQ.trim().toLowerCase();
   let list=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId);
   if(q) list=list.filter(c=>(c.nombre||'').toLowerCase().includes(q)||(c.puesto||'').toLowerCase().includes(q)||(c.numero_colaborador||'').toLowerCase().includes(q));
+  if(_persFiltRazon) list=list.filter(c=>(c.razon_social||'')===_persFiltRazon);
+  if(_persFiltProyecto) list=list.filter(c=>(c.proyecto||'')===_persFiltProyecto);
+  if(_persFiltDepto) list=list.filter(c=>(c.departamento||'')===_persFiltDepto);
+  if(_persFiltEstado) list=list.filter(c=>(c.estado||'Activo')===_persFiltEstado);
+  if(_persFiltFechaDesde) list=list.filter(c=>(c.fecha_ingreso||'')>=_persFiltFechaDesde);
+  if(_persFiltFechaHasta) list=list.filter(c=>(c.fecha_ingreso||'')<=_persFiltFechaHasta);
   return list.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
 }
 function _persSearchDebounce(empId){clearTimeout(_persSearchTimer);_persSearchTimer=setTimeout(()=>_persRenderDetalle(empId),220);}
+function _persApplyFilters(empId){
+  _persFiltRazon=document.getElementById('pers-flt-razon')?.value||'';
+  _persFiltProyecto=document.getElementById('pers-flt-proyecto')?.value||'';
+  _persFiltDepto=document.getElementById('pers-flt-depto')?.value||'';
+  _persFiltEstado=document.getElementById('pers-flt-estado')?.value||'';
+  _persFiltFechaDesde=document.getElementById('pers-flt-desde')?.value||'';
+  _persFiltFechaHasta=document.getElementById('pers-flt-hasta')?.value||'';
+  _persRenderDetalle(empId);
+}
+function _persLimpiarFiltros(empId){
+  _persFiltRazon='';_persFiltProyecto='';_persFiltDepto='';_persFiltEstado='';_persFiltFechaDesde='';_persFiltFechaHasta='';
+  _persRenderDetalle(empId);
+}
 
 function _persRenderDetalle(empId){
   const page=document.getElementById('page-personal'); if(!page) return;
@@ -11676,6 +11696,7 @@ function _persRenderDetalle(empId){
     <td>${_esc(c.puesto||'—')}</td>
     <td>${c.fecha_ingreso?fmt(c.fecha_ingreso):'—'}</td>
     <td style="font-size:12px;color:var(--text2)">${_esc(emp.nombre||'—')}</td>
+    <td style="font-size:12px;color:var(--text2)">${_esc(c.razon_social||'—')}</td>
     <td style="font-size:12px;color:var(--text2)">${_esc(c.proyecto||'—')}</td>
     <td><span class="badge ${c.estado==='Baja'?'br':'bg'}">${_esc(c.estado||'Activo')}</span></td>
     ${camposCustom.map(cf=>`<td style="font-size:12px;color:var(--text2)">${_esc((c.campos_extra||{})[cf.key]||'—')}</td>`).join('')}
@@ -11696,13 +11717,35 @@ function _persRenderDetalle(empId){
       <button class="btn btn-green btn-sm" onclick="personalExportarExcel('${empId}')"><i class="fa fa-file-excel"></i> Exportar</button>
       <button class="btn btn-primary btn-sm" onclick="abrirColaboradorModal('${empId}')"><i class="fa fa-user-plus"></i> Agregar colaborador</button>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <select id="pers-flt-razon" onchange="_persApplyFilters('${empId}')" style="width:auto;min-width:150px">
+        <option value="">Razón social: todas</option>
+        ${(emp.razones_sociales||[]).map(r=>`<option value="${_esc(r)}" ${_persFiltRazon===r?'selected':''}>${_esc(r)}</option>`).join('')}
+      </select>
+      <select id="pers-flt-proyecto" onchange="_persApplyFilters('${empId}')" style="width:auto;min-width:140px">
+        <option value="">Proyecto: todos</option>
+        ${(emp.proyectos||[]).map(p=>`<option value="${_esc(p)}" ${_persFiltProyecto===p?'selected':''}>${_esc(p)}</option>`).join('')}
+      </select>
+      <select id="pers-flt-depto" onchange="_persApplyFilters('${empId}')" style="width:auto;min-width:150px">
+        <option value="">Departamento: todos</option>
+        ${(emp.departamentos||[]).map(d=>`<option value="${_esc(d)}" ${_persFiltDepto===d?'selected':''}>${_esc(d)}</option>`).join('')}
+      </select>
+      <input type="date" id="pers-flt-desde" value="${_persFiltFechaDesde}" onchange="_persApplyFilters('${empId}')" title="Fecha de alta — desde" style="width:auto">
+      <input type="date" id="pers-flt-hasta" value="${_persFiltFechaHasta}" onchange="_persApplyFilters('${empId}')" title="Fecha de alta — hasta" style="width:auto">
+      <select id="pers-flt-estado" onchange="_persApplyFilters('${empId}')" style="width:auto;min-width:110px">
+        <option value="">Estado: todos</option>
+        <option value="Activo" ${_persFiltEstado==='Activo'?'selected':''}>Activo</option>
+        <option value="Baja" ${_persFiltEstado==='Baja'?'selected':''}>Baja</option>
+      </select>
+      ${(_persFiltRazon||_persFiltProyecto||_persFiltDepto||_persFiltFechaDesde||_persFiltFechaHasta||_persFiltEstado)?`<button class="btn btn-ghost btn-sm" onclick="_persLimpiarFiltros('${empId}')"><i class="fa fa-times"></i> Limpiar filtros</button>`:''}
+    </div>
     <div class="table-wrap"><table>
       <thead><tr>
-        <th style="width:36px;text-align:center">#</th><th>Núm. empleado</th><th>Nombre</th><th>CURP</th><th>RFC</th><th>NSS</th><th>Departamento</th><th>Puesto</th><th>Fecha de alta</th><th>Empresa</th><th>Proyecto</th><th>Estado</th>
+        <th style="width:36px;text-align:center">#</th><th>Núm. empleado</th><th>Nombre</th><th>CURP</th><th>RFC</th><th>NSS</th><th>Departamento</th><th>Puesto</th><th>Fecha de alta</th><th>Empresa</th><th>Razón social</th><th>Proyecto</th><th>Estado</th>
         ${camposCustom.map(cf=>`<th>${_esc(cf.label)}</th>`).join('')}
         <th></th>
       </tr></thead>
-      <tbody>${rows||`<tr><td colspan="${13+camposCustom.length}" style="text-align:center;color:var(--text3);padding:32px">Sin colaboradores registrados — agrega el primero</td></tr>`}</tbody>
+      <tbody>${rows||`<tr><td colspan="${14+camposCustom.length}" style="text-align:center;color:var(--text3);padding:32px">Sin colaboradores registrados — agrega el primero</td></tr>`}</tbody>
     </table></div>
     <div style="font-size:12px;color:var(--text3);padding:8px 0">Mostrando <strong>${lista.length}</strong> registros</div>
   </div>`;

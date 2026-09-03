@@ -2759,6 +2759,28 @@ function adaptUIToRole() {
     }
   }
 
+  // EXPEDIENTES (documentos por colaborador) — justo debajo de Administrador de personal
+  if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-expedientes')){
+    const navEl = document.querySelector('.sb-nav');
+    if(navEl){
+      const expItem = document.createElement('div');
+      expItem.className = 'nav-item';
+      expItem.id = 'nav-expedientes';
+      expItem.dataset.tooltip = 'Expedientes';
+      expItem.innerHTML = '<i class="fa fa-folder-open"></i><span class="nav-item-text"> Expedientes</span>';
+      expItem.setAttribute('onclick', "showPage('expedientes')");
+      const anchor = document.getElementById('nav-personal');
+      if(anchor) anchor.parentNode.insertBefore(expItem, anchor.nextSibling);
+      else navEl.appendChild(expItem);
+    }
+    if(!document.getElementById('page-expedientes')){
+      const pg=document.createElement('div');
+      pg.className='page';
+      pg.id='page-expedientes';
+      document.querySelector('.main').appendChild(pg);
+    }
+  }
+
   // Perfiles de puesto — visible para admin, reclutador y rh_cliente
   if(!document.getElementById('nav-perfiles')){
     const navEl = document.querySelector('.sb-nav');
@@ -3408,6 +3430,7 @@ async function doLogout() {
   DB._candidatosFull=false; DB._vacantesFull=false;
   DB._evaluacionesFull=false; DB._perfilesFull=false;
   DB.colaboradores=[]; _persLoaded=false; _persOpenEmpId=null; _persQ='';
+  _expOpenEmpId=null; _expQ='';
   document.getElementById('auth-screen').style.display = 'flex';
   const loginBtn = document.getElementById('login-btn');
   if(loginBtn){ loginBtn.disabled = false; loginBtn.textContent = 'Entrar'; }
@@ -3600,6 +3623,7 @@ const PERMISOS_SECCIONES=[
   {key:'desercion',              label:'Deserción',               grupo:'Análisis',   icon:'fa-door-open'},
   {key:'garantias',              label:'Garantías',               grupo:'Gestión',    icon:'fa-shield-alt'},
   {key:'personal',               label:'Administrador de personal', grupo:'Gestión',  icon:'fa-id-badge'},
+  {key:'expedientes',            label:'Expedientes',             grupo:'Gestión',    icon:'fa-folder-open'},
   {key:'ese',                    label:'ESE',                     grupo:'Gestión',    icon:'fa-file-alt'},
   {key:'candidatos-descartados', navId:'descartados',           label:'Candidatos descartados',  grupo:'Gestión',    icon:'fa-user-times'},
   {key:'vacantes-eliminadas',    label:'Vacantes eliminadas',     grupo:'Gestión',    icon:'fa-briefcase'},
@@ -3835,7 +3859,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',kpis:'KPIs',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount',perfiles:'Perfiles de puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal',personal:'Administrador de personal',procedimientos:'Procedimientos'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',kpis:'KPIs',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount',perfiles:'Perfiles de puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal',personal:'Administrador de personal',expedientes:'Expedientes',procedimientos:'Procedimientos'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);
@@ -3871,6 +3895,7 @@ async function renderPage(p){
   if(p==='perfiles-eliminados'){await _ensurePerfilesPuesto();renderPerfilesEliminados();return;}
   // if(p==='basedatos')renderBaseDatos(); // desactivado temporalmente
   if(p==='personal'){renderPersonal();return;}
+  if(p==='expedientes'){renderExpedientes();return;}
 }
 
 /* ============================================================
@@ -11658,6 +11683,233 @@ function _persRenderDetalle(empId){
   </div>`;
 }
 
+/* ============================================================
+   EXPEDIENTES DE COLABORADORES
+   ============================================================ */
+let _expOpenEmpId=null,_expQ='',_expSearchTimer=null,_expBucketReady=false,_expDocsCache=[];
+const EXPEDIENTE_CATEGORIAS=['INE / Identificación oficial','CURP','RFC','NSS / Alta IMSS','Acta de nacimiento','Comprobante de domicilio','Comprobante de estudios','Contrato','Fotografía','Certificado médico','Otro'];
+
+async function _expEnsureBucket(){
+  if(_expBucketReady) return;
+  await sbClient.storage.createBucket('expedientes',{public:true,fileSizeLimit:20971520}).catch(()=>{});
+  _expBucketReady=true;
+}
+
+async function renderExpedientes(){
+  const page=document.getElementById('page-expedientes'); if(!page) return;
+  if(!_persLoaded){
+    page.innerHTML='<div style="padding:60px;text-align:center;color:var(--text3)"><i class="fa fa-spinner fa-spin" style="font-size:22px;margin-bottom:12px;display:block"></i>Cargando...</div>';
+    if(!SANDBOX_MODE){
+      try{
+        const {data,error}=await sbClient.from('colaboradores').select('*');
+        if(error) throw new Error(error.message);
+        DB.colaboradores=data||[];
+      }catch(e){
+        page.innerHTML=`<div style="padding:40px;text-align:center;color:var(--red)"><i class="fa fa-exclamation-triangle"></i> Error al cargar: ${e.message}</div>`;
+        return;
+      }
+    }
+    _persLoaded=true;
+  }
+  if(_expOpenEmpId){_expRenderDetalle(_expOpenEmpId);return;}
+  _expRenderDashboard();
+}
+function _expRenderDashboard(){
+  const page=document.getElementById('page-expedientes'); if(!page) return;
+  const cards=DB.empresas.map(emp=>{
+    const color=emp.color||'#2AAADE';
+    const n=(DB.colaboradores||[]).filter(c=>c.empresa_id===emp.id).length;
+    return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px;transition:box-shadow .15s" onclick="expOpenEmpresa('${emp.id}')" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,.12)'" onmouseleave="this.style.boxShadow=''">
+      <div style="display:flex;align-items:center;gap:12px">
+        ${emp.logo?`<img src="${emp.logo}" style="width:40px;height:40px;object-fit:contain;border-radius:8px;flex-shrink:0">`:`<div style="width:40px;height:40px;flex-shrink:0;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-folder-open" style="color:${color};font-size:18px"></i></div>`}
+        <div style="min-width:0">
+          <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(emp.nombre)}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">${n} colaborador${n!==1?'es':''}</div>
+        </div>
+      </div>
+      <div style="height:3px;border-radius:2px;background:${color}33;overflow:hidden"><div style="height:100%;width:100%;background:${color};border-radius:2px"></div></div>
+    </div>`;
+  }).join('');
+  page.innerHTML=`<div style="padding:24px 28px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">
+      ${cards||'<div style="color:var(--text3);font-size:13px;grid-column:1/-1;text-align:center;padding:40px"><i class="fa fa-building" style="font-size:28px;display:block;margin-bottom:12px;opacity:.4"></i>Sin empresas registradas</div>'}
+    </div>
+  </div>`;
+}
+function expOpenEmpresa(empId){_expQ='';_expOpenEmpId=empId;renderExpedientes();}
+function expBack(){_expQ='';_expOpenEmpId=null;renderExpedientes();}
+
+function _expColabList(empId){
+  const q=_expQ.trim().toLowerCase();
+  let list=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId);
+  if(q) list=list.filter(c=>(c.nombre||'').toLowerCase().includes(q)||(c.puesto||'').toLowerCase().includes(q)||(c.numero_colaborador||'').toLowerCase().includes(q));
+  return list.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
+}
+function _expSearchDebounce(empId){clearTimeout(_expSearchTimer);_expSearchTimer=setTimeout(()=>_expRenderDetalle(empId),220);}
+
+function _expRenderDetalle(empId){
+  const page=document.getElementById('page-expedientes'); if(!page) return;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const color=emp.color||'#2AAADE';
+  const lista=_expColabList(empId);
+  const cards=lista.map(c=>{
+    const ini=(c.nombre||'?').trim().split(/\s+/).map(n=>n[0]).join('').substr(0,2).toUpperCase();
+    return`<div class="card" style="cursor:pointer;display:flex;align-items:center;gap:12px" onclick="abrirExpedienteColaborador('${c.id}','${empId}')">
+      <div style="width:38px;height:38px;border-radius:50%;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">${ini||'?'}</div>
+      <div style="min-width:0;flex:1">
+        <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(c.nombre||'—')}</div>
+        <div style="font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(c.puesto||'Sin puesto')}${c.numero_colaborador?' · #'+_esc(c.numero_colaborador):''}</div>
+      </div>
+      <i class="fa fa-chevron-right" style="color:var(--text3);font-size:12px;flex-shrink:0"></i>
+    </div>`;
+  }).join('');
+  page.innerHTML=`<div style="padding:24px 28px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="expBack()"><i class="fa fa-arrow-left"></i> Empresas</button>
+      ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
+      <span style="font-size:16px;font-weight:700">${_esc(emp.nombre||'')}</span>
+      <span style="flex:1"></span>
+      <input type="text" placeholder="Buscar nombre, puesto o número..." value="${_esc(_expQ)}" oninput="_expQ=this.value;_expSearchDebounce('${empId}')" style="width:240px">
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">
+      ${cards||'<div style="color:var(--text3);font-size:13px;grid-column:1/-1;text-align:center;padding:40px">Sin colaboradores registrados en esta empresa. Agrégalos desde "Administrador de personal".</div>'}
+    </div>
+  </div>`;
+}
+
+function _expFmtSize(bytes){
+  if(!bytes) return '';
+  if(bytes<1024) return bytes+' B';
+  if(bytes<1024*1024) return (bytes/1024).toFixed(0)+' KB';
+  return (bytes/(1024*1024)).toFixed(1)+' MB';
+}
+function _expIconoArchivo(nombre){
+  const ext=(nombre||'').split('.').pop().toLowerCase();
+  if(['jpg','jpeg','png','gif','webp'].includes(ext)) return 'fa-file-image';
+  if(ext==='pdf') return 'fa-file-pdf';
+  if(['doc','docx'].includes(ext)) return 'fa-file-word';
+  if(['xls','xlsx'].includes(ext)) return 'fa-file-excel';
+  return 'fa-file';
+}
+
+async function abrirExpedienteColaborador(colabId,empId){
+  const c=(DB.colaboradores||[]).find(x=>x.id===colabId); if(!c)return;
+  document.getElementById('modal-expediente')?.remove();
+  const modal=document.createElement('div');
+  modal.id='modal-expediente';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`
+    <div style="background:var(--surface);border-radius:12px;width:720px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 32px #0004">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <div>
+          <div style="font-weight:700;font-size:16px">Expediente — ${_esc(c.nombre||'')}</div>
+          <div style="font-size:12px;color:var(--text3)">${_esc(c.puesto||'Sin puesto')}${c.numero_colaborador?' · #'+_esc(c.numero_colaborador):''}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-expediente').remove()"><i class="fa fa-times"></i></button>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:14px;background:var(--surface2);border-radius:10px;margin-bottom:16px">
+        <div class="fg" style="flex:1;min-width:170px;margin-bottom:0">
+          <label>Categoría</label>
+          <select id="exp-doc-categoria">${EXPEDIENTE_CATEGORIAS.map(cat=>`<option value="${_esc(cat)}">${_esc(cat)}</option>`).join('')}</select>
+        </div>
+        <div class="fg" style="flex:1;min-width:180px;margin-bottom:0">
+          <label>Archivo</label>
+          <input type="file" id="exp-doc-file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
+        </div>
+        <button class="btn btn-primary btn-sm" id="btn-exp-subir" onclick="subirDocumentoExpediente('${colabId}','${empId}')"><i class="fa fa-upload"></i> Subir</button>
+      </div>
+      <div id="exp-docs-list"><div style="text-align:center;color:var(--text3);padding:20px"><i class="fa fa-spinner fa-spin"></i> Cargando documentos...</div></div>
+    </div>`;
+  document.body.appendChild(modal);
+  await _expCargarDocumentos(colabId);
+}
+
+async function _expCargarDocumentos(colabId){
+  const wrap=document.getElementById('exp-docs-list'); if(!wrap) return;
+  if(SANDBOX_MODE){
+    wrap.innerHTML='<div style="text-align:center;color:var(--text3);padding:20px;font-size:13px">La carga de documentos no está disponible en modo de prueba.</div>';
+    return;
+  }
+  try{
+    const {data,error}=await sbClient.from('expediente_documentos').select('*').eq('colaborador_id',colabId).order('created_at',{ascending:false});
+    if(error) throw new Error(error.message);
+    _expDocsCache=data||[];
+  }catch(e){
+    wrap.innerHTML=`<div style="text-align:center;color:var(--red);padding:16px;font-size:13px"><i class="fa fa-exclamation-triangle"></i> Error al cargar documentos: ${e.message}</div>`;
+    return;
+  }
+  _expRenderDocsList(colabId);
+}
+function _expRenderDocsList(colabId){
+  const wrap=document.getElementById('exp-docs-list'); if(!wrap) return;
+  if(!_expDocsCache.length){
+    wrap.innerHTML='<div style="text-align:center;color:var(--text3);padding:24px;font-size:13px">Sin documentos subidos todavía.</div>';
+    return;
+  }
+  wrap.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">${_expDocsCache.map(d=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px">
+      <i class="fa ${_expIconoArchivo(d.nombre)}" style="font-size:18px;color:var(--accent);flex-shrink:0"></i>
+      <div style="min-width:0;flex:1">
+        <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(d.nombre||'')}</div>
+        <div style="font-size:11px;color:var(--text3)">${_esc(d.categoria||'Sin categoría')}${d.created_at?' · '+new Date(d.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}):''}${_expFmtSize(d.tamano_bytes)?' · '+_expFmtSize(d.tamano_bytes):''}</div>
+      </div>
+      <a class="btn btn-ghost btn-sm" href="${d.url}" target="_blank" rel="noopener" title="Ver / descargar"><i class="fa fa-eye"></i></a>
+      <button class="btn btn-danger btn-sm" onclick="eliminarDocumentoExpediente('${d.id}','${colabId}')" title="Eliminar"><i class="fa fa-trash"></i></button>
+    </div>`).join('')}</div>`;
+}
+
+async function subirDocumentoExpediente(colabId,empId){
+  if(SANDBOX_MODE){showToast('La carga de documentos no está disponible en modo de prueba','err');return;}
+  const fileInput=document.getElementById('exp-doc-file');
+  const file=fileInput?.files?.[0];
+  if(!file){showToast('Selecciona un archivo','err');return;}
+  const categoria=document.getElementById('exp-doc-categoria').value;
+  const btn=document.getElementById('btn-exp-subir');
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Subiendo...';}
+  try{
+    await _expEnsureBucket();
+    const docId='exp-'+Date.now()+'-'+Math.random().toString(36).substr(2,6);
+    const ext=(file.name.split('.').pop()||'bin');
+    const path=`${empId}/${colabId}/${docId}.${ext}`;
+    const {error:upErr}=await sbClient.storage.from('expedientes').upload(path,file,{upsert:true});
+    if(upErr) throw new Error(upErr.message);
+    const {data:urlData}=sbClient.storage.from('expedientes').getPublicUrl(path);
+    const registro={
+      id:docId, colaborador_id:colabId, empresa_id:empId,
+      nombre:file.name, categoria, storage_path:path, url:urlData.publicUrl,
+      tamano_bytes:file.size, subido_por:currentUserData?.nombre||currentUser?.email||null,
+      created_at:new Date().toISOString(),
+    };
+    const {error:insErr}=await sbClient.from('expediente_documentos').insert(registro);
+    if(insErr) throw new Error(insErr.message);
+    const c=(DB.colaboradores||[]).find(x=>x.id===colabId);
+    await logActivity('Subir documento de expediente','colaboradores',colabId,`${file.name} (${categoria}) — ${c?.nombre||colabId}`);
+    showToast('Documento subido ✓');
+    fileInput.value='';
+    await _expCargarDocumentos(colabId);
+  }catch(e){
+    showToast('Error al subir: '+e.message,'err');
+  }finally{
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="fa fa-upload"></i> Subir';}
+  }
+}
+
+async function eliminarDocumentoExpediente(docId,colabId){
+  if(!confirm('¿Eliminar este documento del expediente?'))return;
+  const doc=_expDocsCache.find(d=>d.id===docId);
+  try{
+    if(doc?.storage_path) await sbClient.storage.from('expedientes').remove([doc.storage_path]);
+    const {error}=await sbClient.from('expediente_documentos').delete().eq('id',docId);
+    if(error) throw new Error(error.message);
+    const c=(DB.colaboradores||[]).find(x=>x.id===colabId);
+    await logActivity('Eliminar documento de expediente','colaboradores',colabId,`${doc?.nombre||docId} — ${c?.nombre||colabId}`);
+    showToast('Documento eliminado ✓');
+    await _expCargarDocumentos(colabId);
+  }catch(e){
+    showToast('Error: '+e.message,'err');
+  }
+}
+
 const _BANCOS_MX=['BBVA','Citibanamex','Santander','Banorte','HSBC','Scotiabank','Inbursa','Banco Azteca','BanBajío','Banregio','Afirme','Multiva','Mifel','Invex','Banco del Bienestar','Bancoppel','Compartamos Banco','Nu México','STP'];
 function _colabBancoToggle(){
   const sel=document.getElementById('colab-banco-sel');
@@ -12991,6 +13243,7 @@ const RESPALDO_TABLAS = [
   'doc_plantillas','doc_candidato','perfiles_puesto',
   'evaluaciones','evaluaciones_enviadas','procesos_evaluacion','procesos_enviados',
   'kpis','procedimientos','coordinadores','colaboradores','permisos_usuarios','activity_log',
+  'expediente_documentos',
 ];
 
 async function exportarRespaldo(){

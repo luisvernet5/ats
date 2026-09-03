@@ -6278,11 +6278,12 @@ function getChain(id){
 function renderDashboard(){
   const recId = currentUserData?.rol === 'reclutador' ? currentUserData?.reclutador_id : null;
   const empId = _userEmpresaId();
-  const vacantes = recId
+  let vacantes = recId
     ? DB.vacantes.filter(v=>v.reclutador_id===recId)
     : empId
       ? DB.vacantes.filter(v=>v.empresa_id===empId)
       : DB.vacantes;
+  if(currentUserData?.rol==='coordinador') vacantes = vacantes.filter(_coordVacanteMatch);
   const candidatos = recId || empId
     ? DB.candidatos.filter(c=>vacantes.find(v=>v.id===c.vacante_id))
     : DB.candidatos;
@@ -7475,6 +7476,16 @@ async function ejecutarDescarteCand(){
    ============================================================ */
 let _descFiltros={q:'',empId:'',recId:'',proyecto:'',departamento:'',desde:'',hasta:''};
 
+function _descartadosBase(){
+  const recId = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
+  const empId = _userEmpresaId();
+  let lista=DB.candidatos.filter(_esCandDescartado)
+    .sort((a,b)=>((b.fecha_descarte||b.fecha_salida||'')).localeCompare((a.fecha_descarte||a.fecha_salida||'')));
+  if(recId) lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};return v.reclutador_id===recId;});
+  if(empId) lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};return v.empresa_id===empId;});
+  if(currentUserData?.rol==='coordinador') lista=lista.filter(c=>_coordVacanteMatch(DB.vacantes.find(x=>x.id===c.vacante_id)||{}));
+  return lista;
+}
 function renderCandidatosDescartados(){
   const pg=document.getElementById('page-candidatos-descartados');if(!pg)return;
   if(!document.getElementById('desc-fbar')){
@@ -7494,9 +7505,10 @@ function renderCandidatosDescartados(){
       <div id="desc-table-wrap" class="table-wrap"></div>
       <div id="desc-count" style="font-size:12px;color:var(--text3);padding:8px 0;"></div>`;
   }
-  const lista=DB.candidatos.filter(_esCandDescartado)
-    .sort((a,b)=>((b.fecha_descarte||b.fecha_salida||'')).localeCompare((a.fecha_descarte||a.fecha_salida||'')));
-  _mfPopulate('desc-emp',DB.empresas.map(e=>({value:e.id,label:e.nombre})),'Empresa');
+  const lista=_descartadosBase();
+  const _empIdDesc=_userEmpresaId();
+  const _empOptsDesc=_empIdDesc?DB.empresas.filter(e=>e.id===_empIdDesc):DB.empresas;
+  _mfPopulate('desc-emp',_empOptsDesc.map(e=>({value:e.id,label:e.nombre})),'Empresa');
   _mfPopulate('desc-rec',DB.reclutadores.map(r=>({value:r.id,label:r.nombre})),'Reclutador');
   const dProy=[...new Set(lista.map(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return v?.proyecto||'';}).filter(Boolean))];
   _mfPopulate('desc-proy',dProy.map(p=>({value:p,label:p})),'Proyecto');
@@ -7509,8 +7521,7 @@ function _filtrarDescartados(){
   const q=(document.getElementById('desc-q')||{}).value||'';
   const desde=(document.getElementById('desc-desde')||{}).value||'';
   const hasta=(document.getElementById('desc-hasta')||{}).value||'';
-  let lista=DB.candidatos.filter(_esCandDescartado)
-    .sort((a,b)=>((b.fecha_descarte||b.fecha_salida||'')).localeCompare((a.fecha_descarte||a.fecha_salida||'')));
+  let lista=_descartadosBase();
   if(q)lista=lista.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
   const mfDescEmp=_mfGet('desc-emp');if(mfDescEmp){const vids=DB.vacantes.filter(v=>mfDescEmp.has(v.empresa_id||'')).map(v=>v.id);lista=lista.filter(c=>vids.includes(c.vacante_id));}
   const mfDescRec=_mfGet('desc-rec');if(mfDescRec)lista=lista.filter(c=>mfDescRec.has(c.reclutador_id||''));
@@ -7531,8 +7542,7 @@ function exportDescartadosExcel(){
   const q=(document.getElementById('desc-q')||{}).value||'';
   const desde=(document.getElementById('desc-desde')||{}).value||'';
   const hasta=(document.getElementById('desc-hasta')||{}).value||'';
-  let lista=DB.candidatos.filter(_esCandDescartado)
-    .sort((a,b)=>((b.fecha_descarte||b.fecha_salida||'')).localeCompare((a.fecha_descarte||a.fecha_salida||'')));
+  let lista=_descartadosBase();
   if(q)lista=lista.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
   const mfDescEmp=_mfGet('desc-emp');if(mfDescEmp){const vids=DB.vacantes.filter(v=>mfDescEmp.has(v.empresa_id||'')).map(v=>v.id);lista=lista.filter(c=>vids.includes(c.vacante_id));}
   const mfDescRec=_mfGet('desc-rec');if(mfDescRec)lista=lista.filter(c=>mfDescRec.has(c.reclutador_id||''));
@@ -11312,6 +11322,7 @@ function renderContratados(){
   let candsColocados = DB.candidatos.filter(c=>!c.descartado && esColocado(c));
   if(recIdRole) candsColocados = candsColocados.filter(c=>{ const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{}; return v.reclutador_id===recIdRole; });
   if(empIdC) candsColocados = candsColocados.filter(c=>{ const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{}; return v.empresa_id===empIdC; });
+  if(currentUserData?.rol==='coordinador') candsColocados = candsColocados.filter(c=>_coordVacanteMatch(DB.vacantes.find(x=>x.id===c.vacante_id)||{}));
 
   const ctEmpOptsList = [...new Set(candsColocados.map(c=>{ const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{}; return v.empresa_id; }).filter(Boolean))]
     .map(eid=>{ const e=DB.empresas.find(x=>x.id===eid)||{}; return {value:eid,label:e.nombre||eid}; })
@@ -15619,8 +15630,12 @@ let _kpiEmpleadoKeys=[];
 function renderKpis(){
   const page=document.getElementById('page-kpis');
   if(!page)return;
-  const cards=DB.empresas.map(emp=>{
-    const count=(DB.kpis||[]).filter(k=>k.empresa_id===emp.id).length;
+  const _empIdKpi=_userEmpresaId();
+  const empresasKpi=_empIdKpi?DB.empresas.filter(e=>e.id===_empIdKpi):DB.empresas;
+  const cards=empresasKpi.map(emp=>{
+    let cedulasEmp=(DB.kpis||[]).filter(k=>k.empresa_id===emp.id);
+    if(currentUserData?.rol==='coordinador') cedulasEmp=cedulasEmp.filter(_coordVacanteMatch);
+    const count=cedulasEmp.length;
     const color=emp.color||'#2AAADE';
     return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px" onclick="renderKpisEmpresa('${emp.id}')">
       <div style="display:flex;align-items:center;gap:10px">
@@ -15652,7 +15667,8 @@ function _kpiRenderLista(){
   if(!page||!_kpiCurrentEmpId)return;
   const empId=_kpiCurrentEmpId;
   const emp=DB.empresas.find(e=>e.id===empId)||{};
-  const cedulas=(DB.kpis||[]).filter(k=>k.empresa_id===empId);
+  let cedulas=(DB.kpis||[]).filter(k=>k.empresa_id===empId);
+  if(currentUserData?.rol==='coordinador') cedulas=cedulas.filter(_coordVacanteMatch);
   const color=emp.color||'#2AAADE';
 
   // Agrupar por empleado_nombre + puesto

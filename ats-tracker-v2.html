@@ -4045,6 +4045,7 @@ function renderCapacitacion(){
 async function capacitacionOpenEmpresa(empId){
   _capOpenEmpId=empId;
   _capVista='cursos';
+  _capVencerFiltro='todos'; _capVencerDesde=''; _capVencerHasta='';
   const page=document.getElementById('page-capacitacion');
   if(page) page.innerHTML='<div style="padding:60px;text-align:center;color:var(--text3)"><i class="fa fa-spinner fa-spin" style="font-size:22px;margin-bottom:12px;display:block"></i>Cargando...</div>';
   if(!_persLoaded&&!SANDBOX_MODE){
@@ -4076,8 +4077,12 @@ async function _capCargarDatosEmpresa(empId){
   }catch(e){ console.warn('[Capacitación] Error al cargar:',e.message); }
 }
 const CAPACITACION_PERIODICIDADES=['Única vez','Mensual','Bimestral','Trimestral','Semestral','Anual','Bianual'];
-let _capVista='cursos'; // 'cursos' | 'matriz'
+let _capVista='cursos'; // 'cursos' | 'matriz' | 'vencer'
+let _capVencerFiltro='todos',_capVencerDesde='',_capVencerHasta='';
 function capacitacionSetVista(empId,vista){ _capVista=vista; _capRenderEmpresa(empId); }
+function _capVencerSetFiltro(empId,val){ _capVencerFiltro=val; _capRenderEmpresa(empId); }
+function _capVencerSetRango(empId,campo,val){ if(campo==='desde')_capVencerDesde=val; else _capVencerHasta=val; _capRenderEmpresa(empId); }
+function _capVencerLimpiarRango(empId){ _capVencerDesde='';_capVencerHasta=''; _capRenderEmpresa(empId); }
 function _capRenderEmpresa(empId){
   const page=document.getElementById('page-capacitacion'); if(!page) return;
   const emp=DB.empresas.find(e=>e.id===empId)||{};
@@ -4118,12 +4123,58 @@ function _capRenderEmpresa(empId){
     <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
       <button id="cap-vista-cursos" class="btn ${_capVista==='cursos'?'btn-primary':'btn-ghost'} btn-sm" onclick="capacitacionSetVista('${empId}','cursos')"><i class="fa fa-book"></i> Cursos</button>
       <button id="cap-vista-matriz" class="btn ${_capVista==='matriz'?'btn-primary':'btn-ghost'} btn-sm" onclick="capacitacionSetVista('${empId}','matriz')"><i class="fa fa-table-cells"></i> Matriz de control de capacitación</button>
+      <button id="cap-vista-vencer" class="btn ${_capVista==='vencer'?'btn-primary':'btn-ghost'} btn-sm" onclick="capacitacionSetVista('${empId}','vencer')"><i class="fa fa-triangle-exclamation"></i> Cursos por vencer</button>
     </div>
-    ${_capVista==='matriz'?_capMatrizHtml(empId):`
+    ${_capVista==='matriz'?_capMatrizHtml(empId):_capVista==='vencer'?_capVencerHtml(empId):`
     <div class="table-wrap"><table>
       <thead><tr><th>Curso</th><th>Tipo</th><th>Instructor</th><th>Fecha</th><th>Duración</th><th>Asistencia</th><th></th></tr></thead>
       <tbody>${rows||'<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:32px">Sin cursos registrados — agrega el primero</td></tr>'}</tbody>
     </table></div>`}`;
+}
+function _capVencerHtml(empId){
+  const colabById={};
+  (DB.colaboradores||[]).filter(c=>c.empresa_id===empId).forEach(c=>{colabById[c.id]=c;});
+  const cursoById={};
+  (DB.capacitacionCursos||[]).filter(c=>c.empresa_id===empId).forEach(c=>{cursoById[c.id]=c;});
+  const hoy=new Date().toISOString().slice(0,10);
+  let items=(DB.capacitacionMatriz||[]).filter(m=>m.empresa_id===empId&&m.proxima_fecha);
+  if(_capVencerFiltro==='vencidos') items=items.filter(m=>m.proxima_fecha<hoy);
+  else if(['7','30','90'].includes(_capVencerFiltro)){
+    const limite=new Date(); limite.setDate(limite.getDate()+parseInt(_capVencerFiltro,10));
+    const limiteStr=limite.toISOString().slice(0,10);
+    items=items.filter(m=>m.proxima_fecha>=hoy&&m.proxima_fecha<=limiteStr);
+  }
+  if(_capVencerDesde) items=items.filter(m=>m.proxima_fecha>=_capVencerDesde);
+  if(_capVencerHasta) items=items.filter(m=>m.proxima_fecha<=_capVencerHasta);
+  items=items.slice().sort((a,b)=>(a.proxima_fecha||'').localeCompare(b.proxima_fecha||''));
+  const rows=items.map(m=>{
+    const c=colabById[m.colaborador_id]||{};
+    const curso=cursoById[m.curso_id]||{};
+    const vencido=m.proxima_fecha<hoy;
+    return `<tr>
+      <td class="td-p">${_esc(c.nombre||'—')}</td>
+      <td style="font-size:12px;color:var(--text2)">${_esc(c.puesto||'—')}</td>
+      <td style="font-size:12px;color:var(--text2)">${_esc(curso.nombre||'—')}</td>
+      <td style="font-size:12px;color:var(--text2)">${_esc(m.periodicidad||'—')}</td>
+      <td style="font-size:12px;color:var(--text2)">${m.fecha_real?fmt(m.fecha_real):(m.fecha_programada?fmt(m.fecha_programada):'—')}</td>
+      <td style="font-size:12px;font-weight:600;color:${vencido?'#e5484d':'var(--accent)'}">${fmt(m.proxima_fecha)}${vencido?' · Vencido':''}</td>
+    </tr>`;
+  }).join('');
+  const pill=(val,label)=>`<button class="btn ${_capVencerFiltro===val?'btn-primary':'btn-ghost'} btn-sm" onclick="_capVencerSetFiltro('${empId}','${val}')">${label}</button>`;
+  return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      ${pill('todos','Todos')}
+      ${pill('vencidos','Vencidos')}
+      ${pill('7','Próximos 7 días')}
+      ${pill('30','Próximos 30 días')}
+      ${pill('90','Próximos 90 días')}
+      <input type="date" value="${_capVencerDesde}" onchange="_capVencerSetRango('${empId}','desde',this.value)" title="Desde" style="height:32px;padding:0 6px;font-size:12px;border:1px solid var(--border);border-radius:6px">
+      <input type="date" value="${_capVencerHasta}" onchange="_capVencerSetRango('${empId}','hasta',this.value)" title="Hasta" style="height:32px;padding:0 6px;font-size:12px;border:1px solid var(--border);border-radius:6px">
+      ${(_capVencerDesde||_capVencerHasta)?`<button class="btn btn-ghost btn-sm" onclick="_capVencerLimpiarRango('${empId}')">× Limpiar fechas</button>`:''}
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Colaborador</th><th>Puesto</th><th>Curso</th><th>Periodicidad</th><th>Última toma</th><th>Próxima fecha</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">No hay cursos programados en este rango</td></tr>'}</tbody>
+    </table></div>`;
 }
 function _capMatrizHtml(empId){
   const cursos=(DB.capacitacionCursos||[]).filter(c=>c.empresa_id===empId).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));

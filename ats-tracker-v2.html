@@ -899,8 +899,9 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
         <div class="fg"><label>Contacto principal</label><input id="emp-contacto" placeholder="Nombre del contacto"></div>
         <div class="fg"><label>Teléfono / Email del contacto</label><input id="emp-tel" placeholder="tel o email"></div>
       </div>
-      <div class="fr full">
+      <div class="fr">
         <div class="fg"><label>Dirección / Ciudad</label><input id="emp-dir" placeholder="Ciudad o municipio"></div>
+        <div class="fg"><label>RFC de la empresa (con homoclave)</label><input id="emp-rfc" placeholder="Para formatos DC-1/DC-2/DC-3" maxlength="13" style="text-transform:uppercase"></div>
       </div>
       <div class="fr full">
         <div class="fg"><label>Notas</label><textarea id="emp-notas" placeholder="Información relevante sobre el cliente..."></textarea></div>
@@ -4130,8 +4131,11 @@ function abrirCursoModal(empId,cursoId){
       <div class="fg"><label>Fecha de inicio</label><input type="date" id="cc-fecha-inicio" value="${curso?.fecha_inicio||''}"></div>
       <div class="fg"><label>Fecha de término</label><input type="date" id="cc-fecha-fin" value="${curso?.fecha_fin||''}"></div>
     </div>
-    <div class="fr full"><div class="fg"><label>Lugar</label><input id="cc-lugar" value="${_esc(curso?.lugar||'')}"></div></div>
-    <div class="fr full"><div class="fg"><label>Área temática / Objetivo</label><textarea id="cc-objetivo">${_esc(curso?.objetivo||'')}</textarea></div></div>
+    <div class="fr">
+      <div class="fg"><label>Lugar</label><input id="cc-lugar" value="${_esc(curso?.lugar||'')}"></div>
+      <div class="fg"><label>Área temática del curso</label><input id="cc-area-tematica" value="${_esc(curso?.area_tematica||'')}" placeholder="Para formatos DC-1/DC-2/DC-3"></div>
+    </div>
+    <div class="fr full"><div class="fg"><label>Objetivo</label><textarea id="cc-objetivo">${_esc(curso?.objetivo||'')}</textarea></div></div>
     <div class="fr full"><div class="fg"><label>Notas</label><textarea id="cc-notas">${_esc(curso?.notas||'')}</textarea></div></div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
       <button class="btn btn-ghost" onclick="document.getElementById('modal-curso-cap').remove()">Cancelar</button>
@@ -4156,6 +4160,7 @@ async function guardarCurso(){
     fecha_inicio:document.getElementById('cc-fecha-inicio').value||null,
     fecha_fin:document.getElementById('cc-fecha-fin').value||null,
     lugar:document.getElementById('cc-lugar').value.trim(),
+    area_tematica:document.getElementById('cc-area-tematica').value.trim(),
     objetivo:document.getElementById('cc-objetivo').value.trim(),
     notas:document.getElementById('cc-notas').value.trim(),
   };
@@ -4203,7 +4208,8 @@ function abrirAsistenciaCurso(cursoId){
       <td style="text-align:center"><input type="checkbox" class="asis-chk" ${a.asistio?'checked':''}></td>
       <td style="text-align:center"><input type="checkbox" class="apr-chk" ${a.aprobado?'checked':''}></td>
       <td><input type="text" class="cal-inp" value="${_esc(a.calificacion||'')}" placeholder="Calif." style="width:80px"></td>
-      <td style="text-align:center">${a.aprobado?`<button class="btn btn-ghost btn-sm" title="Descargar constancia" onclick="descargarConstanciaCapacitacion('${cursoId}','${c.id}')"><i class="fa fa-certificate"></i></button>`:''}</td>
+      <td style="text-align:center">${a.aprobado?`<button class="btn btn-ghost btn-sm" title="Descargar constancia" onclick="descargarConstanciaCapacitacion('${cursoId}','${c.id}')"><i class="fa fa-certificate"></i></button>
+      <button class="btn btn-ghost btn-sm" title="Generar formato DC-3" onclick="abrirDC3Modal('${cursoId}','${c.id}')"><i class="fa fa-file-contract"></i> DC-3</button>`:''}</td>
     </tr>`;
   }).join('');
   modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:640px;max-width:96vw;max-height:88vh;overflow-y:auto;padding:24px;box-shadow:0 8px 32px #0004">
@@ -4349,6 +4355,240 @@ async function descargarConstanciasCurso(cursoId){
     showToast('Error al generar PDF: '+e.message,'err');
   }
 }
+/* ── Formato DC-3 (STPS) — Constancia de competencias o de habilidades laborales ── */
+function abrirDC3Modal(cursoId,colabId){
+  const curso=(DB.capacitacionCursos||[]).find(c=>c.id===cursoId); if(!curso) return;
+  const colab=(DB.colaboradores||[]).find(c=>c.id===colabId); if(!colab) return;
+  const emp=DB.empresas.find(e=>e.id===curso.empresa_id)||{};
+  const asistencia=(DB.capacitacionAsistencias||[]).find(a=>a.curso_id===cursoId&&a.colaborador_id===colabId);
+  document.getElementById('modal-dc3')?.remove();
+  const modal=document.createElement('div');
+  modal.id='modal-dc3';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3300;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:620px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 32px #0004">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div style="font-weight:700;font-size:16px">Generar Formato DC-3</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-dc3').remove()"><i class="fa fa-times"></i></button>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Revisa y completa los datos antes de generar la constancia oficial.</div>
+    <input type="hidden" id="dc3-curso-id" value="${cursoId}">
+    <input type="hidden" id="dc3-colab-id" value="${colabId}">
+    <div class="sep" style="margin-top:0">Datos del trabajador</div>
+    <div class="fr">
+      <div class="fg"><label>Nombre (apellido paterno, materno y nombre(s))</label><input id="dc3-nombre" value="${_esc(colab.nombre||'')}"></div>
+      <div class="fg"><label>CURP</label><input id="dc3-curp" value="${_esc(colab.curp||'')}" maxlength="18" style="text-transform:uppercase"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Ocupación específica (Catálogo Nacional de Ocupaciones)</label><input id="dc3-ocupacion" value="${_esc(asistencia?.ocupacion_especifica||'')}"></div>
+      <div class="fg"><label>Puesto</label><input id="dc3-puesto" value="${_esc(colab.puesto||'')}"></div>
+    </div>
+    <div class="sep">Datos de la empresa</div>
+    <div class="fr">
+      <div class="fg"><label>Nombre o razón social</label><input id="dc3-razon" value="${_esc(colab.razon_social||emp.nombre||'')}"></div>
+      <div class="fg"><label>RFC con homoclave</label><input id="dc3-rfc" value="${_esc(emp.rfc||'')}" maxlength="13" style="text-transform:uppercase"></div>
+    </div>
+    <div class="sep">Datos del programa de capacitación</div>
+    <div class="fr full"><div class="fg"><label>Nombre del curso</label><input id="dc3-curso-nombre" value="${_esc(curso.nombre||'')}"></div></div>
+    <div class="fr">
+      <div class="fg"><label>Duración en horas</label><input id="dc3-duracion" value="${_esc(curso.duracion_horas||'')}"></div>
+      <div class="fg"><label>Área temática del curso</label><input id="dc3-area" value="${_esc(curso.area_tematica||'')}"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Periodo — de</label><input type="date" id="dc3-fecha-inicio" value="${curso.fecha_inicio||''}"></div>
+      <div class="fg"><label>Periodo — a</label><input type="date" id="dc3-fecha-fin" value="${curso.fecha_fin||curso.fecha_inicio||''}"></div>
+    </div>
+    <div class="fr full"><div class="fg"><label>Nombre del agente capacitador o STPS</label><input id="dc3-agente" value="${_esc(curso.institucion||'')}"></div></div>
+    <div class="sep">Firmas</div>
+    <div class="fr">
+      <div class="fg"><label>Instructor o tutor</label><input id="dc3-instructor" value="${_esc(curso.instructor||'')}"></div>
+      <div class="fg"><label>Patrón o representante legal <span style="font-size:10px;color:var(--text3)">(o representante ante la Comisión Mixta si hay más de 50 trabajadores)</span></label><input id="dc3-patron" value=""></div>
+    </div>
+    <div class="fr full"><div class="fg"><label>Representante de los trabajadores <span style="font-size:10px;color:var(--text3)">(solo empresas con más de 50 trabajadores)</span></label><input id="dc3-rep-trab" value=""></div></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-dc3').remove()">Cancelar</button>
+      <button class="btn btn-primary" onclick="generarDC3()"><i class="fa fa-file-contract"></i> Generar PDF</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+async function generarDC3(){
+  if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
+  const cursoId=document.getElementById('dc3-curso-id').value;
+  const colabId=document.getElementById('dc3-colab-id').value;
+  const curso=(DB.capacitacionCursos||[]).find(c=>c.id===cursoId);
+  const colab=(DB.colaboradores||[]).find(c=>c.id===colabId);
+  const emp=DB.empresas.find(e=>e.id===curso?.empresa_id)||{};
+  const ocupacion=document.getElementById('dc3-ocupacion').value.trim();
+  const data={
+    nombreTrabajador:document.getElementById('dc3-nombre').value.trim(),
+    curp:document.getElementById('dc3-curp').value.trim(),
+    ocupacionEspecifica:ocupacion,
+    puesto:document.getElementById('dc3-puesto').value.trim(),
+    razonSocial:document.getElementById('dc3-razon').value.trim(),
+    rfcEmpresa:document.getElementById('dc3-rfc').value.trim(),
+    nombreCurso:document.getElementById('dc3-curso-nombre').value.trim(),
+    duracionHoras:document.getElementById('dc3-duracion').value.trim(),
+    areaTematica:document.getElementById('dc3-area').value.trim(),
+    fechaInicio:document.getElementById('dc3-fecha-inicio').value,
+    fechaFin:document.getElementById('dc3-fecha-fin').value,
+    agenteCapacitador:document.getElementById('dc3-agente').value.trim(),
+    instructor:document.getElementById('dc3-instructor').value.trim(),
+    patron:document.getElementById('dc3-patron').value.trim(),
+    repTrabajadores:document.getElementById('dc3-rep-trab').value.trim(),
+  };
+  showToast('Generando DC-3...');
+  try{
+    const {logoB64,logoDims}=await _capLogoBase64(emp);
+    if(logoB64){ data.logoB64=logoB64; data.logoDims=logoDims; data.logoFmt=logoB64.includes('image/png')?'PNG':'JPEG'; }
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
+    _drawDC3Page(doc,data);
+    doc.save(`DC3_${(colab?.nombre||'trabajador').replace(/[^a-zA-Z0-9]/g,'_')}.pdf`);
+    if(colabId&&cursoId){
+      const existente=(DB.capacitacionAsistencias||[]).find(a=>a.curso_id===cursoId&&a.colaborador_id===colabId);
+      if(existente&&existente.ocupacion_especifica!==ocupacion){
+        existente.ocupacion_especifica=ocupacion;
+        await saveRecord('capacitacion_asistencias',existente).catch(()=>{});
+      }
+    }
+    await logActivity('Generar DC-3','capacitacion_asistencias',colabId,`${data.nombreTrabajador} — ${data.nombreCurso}`);
+    document.getElementById('modal-dc3')?.remove();
+  }catch(e){
+    showToast('Error al generar PDF: '+e.message,'err');
+  }
+}
+function _drawDC3Page(doc,d){
+  const W=215.9,H=279.4,M=14,CW=W-2*M;
+  let y=M;
+  if(d.logoB64&&d.logoDims){
+    try{ doc.addImage(d.logoB64,d.logoFmt,M,y,d.logoDims.w,d.logoDims.h); }catch(e){}
+  }
+  y+=14;
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(0);
+  doc.text('FORMATO DC-3',W/2,y,{align:'center'}); y+=6;
+  doc.setFontSize(10.5);
+  doc.text('CONSTANCIA DE COMPETENCIAS O DE HABILIDADES LABORALES',W/2,y,{align:'center'}); y+=7;
+
+  const sectionHeader=(title,h=6)=>{
+    doc.setFillColor(0,0,0); doc.rect(M,y,CW,h,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(255,255,255);
+    doc.text(title,W/2,y+h-1.9,{align:'center'});
+    y+=h;
+  };
+  const fieldRow=(label,value,h=11)=>{
+    doc.setDrawColor(0);doc.setLineWidth(0.3);
+    doc.rect(M,y,CW,h);
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(60);
+    doc.text(label,M+2,y+3.5,{maxWidth:CW-4});
+    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(0);
+    doc.text(String(value||''),M+2,y+h-2.3);
+    y+=h;
+  };
+  const cellRow=(label1,codigo,label2,valor2,h=12)=>{
+    const w1=CW*0.56,w2=CW-w1;
+    doc.setDrawColor(0);doc.setLineWidth(0.3);
+    doc.rect(M,y,w1,h); doc.rect(M+w1,y,w2,h);
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(60);
+    doc.text(label1,M+2,y+3.5);
+    doc.text(label2,M+w1+2,y+3.5,{maxWidth:w2-4});
+    const code=(codigo||'').toUpperCase().slice(0,18).padEnd(18,' ');
+    const cw=(w1-4)/18;
+    doc.setDrawColor(0);
+    for(let i=0;i<18;i++){
+      const cx=M+2+i*cw;
+      doc.rect(cx,y+5,cw,h-6.5);
+      if(code[i]&&code[i]!==' '){ doc.setFontSize(7.5);doc.setTextColor(0); doc.text(code[i],cx+cw/2,y+h-2.3,{align:'center'}); }
+    }
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(0);
+    doc.text(String(valor2||''),M+w1+2,y+h-2.3,{maxWidth:w2-4});
+    y+=h;
+  };
+
+  sectionHeader('DATOS DEL TRABAJADOR');
+  fieldRow('Nombre (Anotar apellido paterno, apellido materno y nombre (s))',d.nombreTrabajador,12);
+  cellRow('Clave Única de Registro de Población',d.curp,'Ocupación específica (Catálogo Nacional de Ocupaciones)',d.ocupacionEspecifica,13);
+  fieldRow('Puesto*',d.puesto,10);
+
+  sectionHeader('DATOS DE LA EMPRESA');
+  fieldRow('Nombre o razón social (En caso de persona física, anotar apellido paterno, apellido materno y nombre(s))',d.razonSocial,12);
+  // RFC en celdas (13 caracteres), usando el mismo layout de cellRow pero a ancho completo
+  {
+    const h=13;
+    doc.setDrawColor(0);doc.setLineWidth(0.3);
+    doc.rect(M,y,CW,h);
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(60);
+    doc.text('Registro Federal de Contribuyentes con homoclave (SHCP)',M+2,y+3.5);
+    const rfc=(d.rfcEmpresa||'').toUpperCase().slice(0,13).padEnd(13,' ');
+    const cw=Math.min(11,(CW-4)/13);
+    for(let i=0;i<13;i++){
+      const cx=M+2+i*cw;
+      doc.rect(cx,y+5.5,cw,h-7);
+      if(rfc[i]&&rfc[i]!==' '){ doc.setFontSize(8);doc.setTextColor(0); doc.text(rfc[i],cx+cw/2,y+h-2.3,{align:'center'}); }
+    }
+    y+=h;
+  }
+
+  sectionHeader('DATOS DEL PROGRAMA DE CAPACITACIÓN, ADIESTRAMIENTO Y PRODUCTIVIDAD');
+  fieldRow('Nombre del curso',d.nombreCurso,10);
+  {
+    const h=13,w1=CW*0.32,w2=CW-w1;
+    doc.rect(M,y,w1,h); doc.rect(M+w1,y,w2,h);
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(60);
+    doc.text('Duración en horas',M+2,y+3.5);
+    doc.text('Periodo de ejecución',M+w1+2,y+3.5);
+    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(0);
+    doc.text(String(d.duracionHoras||''),M+2,y+h-2.3);
+    const periodo=`De: ${d.fechaInicio?fmt(d.fechaInicio):'—'}    a: ${d.fechaFin?fmt(d.fechaFin):'—'}`;
+    doc.setFontSize(8.5);
+    doc.text(periodo,M+w1+2,y+h-2.3);
+    y+=h;
+  }
+  fieldRow('Área temática del curso',d.areaTematica,10);
+  fieldRow('Nombre del agente capacitador o STPS',d.agenteCapacitador,10);
+
+  y+=5;
+  const declH=32;
+  doc.setDrawColor(0);doc.setLineWidth(0.3);
+  doc.rect(M,y,CW,declH);
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(0);
+  doc.text('Los datos se asientan en esta constancia bajo protesta de decir verdad, apercibidos de la responsabilidad en que incurre',W/2,y+6,{align:'center'});
+  doc.text('todo aquel que no se conduce con verdad.',W/2,y+10,{align:'center'});
+  const colW=CW/3;
+  const cols=[
+    {label:'Instructor o tutor',nombre:d.instructor},
+    {label:'Patrón o representante legal',nombre:d.patron},
+    {label:'Representante de los trabajadores',nombre:d.repTrabajadores},
+  ];
+  cols.forEach((col,i)=>{
+    const cx=M+i*colW;
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(0);
+    doc.text(col.label,cx+colW/2,y+16,{align:'center',maxWidth:colW-6});
+    if(col.nombre){ doc.setFontSize(7);doc.text(col.nombre,cx+colW/2,y+22,{align:'center',maxWidth:colW-6}); }
+    doc.setDrawColor(120);doc.line(cx+6,y+26,cx+colW-6,y+26);
+    doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(100);
+    doc.text('Nombre y firma',cx+colW/2,y+29,{align:'center'});
+  });
+  y+=declH+6;
+
+  doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(80);
+  const instr=[
+    'INSTRUCCIONES',
+    '- Llenar a máquina o con letra de molde.',
+    '- Deberá entregarse al trabajador dentro de los veinte días hábiles siguientes al término del curso de capacitación aprobado.',
+    '1/ Las áreas y subáreas ocupacionales del Catálogo Nacional de Ocupaciones se encuentran disponibles en www.stps.gob.mx',
+    '2/ Las áreas temáticas de los cursos se encuentran disponibles en www.stps.gob.mx',
+    '3/ Cursos impartidos por el área competente de la Secretaria del Trabajo y Previsión Social.',
+    '4/ Para empresas con menos de 51 trabajadores. Para empresas con más de 50 trabajadores firmaría el representante del patrón ante la',
+    '   Comisión mixta de capacitación, adiestramiento y productividad.',
+    '5/ Solo para empresas con más de 50 trabajadores.',
+    '* Dato no obligatorio.',
+  ];
+  instr.forEach((line,i)=>{ doc.text(line,M,y+i*2.8); });
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(0);
+  doc.text('DC-3',W-M,H-13,{align:'right'});
+  doc.text('ANVERSO',W-M,H-9,{align:'right'});
+}
+
 function renderHeadcountAutorizado(){
   if(_hcaOpenEmpId){_renderModuloEmpresaDetalle('page-headcount-autorizado','fa-users-gear','Headcount Autorizado',_hcaOpenEmpId,'headcountAutorizadoBack');return;}
   _renderModuloDashboard('page-headcount-autorizado','headcountAutorizadoOpenEmpresa','headcount_autorizado');
@@ -4703,7 +4943,7 @@ function empModuloToggle(key){
 function openEmpresaModal(id=null){
   document.getElementById('mod-emp-title').textContent=id?'Editar Empresa':'Nueva Empresa Cliente';
   document.getElementById('emp-id').value='';
-  ['emp-nombre','emp-sector','emp-contacto','emp-tel','emp-dir','emp-notas','emp-depto-input','emp-proy-input','emp-razon-input'].forEach(i=>document.getElementById(i).value='');
+  ['emp-nombre','emp-sector','emp-contacto','emp-tel','emp-dir','emp-rfc','emp-notas','emp-depto-input','emp-proy-input','emp-razon-input'].forEach(i=>document.getElementById(i).value='');
   empDepartamentos=[];
   empProyectos=[];
   empRazones=[];
@@ -4726,6 +4966,7 @@ function openEmpresaModal(id=null){
       document.getElementById('emp-contacto').value=e.contacto||'';
       document.getElementById('emp-tel').value=e.tel||'';
       document.getElementById('emp-dir').value=e.dir||'';
+      document.getElementById('emp-rfc').value=e.rfc||'';
       document.getElementById('emp-notas').value=e.notas||'';
       empDepartamentos=[...(e.departamentos||[])];
       empProyectos=[...(e.proyectos||[])];
@@ -4753,7 +4994,7 @@ async function saveEmpresa(){
   const nombre=document.getElementById('emp-nombre').value.trim();
   if(!nombre){showToast('Ingresa el nombre de la empresa','err');return}
   const id=document.getElementById('emp-id').value;
-  const data={nombre,sector:document.getElementById('emp-sector').value,contacto:document.getElementById('emp-contacto').value,tel:document.getElementById('emp-tel').value,dir:document.getElementById('emp-dir').value,notas:document.getElementById('emp-notas').value,color:empColorSel,departamentos:[...empDepartamentos],proyectos:[...empProyectos],razones_sociales:[...empRazones],proyectos_inactivos:[...empProyectosInactivos],departamentos_inactivos:[...empDepartamentosInactivos],razones_sociales_inactivos:[...empRazonesInactivos],modulos:{...empModulos}};
+  const data={nombre,sector:document.getElementById('emp-sector').value,contacto:document.getElementById('emp-contacto').value,tel:document.getElementById('emp-tel').value,dir:document.getElementById('emp-dir').value,rfc:document.getElementById('emp-rfc').value.trim().toUpperCase(),notas:document.getElementById('emp-notas').value,color:empColorSel,departamentos:[...empDepartamentos],proyectos:[...empProyectos],razones_sociales:[...empRazones],proyectos_inactivos:[...empProyectosInactivos],departamentos_inactivos:[...empDepartamentosInactivos],razones_sociales_inactivos:[...empRazonesInactivos],modulos:{...empModulos}};
   const _empAnterior = id ? {...(DB.empresas.find(x=>x.id===id)||{})} : null;
   if(id){const i=DB.empresas.findIndex(e=>e.id===id);DB.empresas[i]={...DB.empresas[i],...data};showToast('Empresa actualizada ✓')}
   else{DB.empresas.push({id:uid(),...data,etapas:DEFAULT_ETAPAS.map(e=>({...e,id:uid()}))});showToast('Empresa creada ✓')}

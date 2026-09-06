@@ -4393,7 +4393,12 @@ async function subirPlantillaSTPS(clave){
     if(error) throw new Error(error.message);
     delete _stpsTemplateCache[clave];
     _stpsTemplateCache[clave+'_ts']=Date.now();
-    showToast(`Plantilla ${clave.toUpperCase()} actualizada ✓`);
+    const verificado=await _stpsFetchTemplateBytes(clave);
+    if(!verificado){
+      showToast(`Se subió el archivo pero no se puede leer de vuelta — revisa que el bucket "formatos-stps" esté marcado como público en Supabase (Storage → formatos-stps → Settings)`,'err');
+    }else{
+      showToast(`Plantilla ${clave.toUpperCase()} actualizada ✓`);
+    }
     abrirPlantillasSTPSModal();
   }catch(e){
     showToast('Error al subir: '+e.message,'err');

@@ -4055,8 +4055,8 @@ async function _capCargarDatosEmpresa(empId){
   if(SANDBOX_MODE) return;
   try{
     const [{data:cursos,error:e1},{data:asis,error:e2}]=await Promise.all([
-      sbClient.from('capacitacion_cursos').select('*').eq('empresa_id',empId),
-      sbClient.from('capacitacion_asistencias').select('*').eq('empresa_id',empId),
+      sbClient.from('capacitacion_cursos').select('*').filter('data->>empresa_id','eq',empId),
+      sbClient.from('capacitacion_asistencias').select('*').filter('data->>empresa_id','eq',empId),
     ]);
     if(e1) throw e1; if(e2) throw e2;
     DB.capacitacionCursos=(DB.capacitacionCursos||[]).filter(c=>c.empresa_id!==empId).concat((cursos||[]).map(r=>r.data||r).filter(Boolean));

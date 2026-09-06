@@ -4115,9 +4115,9 @@ function _capRenderEmpresa(empId){
       <button class="btn btn-ghost btn-sm" onclick="abrirDC2Modal('${empId}')"><i class="fa fa-file-lines"></i> DC-2 (Plan de capacitación)</button>
       ${_capVista==='cursos'?`<button class="btn btn-primary btn-sm" onclick="abrirCursoModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo curso</button>`:''}
     </div>
-    <div style="display:flex;border-bottom:1px solid var(--border2);margin-bottom:16px">
-      <button onclick="capacitacionSetVista('${empId}','cursos')" style="padding:9px 20px;border:none;background:none;font-size:13px;font-weight:${_capVista==='cursos'?700:400};color:${_capVista==='cursos'?'var(--accent)':'var(--text3)'};border-bottom:3px solid ${_capVista==='cursos'?'var(--accent)':'transparent'};margin-bottom:-1px;cursor:pointer"><i class="fa fa-book"></i> Cursos</button>
-      <button onclick="capacitacionSetVista('${empId}','matriz')" style="padding:9px 20px;border:none;background:none;font-size:13px;font-weight:${_capVista==='matriz'?700:400};color:${_capVista==='matriz'?'var(--accent)':'var(--text3)'};border-bottom:3px solid ${_capVista==='matriz'?'var(--accent)':'transparent'};margin-bottom:-1px;cursor:pointer"><i class="fa fa-table-cells"></i> Matriz de control de capacitación</button>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <button id="cap-vista-cursos" class="btn ${_capVista==='cursos'?'btn-primary':'btn-ghost'} btn-sm" onclick="capacitacionSetVista('${empId}','cursos')"><i class="fa fa-book"></i> Cursos</button>
+      <button id="cap-vista-matriz" class="btn ${_capVista==='matriz'?'btn-primary':'btn-ghost'} btn-sm" onclick="capacitacionSetVista('${empId}','matriz')"><i class="fa fa-table-cells"></i> Matriz de control de capacitación</button>
     </div>
     ${_capVista==='matriz'?_capMatrizHtml(empId):`
     <div class="table-wrap"><table>

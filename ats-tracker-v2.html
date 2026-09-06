@@ -3663,6 +3663,8 @@ const DB={
   docCandidato:[],
   candidatoDocumentos:[],
   solicitudesEmpleo:[],
+  capacitacionCursos:[],
+  capacitacionAsistencias:[],
   personal:[],
   colaboradores:[],
   evaluaciones:[],
@@ -4035,11 +4037,318 @@ function renderContratos(){
 function contratosOpenEmpresa(empId){_contOpenEmpId=empId;renderContratos();}
 function contratosBack(){_contOpenEmpId=null;renderContratos();}
 function renderCapacitacion(){
-  if(_capOpenEmpId){_renderModuloEmpresaDetalle('page-capacitacion','fa-chalkboard-user','Capacitación',_capOpenEmpId,'capacitacionBack');return;}
+  if(_capOpenEmpId){_capRenderEmpresa(_capOpenEmpId);return;}
   _renderModuloDashboard('page-capacitacion','capacitacionOpenEmpresa','capacitacion');
 }
-function capacitacionOpenEmpresa(empId){_capOpenEmpId=empId;renderCapacitacion();}
+async function capacitacionOpenEmpresa(empId){
+  _capOpenEmpId=empId;
+  const page=document.getElementById('page-capacitacion');
+  if(page) page.innerHTML='<div style="padding:60px;text-align:center;color:var(--text3)"><i class="fa fa-spinner fa-spin" style="font-size:22px;margin-bottom:12px;display:block"></i>Cargando...</div>';
+  await _capCargarDatosEmpresa(empId);
+  renderCapacitacion();
+}
 function capacitacionBack(){_capOpenEmpId=null;renderCapacitacion();}
+
+/* ── Capacitación: cursos por empresa, control de asistencia y constancias ── */
+async function _capCargarDatosEmpresa(empId){
+  if(SANDBOX_MODE) return;
+  try{
+    const [{data:cursos,error:e1},{data:asis,error:e2}]=await Promise.all([
+      sbClient.from('capacitacion_cursos').select('*').eq('empresa_id',empId),
+      sbClient.from('capacitacion_asistencias').select('*').eq('empresa_id',empId),
+    ]);
+    if(e1) throw e1; if(e2) throw e2;
+    DB.capacitacionCursos=(DB.capacitacionCursos||[]).filter(c=>c.empresa_id!==empId).concat((cursos||[]).map(r=>r.data||r).filter(Boolean));
+    DB.capacitacionAsistencias=(DB.capacitacionAsistencias||[]).filter(a=>a.empresa_id!==empId).concat((asis||[]).map(r=>r.data||r).filter(Boolean));
+  }catch(e){ console.warn('[Capacitación] Error al cargar:',e.message); }
+}
+function _capRenderEmpresa(empId){
+  const page=document.getElementById('page-capacitacion'); if(!page) return;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const color=emp.color||'#2AAADE';
+  const cursos=(DB.capacitacionCursos||[]).filter(c=>c.empresa_id===empId).sort((a,b)=>(b.fecha_inicio||'').localeCompare(a.fecha_inicio||''));
+  const colabsEmp=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId);
+  const rows=cursos.map(curso=>{
+    const asis=(DB.capacitacionAsistencias||[]).filter(a=>a.curso_id===curso.id);
+    const nAsistio=asis.filter(a=>a.asistio).length;
+    const nAprobo=asis.filter(a=>a.aprobado).length;
+    return `<tr>
+      <td class="td-p">${_esc(curso.nombre||'')}</td>
+      <td style="font-size:12px;color:var(--text2)">${_esc(curso.tipo||'')}</td>
+      <td style="font-size:12px;color:var(--text2)">${_esc(curso.instructor||'—')}</td>
+      <td style="font-size:12px;color:var(--text2);white-space:nowrap">${curso.fecha_inicio?fmt(curso.fecha_inicio):'—'}${curso.fecha_fin&&curso.fecha_fin!==curso.fecha_inicio?' – '+fmt(curso.fecha_fin):''}</td>
+      <td style="font-size:12px;color:var(--text2)">${curso.duracion_horas?curso.duracion_horas+' hrs':'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${nAsistio}/${colabsEmp.length} asistieron${nAprobo?' · '+nAprobo+' aprobaron':''}</td>
+      <td>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" title="Control de asistencia" onclick="abrirAsistenciaCurso('${curso.id}')"><i class="fa fa-user-check"></i></button>
+          <button class="btn btn-ghost btn-sm" title="Editar" onclick="abrirCursoModal('${empId}','${curso.id}')"><i class="fa fa-edit"></i></button>
+          <button class="btn btn-danger btn-sm" title="Eliminar" onclick="eliminarCurso('${curso.id}','${empId}')"><i class="fa fa-trash"></i></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  page.innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="capacitacionBack()"><i class="fa fa-arrow-left"></i> Empresas</button>
+      ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
+      <span style="font-size:16px;font-weight:700">${_esc(emp.nombre||'')}</span>
+      <span style="flex:1"></span>
+      <button class="btn btn-primary btn-sm" onclick="abrirCursoModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo curso</button>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Curso</th><th>Tipo</th><th>Instructor</th><th>Fecha</th><th>Duración</th><th>Asistencia</th><th></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:32px">Sin cursos registrados — agrega el primero</td></tr>'}</tbody>
+    </table></div>`;
+}
+function abrirCursoModal(empId,cursoId){
+  const curso=cursoId?(DB.capacitacionCursos||[]).find(c=>c.id===cursoId):null;
+  document.getElementById('modal-curso-cap')?.remove();
+  const modal=document.createElement('div');
+  modal.id='modal-curso-cap';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3100;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:560px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 32px #0004">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-weight:700;font-size:16px">${cursoId?'Editar curso':'Nuevo curso'}</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-curso-cap').remove()"><i class="fa fa-times"></i></button>
+    </div>
+    <input type="hidden" id="cc-empresa-id" value="${empId}">
+    <input type="hidden" id="cc-id" value="${cursoId||''}">
+    <div class="fr">
+      <div class="fg"><label>Nombre del curso *</label><input id="cc-nombre" value="${_esc(curso?.nombre||'')}"></div>
+      <div class="fg"><label>Tipo</label><select id="cc-tipo"><option ${(!curso||curso?.tipo==='Capacitación')?'selected':''} value="Capacitación">Capacitación</option><option ${curso?.tipo==='Adiestramiento'?'selected':''} value="Adiestramiento">Adiestramiento</option></select></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Instructor</label><input id="cc-instructor" value="${_esc(curso?.instructor||'')}"></div>
+      <div class="fg"><label>Institución que impartió</label><input id="cc-institucion" value="${_esc(curso?.institucion||'')}"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Modalidad</label><select id="cc-modalidad">${['Presencial','En línea','Mixta'].map(m=>`<option ${curso?.modalidad===m?'selected':''}>${m}</option>`).join('')}</select></div>
+      <div class="fg"><label>Duración (horas)</label><input type="number" id="cc-duracion" value="${curso?.duracion_horas||''}"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Fecha de inicio</label><input type="date" id="cc-fecha-inicio" value="${curso?.fecha_inicio||''}"></div>
+      <div class="fg"><label>Fecha de término</label><input type="date" id="cc-fecha-fin" value="${curso?.fecha_fin||''}"></div>
+    </div>
+    <div class="fr full"><div class="fg"><label>Lugar</label><input id="cc-lugar" value="${_esc(curso?.lugar||'')}"></div></div>
+    <div class="fr full"><div class="fg"><label>Área temática / Objetivo</label><textarea id="cc-objetivo">${_esc(curso?.objetivo||'')}</textarea></div></div>
+    <div class="fr full"><div class="fg"><label>Notas</label><textarea id="cc-notas">${_esc(curso?.notas||'')}</textarea></div></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-curso-cap').remove()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCurso()"><i class="fa fa-save"></i> Guardar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+async function guardarCurso(){
+  const empId=document.getElementById('cc-empresa-id').value;
+  const cursoIdInput=document.getElementById('cc-id').value;
+  const id=cursoIdInput||uid();
+  const nombre=document.getElementById('cc-nombre').value.trim();
+  if(!nombre){showToast('Ingresa el nombre del curso','err');return;}
+  const registro={
+    id, empresa_id:empId, nombre,
+    tipo:document.getElementById('cc-tipo').value,
+    instructor:document.getElementById('cc-instructor').value.trim(),
+    institucion:document.getElementById('cc-institucion').value.trim(),
+    modalidad:document.getElementById('cc-modalidad').value,
+    duracion_horas:document.getElementById('cc-duracion').value||null,
+    fecha_inicio:document.getElementById('cc-fecha-inicio').value||null,
+    fecha_fin:document.getElementById('cc-fecha-fin').value||null,
+    lugar:document.getElementById('cc-lugar').value.trim(),
+    objetivo:document.getElementById('cc-objetivo').value.trim(),
+    notas:document.getElementById('cc-notas').value.trim(),
+  };
+  try{
+    await saveRecord('capacitacion_cursos',registro);
+    const idx=(DB.capacitacionCursos||[]).findIndex(c=>c.id===id);
+    if(idx>=0) DB.capacitacionCursos[idx]=registro; else{ if(!DB.capacitacionCursos)DB.capacitacionCursos=[]; DB.capacitacionCursos.push(registro); }
+    await logActivity(cursoIdInput?'Editar curso de capacitación':'Nuevo curso de capacitación','capacitacion_cursos',id,`${nombre} — ${(DB.empresas.find(e=>e.id===empId)||{}).nombre||empId}`);
+    showToast('Curso guardado ✓');
+    document.getElementById('modal-curso-cap')?.remove();
+    _capRenderEmpresa(empId);
+  }catch(e){
+    showToast('Error: '+e.message,'err');
+  }
+}
+async function eliminarCurso(cursoId,empId){
+  if(!confirm('¿Eliminar este curso? También se eliminarán sus registros de asistencia.'))return;
+  try{
+    await deleteRecord('capacitacion_cursos',cursoId);
+    const asis=(DB.capacitacionAsistencias||[]).filter(a=>a.curso_id===cursoId);
+    for(const a of asis){ await deleteRecord('capacitacion_asistencias',a.id); }
+    DB.capacitacionCursos=(DB.capacitacionCursos||[]).filter(c=>c.id!==cursoId);
+    DB.capacitacionAsistencias=(DB.capacitacionAsistencias||[]).filter(a=>a.curso_id!==cursoId);
+    await logActivity('Eliminar curso de capacitación','capacitacion_cursos',cursoId,'');
+    showToast('Curso eliminado');
+    _capRenderEmpresa(empId);
+  }catch(e){
+    showToast('Error: '+e.message,'err');
+  }
+}
+function abrirAsistenciaCurso(cursoId){
+  const curso=(DB.capacitacionCursos||[]).find(c=>c.id===cursoId); if(!curso) return;
+  const empId=curso.empresa_id;
+  const colabs=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
+  const asisMap={};
+  (DB.capacitacionAsistencias||[]).filter(a=>a.curso_id===cursoId).forEach(a=>asisMap[a.colaborador_id]=a);
+  document.getElementById('modal-asistencia-cap')?.remove();
+  const modal=document.createElement('div');
+  modal.id='modal-asistencia-cap';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3100;display:flex;align-items:center;justify-content:center;padding:20px';
+  const rows=colabs.map(c=>{
+    const a=asisMap[c.id]||{};
+    return `<tr data-colab="${c.id}">
+      <td class="td-p">${_esc(c.nombre||'')}</td>
+      <td style="text-align:center"><input type="checkbox" class="asis-chk" ${a.asistio?'checked':''}></td>
+      <td style="text-align:center"><input type="checkbox" class="apr-chk" ${a.aprobado?'checked':''}></td>
+      <td><input type="text" class="cal-inp" value="${_esc(a.calificacion||'')}" placeholder="Calif." style="width:80px"></td>
+      <td style="text-align:center">${a.aprobado?`<button class="btn btn-ghost btn-sm" title="Descargar constancia" onclick="descargarConstanciaCapacitacion('${cursoId}','${c.id}')"><i class="fa fa-certificate"></i></button>`:''}</td>
+    </tr>`;
+  }).join('');
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:640px;max-width:96vw;max-height:88vh;overflow-y:auto;padding:24px;box-shadow:0 8px 32px #0004">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+      <div>
+        <div style="font-weight:700;font-size:16px">Control de asistencia</div>
+        <div style="font-size:12px;color:var(--text3)">${_esc(curso.nombre||'')}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-asistencia-cap').remove()"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="table-wrap" style="margin-top:14px"><table>
+      <thead><tr><th>Colaborador</th><th style="text-align:center">Asistió</th><th style="text-align:center">Aprobó</th><th>Calificación</th><th></th></tr></thead>
+      <tbody id="asistencia-tbody">${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Esta empresa no tiene colaboradores registrados en Administrador de Personal</td></tr>'}</tbody>
+    </table></div>
+    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="descargarConstanciasCurso('${cursoId}')"><i class="fa fa-file-pdf"></i> Descargar constancias (aprobados)</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-asistencia-cap').remove()">Cerrar</button>
+        <button class="btn btn-primary" onclick="guardarAsistenciaCurso('${cursoId}')"><i class="fa fa-save"></i> Guardar</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+async function guardarAsistenciaCurso(cursoId){
+  const curso=(DB.capacitacionCursos||[]).find(c=>c.id===cursoId); if(!curso) return;
+  const rows=[...document.querySelectorAll('#asistencia-tbody tr[data-colab]')];
+  const writes=[];
+  for(const row of rows){
+    const colabId=row.dataset.colab;
+    const asistio=row.querySelector('.asis-chk').checked;
+    const aprobado=row.querySelector('.apr-chk').checked;
+    const calificacion=row.querySelector('.cal-inp').value.trim();
+    const existente=(DB.capacitacionAsistencias||[]).find(a=>a.curso_id===cursoId&&a.colaborador_id===colabId);
+    if(!asistio && !aprobado && !calificacion && !existente) continue;
+    const id=existente?.id||uid();
+    writes.push({id,curso_id:cursoId,colaborador_id:colabId,empresa_id:curso.empresa_id,asistio,aprobado,calificacion:calificacion||null,created_at:existente?.created_at||new Date().toISOString()});
+  }
+  try{
+    for(const registro of writes){ await saveRecord('capacitacion_asistencias',registro); }
+    DB.capacitacionAsistencias=(DB.capacitacionAsistencias||[]).filter(a=>a.curso_id!==cursoId).concat(writes);
+    await logActivity('Guardar asistencia de capacitación','capacitacion_cursos',cursoId,`${curso.nombre||''} — ${writes.length} registro(s)`);
+    showToast('Asistencia guardada ✓');
+    document.getElementById('modal-asistencia-cap')?.remove();
+    _capRenderEmpresa(curso.empresa_id);
+  }catch(e){
+    showToast('Error: '+e.message,'err');
+  }
+}
+function _drawConstanciaPage(doc,curso,colab,asistencia,emp,logoB64,logoDims){
+  const W=279.4,H=215.9;
+  const color=emp.color||'#2AAADE';
+  const [r,g,b]=_hexToRgb(color);
+  doc.setDrawColor(r,g,b); doc.setLineWidth(1.2);
+  doc.rect(8,8,W-16,H-16);
+  doc.setLineWidth(0.4); doc.setDrawColor(180);
+  doc.rect(11,11,W-22,H-22);
+  let y=26;
+  if(logoB64&&logoDims){
+    const fmtImg=logoB64.includes('image/png')?'PNG':'JPEG';
+    try{ doc.addImage(logoB64,fmtImg,W/2-logoDims.w/2,14,logoDims.w,logoDims.h); y=14+logoDims.h+10; }catch(e){}
+  }
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(r,g,b);
+  doc.text((emp.nombre||'').toUpperCase(),W/2,y,{align:'center'});
+  y+=13;
+  doc.setFont('helvetica','normal');doc.setFontSize(15);doc.setTextColor(70);
+  doc.text('CONSTANCIA DE CAPACITACIÓN',W/2,y,{align:'center'});
+  y+=17;
+  doc.setFontSize(11);doc.setTextColor(60);
+  doc.text('Se otorga la presente constancia a:',W/2,y,{align:'center'});
+  y+=14;
+  doc.setFont('helvetica','bold');doc.setFontSize(22);doc.setTextColor(20);
+  doc.text((colab.nombre||'').toUpperCase(),W/2,y,{align:'center'});
+  y+=6;
+  doc.setDrawColor(180);doc.setLineWidth(0.3);
+  doc.line(W/2-75,y,W/2+75,y);
+  y+=14;
+  doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(60);
+  doc.text('Por haber concluido satisfactoriamente el curso de:',W/2,y,{align:'center'});
+  y+=9;
+  doc.setFont('helvetica','italic');doc.setFontSize(14);doc.setTextColor(20);
+  doc.text(`"${curso.nombre||''}"`,W/2,y,{align:'center'});
+  y+=10;
+  const detalle=[
+    curso.duracion_horas?`Duración: ${curso.duracion_horas} horas`:null,
+    curso.instructor?`Impartido por: ${curso.instructor}`:null,
+    curso.fecha_inicio?`Fecha: ${fmt(curso.fecha_inicio)}${curso.fecha_fin&&curso.fecha_fin!==curso.fecha_inicio?' al '+fmt(curso.fecha_fin):''}`:null,
+  ].filter(Boolean).join('     |     ');
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(90);
+  doc.text(detalle,W/2,y,{align:'center'});
+  const fy=H-45;
+  doc.setDrawColor(120);doc.setLineWidth(0.3);
+  doc.line(W/2-90,fy,W/2-20,fy);
+  doc.line(W/2+20,fy,W/2+90,fy);
+  doc.setFontSize(9);doc.setTextColor(80);
+  doc.text('Representante de la empresa',W/2-55,fy+6,{align:'center'});
+  doc.text(curso.instructor||'Instructor',W/2+55,fy+6,{align:'center'});
+  doc.setFontSize(8);doc.setTextColor(140);
+  doc.text(`Folio: ${(asistencia?.id||'—').slice(-10)}     ·     Emitida el ${new Date().toLocaleDateString('es-MX')}`,W/2,H-15,{align:'center'});
+}
+async function _capLogoBase64(emp){
+  if(!emp.logo) return {logoB64:null,logoDims:null};
+  const logoB64=await urlToBase64(emp.logo);
+  if(!logoB64) return {logoB64:null,logoDims:null};
+  try{ const logoDims=await _imgFit(logoB64,50,20); return {logoB64,logoDims}; }catch(e){ return {logoB64:null,logoDims:null}; }
+}
+async function descargarConstanciaCapacitacion(cursoId,colabId){
+  if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
+  const curso=(DB.capacitacionCursos||[]).find(c=>c.id===cursoId); if(!curso) return;
+  const colab=(DB.colaboradores||[]).find(c=>c.id===colabId); if(!colab) return;
+  const asistencia=(DB.capacitacionAsistencias||[]).find(a=>a.curso_id===cursoId&&a.colaborador_id===colabId);
+  const emp=DB.empresas.find(e=>e.id===curso.empresa_id)||{};
+  showToast('Generando constancia...');
+  try{
+    const {logoB64,logoDims}=await _capLogoBase64(emp);
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'letter'});
+    _drawConstanciaPage(doc,curso,colab,asistencia,emp,logoB64,logoDims);
+    doc.save(`Constancia_${(colab.nombre||'colaborador').replace(/[^a-zA-Z0-9]/g,'_')}_${(curso.nombre||'curso').replace(/[^a-zA-Z0-9]/g,'_')}.pdf`);
+  }catch(e){
+    showToast('Error al generar PDF: '+e.message,'err');
+  }
+}
+async function descargarConstanciasCurso(cursoId){
+  if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
+  const curso=(DB.capacitacionCursos||[]).find(c=>c.id===cursoId); if(!curso) return;
+  const emp=DB.empresas.find(e=>e.id===curso.empresa_id)||{};
+  const aprobados=(DB.capacitacionAsistencias||[]).filter(a=>a.curso_id===cursoId&&a.aprobado);
+  if(!aprobados.length){showToast('Aún no hay colaboradores aprobados en este curso','err');return;}
+  showToast('Generando constancias...');
+  try{
+    const {logoB64,logoDims}=await _capLogoBase64(emp);
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'letter'});
+    let primero=true;
+    aprobados.forEach(asistencia=>{
+      const colab=(DB.colaboradores||[]).find(c=>c.id===asistencia.colaborador_id); if(!colab) return;
+      if(!primero) doc.addPage(); primero=false;
+      _drawConstanciaPage(doc,curso,colab,asistencia,emp,logoB64,logoDims);
+    });
+    doc.save(`Constancias_${(curso.nombre||'curso').replace(/[^a-zA-Z0-9]/g,'_')}.pdf`);
+  }catch(e){
+    showToast('Error al generar PDF: '+e.message,'err');
+  }
+}
 function renderHeadcountAutorizado(){
   if(_hcaOpenEmpId){_renderModuloEmpresaDetalle('page-headcount-autorizado','fa-users-gear','Headcount Autorizado',_hcaOpenEmpId,'headcountAutorizadoBack');return;}
   _renderModuloDashboard('page-headcount-autorizado','headcountAutorizadoOpenEmpresa','headcount_autorizado');
@@ -14839,6 +15148,7 @@ const RESPALDO_TABLAS = [
   'evaluaciones','evaluaciones_enviadas','procesos_evaluacion','procesos_enviados',
   'kpis','procedimientos','coordinadores','colaboradores','permisos_usuarios','activity_log',
   'expediente_documentos','candidato_documentos','solicitudes_empleo',
+  'capacitacion_cursos','capacitacion_asistencias',
 ];
 
 async function exportarRespaldo(){

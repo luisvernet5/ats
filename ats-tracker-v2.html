@@ -652,7 +652,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
   <!-- VACANTES -->
   <div class="page" id="page-vacantes">
     <div class="fbar" style="flex-wrap:nowrap;overflow-x:auto;gap:4px">
-      <input type="text" id="flt-vac-q" placeholder="Buscar..." oninput="renderVacantesTable()" style="min-width:80px;max-width:100px;flex-shrink:0">
+      <input type="text" id="flt-vac-q" placeholder="Buscar por nombre o folio..." oninput="renderVacantesTable()" style="min-width:180px;max-width:220px;flex-shrink:0">
       <div id="wrap-flt-vac-emp" style="flex:none"><button id="btn-flt-vac-emp" onclick="_mfOpen('flt-vac-emp',event)" style="display:flex;align-items:center;gap:4px;padding:0 8px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:120px;justify-content:space-between"><span id="lbl-flt-vac-emp">Empresas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <div id="wrap-flt-vac-est" style="flex:none"><button id="btn-flt-vac-est" onclick="_mfOpen('flt-vac-est',event)" style="display:flex;align-items:center;gap:4px;padding:0 8px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:100px;justify-content:space-between"><span id="lbl-flt-vac-est">Estado</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <div id="wrap-flt-vac-rec" style="flex:none"><button id="btn-flt-vac-rec" onclick="_mfOpen('flt-vac-rec',event)" style="display:flex;align-items:center;gap:4px;padding:0 8px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:100px;justify-content:space-between"><span id="lbl-flt-vac-rec">Reclutador</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
@@ -7973,7 +7973,7 @@ function renderVacantesTable(){
   const deptos=[...new Set(baseForOpts.map(v=>v.departamento).filter(Boolean))].sort();
   _mfPopulate('flt-vac-dep',deptos.map(d=>({value:d,label:d})),'Departamento');
   let list=base.filter(v=>{const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};if(v.proyecto&&(emp.proyectos_inactivos||[]).includes(v.proyecto))return false;if(v.departamento&&(emp.departamentos_inactivos||[]).includes(v.departamento))return false;return true;});
-  if(q)list=list.filter(v=>v.nombre.toLowerCase().includes(q.toLowerCase()));
+  if(q){const qq=q.toLowerCase();list=list.filter(v=>(v.nombre||'').toLowerCase().includes(qq)||(v.folio||'').toLowerCase().includes(qq));}
   const mfVacEmp=_mfGet('flt-vac-emp');if(mfVacEmp)list=list.filter(v=>mfVacEmp.has(v.empresa_id||''));
   const mfVacEst=_mfGet('flt-vac-est');if(mfVacEst)list=list.filter(v=>mfVacEst.has(v.estado||''));
   const mfVacRec=_mfGet('flt-vac-rec');if(mfVacRec)list=list.filter(v=>mfVacRec.has(v.reclutador_id||''));
@@ -8082,7 +8082,7 @@ function exportarVacantesExcel(){
   const _recIdV=currentUserData?.rol==='reclutador'?currentUserData?.reclutador_id:null;
   const _empIdV=_userEmpresaId();
   let list=(_recIdV?DB.vacantes.filter(v=>v.reclutador_id===_recIdV):_empIdV?DB.vacantes.filter(v=>v.empresa_id===_empIdV):DB.vacantes).filter(v=>{const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};if(v.proyecto&&(emp.proyectos_inactivos||[]).includes(v.proyecto))return false;if(v.departamento&&(emp.departamentos_inactivos||[]).includes(v.departamento))return false;return true;});
-  if(q)list=list.filter(v=>v.nombre.toLowerCase().includes(q.toLowerCase()));
+  if(q){const qq=q.toLowerCase();list=list.filter(v=>(v.nombre||'').toLowerCase().includes(qq)||(v.folio||'').toLowerCase().includes(qq));}
   const mfEmp=_mfGet('flt-vac-emp');if(mfEmp)list=list.filter(v=>mfEmp.has(v.empresa_id||''));
   const mfEst=_mfGet('flt-vac-est');if(mfEst)list=list.filter(v=>mfEst.has(v.estado||''));
   const mfRec=_mfGet('flt-vac-rec');if(mfRec)list=list.filter(v=>mfRec.has(v.reclutador_id||''));

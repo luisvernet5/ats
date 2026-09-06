@@ -12690,10 +12690,50 @@ function _expCategoriasEmpresa(emp){
   if(Array.isArray(emp?.expediente_categorias)&&emp.expediente_categorias.length) return emp.expediente_categorias;
   return _EXPEDIENTE_CATEGORIAS_EMPRESA[emp?.nombre]||EXPEDIENTE_CATEGORIAS;
 }
+const ICONOS_EXPEDIENTE=[
+  {icon:'fa-user-tie',label:'CV / Currículum'},
+  {icon:'fa-file-signature',label:'Solicitud / Firma'},
+  {icon:'fa-file-contract',label:'Contrato'},
+  {icon:'fa-infinity',label:'Contrato indeterminado'},
+  {icon:'fa-hourglass-half',label:'Contrato determinado'},
+  {icon:'fa-address-card',label:'CURP'},
+  {icon:'fa-file-invoice-dollar',label:'RFC / Situación fiscal'},
+  {icon:'fa-id-card',label:'Identificación oficial'},
+  {icon:'fa-id-card-clip',label:'Licencia de conducir'},
+  {icon:'fa-passport',label:'Pasaporte'},
+  {icon:'fa-baby',label:'Acta de nacimiento'},
+  {icon:'fa-house',label:'Comprobante de domicilio'},
+  {icon:'fa-gavel',label:'Antecedentes penales'},
+  {icon:'fa-shield-halved',label:'Seguridad / Antecedentes'},
+  {icon:'fa-notes-medical',label:'IMSS / Médico'},
+  {icon:'fa-heart-pulse',label:'Salud'},
+  {icon:'fa-syringe',label:'Vacunas'},
+  {icon:'fa-house-chimney-window',label:'INFONAVIT'},
+  {icon:'fa-money-check-dollar',label:'FONACOT / Pagos'},
+  {icon:'fa-building-columns',label:'Banco / Estado de cuenta'},
+  {icon:'fa-hand-holding-dollar',label:'Prestaciones'},
+  {icon:'fa-graduation-cap',label:'Estudios'},
+  {icon:'fa-chalkboard-user',label:'Capacitación'},
+  {icon:'fa-certificate',label:'Certificado / Título'},
+  {icon:'fa-brain',label:'Pruebas psicométricas'},
+  {icon:'fa-toolbox',label:'Pruebas técnicas'},
+  {icon:'fa-vial',label:'Laboratorio'},
+  {icon:'fa-camera',label:'Fotografía'},
+  {icon:'fa-users',label:'Referencias'},
+  {icon:'fa-envelope',label:'Correo / Contacto'},
+  {icon:'fa-phone',label:'Teléfono'},
+  {icon:'fa-briefcase',label:'Laboral / General'},
+  {icon:'fa-file-lines',label:'Documento genérico'},
+  {icon:'fa-file',label:'Otro'},
+];
+let _expCatWorking=[]; // [{nombre,icono}] — estado de trabajo del modal, se guarda al dar clic en Guardar
+let _expCatDragIdx=null;
 function abrirPersonalizarCategoriasExpediente(empId){
   const emp=DB.empresas.find(e=>e.id===empId); if(!emp)return;
   document.getElementById('modal-exp-cats')?.remove();
   const actuales=_expCategoriasEmpresa(emp);
+  const iconos=emp.expediente_categorias_iconos||{};
+  _expCatWorking=actuales.map(nombre=>({nombre,icono:iconos[nombre]||_expIconoCategoria(nombre,emp)}));
   const modal=document.createElement('div');
   modal.id='modal-exp-cats';
   modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3100;display:flex;align-items:center;justify-content:center;padding:20px';
@@ -12703,8 +12743,12 @@ function abrirPersonalizarCategoriasExpediente(empId){
         <div style="font-weight:700;font-size:16px">Categorías de expediente — ${_esc(emp.nombre||'')}</div>
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-exp-cats').remove()"><i class="fa fa-times"></i></button>
       </div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Una categoría por línea. Estas son las que aparecerán en el desplegable al subir un documento para colaboradores de esta empresa.</div>
-      <textarea id="exp-cats-textarea" style="width:100%;height:220px;font-family:inherit;font-size:13px">${_esc(actuales.join('\n'))}</textarea>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Arrastra para reordenar. Este mismo orden es el que verán en el expediente de cada colaborador y al descargar el PDF combinado.</div>
+      <div id="exp-cats-list" style="max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:6px"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input type="text" id="exp-cat-nuevo-input" placeholder="Nueva categoría..." style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_expCatAgregar()}">
+        <button class="btn btn-ghost btn-sm" onclick="_expCatAgregar()"><i class="fa fa-plus"></i> Agregar</button>
+      </div>
       <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px">
         <button class="btn btn-ghost btn-sm" onclick="_guardarCategoriasExpedienteEmpresa('${empId}',true)"><i class="fa fa-undo"></i> Restablecer a la lista general</button>
         <div style="display:flex;gap:8px">
@@ -12714,22 +12758,108 @@ function abrirPersonalizarCategoriasExpediente(empId){
       </div>
     </div>`;
   document.body.appendChild(modal);
+  _expCatRenderList();
+}
+function _expCatRenderList(){
+  const el=document.getElementById('exp-cats-list');
+  if(!el)return;
+  el.innerHTML=_expCatWorking.map((cat,i)=>`
+    <div draggable="true"
+      ondragstart="_expCatDragStart(event,${i})"
+      ondragover="_expCatDragOver(event,this)"
+      ondragleave="this.style.outline=''"
+      ondrop="_expCatDrop(event,${i})"
+      ondragend="_expCatDragEnd()"
+      style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);cursor:grab">
+      <i class="fa fa-grip-lines" style="font-size:11px;color:var(--text3);opacity:.5;flex-shrink:0"></i>
+      <button onclick="event.stopPropagation();_expCatAbrirIconos(${i},event)" title="Elegir ícono" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;width:30px;height:30px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center">
+        <i class="fa ${cat.icono}" style="color:var(--accent);font-size:14px"></i>
+      </button>
+      <span id="exp-cat-nm-${i}" style="flex:1;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(cat.nombre)}</span>
+      <button onclick="event.stopPropagation();_expCatEditar(${i})" title="Editar" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;flex-shrink:0"><i class="fa fa-pencil-alt"></i></button>
+      <button onclick="event.stopPropagation();_expCatEliminar(${i})" title="Eliminar" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;flex-shrink:0" onmouseover="this.style.color='var(--danger,#e74c3c)'" onmouseout="this.style.color='var(--text3)'"><i class="fa fa-trash"></i></button>
+    </div>`).join('') || `<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">Sin categorías. Agrega una abajo.</div>`;
+}
+function _expCatDragStart(e,idx){
+  _expCatDragIdx=idx;
+  e.dataTransfer.effectAllowed='move';
+  setTimeout(()=>e.target.style.opacity='0.4',0);
+}
+function _expCatDragOver(e,el){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  el.style.outline='2px solid var(--accent)';
+}
+function _expCatDrop(e,targetIdx){
+  e.preventDefault();
+  if(_expCatDragIdx===null||_expCatDragIdx===targetIdx)return;
+  const [moved]=_expCatWorking.splice(_expCatDragIdx,1);
+  _expCatWorking.splice(targetIdx,0,moved);
+  _expCatDragIdx=null;
+  _expCatRenderList();
+}
+function _expCatDragEnd(){ _expCatDragIdx=null; _expCatRenderList(); }
+function _expCatEditar(idx){
+  const nm=document.getElementById(`exp-cat-nm-${idx}`);
+  if(!nm)return;
+  const cur=_expCatWorking[idx].nombre;
+  nm.innerHTML=`<input type="text" value="${_esc(cur)}" style="width:100%;font-size:13px;padding:2px 6px;border:1px solid var(--accent);border-radius:4px;background:var(--surface);color:var(--text)" onkeydown="if(event.key==='Enter'){_expCatGuardarEdit(${idx},this.value);event.preventDefault()}else if(event.key==='Escape'){_expCatRenderList()}" onblur="_expCatGuardarEdit(${idx},this.value)">`;
+  nm.querySelector('input').focus();
+  nm.querySelector('input').select();
+}
+function _expCatGuardarEdit(idx,val){
+  const v=(val||'').trim();
+  if(v) _expCatWorking[idx].nombre=v;
+  _expCatRenderList();
+}
+function _expCatAgregar(){
+  const input=document.getElementById('exp-cat-nuevo-input');
+  const val=(input?.value||'').trim();
+  if(!val)return;
+  _expCatWorking.push({nombre:val,icono:_expIconoCategoria(val)});
+  input.value='';
+  _expCatRenderList();
+}
+function _expCatEliminar(idx){
+  _expCatWorking.splice(idx,1);
+  _expCatRenderList();
+}
+function _expCatAbrirIconos(idx,e){
+  e.stopPropagation();
+  document.getElementById('exp-cat-icon-panel')?.remove();
+  const rect=e.currentTarget.getBoundingClientRect();
+  const panel=document.createElement('div');
+  panel.id='exp-cat-icon-panel';
+  panel.style.cssText=`position:fixed;top:${rect.bottom+4}px;left:${Math.min(rect.left,window.innerWidth-260)}px;z-index:3400;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 8px 24px #0004;padding:10px;width:240px;max-height:280px;overflow-y:auto;display:grid;grid-template-columns:repeat(6,1fr);gap:6px`;
+  panel.innerHTML=ICONOS_EXPEDIENTE.map(o=>`<button title="${_esc(o.label)}" onclick="event.stopPropagation();_expCatElegirIcono(${idx},'${o.icon}')" style="width:32px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fa ${o.icon}" style="color:var(--text2);font-size:14px"></i></button>`).join('');
+  document.body.appendChild(panel);
+  setTimeout(()=>document.addEventListener('click',_expCatCerrarIconosOnce,{once:true}),0);
+}
+function _expCatCerrarIconosOnce(){ document.getElementById('exp-cat-icon-panel')?.remove(); }
+function _expCatElegirIcono(idx,icon){
+  _expCatWorking[idx].icono=icon;
+  document.getElementById('exp-cat-icon-panel')?.remove();
+  _expCatRenderList();
 }
 async function _guardarCategoriasExpedienteEmpresa(empId,resetear){
   const emp=DB.empresas.find(e=>e.id===empId); if(!emp)return;
   if(resetear){
     delete emp.expediente_categorias;
+    delete emp.expediente_categorias_iconos;
   } else {
-    const raw=(document.getElementById('exp-cats-textarea').value||'');
-    const lista=raw.split('\n').map(l=>l.trim()).filter(Boolean);
-    if(!lista.length){showToast('Escribe al menos una categoría','err');return;}
-    emp.expediente_categorias=lista;
+    if(!_expCatWorking.length){showToast('Agrega al menos una categoría','err');return;}
+    const nombres=_expCatWorking.map(c=>c.nombre);
+    const dup=nombres.find((n,i)=>nombres.indexOf(n)!==i);
+    if(dup){showToast(`Hay una categoría repetida: "${dup}"`,'err');return;}
+    emp.expediente_categorias=nombres;
+    emp.expediente_categorias_iconos=Object.fromEntries(_expCatWorking.map(c=>[c.nombre,c.icono]));
   }
   try{
     await saveRecord('empresas',emp);
     await logActivity('Personalizar categorías de expediente','empresas',empId,`${emp.nombre||empId}: ${resetear?'restablecidas a la lista general':emp.expediente_categorias.length+' categorías guardadas'}`);
     showToast(resetear?'Restablecido a la lista general ✓':'Categorías guardadas ✓');
     document.getElementById('modal-exp-cats')?.remove();
+    if(_expOpenEmpId===empId) _expRenderDetalle(empId);
   }catch(e){
     showToast('Error al guardar: '+e.message,'err');
   }
@@ -12837,7 +12967,7 @@ function _expRenderDetalle(empId){
       const ok=!!doc;
       const fecha=doc?.created_at?new Date(doc.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}):null;
       const tip=`${cat} — ${ok?'subido'+(fecha?' el '+fecha:''):'pendiente'}`;
-      return `<button type="button" class="btn btn-ghost btn-sm" style="padding:6px 8px" title="${_esc(tip)}" onclick="event.stopPropagation();abrirDocumentoIndividual('${c.id}','${empId}',${ci})"><i class="fa ${_expIconoCategoria(cat)}" style="font-size:14px;color:${ok?'#22c55e':'#9ca3af'}"></i></button>`;
+      return `<button type="button" class="btn btn-ghost btn-sm" style="padding:6px 8px" title="${_esc(tip)}" onclick="event.stopPropagation();abrirDocumentoIndividual('${c.id}','${empId}',${ci})"><i class="fa ${_expIconoCategoria(cat,emp)}" style="font-size:14px;color:${ok?'#22c55e':'#9ca3af'}"></i></button>`;
     }).join('');
     return`<tr style="cursor:pointer" onclick="abrirExpedienteColaborador('${c.id}','${empId}')">
       <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
@@ -12935,7 +13065,9 @@ function _expIconoArchivo(nombre){
 // Icono representativo según el TIPO de documento (categoría), para que no todos se vean iguales
 // en la lista — por palabras clave, así funciona tanto con la lista genérica como con listas
 // personalizadas por empresa (ej. la de Ford).
-function _expIconoCategoria(categoria){
+function _expIconoCategoria(categoria,emp){
+  const custom=emp?.expediente_categorias_iconos?.[categoria];
+  if(custom) return custom;
   const t=(categoria||'').toLowerCase();
   if(/\bcv\b|curr[ií]culum/.test(t)) return 'fa-user-tie';
   if(/solicitud de empleo/.test(t)) return 'fa-file-signature';

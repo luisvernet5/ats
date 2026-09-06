@@ -13795,7 +13795,7 @@ function _persColabList(empId){
   const mfEst=_mfGet('pers-flt-estado'); if(mfEst) list=list.filter(c=>mfEst.has(c.estado||'Activo'));
   if(_persFiltFechaDesde) list=list.filter(c=>(c.fecha_ingreso||'')>=_persFiltFechaDesde);
   if(_persFiltFechaHasta) list=list.filter(c=>(c.fecha_ingreso||'')<=_persFiltFechaHasta);
-  return list.sort((a,b)=>(b.id||'').localeCompare(a.id||''));
+  return list.sort((a,b)=>(a.id||'').localeCompare(b.id||''));
 }
 function _persSearchDebounce(empId){clearTimeout(_persSearchTimer);_persSearchTimer=setTimeout(()=>_persRenderDetalle(empId),220);}
 function _persApplyFiltrosFecha(empId){

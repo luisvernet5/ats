@@ -4849,6 +4849,22 @@ function _dc3Overlay(page,font,d){
   putCellsAt(d.rfcEmpresa,DC3_RFC_CELL_X,443);
   put(d.nombreCurso,90,401.8,9);
   put(d.duracionHoras,92,363,9);
+  // La plantilla oficial imprime la casilla de Año dividida en 3 (no 4) y Mes/Día en una sola
+  // casilla cada uno; se blanquean esas líneas y se redibuja la cuadrícula correcta
+  // (4 dígitos para el año, 2 para mes, 2 para día) para que cada dígito quede en su propia casilla.
+  const _dc3YTop=374,_dc3YBot=359;
+  const _dc3WhiteLine=(x)=>page.drawRectangle({x:x-2,y:_dc3YBot,width:4,height:_dc3YTop-_dc3YBot,color:PDFLib.rgb(1,1,1)});
+  const _dc3BlackLine=(x)=>page.drawLine({start:{x,y:_dc3YBot+0.5},end:{x,y:_dc3YTop},thickness:0.9,color:PDFLib.rgb(0,0,0)});
+  const _dc3RedrawGrid=(anioL,anioR,mesL,mesR,diaL,diaR)=>{
+    const aw3=(anioR-anioL)/3;
+    _dc3WhiteLine(anioL+aw3); _dc3WhiteLine(anioL+aw3*2);
+    const aw4=(anioR-anioL)/4;
+    _dc3BlackLine(anioL+aw4); _dc3BlackLine(anioL+aw4*2); _dc3BlackLine(anioL+aw4*3);
+    _dc3BlackLine((mesL+mesR)/2);
+    _dc3BlackLine((diaL+diaR)/2);
+  };
+  _dc3RedrawGrid(247.5,294.5,310.5,331.5,352.5,373.5);
+  _dc3RedrawGrid(415.5,474.5,493.5,514.5,535.5,556.5);
   if(d.fechaInicio){
     const dt=new Date(d.fechaInicio+'T00:00:00');
     const yr=String(dt.getFullYear()).padStart(4,'0');

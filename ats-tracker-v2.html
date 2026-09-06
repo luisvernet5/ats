@@ -5892,6 +5892,13 @@ function abrirDocumentosCandidato(candId){
 
 /* ── Solicitud de empleo virtual — liga pública para que el candidato la llene (misma lógica que Procesos de Evaluación) ── */
 const SI_NO_SE=[{v:'Sí',l:'Sí'},{v:'No',l:'No'}];
+const _NIVELES_ESCOLARES=[
+  {slug:'primaria',label:'Primaria'},
+  {slug:'secundaria',label:'Secundaria'},
+  {slug:'preparatoria',label:'Preparatoria o Bachillerato'},
+  {slug:'licenciatura',label:'Licenciatura'},
+  {slug:'posgrado',label:'Posgrado'},
+];
 const SOLICITUD_EMPLEO_SECCIONES=[
   {titulo:'Datos personales',campos:[
     {key:'puesto_solicitado',label:'Puesto que solicita',tipo:'texto',req:true},
@@ -5923,9 +5930,12 @@ const SOLICITUD_EMPLEO_SECCIONES=[
     {key:'pasaporte',label:'No. de pasaporte',tipo:'texto'},
   ]},
   {titulo:'Escolaridad',campos:[
-    {key:'ultimo_grado',label:'Último grado de estudios',tipo:'select',opciones:[{v:'Primaria'},{v:'Secundaria'},{v:'Preparatoria / Vocacional'},{v:'Profesional'},{v:'Posgrado'},{v:'Comercial u otras'}],req:true},
-    {key:'institucion',label:'Nombre de la institución',tipo:'texto'},
-    {key:'titulo_recibido',label:'¿Título recibido?',tipo:'select',opciones:SI_NO_SE},
+    ..._NIVELES_ESCOLARES.flatMap(n=>[
+      {key:`esc_${n.slug}_institucion`,label:`${n.label} — Institución`,tipo:'texto'},
+      {key:`esc_${n.slug}_inicio`,label:`${n.label} — Fecha de inicio`,tipo:'fecha'},
+      {key:`esc_${n.slug}_fin`,label:`${n.label} — Fecha de fin`,tipo:'fecha'},
+      {key:`esc_${n.slug}_titulo`,label:`${n.label} — ¿Certificado o título obtenido?`,tipo:'select',opciones:SI_NO_SE},
+    ]),
     {key:'estudios_actuales',label:'Estudios que realiza actualmente',tipo:'texto'},
   ]},
   {titulo:'Conocimientos generales',campos:[

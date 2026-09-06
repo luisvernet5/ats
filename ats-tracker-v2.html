@@ -4370,6 +4370,9 @@ const EMPRESA_MODULOS=[
   {key:'contratos',label:'Contratos'},
   {key:'capacitacion',label:'Capacitación'},
   {key:'headcount_autorizado',label:'Headcount autorizado'},
+  {key:'perfiles',label:'Perfiles de puesto'},
+  {key:'procedimientos',label:'Procedimientos'},
+  {key:'kpis',label:'KPIs'},
 ];
 let empModulos={};
 function renderEmpModulos(){
@@ -16838,22 +16841,24 @@ function renderPerfiles(){
   const page = document.getElementById('page-perfiles');
   if(!page) return;
   const rol = currentUserData?.rol||'admin';
-  let empresas = DB.empresas;
+  let empresas = DB.empresas.filter(e=>e.modulos?.perfiles!==false);
   if(_isEmpresaRole()){
     const empId = currentUserData?.empresa_id;
-    empresas = DB.empresas.filter(e=>e.id===empId);
+    empresas = empresas.filter(e=>e.id===empId);
     if(empresas.length===1){ renderPerfilesEmpresa(empresas[0].id); return; }
   }
   const cards = empresas.map(emp=>{
+    const color=emp.color||'#2AAADE';
     const count = DB.perfilesPuesto.filter(p=>p.empresa_id===emp.id).length;
-    return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px" onclick="renderPerfilesEmpresa('${emp.id}')">
-      <div style="display:flex;align-items:center;gap:10px">
-        ${emp.logo?`<img src="${emp.logo}" style="width:36px;height:36px;object-fit:contain;border-radius:6px">`:`<div style="width:36px;height:36px;border-radius:6px;background:${emp.color||'#2AAADE'}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${emp.color||'#2AAADE'}"></i></div>`}
-        <div>
-          <div style="font-weight:600;font-size:14px">${emp.nombre}</div>
-          <div style="font-size:12px;color:var(--text3)">${count} perfil${count!==1?'es':''}</div>
+    return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px;transition:box-shadow .15s" onclick="renderPerfilesEmpresa('${emp.id}')" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,.12)'" onmouseleave="this.style.boxShadow=''">
+      <div style="display:flex;align-items:center;gap:12px">
+        ${emp.logo?`<img src="${emp.logo}" style="width:40px;height:40px;object-fit:contain;border-radius:8px;flex-shrink:0">`:`<div style="width:40px;height:40px;flex-shrink:0;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color};font-size:18px"></i></div>`}
+        <div style="min-width:0">
+          <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(emp.nombre)}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">${count} perfil${count!==1?'es':''}</div>
         </div>
       </div>
+      <div style="height:3px;border-radius:2px;background:${color}33;overflow:hidden"><div style="height:100%;width:100%;background:${color};border-radius:2px"></div></div>
     </div>`;
   }).join('');
   page.innerHTML=`
@@ -17524,21 +17529,23 @@ function renderKpis(){
   const page=document.getElementById('page-kpis');
   if(!page)return;
   const _empIdKpi=_userEmpresaId();
-  const empresasKpi=_empIdKpi?DB.empresas.filter(e=>e.id===_empIdKpi):DB.empresas;
+  let empresasKpi=DB.empresas.filter(e=>e.modulos?.kpis!==false);
+  if(_empIdKpi) empresasKpi=empresasKpi.filter(e=>e.id===_empIdKpi);
   const cards=empresasKpi.map(emp=>{
     let cedulasEmp=(DB.kpis||[]).filter(k=>k.empresa_id===emp.id);
     if(currentUserData?.rol==='coordinador') cedulasEmp=cedulasEmp.filter(_coordVacanteMatch);
     const count=cedulasEmp.length;
     const color=emp.color||'#2AAADE';
-    return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px" onclick="renderKpisEmpresa('${emp.id}')">
-      <div style="display:flex;align-items:center;gap:10px">
-        ${emp.logo?`<img src="${emp.logo}" style="width:36px;height:36px;object-fit:contain;border-radius:6px">`:
-          `<div style="width:36px;height:36px;border-radius:6px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-chart-bar" style="color:${color}"></i></div>`}
-        <div>
-          <div style="font-weight:600;font-size:14px">${_esc(emp.nombre)}</div>
-          <div style="font-size:12px;color:var(--text3)">${count} cédula${count!==1?'s':''} de evaluación</div>
+    return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px;transition:box-shadow .15s" onclick="renderKpisEmpresa('${emp.id}')" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,.12)'" onmouseleave="this.style.boxShadow=''">
+      <div style="display:flex;align-items:center;gap:12px">
+        ${emp.logo?`<img src="${emp.logo}" style="width:40px;height:40px;object-fit:contain;border-radius:8px;flex-shrink:0">`:
+          `<div style="width:40px;height:40px;flex-shrink:0;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-chart-bar" style="color:${color};font-size:18px"></i></div>`}
+        <div style="min-width:0">
+          <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(emp.nombre)}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">${count} cédula${count!==1?'s':''} de evaluación</div>
         </div>
       </div>
+      <div style="height:3px;border-radius:2px;background:${color}33;overflow:hidden"><div style="height:100%;width:100%;background:${color};border-radius:2px"></div></div>
     </div>`;
   }).join('');
   page.innerHTML=`
@@ -22571,23 +22578,24 @@ function renderProcedimientos(){
   if(!page)return;
   _procEmpId=null;_procPerfilId=null;
   const rol=currentUserData?.rol||'admin';
-  let empresas=DB.empresas;
+  let empresas=DB.empresas.filter(e=>e.modulos?.procedimientos!==false);
   if(_isEmpresaRole()){
     const eId=currentUserData?.empresa_id;
-    empresas=DB.empresas.filter(e=>e.id===eId);
+    empresas=empresas.filter(e=>e.id===eId);
     if(empresas.length===1){renderProcedimientosEmpresa(empresas[0].id);return;}
   }
   const cards=empresas.map(emp=>{
     const count=(DB.procedimientos||[]).filter(p=>p.empresa_id===emp.id).length;
     const color=emp.color||'#2AAADE';
-    return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px" onclick="renderProcedimientosEmpresa('${emp.id}')">
-      <div style="display:flex;align-items:center;gap:10px">
-        ${emp.logo?`<img src="${emp.logo}" style="width:36px;height:36px;object-fit:contain;border-radius:6px">`:`<div style="width:36px;height:36px;border-radius:6px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
-        <div>
-          <div style="font-weight:600;font-size:14px">${_esc(emp.nombre)}</div>
-          <div style="font-size:12px;color:var(--text3)">${count} procedimiento${count!==1?'s':''}</div>
+    return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px;transition:box-shadow .15s" onclick="renderProcedimientosEmpresa('${emp.id}')" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,.12)'" onmouseleave="this.style.boxShadow=''">
+      <div style="display:flex;align-items:center;gap:12px">
+        ${emp.logo?`<img src="${emp.logo}" style="width:40px;height:40px;object-fit:contain;border-radius:8px;flex-shrink:0">`:`<div style="width:40px;height:40px;flex-shrink:0;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color};font-size:18px"></i></div>`}
+        <div style="min-width:0">
+          <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(emp.nombre)}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">${count} procedimiento${count!==1?'s':''}</div>
         </div>
       </div>
+      <div style="height:3px;border-radius:2px;background:${color}33;overflow:hidden"><div style="height:100%;width:100%;background:${color};border-radius:2px"></div></div>
     </div>`;
   }).join('');
   page.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">

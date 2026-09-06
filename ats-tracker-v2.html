@@ -3666,6 +3666,7 @@ const DB={
   solicitudesEmpleo:[],
   capacitacionCursos:[],
   capacitacionAsistencias:[],
+  capacitacionMatriz:[],
   personal:[],
   colaboradores:[],
   evaluaciones:[],
@@ -4043,6 +4044,7 @@ function renderCapacitacion(){
 }
 async function capacitacionOpenEmpresa(empId){
   _capOpenEmpId=empId;
+  _capVista='cursos';
   const page=document.getElementById('page-capacitacion');
   if(page) page.innerHTML='<div style="padding:60px;text-align:center;color:var(--text3)"><i class="fa fa-spinner fa-spin" style="font-size:22px;margin-bottom:12px;display:block"></i>Cargando...</div>';
   await _capCargarDatosEmpresa(empId);
@@ -4054,15 +4056,20 @@ function capacitacionBack(){_capOpenEmpId=null;renderCapacitacion();}
 async function _capCargarDatosEmpresa(empId){
   if(SANDBOX_MODE) return;
   try{
-    const [{data:cursos,error:e1},{data:asis,error:e2}]=await Promise.all([
+    const [{data:cursos,error:e1},{data:asis,error:e2},{data:matriz,error:e3}]=await Promise.all([
       sbClient.from('capacitacion_cursos').select('*').filter('data->>empresa_id','eq',empId),
       sbClient.from('capacitacion_asistencias').select('*').filter('data->>empresa_id','eq',empId),
+      sbClient.from('capacitacion_matriz').select('*').filter('data->>empresa_id','eq',empId),
     ]);
-    if(e1) throw e1; if(e2) throw e2;
+    if(e1) throw e1; if(e2) throw e2; if(e3) throw e3;
     DB.capacitacionCursos=(DB.capacitacionCursos||[]).filter(c=>c.empresa_id!==empId).concat((cursos||[]).map(r=>r.data||r).filter(Boolean));
     DB.capacitacionAsistencias=(DB.capacitacionAsistencias||[]).filter(a=>a.empresa_id!==empId).concat((asis||[]).map(r=>r.data||r).filter(Boolean));
+    DB.capacitacionMatriz=(DB.capacitacionMatriz||[]).filter(m=>m.empresa_id!==empId).concat((matriz||[]).map(r=>r.data||r).filter(Boolean));
   }catch(e){ console.warn('[Capacitación] Error al cargar:',e.message); }
 }
+const CAPACITACION_PERIODICIDADES=['Única vez','Mensual','Bimestral','Trimestral','Semestral','Anual','Bianual'];
+let _capVista='cursos'; // 'cursos' | 'matriz'
+function capacitacionSetVista(empId,vista){ _capVista=vista; _capRenderEmpresa(empId); }
 function _capRenderEmpresa(empId){
   const page=document.getElementById('page-capacitacion'); if(!page) return;
   const emp=DB.empresas.find(e=>e.id===empId)||{};
@@ -4090,7 +4097,7 @@ function _capRenderEmpresa(empId){
     </tr>`;
   }).join('');
   page.innerHTML=`
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="capacitacionBack()"><i class="fa fa-arrow-left"></i> Empresas</button>
       ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
       <span style="font-size:16px;font-weight:700">${_esc(emp.nombre||'')}</span>
@@ -4098,12 +4105,60 @@ function _capRenderEmpresa(empId){
       <button class="btn btn-ghost btn-sm" onclick="abrirPlantillasSTPSModal()" title="Subir los PDF oficiales en blanco de DC-1/DC-2/DC-3"><i class="fa fa-file-import"></i> Plantillas STPS</button>
       <button class="btn btn-ghost btn-sm" onclick="abrirDC1Modal('${empId}')"><i class="fa fa-users-rectangle"></i> DC-1 (Comisión Mixta)</button>
       <button class="btn btn-ghost btn-sm" onclick="abrirDC2Modal('${empId}')"><i class="fa fa-file-lines"></i> DC-2 (Plan de capacitación)</button>
-      <button class="btn btn-primary btn-sm" onclick="abrirCursoModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo curso</button>
+      ${_capVista==='cursos'?`<button class="btn btn-primary btn-sm" onclick="abrirCursoModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo curso</button>`:''}
     </div>
+    <div style="display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--border)">
+      <button onclick="capacitacionSetVista('${empId}','cursos')" style="background:none;border:none;border-bottom:2px solid ${_capVista==='cursos'?color:'transparent'};color:${_capVista==='cursos'?color:'var(--text3)'};font-weight:${_capVista==='cursos'?700:400};padding:8px 4px;cursor:pointer;font-size:13px"><i class="fa fa-book"></i> Cursos</button>
+      <button onclick="capacitacionSetVista('${empId}','matriz')" style="background:none;border:none;border-bottom:2px solid ${_capVista==='matriz'?color:'transparent'};color:${_capVista==='matriz'?color:'var(--text3)'};font-weight:${_capVista==='matriz'?700:400};padding:8px 4px;cursor:pointer;font-size:13px"><i class="fa fa-table-cells"></i> Matriz de control de capacitación</button>
+    </div>
+    ${_capVista==='matriz'?_capMatrizHtml(empId):`
     <div class="table-wrap"><table>
       <thead><tr><th>Curso</th><th>Tipo</th><th>Instructor</th><th>Fecha</th><th>Duración</th><th>Asistencia</th><th></th></tr></thead>
       <tbody>${rows||'<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:32px">Sin cursos registrados — agrega el primero</td></tr>'}</tbody>
+    </table></div>`}`;
+}
+function _capMatrizHtml(empId){
+  const cursos=(DB.capacitacionCursos||[]).filter(c=>c.empresa_id===empId).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
+  const colabs=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId&&c.estado!=='Baja').sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
+  if(!cursos.length) return `<div style="text-align:center;padding:40px;color:var(--text3)"><i class="fa fa-table-cells" style="font-size:32px;display:block;margin-bottom:10px;opacity:.4"></i>Registra al menos un curso para poder armar la matriz.</div>`;
+  if(!colabs.length) return `<div style="text-align:center;padding:40px;color:var(--text3)"><i class="fa fa-users" style="font-size:32px;display:block;margin-bottom:10px;opacity:.4"></i>Esta empresa no tiene colaboradores activos en Administrador de Personal.</div>`;
+  const matriz={};
+  (DB.capacitacionMatriz||[]).filter(m=>m.empresa_id===empId).forEach(m=>{ matriz[m.colaborador_id+'|'+m.curso_id]=m; });
+  const rows=colabs.map(c=>{
+    const cells=cursos.map(curso=>{
+      const m=matriz[c.id+'|'+curso.id];
+      const opts=['<option value="">— No aplica —</option>']
+        .concat(CAPACITACION_PERIODICIDADES.map(p=>`<option value="${p}" ${m?.periodicidad===p?'selected':''}>${p}</option>`));
+      return `<td style="padding:4px 6px"><select onchange="_capMatrizCambio(this,'${empId}','${c.id}','${curso.id}')" style="width:100%;font-size:11px;padding:3px 4px;height:28px">${opts.join('')}</select></td>`;
+    }).join('');
+    return `<tr><td class="td-p" style="white-space:nowrap;position:sticky;left:0;background:var(--surface)">${_esc(c.nombre||'')}</td>${cells}</tr>`;
+  }).join('');
+  const headCols=cursos.map(curso=>`<th style="min-width:150px;max-width:150px;white-space:normal" title="${_esc(curso.nombre||'')}">${_esc(curso.nombre||'')}</th>`).join('');
+  return `<div style="font-size:11px;color:var(--text3);margin-bottom:8px">Selecciona con qué periodicidad debe tomar cada curso cada colaborador. Se guarda automáticamente al elegir una opción.</div>
+    <div class="table-wrap" style="overflow-x:auto"><table>
+      <thead><tr><th style="position:sticky;left:0;background:var(--surface2);z-index:1">Colaborador</th>${headCols}</tr></thead>
+      <tbody>${rows}</tbody>
     </table></div>`;
+}
+async function _capMatrizCambio(selectEl,empId,colabId,cursoId){
+  const periodicidad=selectEl.value;
+  const existente=(DB.capacitacionMatriz||[]).find(m=>m.empresa_id===empId&&m.colaborador_id===colabId&&m.curso_id===cursoId);
+  try{
+    if(!periodicidad){
+      if(existente){
+        await deleteRecord('capacitacion_matriz',existente.id);
+        DB.capacitacionMatriz=(DB.capacitacionMatriz||[]).filter(m=>m.id!==existente.id);
+      }
+    }else{
+      const registro={id:existente?.id||uid(),empresa_id:empId,colaborador_id:colabId,curso_id:cursoId,periodicidad,created_at:existente?.created_at||new Date().toISOString()};
+      await saveRecord('capacitacion_matriz',registro);
+      const idx=(DB.capacitacionMatriz||[]).findIndex(m=>m.id===registro.id);
+      if(idx>=0) DB.capacitacionMatriz[idx]=registro; else{ if(!DB.capacitacionMatriz)DB.capacitacionMatriz=[]; DB.capacitacionMatriz.push(registro); }
+    }
+    showToast('Matriz actualizada ✓');
+  }catch(e){
+    showToast('Error: '+e.message,'err');
+  }
 }
 function abrirCursoModal(empId,cursoId){
   const curso=cursoId?(DB.capacitacionCursos||[]).find(c=>c.id===cursoId):null;
@@ -15711,7 +15766,7 @@ const RESPALDO_TABLAS = [
   'evaluaciones','evaluaciones_enviadas','procesos_evaluacion','procesos_enviados',
   'kpis','procedimientos','coordinadores','colaboradores','permisos_usuarios','activity_log',
   'expediente_documentos','candidato_documentos','solicitudes_empleo',
-  'capacitacion_cursos','capacitacion_asistencias',
+  'capacitacion_cursos','capacitacion_asistencias','capacitacion_matriz',
 ];
 
 async function exportarRespaldo(){

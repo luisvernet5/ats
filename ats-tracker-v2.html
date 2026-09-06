@@ -1509,6 +1509,9 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
   </div>
 </div>
 
+<!-- ===== FORMULARIO PÚBLICO SOLICITUD DE EMPLEO (mostrado via ?solicitud=TOKEN) ===== -->
+<div id="solicitud-public-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;overflow:auto;padding:0 0 32px"></div>
+
 <!-- ===== MODAL CANDIDATO ===== -->
 <div class="modal-overlay" id="modal-candidato">
   <div class="modal modal-lg">
@@ -3522,6 +3525,7 @@ async function loadDB(silent=false){
     try{const usrRes=await sbClient.from('usuarios').select('*');DB.usuarios=(usrRes.data||[]).filter(Boolean);}catch(e){DB.usuarios=[];}
     try{const coordRes=await sbClient.from('coordinadores').select('*');DB.coordinadores=(coordRes.data||[]).filter(Boolean);}catch(e){DB.coordinadores=[];}
     try{const cdRes=await sbClient.from('candidato_documentos').select('*');DB.candidatoDocumentos=(cdRes.data||[]).filter(Boolean);}catch(e){DB.candidatoDocumentos=[];}
+    try{const seRes=await sbClient.from('solicitudes_empleo').select('*');DB.solicitudesEmpleo=(seRes.data||[]).map(r=>r.data||r).filter(Boolean);}catch(e){DB.solicitudesEmpleo=[];}
   }catch(e){
     console.error('[loadDB] ERROR:',e?.message||e);
     showToast('Error al cargar datos: '+(e?.message||'revisa la consola'),'err');
@@ -3589,6 +3593,7 @@ const DB={
   docPlantillas:[],
   docCandidato:[],
   candidatoDocumentos:[],
+  solicitudesEmpleo:[],
   personal:[],
   colaboradores:[],
   evaluaciones:[],
@@ -5732,7 +5737,6 @@ async function openReferenciasModal(id){
 /* ── Documentos del candidato: CV / Solicitud de empleo / Resultados psicométricos + accesos a Entrevista/Referencias ── */
 const CANDIDATO_DOC_CATEGORIAS=[
   {key:'CV',label:'CV / Currículum',icon:'fa-user-tie'},
-  {key:'Solicitud de empleo',label:'Solicitud de empleo',icon:'fa-file-signature'},
   {key:'Resultados psicométricos',label:'Resultados de pruebas psicométricas',icon:'fa-brain'},
 ];
 let _cdBucketReady=false;
@@ -5748,19 +5752,16 @@ function _cdDocsMap(candId){
     .forEach(d=>{ if(!map[d.categoria]) map[d.categoria]=d; });
   return map;
 }
-function _cdTieneTodos(candId){
-  const map=_cdDocsMap(candId);
-  return CANDIDATO_DOC_CATEGORIAS.every(cat=>map[cat.key]);
-}
 function _cdProgreso(candId){
   const c=DB.candidatos.find(x=>x.id===candId)||{};
   const tieneEi=!!(c.fecha_entrevista||c.impresion_general||c.nivel_estudios||c.estado_civil);
   const tieneRef=_candConRefs.has(candId);
+  const tieneSolicitud=_seParaCandidato(candId)?.estado==='completado';
   const map=_cdDocsMap(candId);
   const doneDocs=CANDIDATO_DOC_CATEGORIAS.filter(cat=>map[cat.key]).length;
-  const total=CANDIDATO_DOC_CATEGORIAS.length+2;
-  const done=doneDocs+(tieneEi?1:0)+(tieneRef?1:0);
-  return {done,total,tieneEi,tieneRef};
+  const total=CANDIDATO_DOC_CATEGORIAS.length+3; // + Solicitud de empleo + Entrevista + Referencias
+  const done=doneDocs+(tieneSolicitud?1:0)+(tieneEi?1:0)+(tieneRef?1:0);
+  return {done,total,tieneEi,tieneRef,tieneSolicitud};
 }
 function _cdSlug(categoria){return (categoria||'').toLowerCase().replace(/[^a-z0-9]+/g,'-');}
 function _cdFmtSize(bytes){
@@ -5879,12 +5880,289 @@ function abrirDocumentosCandidato(candId){
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-cand-docs').remove()"><i class="fa fa-times"></i></button>
       </div>
       <div class="sep" style="margin-top:0">Documentos del candidato</div>
-      ${CANDIDATO_DOC_CATEGORIAS.map(filaDoc).join('')}
+      ${filaDoc(CANDIDATO_DOC_CATEGORIAS[0])}
+      ${_filaSolicitudEmpleoHtml(candId)}
+      ${filaDoc(CANDIDATO_DOC_CATEGORIAS[1])}
       <div class="sep">Procesos</div>
       ${filaAcceso('fa-clipboard-list','Reporte de entrevista',_tieneEi,`document.getElementById('modal-cand-docs').remove();openEntrevistaModal('${candId}')`)}
       ${filaAcceso('fa-users','Referencias',_tieneRef,`document.getElementById('modal-cand-docs').remove();openReferenciasModal('${candId}')`)}
     </div>`;
   document.body.appendChild(modal);
+}
+
+/* ── Solicitud de empleo virtual — liga pública para que el candidato la llene (misma lógica que Procesos de Evaluación) ── */
+const SI_NO_SE=[{v:'Sí',l:'Sí'},{v:'No',l:'No'}];
+const SOLICITUD_EMPLEO_SECCIONES=[
+  {titulo:'Datos personales',campos:[
+    {key:'puesto_solicitado',label:'Puesto que solicita',tipo:'texto'},
+    {key:'sueldo_deseado',label:'Sueldo mensual deseado',tipo:'texto'},
+    {key:'primer_apellido',label:'Primer apellido',tipo:'texto',req:true},
+    {key:'segundo_apellido',label:'Segundo apellido',tipo:'texto'},
+    {key:'nombres',label:'Nombre(s)',tipo:'texto',req:true},
+    {key:'edad',label:'Edad',tipo:'numero'},
+    {key:'sexo',label:'Sexo',tipo:'select',opciones:[{v:'Masculino'},{v:'Femenino'}]},
+    {key:'fecha_nacimiento',label:'Fecha de nacimiento',tipo:'fecha'},
+    {key:'nacionalidad',label:'Nacionalidad',tipo:'texto'},
+    {key:'estado_civil',label:'Estado civil',tipo:'select',opciones:[{v:'Soltero(a)'},{v:'Casado(a)'},{v:'Unión libre'},{v:'Divorciado(a)'},{v:'Viudo(a)'}]},
+    {key:'telefono',label:'Teléfono / Celular',tipo:'texto',req:true},
+    {key:'domicilio',label:'Domicilio (calle y número)',tipo:'texto'},
+    {key:'colonia',label:'Colonia',tipo:'texto'},
+    {key:'cp',label:'Código postal',tipo:'texto'},
+    {key:'ciudad',label:'Ciudad / Alcaldía',tipo:'texto'},
+    {key:'entidad',label:'Entidad federativa',tipo:'texto'},
+    {key:'vive_con',label:'Vive con',tipo:'texto'},
+    {key:'dependientes',label:'Personas que dependen de usted',tipo:'texto'},
+  ]},
+  {titulo:'Documentación',campos:[
+    {key:'curp',label:'CURP',tipo:'texto'},
+    {key:'rfc',label:'RFC',tipo:'texto'},
+    {key:'nss',label:'Número de Seguridad Social',tipo:'texto'},
+    {key:'afore',label:'No. de AFORE',tipo:'texto'},
+    {key:'licencia',label:'¿Tiene licencia de manejo?',tipo:'select',opciones:SI_NO_SE},
+    {key:'licencia_num',label:'Clase y número de licencia',tipo:'texto'},
+    {key:'pasaporte',label:'No. de pasaporte',tipo:'texto'},
+  ]},
+  {titulo:'Escolaridad',campos:[
+    {key:'ultimo_grado',label:'Último grado de estudios',tipo:'select',opciones:[{v:'Primaria'},{v:'Secundaria'},{v:'Preparatoria / Vocacional'},{v:'Profesional'},{v:'Posgrado'},{v:'Comercial u otras'}]},
+    {key:'institucion',label:'Nombre de la institución',tipo:'texto'},
+    {key:'titulo_recibido',label:'¿Título recibido?',tipo:'select',opciones:SI_NO_SE},
+    {key:'estudios_actuales',label:'Estudios que realiza actualmente',tipo:'texto'},
+  ]},
+  {titulo:'Conocimientos generales',campos:[
+    {key:'idiomas',label:'Idiomas que domina',tipo:'texto'},
+    {key:'herramientas',label:'Herramientas / equipo de oficina que maneja',tipo:'texto'},
+    {key:'otros_conocimientos',label:'Otros trabajos o funciones que domina',tipo:'parrafo'},
+  ]},
+  {titulo:'Empleo actual o más reciente',campos:[
+    {key:'emp_nombre',label:'Nombre de la empresa',tipo:'texto'},
+    {key:'emp_puesto',label:'Puesto',tipo:'texto'},
+    {key:'emp_telefono',label:'Teléfono de la empresa',tipo:'texto'},
+    {key:'emp_jefe',label:'Nombre de su jefe inmediato',tipo:'texto'},
+    {key:'emp_inicio',label:'Fecha de inicio',tipo:'fecha'},
+    {key:'emp_fin',label:'Fecha de término',tipo:'fecha'},
+    {key:'emp_sueldo',label:'Sueldo',tipo:'texto'},
+    {key:'emp_motivo_separacion',label:'Motivo de separación',tipo:'texto'},
+    {key:'emp_actividades',label:'Actividades desempeñadas',tipo:'parrafo'},
+    {key:'emp_solicitar_informes',label:'¿Podemos solicitar informes de usted?',tipo:'select',opciones:SI_NO_SE},
+  ]},
+  {titulo:'Referencias personales',campos:[
+    {key:'ref1_nombre',label:'Referencia 1 — Nombre',tipo:'texto'},
+    {key:'ref1_telefono',label:'Referencia 1 — Teléfono',tipo:'texto'},
+    {key:'ref1_ocupacion',label:'Referencia 1 — Ocupación',tipo:'texto'},
+    {key:'ref1_tiempo',label:'Referencia 1 — Tiempo de conocerlo',tipo:'texto'},
+    {key:'ref2_nombre',label:'Referencia 2 — Nombre',tipo:'texto'},
+    {key:'ref2_telefono',label:'Referencia 2 — Teléfono',tipo:'texto'},
+    {key:'ref2_ocupacion',label:'Referencia 2 — Ocupación',tipo:'texto'},
+    {key:'ref2_tiempo',label:'Referencia 2 — Tiempo de conocerlo',tipo:'texto'},
+  ]},
+  {titulo:'Datos generales',campos:[
+    {key:'como_se_entero',label:'¿Cómo se enteró de este empleo?',tipo:'texto'},
+    {key:'familiares_empresa',label:'¿Tiene familiares o amigos que laboren en esta empresa?',tipo:'texto'},
+    {key:'sindicato',label:'¿Pertenece a algún sindicato?',tipo:'select',opciones:SI_NO_SE},
+    {key:'puede_viajar',label:'¿Puede viajar?',tipo:'select',opciones:SI_NO_SE},
+    {key:'cambiar_residencia',label:'¿Está dispuesto a cambiar de lugar de residencia?',tipo:'select',opciones:SI_NO_SE},
+    {key:'fecha_disponible',label:'¿Fecha en que podría presentarse a trabajar?',tipo:'fecha'},
+  ]},
+  {titulo:'Observaciones',campos:[
+    {key:'observaciones',label:'Observaciones',tipo:'parrafo'},
+  ]},
+];
+function _seParaCandidato(candId){
+  const list=(DB.solicitudesEmpleo||[]).filter(s=>s.candidato_id===candId);
+  return list.sort((a,b)=>(b.fecha_envio||'').localeCompare(a.fecha_envio||''))[0]||null;
+}
+function _seLink(token){return `${location.origin}${location.pathname}?solicitud=${token}`;}
+function _filaSolicitudEmpleoHtml(candId){
+  const se=_seParaCandidato(candId);
+  if(!se){
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border-radius:8px;margin-bottom:10px">
+      <i class="fa fa-file-signature" style="font-size:18px;color:#9ca3af;flex-shrink:0;width:20px;text-align:center"></i>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600">Solicitud de empleo</div>
+        <div style="font-size:11px;color:var(--text3)">Sin enviar</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" title="Generar y copiar liga" onclick="generarLigaSolicitudEmpleo('${candId}')"><i class="fa fa-link"></i> Enviar liga</button>
+    </div>`;
+  }
+  if(se.estado==='completado'){
+    const fecha=se.fecha_completada?new Date(se.fecha_completada).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border-radius:8px;margin-bottom:10px">
+      <i class="fa fa-file-signature" style="font-size:18px;color:#22c55e;flex-shrink:0;width:20px;text-align:center"></i>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600">Solicitud de empleo</div>
+        <div style="font-size:11px;color:var(--text3)">Completada el ${fecha}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" title="Ver respuestas" onclick="verRespuestasSolicitudEmpleo('${candId}')"><i class="fa fa-eye"></i></button>
+    </div>`;
+  }
+  const fecha=se.fecha_envio?new Date(se.fecha_envio).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+  return `<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border-radius:8px;margin-bottom:10px">
+    <i class="fa fa-file-signature" style="font-size:18px;color:#f59e0b;flex-shrink:0;width:20px;text-align:center"></i>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:600">Solicitud de empleo</div>
+      <div style="font-size:11px;color:var(--text3)">Liga enviada el ${fecha} · pendiente de respuesta</div>
+    </div>
+    <div style="display:flex;gap:6px;flex-shrink:0">
+      <button class="btn btn-ghost btn-sm" title="Copiar liga" onclick="copiarLigaSolicitudEmpleo('${se.token}')"><i class="fa fa-copy"></i></button>
+      <button class="btn btn-ghost btn-sm" title="Generar nueva liga" onclick="generarLigaSolicitudEmpleo('${candId}')"><i class="fa fa-rotate"></i></button>
+    </div>
+  </div>`;
+}
+async function generarLigaSolicitudEmpleo(candId){
+  if(SANDBOX_MODE){showToast('No disponible en modo de prueba','err');return;}
+  const c=DB.candidatos.find(x=>x.id===candId); if(!c) return;
+  const token=uid()+uid();
+  const registro={
+    id:uid(), candidato_id:candId, candidato_nombre:c.nombre||'',
+    token, estado:'pendiente', campos:{},
+    fecha_envio:new Date().toISOString(), fecha_completada:null,
+  };
+  try{
+    await saveRecord('solicitudes_empleo',registro);
+    if(!DB.solicitudesEmpleo) DB.solicitudesEmpleo=[];
+    DB.solicitudesEmpleo.push(registro);
+    await logActivity('Enviar liga de solicitud de empleo','candidatos',candId,`${c.nombre||candId}`);
+    abrirDocumentosCandidato(candId);
+    recargarVistaActiva();
+    navigator.clipboard?.writeText(_seLink(token)).then(()=>showToast('Liga generada y copiada ✓')).catch(()=>showToast('Liga generada ✓'));
+  }catch(e){
+    showToast('Error: '+e.message,'err');
+  }
+}
+function copiarLigaSolicitudEmpleo(token){
+  navigator.clipboard?.writeText(_seLink(token)).then(()=>showToast('Liga copiada ✓')).catch(()=>{});
+}
+function verRespuestasSolicitudEmpleo(candId){
+  const se=_seParaCandidato(candId);
+  if(!se||se.estado!=='completado'){showToast('Aún no ha sido completada','err');return;}
+  document.getElementById('modal-se-ver')?.remove();
+  const campos=se.campos||{};
+  const rows=SOLICITUD_EMPLEO_SECCIONES.map(sec=>{
+    const filas=sec.campos.filter(f=>campos[f.key]).map(f=>
+      `<tr><td style="padding:6px 10px;color:var(--text3);font-size:12px;white-space:nowrap;vertical-align:top">${_esc(f.label)}</td><td style="padding:6px 10px;font-size:13px">${_esc(String(campos[f.key]))}</td></tr>`
+    ).join('');
+    if(!filas)return'';
+    return `<tr><td colspan="2" style="padding:14px 10px 4px;font-size:12px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.04em">${_esc(sec.titulo)}</td></tr>${filas}`;
+  }).join('');
+  const modal=document.createElement('div');
+  modal.id='modal-se-ver';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3300;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:600px;max-width:96vw;max-height:88vh;overflow-y:auto;padding:22px;box-shadow:0 8px 32px #0004">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-weight:700;font-size:16px"><i class="fa fa-file-signature" style="color:var(--primary);margin-right:6px"></i>Solicitud de empleo</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-se-ver').remove()"><i class="fa fa-times"></i></button>
+    </div>
+    <table style="width:100%;border-collapse:collapse">${rows}</table>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+/* ── Formulario público de solicitud de empleo (sin login, vía ?solicitud=TOKEN) ── */
+let _sePubData=null;
+async function _checkSolicitudPublica(){
+  const params=new URLSearchParams(location.search);
+  const token=params.get('solicitud');
+  if(!token) return false;
+  const screen=document.getElementById('solicitud-public-screen');
+  screen.style.display='';
+  document.querySelector('.sidebar')?.style.setProperty('display','none');
+  document.querySelector('.main')?.style.setProperty('display','none');
+  try{
+    const {data:rows}=await sbClient.from('solicitudes_empleo').select('*').filter('data->>token','eq',token).limit(1);
+    const se=rows?.[0]?.data||rows?.[0];
+    if(!se){
+      screen.innerHTML=`<div style="max-width:500px;margin:60px auto;text-align:center"><i class="fa fa-exclamation-circle" style="font-size:48px;color:var(--danger);margin-bottom:16px"></i><div style="font-size:18px;font-weight:600">Liga no encontrada</div><div style="font-size:14px;color:var(--text2);margin-top:8px">Este enlace no es válido.</div></div>`;
+      return true;
+    }
+    _sePubData={se};
+    screen.innerHTML=se.estado==='completado'?_seRenderCompletada():_seRenderForm(se);
+  }catch(e){
+    screen.innerHTML=`<div style="max-width:500px;margin:60px auto;text-align:center"><i class="fa fa-exclamation-circle" style="font-size:48px;color:var(--danger);margin-bottom:16px"></i><div style="font-size:18px;font-weight:600">Error al cargar</div><div style="font-size:14px;color:var(--text2);margin-top:8px">${_esc(e.message)}</div></div>`;
+  }
+  return true;
+}
+function _seCampoHtml(f,val){
+  const req=f.req?' <span style="color:var(--danger)">*</span>':'';
+  const wide=f.tipo==='parrafo'?'grid-column:1/-1':'';
+  let input='';
+  if(f.tipo==='select'){
+    input=`<select id="se-f-${f.key}" style="width:100%"><option value="">Selecciona...</option>${f.opciones.map(o=>`<option value="${_esc(o.v)}" ${val===o.v?'selected':''}>${_esc(o.l||o.v)}</option>`).join('')}</select>`;
+  }else if(f.tipo==='parrafo'){
+    input=`<textarea id="se-f-${f.key}" rows="3" style="width:100%;resize:vertical">${_esc(val||'')}</textarea>`;
+  }else if(f.tipo==='fecha'){
+    input=`<input type="date" id="se-f-${f.key}" value="${_esc(val||'')}" style="width:100%">`;
+  }else if(f.tipo==='numero'){
+    input=`<input type="number" id="se-f-${f.key}" value="${_esc(val||'')}" style="width:100%">`;
+  }else{
+    input=`<input type="text" id="se-f-${f.key}" value="${_esc(val||'')}" style="width:100%">`;
+  }
+  return `<div style="${wide}"><label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">${_esc(f.label)}${req}</label>${input}</div>`;
+}
+function _seRenderForm(se){
+  const secciones=SOLICITUD_EMPLEO_SECCIONES.map(sec=>`
+    <div style="margin-bottom:26px">
+      <div style="font-size:14px;font-weight:700;color:var(--primary);border-bottom:2px solid var(--primary);padding-bottom:6px;margin-bottom:14px">${_esc(sec.titulo)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">${sec.campos.map(f=>_seCampoHtml(f,se.campos?.[f.key])).join('')}</div>
+    </div>`).join('');
+  return `<div style="max-width:720px;margin:0 auto;padding:32px 16px 60px">
+    <div style="text-align:center;margin-bottom:26px">
+      <i class="fa fa-file-signature" style="font-size:28px;color:var(--primary)"></i>
+      <div style="font-size:20px;font-weight:700;margin-top:6px">Solicitud de empleo</div>
+      <div style="font-size:13px;color:var(--text3);margin-top:4px">${_esc(se.candidato_nombre||'')}</div>
+    </div>
+    <div id="se-error" style="display:none;background:#fef2f2;color:#dc2626;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px"></div>
+    ${secciones}
+    <div style="display:flex;align-items:flex-start;gap:10px;margin:20px 0;padding:14px;background:var(--surface2);border-radius:8px">
+      <input type="checkbox" id="se-acepto" style="margin-top:3px;accent-color:var(--primary)">
+      <label for="se-acepto" style="font-size:12px;color:var(--text2);cursor:pointer">Certifico que los datos proporcionados son correctos y autorizo a la empresa para que los verifique.</label>
+    </div>
+    <button class="btn btn-primary" id="se-submit-btn" style="width:100%;justify-content:center;padding:12px" onclick="submitSolicitudEmpleo()"><i class="fa fa-paper-plane"></i> Enviar solicitud</button>
+  </div>`;
+}
+function _seRenderCompletada(){
+  return `<div style="max-width:500px;margin:80px auto;text-align:center;padding:0 16px">
+    <i class="fa fa-check-circle" style="font-size:56px;color:#22c55e;margin-bottom:16px"></i>
+    <div style="font-size:20px;font-weight:700">¡Solicitud enviada!</div>
+    <div style="font-size:14px;color:var(--text2);margin-top:8px">Gracias por completar tu solicitud de empleo. El equipo de reclutamiento se pondrá en contacto contigo.</div>
+  </div>`;
+}
+async function submitSolicitudEmpleo(){
+  if(!_sePubData) return;
+  const {se}=_sePubData;
+  const campos={};
+  let primerError=null;
+  for(const sec of SOLICITUD_EMPLEO_SECCIONES){
+    for(const f of sec.campos){
+      const el=document.getElementById('se-f-'+f.key);
+      const val=(el?.value||'').trim();
+      if(f.req&&!val&&!primerError) primerError=f;
+      campos[f.key]=val||null;
+    }
+  }
+  const errDiv=document.getElementById('se-error');
+  if(!document.getElementById('se-acepto')?.checked){
+    errDiv.textContent='Debes aceptar la declaración de datos correctos para continuar.';
+    errDiv.style.display='';
+    return;
+  }
+  if(primerError){
+    errDiv.textContent=`Por favor completa: "${primerError.label}"`;
+    errDiv.style.display='';
+    return;
+  }
+  errDiv.style.display='none';
+  const btn=document.getElementById('se-submit-btn');
+  btn.disabled=true;btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Enviando...';
+  const updated={...se,campos,estado:'completado',fecha_completada:new Date().toISOString()};
+  try{
+    const {error}=await sbClient.from('solicitudes_empleo').update({data:updated}).eq('id',se.id);
+    if(error) throw new Error(error.message);
+    document.getElementById('solicitud-public-screen').innerHTML=_seRenderCompletada();
+  }catch(e){
+    btn.disabled=false;btn.innerHTML='<i class="fa fa-paper-plane"></i> Enviar solicitud';
+    errDiv.textContent='Error al guardar: '+e.message;
+    errDiv.style.display='';
+  }
 }
 
 function openCandModal(vacanteIdOrNull,reemplazaId=null){
@@ -13746,7 +14024,7 @@ const RESPALDO_TABLAS = [
   'doc_plantillas','doc_candidato','perfiles_puesto',
   'evaluaciones','evaluaciones_enviadas','procesos_evaluacion','procesos_enviados',
   'kpis','procedimientos','coordinadores','colaboradores','permisos_usuarios','activity_log',
-  'expediente_documentos','candidato_documentos',
+  'expediente_documentos','candidato_documentos','solicitudes_empleo',
 ];
 
 async function exportarRespaldo(){
@@ -14812,6 +15090,11 @@ sbClient.auth.getSession().then(async ({ data: { session } }) => {
   }
   // Formulario público de proceso de evaluación (sin login)
   if(await _checkProcesoPublico()) {
+    document.body.style.visibility = 'visible';
+    return;
+  }
+  // Formulario público de solicitud de empleo (sin login)
+  if(await _checkSolicitudPublica()) {
     document.body.style.visibility = 'visible';
     return;
   }

@@ -4132,12 +4132,22 @@ function _capMatrizHtml(empId){
   if(!colabs.length) return `<div style="text-align:center;padding:40px;color:var(--text3)"><i class="fa fa-users" style="font-size:32px;display:block;margin-bottom:10px;opacity:.4"></i>Esta empresa no tiene colaboradores activos en Administrador de Personal.</div>`;
   const matriz={};
   (DB.capacitacionMatriz||[]).filter(m=>m.empresa_id===empId).forEach(m=>{ matriz[m.colaborador_id+'|'+m.curso_id]=m; });
+  const hoy=new Date().toISOString().slice(0,10);
   const rows=colabs.map(c=>{
     const cells=cursos.map(curso=>{
       const m=matriz[c.id+'|'+curso.id];
-      const opts=['<option value="">— No aplica —</option>']
-        .concat(CAPACITACION_PERIODICIDADES.map(p=>`<option value="${p}" ${m?.periodicidad===p?'selected':''}>${p}</option>`));
-      return `<td style="padding:4px 6px"><select onchange="_capMatrizCambio(this,'${empId}','${c.id}','${curso.id}')" style="width:100%;font-size:11px;padding:3px 4px;height:28px">${opts.join('')}</select></td>`;
+      if(!m||!m.periodicidad){
+        return `<td style="padding:4px 6px;text-align:center"><button class="btn btn-ghost btn-sm" style="font-size:10px;padding:4px 8px;white-space:nowrap" onclick="abrirCapMatrizCeldaModal('${empId}','${c.id}','${curso.id}')">— No aplica —</button></td>`;
+      }
+      const vencido=m.proxima_fecha&&m.proxima_fecha<hoy;
+      return `<td style="padding:4px 6px">
+        <div onclick="abrirCapMatrizCeldaModal('${empId}','${c.id}','${curso.id}')" style="cursor:pointer;font-size:11px;line-height:1.5;padding:5px 8px;border-radius:6px;background:var(--surface2)">
+          <div style="font-weight:600">${_esc(m.periodicidad)}</div>
+          ${m.fecha_programada?`<div style="color:var(--text3)">Prog: ${fmt(m.fecha_programada)}</div>`:''}
+          ${m.fecha_real?`<div style="color:var(--text3)">Real: ${fmt(m.fecha_real)}</div>`:''}
+          ${m.proxima_fecha?`<div style="font-weight:600;color:${vencido?'#e5484d':'var(--accent)'}">${vencido?'Vencido: ':'Próx: '}${fmt(m.proxima_fecha)}</div>`:''}
+        </div>
+      </td>`;
     }).join('');
     return `<tr><td class="td-p" style="white-space:nowrap;position:sticky;left:0;background:var(--surface)">
         <div style="font-weight:600">${_esc(c.nombre||'')}</div>
@@ -4145,14 +4155,71 @@ function _capMatrizHtml(empId){
       </td>${cells}</tr>`;
   }).join('');
   const headCols=cursos.map(curso=>`<th style="min-width:150px;max-width:150px;white-space:normal" title="${_esc(curso.nombre||'')}">${_esc(curso.nombre||'')}</th>`).join('');
-  return `<div style="font-size:11px;color:var(--text3);margin-bottom:8px">Selecciona con qué periodicidad debe tomar cada curso cada colaborador. Se guarda automáticamente al elegir una opción.</div>
+  return `<div style="font-size:11px;color:var(--text3);margin-bottom:8px">Da clic en una celda para asignar el curso: periodicidad, fecha programada y fecha real. La próxima fecha en que le toca tomarlo se calcula sola.</div>
     <div class="table-wrap" style="overflow-x:auto"><table>
       <thead><tr><th style="position:sticky;left:0;background:var(--surface2);z-index:1;min-width:180px">Colaborador</th>${headCols}</tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
 }
-async function _capMatrizCambio(selectEl,empId,colabId,cursoId){
-  const periodicidad=selectEl.value;
+function _capCalcularProximaFecha(periodicidad,fechaBase){
+  if(!periodicidad||!fechaBase||periodicidad==='Única vez') return null;
+  const meses={Mensual:1,Bimestral:2,Trimestral:3,Semestral:6,Anual:12,Bianual:24}[periodicidad];
+  if(!meses) return null;
+  const d=new Date(fechaBase+'T00:00:00');
+  d.setMonth(d.getMonth()+meses);
+  return d.toISOString().slice(0,10);
+}
+function abrirCapMatrizCeldaModal(empId,colabId,cursoId){
+  const curso=(DB.capacitacionCursos||[]).find(c=>c.id===cursoId);
+  const colab=(DB.colaboradores||[]).find(c=>c.id===colabId);
+  const m=(DB.capacitacionMatriz||[]).find(x=>x.empresa_id===empId&&x.colaborador_id===colabId&&x.curso_id===cursoId);
+  document.getElementById('modal-cap-matriz-celda')?.remove();
+  const modal=document.createElement('div');
+  modal.id='modal-cap-matriz-celda';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3200;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:420px;max-width:96vw;padding:24px;box-shadow:0 8px 32px #0004">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+      <div style="font-weight:700;font-size:15px">${_esc(curso?.nombre||'')}</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-cap-matriz-celda').remove()"><i class="fa fa-times"></i></button>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">${_esc(colab?.nombre||'')}</div>
+    <div class="fg"><label>Periodicidad</label><select id="cmc-periodicidad">
+      <option value="">— No aplica —</option>
+      ${CAPACITACION_PERIODICIDADES.map(p=>`<option value="${p}" ${m?.periodicidad===p?'selected':''}>${p}</option>`).join('')}
+    </select></div>
+    <div class="fr">
+      <div class="fg"><label>Fecha programada</label><input type="date" id="cmc-fecha-programada" value="${m?.fecha_programada||''}"></div>
+      <div class="fg"><label>Fecha real</label><input type="date" id="cmc-fecha-real" value="${m?.fecha_real||''}"></div>
+    </div>
+    <div id="cmc-proxima-info" style="font-size:12px;color:var(--text3);margin:2px 0 14px"></div>
+    <div style="display:flex;justify-content:${m?'space-between':'flex-end'};gap:8px;margin-top:10px">
+      ${m?`<button class="btn btn-ghost" style="color:#e5484d" onclick="_capMatrizCeldaEliminar('${empId}','${colabId}','${cursoId}')"><i class="fa fa-trash"></i> Quitar</button>`:''}
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-cap-matriz-celda').remove()">Cancelar</button>
+        <button class="btn btn-primary" onclick="_capMatrizCeldaGuardar('${empId}','${colabId}','${cursoId}')">Guardar</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  const actualizarPreview=()=>{
+    const per=document.getElementById('cmc-periodicidad').value;
+    const fReal=document.getElementById('cmc-fecha-real').value;
+    const fProg=document.getElementById('cmc-fecha-programada').value;
+    const prox=_capCalcularProximaFecha(per,fReal||fProg);
+    const info=document.getElementById('cmc-proxima-info');
+    if(prox) info.textContent=`Próxima fecha en que le toca tomar el curso: ${fmt(prox)}`;
+    else if(per==='Única vez') info.textContent='Curso de única vez: no vuelve a programarse.';
+    else info.textContent='';
+  };
+  document.getElementById('cmc-periodicidad').addEventListener('change',actualizarPreview);
+  document.getElementById('cmc-fecha-real').addEventListener('change',actualizarPreview);
+  document.getElementById('cmc-fecha-programada').addEventListener('change',actualizarPreview);
+  actualizarPreview();
+}
+async function _capMatrizCeldaGuardar(empId,colabId,cursoId){
+  const periodicidad=document.getElementById('cmc-periodicidad').value;
+  const fecha_programada=document.getElementById('cmc-fecha-programada').value||null;
+  const fecha_real=document.getElementById('cmc-fecha-real').value||null;
   const existente=(DB.capacitacionMatriz||[]).find(m=>m.empresa_id===empId&&m.colaborador_id===colabId&&m.curso_id===cursoId);
   try{
     if(!periodicidad){
@@ -4161,12 +4228,28 @@ async function _capMatrizCambio(selectEl,empId,colabId,cursoId){
         DB.capacitacionMatriz=(DB.capacitacionMatriz||[]).filter(m=>m.id!==existente.id);
       }
     }else{
-      const registro={id:existente?.id||uid(),empresa_id:empId,colaborador_id:colabId,curso_id:cursoId,periodicidad,created_at:existente?.created_at||new Date().toISOString()};
+      const proxima_fecha=_capCalcularProximaFecha(periodicidad,fecha_real||fecha_programada);
+      const registro={id:existente?.id||uid(),empresa_id:empId,colaborador_id:colabId,curso_id:cursoId,periodicidad,fecha_programada,fecha_real,proxima_fecha,created_at:existente?.created_at||new Date().toISOString()};
       await saveRecord('capacitacion_matriz',registro);
       const idx=(DB.capacitacionMatriz||[]).findIndex(m=>m.id===registro.id);
       if(idx>=0) DB.capacitacionMatriz[idx]=registro; else{ if(!DB.capacitacionMatriz)DB.capacitacionMatriz=[]; DB.capacitacionMatriz.push(registro); }
     }
+    document.getElementById('modal-cap-matriz-celda')?.remove();
+    _capRenderEmpresa(empId);
     showToast('Matriz actualizada ✓');
+  }catch(e){
+    showToast('Error: '+e.message,'err');
+  }
+}
+async function _capMatrizCeldaEliminar(empId,colabId,cursoId){
+  const existente=(DB.capacitacionMatriz||[]).find(m=>m.empresa_id===empId&&m.colaborador_id===colabId&&m.curso_id===cursoId);
+  if(!existente) return;
+  try{
+    await deleteRecord('capacitacion_matriz',existente.id);
+    DB.capacitacionMatriz=(DB.capacitacionMatriz||[]).filter(m=>m.id!==existente.id);
+    document.getElementById('modal-cap-matriz-celda')?.remove();
+    _capRenderEmpresa(empId);
+    showToast('Registro eliminado');
   }catch(e){
     showToast('Error: '+e.message,'err');
   }

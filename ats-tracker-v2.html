@@ -4095,6 +4095,8 @@ function _capRenderEmpresa(empId){
       ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
       <span style="font-size:16px;font-weight:700">${_esc(emp.nombre||'')}</span>
       <span style="flex:1"></span>
+      <button class="btn btn-ghost btn-sm" onclick="abrirDC1Modal('${empId}')"><i class="fa fa-users-rectangle"></i> DC-1 (Comisión Mixta)</button>
+      <button class="btn btn-ghost btn-sm" onclick="abrirDC2Modal('${empId}')"><i class="fa fa-file-lines"></i> DC-2 (Plan de capacitación)</button>
       <button class="btn btn-primary btn-sm" onclick="abrirCursoModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo curso</button>
     </div>
     <div class="table-wrap"><table>
@@ -4587,6 +4589,402 @@ function _drawDC3Page(doc,d){
   doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(0);
   doc.text('DC-3',W-M,H-13,{align:'right'});
   doc.text('ANVERSO',W-M,H-9,{align:'right'});
+}
+
+/* ── Datos STPS compartidos por DC-1 y DC-2 (domicilio, IMSS, giro, contacto) ── */
+function _stpsDireccionFieldsHtml(emp){
+  const s=emp.stps_datos||{};
+  return `
+    <div class="fr">
+      <div class="fg"><label>Registro patronal del IMSS</label><input id="stps-imss" value="${_esc(s.registro_patronal_imss||'')}"></div>
+      <div class="fg"><label>CURP (solo si es persona física)</label><input id="stps-curp" value="${_esc(s.curp||'')}" maxlength="18" style="text-transform:uppercase"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Calle</label><input id="stps-calle" value="${_esc(s.calle||'')}"></div>
+      <div class="fg"><label>Número exterior / interior</label><input id="stps-numero" value="${_esc(s.numero||'')}"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Colonia</label><input id="stps-colonia" value="${_esc(s.colonia||'')}"></div>
+      <div class="fg"><label>Municipio / Delegación</label><input id="stps-municipio" value="${_esc(s.municipio||'')}"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Entidad federativa</label><input id="stps-entidad" value="${_esc(s.entidad_federativa||'')}"></div>
+      <div class="fg"><label>Código postal</label><input id="stps-cp" value="${_esc(s.codigo_postal||'')}"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Teléfono(s)</label><input id="stps-tel" value="${_esc(s.telefono||emp.tel||'')}"></div>
+      <div class="fg"><label>Correo electrónico</label><input id="stps-correo" value="${_esc(s.correo||'')}"></div>
+    </div>
+    <div class="fr full"><div class="fg"><label>Actividad o giro principal</label><input id="stps-giro" value="${_esc(s.giro_actividad||emp.sector||'')}"></div></div>`;
+}
+function _leerStpsDireccion(){
+  return {
+    registro_patronal_imss:document.getElementById('stps-imss').value.trim(),
+    curp:document.getElementById('stps-curp').value.trim(),
+    calle:document.getElementById('stps-calle').value.trim(),
+    numero:document.getElementById('stps-numero').value.trim(),
+    colonia:document.getElementById('stps-colonia').value.trim(),
+    municipio:document.getElementById('stps-municipio').value.trim(),
+    entidad_federativa:document.getElementById('stps-entidad').value.trim(),
+    codigo_postal:document.getElementById('stps-cp').value.trim(),
+    telefono:document.getElementById('stps-tel').value.trim(),
+    correo:document.getElementById('stps-correo').value.trim(),
+    giro_actividad:document.getElementById('stps-giro').value.trim(),
+  };
+}
+async function _guardarStpsDatosEmpresa(empId,stpsDatos,extra){
+  const emp=DB.empresas.find(e=>e.id===empId); if(!emp) return;
+  emp.stps_datos={...(emp.stps_datos||{}),...stpsDatos};
+  if(extra) Object.assign(emp,extra);
+  try{ await saveRecord('empresas',emp); }catch(e){ console.warn('No se pudieron guardar los datos STPS:',e.message); }
+}
+
+/* ── Formato DC-1 (STPS) — Informe sobre la Constitución de la Comisión Mixta ── */
+function abrirDC1Modal(empId){
+  const emp=DB.empresas.find(e=>e.id===empId); if(!emp) return;
+  const cm=emp.comision_mixta||{};
+  const nTrab=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId&&c.estado!=='Baja').length;
+  document.getElementById('modal-dc1')?.remove();
+  const modal=document.createElement('div');
+  modal.id='modal-dc1';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3300;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:640px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 32px #0004">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div style="font-weight:700;font-size:16px">Generar Formato DC-1</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-dc1').remove()"><i class="fa fa-times"></i></button>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Informe sobre la Constitución de la Comisión Mixta de Capacitación, Adiestramiento y Productividad.</div>
+    <input type="hidden" id="dc1-empresa-id" value="${empId}">
+    <div class="sep" style="margin-top:0">Datos de la empresa</div>
+    <div class="fr">
+      <div class="fg"><label>Denominación o razón social</label><input id="dc1-razon" value="${_esc(emp.nombre||'')}"></div>
+      <div class="fg"><label>RFC con homoclave</label><input id="dc1-rfc" value="${_esc(emp.rfc||'')}" maxlength="13" style="text-transform:uppercase"></div>
+    </div>
+    ${_stpsDireccionFieldsHtml(emp)}
+    <div class="fr full"><div class="fg"><label>Número de trabajadores de la empresa</label><input id="dc1-num-trabajadores" value="${nTrab}"></div></div>
+    <div class="sep">Datos de la Comisión Mixta de Capacitación, Adiestramiento y Productividad</div>
+    <div class="fr">
+      <div class="fg"><label>Número de establecimientos en que rige</label><input id="dc1-num-establecimientos" value="${_esc(cm.num_establecimientos||'1')}"></div>
+      <div class="fg"><label>Número total de integrantes</label><input id="dc1-num-integrantes" value="${_esc(cm.num_integrantes||'')}"></div>
+    </div>
+    <div class="fr full"><div class="fg"><label>Fecha de constitución</label><input type="date" id="dc1-fecha-constitucion" value="${cm.fecha_constitucion||''}"></div></div>
+    <div class="sep">Firma y elaboración</div>
+    <div class="fr">
+      <div class="fg"><label>Nombre del patrón o representante legal</label><input id="dc1-representante" value="${_esc(cm.representante||'')}"></div>
+      <div class="fg"><label>Lugar y fecha de elaboración</label><input id="dc1-lugar-fecha" value="${_esc(cm.lugar_fecha||'')}" placeholder="Ej. Puebla, Pue. a 05 de septiembre de 2026"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-dc1').remove()">Cancelar</button>
+      <button class="btn btn-primary" onclick="generarDC1()"><i class="fa fa-file-contract"></i> Generar PDF</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+async function generarDC1(){
+  if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
+  const empId=document.getElementById('dc1-empresa-id').value;
+  const emp=DB.empresas.find(e=>e.id===empId); if(!emp) return;
+  const stps=_leerStpsDireccion();
+  const cm={
+    num_establecimientos:document.getElementById('dc1-num-establecimientos').value.trim(),
+    num_integrantes:document.getElementById('dc1-num-integrantes').value.trim(),
+    fecha_constitucion:document.getElementById('dc1-fecha-constitucion').value,
+    representante:document.getElementById('dc1-representante').value.trim(),
+    lugar_fecha:document.getElementById('dc1-lugar-fecha').value.trim(),
+  };
+  const data={
+    razonSocial:document.getElementById('dc1-razon').value.trim(),
+    rfc:document.getElementById('dc1-rfc').value.trim(),
+    numTrabajadores:document.getElementById('dc1-num-trabajadores').value.trim(),
+    ...stps, ...cm,
+  };
+  showToast('Generando DC-1...');
+  try{
+    const {logoB64,logoDims}=await _capLogoBase64(emp);
+    if(logoB64){ data.logoB64=logoB64; data.logoDims=logoDims; data.logoFmt=logoB64.includes('image/png')?'PNG':'JPEG'; }
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
+    _drawDC1Page(doc,data);
+    doc.save(`DC1_ComisionMixta_${(emp.nombre||'empresa').replace(/[^a-zA-Z0-9]/g,'_')}.pdf`);
+    await _guardarStpsDatosEmpresa(empId,stps,{comision_mixta:cm,rfc:data.rfc||emp.rfc});
+    await logActivity('Generar DC-1','empresas',empId,`${emp.nombre||empId} — Comisión Mixta`);
+    document.getElementById('modal-dc1')?.remove();
+  }catch(e){
+    showToast('Error al generar PDF: '+e.message,'err');
+  }
+}
+function _drawDC3StyleHeader(doc,tituloFormato,subtitulo,logoInfo){
+  const W=215.9,M=14;
+  let y=M;
+  if(logoInfo?.logoB64&&logoInfo?.logoDims){
+    try{ doc.addImage(logoInfo.logoB64,logoInfo.logoFmt,M,y,logoInfo.logoDims.w,logoInfo.logoDims.h); }catch(e){}
+  }
+  y+=14;
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(0);
+  doc.text(tituloFormato,W/2,y,{align:'center'}); y+=6;
+  doc.setFontSize(10);doc.setFont('helvetica','normal');
+  doc.text(subtitulo,W/2,y,{align:'center',maxWidth:W-2*M}); y+=8;
+  return y;
+}
+function _drawDC1Page(doc,d){
+  const W=215.9,H=279.4,M=14,CW=W-2*M;
+  let y=_drawDC3StyleHeader(doc,'FORMATO DC-1','Informe sobre la Constitución de la Comisión Mixta de Capacitación, Adiestramiento y Productividad',d);
+  const sectionHeader=(title,h=6)=>{
+    doc.setFillColor(0,0,0); doc.rect(M,y,CW,h,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(255,255,255);
+    doc.text(title,W/2,y+h-1.9,{align:'center'});
+    y+=h;
+  };
+  const fieldRow=(label,value,h=11)=>{
+    doc.setDrawColor(0);doc.setLineWidth(0.3);
+    doc.rect(M,y,CW,h);
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(60);
+    doc.text(label,M+2,y+3.5,{maxWidth:CW-4});
+    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(0);
+    doc.text(String(value||''),M+2,y+h-2.3);
+    y+=h;
+  };
+  const fieldRow2=(l1,v1,l2,v2,h=11)=>{
+    const w1=CW/2,w2=CW/2;
+    doc.setDrawColor(0);doc.setLineWidth(0.3);
+    doc.rect(M,y,w1,h); doc.rect(M+w1,y,w2,h);
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(60);
+    doc.text(l1,M+2,y+3.5,{maxWidth:w1-4}); doc.text(l2,M+w1+2,y+3.5,{maxWidth:w2-4});
+    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(0);
+    doc.text(String(v1||''),M+2,y+h-2.3); doc.text(String(v2||''),M+w1+2,y+h-2.3);
+    y+=h;
+  };
+
+  sectionHeader('DATOS DE LA EMPRESA');
+  fieldRow2('Denominación o razón social',d.razonSocial,'Registro Federal de Contribuyentes con homoclave (SHCP)',d.rfc,12);
+  fieldRow2('Registro patronal del IMSS',d.registro_patronal_imss,'CURP (en caso de persona física)',d.curp,11);
+  fieldRow2('Calle / Número',`${d.calle||''} ${d.numero||''}`.trim(),'Colonia',d.colonia,11);
+  fieldRow2('Municipio / Delegación',d.municipio,'Entidad federativa',d.entidad_federativa,11);
+  fieldRow2('Código postal',d.codigo_postal,'Teléfono(s)',d.telefono,11);
+  fieldRow2('Correo electrónico',d.correo,'Actividad o giro principal',d.giro_actividad,11);
+  fieldRow('Número de trabajadores de la empresa',d.numTrabajadores,10);
+
+  sectionHeader('DATOS DE LA COMISIÓN MIXTA DE CAPACITACIÓN, ADIESTRAMIENTO Y PRODUCTIVIDAD');
+  fieldRow2('Número de establecimientos en que rige',d.num_establecimientos,'Número total de integrantes',d.num_integrantes,11);
+  fieldRow('Fecha de Constitución',d.fecha_constitucion?fmt(d.fecha_constitucion):'',10);
+
+  y+=8;
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(0);
+  doc.text('Los datos y anexos se proporcionan bajo protesta de decir verdad, apercibidos de la responsabilidad en que incurre todo',W/2,y,{align:'center'}); y+=4.5;
+  doc.text('aquel que no se conduce con verdad.',W/2,y,{align:'center'}); y+=16;
+  doc.setDrawColor(120);doc.setLineWidth(0.3);
+  doc.line(W/2-60,y,W/2+60,y); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(0);
+  if(d.representante) doc.text(d.representante,W/2,y-7,{align:'center'});
+  doc.text('Nombre y firma del patrón o representante legal de la empresa',W/2,y,{align:'center'});
+  y+=14;
+  doc.setFontSize(7);
+  doc.text('Lugar y fecha de elaboración de este informe:',W/2,y,{align:'center'}); y+=6;
+  doc.setFont('helvetica','bold');
+  doc.text(d.lugar_fecha||'',W/2,y,{align:'center'});
+
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(0);
+  doc.text('DC-1',W-M,H-11,{align:'right'});
+  doc.text('ANVERSO',W-M,H-7,{align:'right'});
+}
+
+/* ── Formato DC-2 (STPS) — Elaboración del plan y programas de capacitación ── */
+const DC2_OBJETIVOS=[
+  'Actualizar y perfeccionar conocimientos y habilidades y proporcionar información de nuevas tecnologías',
+  'Prevenir riesgos de trabajo',
+  'Incrementar la productividad',
+  'Mejorar el nivel educativo',
+  'Preparar para ocupar vacantes o puestos de nueva creación',
+];
+const DC2_MODALIDADES=[
+  'Plan y programas específicos de la empresa',
+  'Plan y programas comunes de un grupo de empresas',
+  'Sistema general de una rama de actividad económica',
+];
+function abrirDC2Modal(empId){
+  const emp=DB.empresas.find(e=>e.id===empId); if(!emp) return;
+  const pc=emp.plan_capacitacion||{};
+  const nTrab=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId&&c.estado!=='Baja').length;
+  document.getElementById('modal-dc2')?.remove();
+  const modal=document.createElement('div');
+  modal.id='modal-dc2';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3300;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:640px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 32px #0004">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div style="font-weight:700;font-size:16px">Generar Formato DC-2</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-dc2').remove()"><i class="fa fa-times"></i></button>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Elaboración del plan y programas de capacitación, adiestramiento y productividad.</div>
+    <input type="hidden" id="dc2-empresa-id" value="${empId}">
+    <div class="sep" style="margin-top:0">Datos de la empresa</div>
+    <div class="fr">
+      <div class="fg"><label>Denominación o razón social</label><input id="dc2-razon" value="${_esc(emp.nombre||'')}"></div>
+      <div class="fg"><label>RFC con homoclave</label><input id="dc2-rfc" value="${_esc(emp.rfc||'')}" maxlength="13" style="text-transform:uppercase"></div>
+    </div>
+    ${_stpsDireccionFieldsHtml(emp)}
+    <div class="fr">
+      <div class="fg"><label>Total de trabajadores considerados en el plan</label><input id="dc2-total" value="${_esc(pc.total||nTrab)}"></div>
+      <div class="fg"><label>Mujeres / Hombres (opcional)</label><input id="dc2-mh" value="${_esc(pc.mujeres_hombres||'')}" placeholder="Ej. 12 / 20"></div>
+    </div>
+    <div class="sep">Objetivos del plan de capacitación</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Señala del 1 al 5 en donde 1 es el más importante (opcional, puedes dejar en blanco).</div>
+    <div id="dc2-objetivos-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+      ${DC2_OBJETIVOS.map((o,i)=>`<div style="display:flex;align-items:center;gap:10px">
+        <input type="number" min="1" max="5" id="dc2-obj-${i}" value="${_esc((pc.objetivos||[])[i]||'')}" style="width:56px;flex-shrink:0">
+        <span style="font-size:12px;color:var(--text2)">${_esc(o)}</span>
+      </div>`).join('')}
+    </div>
+    <div class="sep">Modalidad de la capacitación</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+      ${DC2_MODALIDADES.map((m,i)=>`<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer">
+        <input type="radio" name="dc2-modalidad" value="${i}" ${pc.modalidad==i?'checked':(!pc.modalidad&&i===0?'checked':'')}> ${_esc(m)}
+      </label>`).join('')}
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Número de establecimientos en los que rige el plan</label><input id="dc2-num-establecimientos" value="${_esc(pc.num_establecimientos||'1')}"></div>
+      <div class="fg"><label>Número de etapas del plan</label><input id="dc2-num-etapas" value="${_esc(pc.num_etapas||'')}"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Periodo de vigencia — de</label><input type="date" id="dc2-fecha-inicio" value="${pc.fecha_inicio||''}"></div>
+      <div class="fg"><label>Periodo de vigencia — a <span style="font-size:10px;color:var(--text3)">(máx. 2 años)</span></label><input type="date" id="dc2-fecha-fin" value="${pc.fecha_fin||''}"></div>
+    </div>
+    <div class="sep">Firma y elaboración</div>
+    <div class="fr">
+      <div class="fg"><label>Nombre del patrón o representante legal</label><input id="dc2-representante" value="${_esc(pc.representante||'')}"></div>
+      <div class="fg"><label>Lugar y fecha de elaboración</label><input id="dc2-lugar-fecha" value="${_esc(pc.lugar_fecha||'')}" placeholder="Ej. Puebla, Pue. a 05 de septiembre de 2026"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-dc2').remove()">Cancelar</button>
+      <button class="btn btn-primary" onclick="generarDC2()"><i class="fa fa-file-contract"></i> Generar PDF</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+async function generarDC2(){
+  if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
+  const empId=document.getElementById('dc2-empresa-id').value;
+  const emp=DB.empresas.find(e=>e.id===empId); if(!emp) return;
+  const stps=_leerStpsDireccion();
+  const modalidadSel=document.querySelector('input[name="dc2-modalidad"]:checked');
+  const pc={
+    total:document.getElementById('dc2-total').value.trim(),
+    mujeres_hombres:document.getElementById('dc2-mh').value.trim(),
+    objetivos:DC2_OBJETIVOS.map((_o,i)=>document.getElementById(`dc2-obj-${i}`).value.trim()),
+    modalidad:modalidadSel?Number(modalidadSel.value):0,
+    num_establecimientos:document.getElementById('dc2-num-establecimientos').value.trim(),
+    num_etapas:document.getElementById('dc2-num-etapas').value.trim(),
+    fecha_inicio:document.getElementById('dc2-fecha-inicio').value,
+    fecha_fin:document.getElementById('dc2-fecha-fin').value,
+    representante:document.getElementById('dc2-representante').value.trim(),
+    lugar_fecha:document.getElementById('dc2-lugar-fecha').value.trim(),
+  };
+  const data={
+    razonSocial:document.getElementById('dc2-razon').value.trim(),
+    rfc:document.getElementById('dc2-rfc').value.trim(),
+    ...stps, ...pc,
+  };
+  showToast('Generando DC-2...');
+  try{
+    const {logoB64,logoDims}=await _capLogoBase64(emp);
+    if(logoB64){ data.logoB64=logoB64; data.logoDims=logoDims; data.logoFmt=logoB64.includes('image/png')?'PNG':'JPEG'; }
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
+    _drawDC2Page(doc,data);
+    doc.save(`DC2_PlanCapacitacion_${(emp.nombre||'empresa').replace(/[^a-zA-Z0-9]/g,'_')}.pdf`);
+    await _guardarStpsDatosEmpresa(empId,stps,{plan_capacitacion:pc,rfc:data.rfc||emp.rfc});
+    await logActivity('Generar DC-2','empresas',empId,`${emp.nombre||empId} — Plan de capacitación`);
+    document.getElementById('modal-dc2')?.remove();
+  }catch(e){
+    showToast('Error al generar PDF: '+e.message,'err');
+  }
+}
+function _drawDC2Page(doc,d){
+  const W=215.9,H=279.4,M=14,CW=W-2*M;
+  let y=_drawDC3StyleHeader(doc,'FORMATO DC-2','Elaboración del plan y programas de capacitación, adiestramiento y productividad',d);
+  const sectionHeader=(title,h=6)=>{
+    doc.setFillColor(0,0,0); doc.rect(M,y,CW,h,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(255,255,255);
+    doc.text(title,W/2,y+h-1.9,{align:'center'});
+    y+=h;
+  };
+  const fieldRow=(label,value,h=10)=>{
+    doc.setDrawColor(0);doc.setLineWidth(0.3);
+    doc.rect(M,y,CW,h);
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(60);
+    doc.text(label,M+2,y+3.5,{maxWidth:CW-4});
+    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(0);
+    doc.text(String(value||''),M+2,y+h-2.3);
+    y+=h;
+  };
+  const fieldRow2=(l1,v1,l2,v2,h=10)=>{
+    const w1=CW/2,w2=CW/2;
+    doc.setDrawColor(0);doc.setLineWidth(0.3);
+    doc.rect(M,y,w1,h); doc.rect(M+w1,y,w2,h);
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(60);
+    doc.text(l1,M+2,y+3.5,{maxWidth:w1-4}); doc.text(l2,M+w1+2,y+3.5,{maxWidth:w2-4});
+    doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(0);
+    doc.text(String(v1||''),M+2,y+h-2.3); doc.text(String(v2||''),M+w1+2,y+h-2.3);
+    y+=h;
+  };
+
+  sectionHeader('DATOS DE LA EMPRESA');
+  fieldRow2('Denominación o razón social',d.razonSocial,'RFC con homoclave (SHCP)',d.rfc,11);
+  fieldRow2('Registro patronal del IMSS',d.registro_patronal_imss,'CURP (en caso de persona física)',d.curp,10);
+  fieldRow2('Calle / Número',`${d.calle||''} ${d.numero||''}`.trim(),'Colonia',d.colonia,10);
+  fieldRow2('Municipio / Delegación',d.municipio,'Entidad federativa / C.P.',`${d.entidad_federativa||''} ${d.codigo_postal||''}`.trim(),10);
+  fieldRow2('Teléfono(s)',d.telefono,'Correo electrónico',d.correo,10);
+  fieldRow2('Actividad o giro principal',d.giro_actividad,'Total de trabajadores en el plan',d.total,10);
+
+  sectionHeader('OBJETIVOS DEL PLAN DE CAPACITACIÓN (1 = más importante)');
+  const rowH=6.2;
+  DC2_OBJETIVOS.forEach((obj,i)=>{
+    doc.setDrawColor(0);doc.setLineWidth(0.25);
+    doc.rect(M,y,10,rowH); doc.rect(M+10,y,CW-10,rowH);
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(0);
+    doc.text(String(d.objetivos?.[i]||''),M+5,y+rowH-1.8,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(30);
+    doc.text(obj,M+12,y+rowH-1.8,{maxWidth:CW-14});
+    y+=rowH;
+  });
+
+  y+=3;
+  sectionHeader('MODALIDAD DE LA CAPACITACIÓN');
+  DC2_MODALIDADES.forEach((m,i)=>{
+    const h=6.5;
+    doc.setDrawColor(0);doc.setLineWidth(0.25);
+    doc.rect(M,y,CW,h);
+    const marcado=Number(d.modalidad)===i;
+    doc.setFont('helvetica','bold');doc.setFontSize(9);
+    doc.text(marcado?'X':'',M+3,y+h-2);
+    doc.rect(M+2,y+1.3,4,4);
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(30);
+    doc.text(m,M+10,y+h-2,{maxWidth:CW-12});
+    y+=h;
+  });
+
+  y+=3;
+  fieldRow2('Número de establecimientos en que rige',d.num_establecimientos,'Número de etapas del plan',d.num_etapas,10);
+  fieldRow2('Vigencia — de',d.fecha_inicio?fmt(d.fecha_inicio):'','Vigencia — a',d.fecha_fin?fmt(d.fecha_fin):'',10);
+
+  if(y>H-70){ doc.addPage(); y=M; }
+  y+=8;
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(0);
+  doc.text('Los datos y anexos se proporcionan bajo protesta de decir verdad, apercibidos de la responsabilidad en que incurre todo',W/2,y,{align:'center'}); y+=4.5;
+  doc.text('aquel que no se conduce con verdad.',W/2,y,{align:'center'}); y+=16;
+  doc.setDrawColor(120);doc.setLineWidth(0.3);
+  doc.line(W/2-60,y,W/2+60,y); y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(0);
+  if(d.representante) doc.text(d.representante,W/2,y-7,{align:'center'});
+  doc.text('Nombre y firma del patrón o representante legal de la empresa',W/2,y,{align:'center'});
+  y+=14;
+  doc.setFontSize(7);
+  doc.text('Lugar y fecha de elaboración de este informe:',W/2,y,{align:'center'}); y+=6;
+  doc.setFont('helvetica','bold');
+  doc.text(d.lugar_fecha||'',W/2,y,{align:'center'});
+
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(0);
+  doc.text('DC-2',W-M,H-11,{align:'right'});
+  doc.text('ANVERSO',W-M,H-7,{align:'right'});
 }
 
 function renderHeadcountAutorizado(){

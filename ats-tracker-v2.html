@@ -567,7 +567,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
     <div class="nav-item" onclick="nav('tiempos')" id="nav-tiempos" data-tooltip="Análisis de tiempos"><i class="fa fa-clock"></i><span class="nav-item-text"> Análisis de tiempos</span></div>
     <div class="nav-item" onclick="nav('ranking')" id="nav-ranking" data-tooltip="Ranking reclutadores"><i class="fa fa-trophy"></i><span class="nav-item-text"> Ranking reclutadores</span></div>
     <div class="nav-item" onclick="showPage('desercion')" id="nav-desercion" data-tooltip="Deserción"><i class="fa fa-door-open"></i><span class="nav-item-text"> Deserción</span></div>
-    <div class="nav-item" onclick="showPage('headcount')" id="nav-headcount" data-tooltip="HeadCount"><i class="fa fa-users"></i><span class="nav-item-text"> HeadCount</span></div>
+    <div class="nav-item" onclick="showPage('headcount')" id="nav-headcount" data-tooltip="Headcount Semanal"><i class="fa fa-users"></i><span class="nav-item-text"> Headcount Semanal</span></div>
     <div class="nav-item" onclick="showPage('contratados')" id="nav-contratados" data-tooltip="Contratados"><i class="fa fa-user-check"></i><span class="nav-item-text"> Contratados</span></div>
     <div class="nav-section">Config</div>
     <div class="nav-item" onclick="showPage('config')" id="nav-config" data-tooltip="Configuración"><i class="fa fa-cog"></i><span class="nav-item-text"> Configuración</span></div>
@@ -2758,8 +2758,8 @@ function adaptUIToRole() {
       const perItem = document.createElement('div');
       perItem.className = 'nav-item';
       perItem.id = 'nav-personal';
-      perItem.dataset.tooltip = 'Administrador de personal';
-      perItem.innerHTML = '<i class="fa fa-id-badge"></i><span class="nav-item-text"> Administrador de personal</span>';
+      perItem.dataset.tooltip = 'Administrador de Personal';
+      perItem.innerHTML = '<i class="fa fa-id-badge"></i><span class="nav-item-text"> Administrador de Personal</span>';
       perItem.setAttribute('onclick', "showPage('personal')");
       const anchor = document.getElementById('nav-documentacion') || document.getElementById('nav-candidatos');
       if(anchor) anchor.parentNode.insertBefore(perItem, anchor.nextSibling);
@@ -2846,8 +2846,8 @@ function adaptUIToRole() {
       const hcaItem = document.createElement('div');
       hcaItem.className = 'nav-item';
       hcaItem.id = 'nav-headcount-autorizado';
-      hcaItem.dataset.tooltip = 'Headcount autorizado';
-      hcaItem.innerHTML = '<i class="fa fa-users-gear"></i><span class="nav-item-text"> Headcount autorizado</span>';
+      hcaItem.dataset.tooltip = 'Headcount Autorizado';
+      hcaItem.innerHTML = '<i class="fa fa-users-gear"></i><span class="nav-item-text"> Headcount Autorizado</span>';
       hcaItem.setAttribute('onclick', "showPage('headcount-autorizado')");
       const anchor = document.getElementById('nav-capacitacion');
       if(anchor) anchor.parentNode.insertBefore(hcaItem, anchor.nextSibling);
@@ -2868,8 +2868,8 @@ function adaptUIToRole() {
       const perfilItem = document.createElement('div');
       perfilItem.className = 'nav-item';
       perfilItem.id = 'nav-perfiles';
-      perfilItem.dataset.tooltip = 'Perfiles de puesto';
-      perfilItem.innerHTML = '<i class="fa fa-id-card"></i><span class="nav-item-text"> Perfiles de puesto</span>';
+      perfilItem.dataset.tooltip = 'Perfiles de Puesto';
+      perfilItem.innerHTML = '<i class="fa fa-id-card"></i><span class="nav-item-text"> Perfiles de Puesto</span>';
       perfilItem.setAttribute('onclick', "showPage('perfiles')");
       const anchor = document.getElementById('nav-basedatos') || document.getElementById('nav-documentacion') || document.getElementById('nav-candidatos');
       if(anchor) anchor.parentNode.insertBefore(perfilItem, anchor.nextSibling);
@@ -3693,24 +3693,24 @@ const PERMISOS_SECCIONES=[
   {key:'candidatos',             label:'Candidatos',              grupo:'Principal',  icon:'fa-users'},
   {key:'pipeline',               label:'Pipeline',                grupo:'Principal',  icon:'fa-stream'},
   {key:'documentacion',          label:'Documentación',           grupo:'Principal',  icon:'fa-folder-open'},
-  {key:'perfiles',               label:'Perfiles de puesto',      grupo:'Principal',  icon:'fa-id-card'},
+  {key:'perfiles',               label:'Perfiles de Puesto',      grupo:'Principal',  icon:'fa-id-card'},
   {key:'evaluaciones',           label:'Librería de Evaluaciones', grupo:'Principal',  icon:'fa-clipboard-list'},
   {key:'procesos-eval',          label:'Procesos de Evaluación',  grupo:'Principal',  icon:'fa-tasks'},
   {key:'procedimientos',         label:'Procedimientos',          grupo:'Gestión',    icon:'fa-list-alt'},
   {key:'kpis',                   label:'KPIs',                    grupo:'Principal',  icon:'fa-chart-bar'},
   {key:'empresas',               label:'Empresas cliente',        grupo:'Empresas',   icon:'fa-building'},
   {key:'reclutadores',           label:'Reclutadores',            grupo:'Empresas',   icon:'fa-user-tie'},
-  {key:'headcount',              label:'HeadCount',               grupo:'Análisis',   icon:'fa-users'},
+  {key:'headcount',              label:'Headcount Semanal',       grupo:'Análisis',   icon:'fa-users'},
   {key:'contratados',            label:'Contratados',             grupo:'Análisis',   icon:'fa-user-check'},
   {key:'tiempos',                label:'Análisis de tiempos',     grupo:'Análisis',   icon:'fa-clock'},
   {key:'ranking',                label:'Ranking reclutadores',    grupo:'Análisis',   icon:'fa-trophy'},
   {key:'desercion',              label:'Deserción',               grupo:'Análisis',   icon:'fa-door-open'},
   {key:'garantias',              label:'Garantías',               grupo:'Gestión',    icon:'fa-shield-alt'},
-  {key:'personal',               label:'Administrador de personal', grupo:'Gestión',  icon:'fa-id-badge'},
+  {key:'personal',               label:'Administrador de Personal', grupo:'Gestión',  icon:'fa-id-badge'},
   {key:'expedientes',            label:'Expedientes',             grupo:'Gestión',    icon:'fa-folder-open'},
   {key:'contratos',              label:'Contratos',               grupo:'Gestión',    icon:'fa-file-contract'},
   {key:'capacitacion',           label:'Capacitación',            grupo:'Gestión',    icon:'fa-chalkboard-user'},
-  {key:'headcount-autorizado',   label:'Headcount autorizado',    grupo:'Gestión',    icon:'fa-users-gear'},
+  {key:'headcount-autorizado',   label:'Headcount Autorizado',    grupo:'Gestión',    icon:'fa-users-gear'},
   {key:'ese',                    label:'ESE',                     grupo:'Gestión',    icon:'fa-file-alt'},
   {key:'candidatos-descartados', navId:'descartados',           label:'Candidatos descartados',  grupo:'Gestión',    icon:'fa-user-times'},
   {key:'vacantes-eliminadas',    label:'Vacantes eliminadas',     grupo:'Gestión',    icon:'fa-briefcase'},
@@ -3948,7 +3948,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',kpis:'KPIs',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount',perfiles:'Perfiles de puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal',personal:'Administrador de personal',expedientes:'Expedientes',contratos:'Contratos',capacitacion:'Capacitación','headcount-autorizado':'Headcount autorizado',procedimientos:'Procedimientos'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',kpis:'KPIs',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'Headcount Semanal',perfiles:'Perfiles de Puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal',personal:'Administrador de Personal',expedientes:'Expedientes',contratos:'Contratos',capacitacion:'Capacitación','headcount-autorizado':'Headcount Autorizado',procedimientos:'Procedimientos'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);
@@ -4041,7 +4041,7 @@ function renderCapacitacion(){
 function capacitacionOpenEmpresa(empId){_capOpenEmpId=empId;renderCapacitacion();}
 function capacitacionBack(){_capOpenEmpId=null;renderCapacitacion();}
 function renderHeadcountAutorizado(){
-  if(_hcaOpenEmpId){_renderModuloEmpresaDetalle('page-headcount-autorizado','fa-users-gear','Headcount autorizado',_hcaOpenEmpId,'headcountAutorizadoBack');return;}
+  if(_hcaOpenEmpId){_renderModuloEmpresaDetalle('page-headcount-autorizado','fa-users-gear','Headcount Autorizado',_hcaOpenEmpId,'headcountAutorizadoBack');return;}
   _renderModuloDashboard('page-headcount-autorizado','headcountAutorizadoOpenEmpresa','headcount_autorizado');
 }
 function headcountAutorizadoOpenEmpresa(empId){_hcaOpenEmpId=empId;renderHeadcountAutorizado();}
@@ -4365,12 +4365,12 @@ async function uploadEmpLogo(empId){
 }
 
 const EMPRESA_MODULOS=[
-  {key:'personal',label:'Administrador de personal'},
+  {key:'personal',label:'Administrador de Personal'},
   {key:'expedientes',label:'Expedientes'},
   {key:'contratos',label:'Contratos'},
   {key:'capacitacion',label:'Capacitación'},
-  {key:'headcount_autorizado',label:'Headcount autorizado'},
-  {key:'perfiles',label:'Perfiles de puesto'},
+  {key:'headcount_autorizado',label:'Headcount Autorizado'},
+  {key:'perfiles',label:'Perfiles de Puesto'},
   {key:'procedimientos',label:'Procedimientos'},
   {key:'kpis',label:'KPIs'},
 ];

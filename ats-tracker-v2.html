@@ -4113,7 +4113,7 @@ function _capRenderEmpresa(empId){
       <button class="btn btn-ghost btn-sm" onclick="abrirPlantillasSTPSModal()" title="Subir los PDF oficiales en blanco de DC-1/DC-2/DC-3"><i class="fa fa-file-import"></i> Plantillas STPS</button>
       <button class="btn btn-ghost btn-sm" onclick="abrirDC1Modal('${empId}')"><i class="fa fa-users-rectangle"></i> DC-1 (Comisión Mixta)</button>
       <button class="btn btn-ghost btn-sm" onclick="abrirDC2Modal('${empId}')"><i class="fa fa-file-lines"></i> DC-2 (Plan de capacitación)</button>
-      ${_capVista==='cursos'?`<button class="btn btn-primary btn-sm" onclick="abrirCursoModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo curso</button>`:''}
+      <button class="btn btn-primary btn-sm" onclick="abrirCursoModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo curso</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
       <button id="cap-vista-cursos" class="btn ${_capVista==='cursos'?'btn-primary':'btn-ghost'} btn-sm" onclick="capacitacionSetVista('${empId}','cursos')"><i class="fa fa-book"></i> Cursos</button>

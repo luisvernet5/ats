@@ -3708,6 +3708,9 @@ const PERMISOS_SECCIONES=[
   {key:'garantias',              label:'Garantías',               grupo:'Gestión',    icon:'fa-shield-alt'},
   {key:'personal',               label:'Administrador de personal', grupo:'Gestión',  icon:'fa-id-badge'},
   {key:'expedientes',            label:'Expedientes',             grupo:'Gestión',    icon:'fa-folder-open'},
+  {key:'contratos',              label:'Contratos',               grupo:'Gestión',    icon:'fa-file-contract'},
+  {key:'capacitacion',           label:'Capacitación',            grupo:'Gestión',    icon:'fa-chalkboard-user'},
+  {key:'headcount-autorizado',   label:'Headcount autorizado',    grupo:'Gestión',    icon:'fa-users-gear'},
   {key:'ese',                    label:'ESE',                     grupo:'Gestión',    icon:'fa-file-alt'},
   {key:'candidatos-descartados', navId:'descartados',           label:'Candidatos descartados',  grupo:'Gestión',    icon:'fa-user-times'},
   {key:'vacantes-eliminadas',    label:'Vacantes eliminadas',     grupo:'Gestión',    icon:'fa-briefcase'},
@@ -4451,7 +4454,12 @@ async function saveEmpresa(){
       showToast('Error subiendo logo: ' + e.message, 'err');
     }
     await saveRecord('empresas',_eObj);
-    await logActivity(_empAnterior?'Editar empresa':'Nueva empresa','empresas',_eObj.id,_eObj.nombre||'',_empAnterior,_eObj);
+    const modAntes=_empAnterior?.modulos||{};
+    const modDespues=_eObj.modulos||{};
+    const modCambios=EMPRESA_MODULOS.filter(m=>(modAntes[m.key]!==false)!==(modDespues[m.key]!==false))
+      .map(m=>`${m.label}: ${modDespues[m.key]!==false?'Activado':'Desactivado'}`);
+    const detalleEmp=(_eObj.nombre||'')+(modCambios.length?' — Módulos: '+modCambios.join(', '):'');
+    await logActivity(_empAnterior?'Editar empresa':'Nueva empresa','empresas',_eObj.id,detalleEmp,_empAnterior,_eObj);
   }
   closeModal('modal-empresa');
   renderPage(document.querySelector('.page.active').id.replace('page-',''));
@@ -15157,10 +15165,20 @@ function _permisosToggleAll(check){
 async function _permisosGuardar(userId){
   const chks=[...document.querySelectorAll('[id^="perm-chk-"]')];
   const secciones=chks.filter(c=>c.checked).map(c=>c.dataset.key);
+  const antes=_permisosMap[userId]?new Set(_permisosMap[userId]):new Set(PERMISOS_SECCIONES.map(s=>s.key));
+  const despues=new Set(secciones);
+  const labelOf=key=>PERMISOS_SECCIONES.find(s=>s.key===key)?.label||key;
+  const agregados=[...despues].filter(k=>!antes.has(k)).map(labelOf);
+  const quitados=[...antes].filter(k=>!despues.has(k)).map(labelOf);
   const {error}=await sbClient.from('permisos_usuarios')
     .upsert({user_id:userId, secciones, updated_at:new Date().toISOString()},{onConflict:'user_id'});
   if(error){showToast('Error: '+error.message,'err');return;}
   _permisosMap[userId]=new Set(secciones);
+  const u=(document.getElementById('cfg-content')?._usuariosList||[]).find(x=>x.id===userId);
+  const partes=[];
+  if(agregados.length) partes.push('Otorgados: '+agregados.join(', '));
+  if(quitados.length) partes.push('Quitados: '+quitados.join(', '));
+  await logActivity('Editar permisos de usuario','usuarios',userId,`${u?.nombre||u?.email||userId}${partes.length?' — '+partes.join(' | '):''}`);
   showToast('Permisos guardados ✓');
   _permisosSelectUser(userId); // recargar vista
 }
@@ -15169,6 +15187,8 @@ async function _permisosClearUser(userId){
   const {error}=await sbClient.from('permisos_usuarios').delete().eq('user_id',userId);
   if(error){showToast('Error: '+error.message,'err');return;}
   delete _permisosMap[userId];
+  const u=(document.getElementById('cfg-content')?._usuariosList||[]).find(x=>x.id===userId);
+  await logActivity('Restaurar permisos de usuario','usuarios',userId,`${u?.nombre||u?.email||userId} — se quitó la personalización, ahora usa los defaults del rol`);
   showToast('Permisos restaurados a defaults del rol ✓');
   _permisosSelectUser(userId);
 }

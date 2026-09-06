@@ -935,6 +935,9 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
         <button class="btn btn-ghost btn-sm" onclick="addEmpChip('razones')"><i class="fa fa-plus"></i> Agregar</button>
       </div>
       <div id="emp-razon-chips" style="display:flex;flex-direction:column;gap:4px;min-height:24px;margin-bottom:4px"></div>
+      <div class="sep">Módulos habilitados</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Si un módulo está desactivado, esta empresa no aparecerá en ese menú para ningún usuario.</div>
+      <div id="emp-modulos-list" style="display:flex;flex-direction:column;gap:2px;margin-bottom:4px"></div>
       <div class="sep">Color de identificación</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap" id="emp-color-picker"></div>
     </div>
@@ -3983,8 +3986,8 @@ async function renderPage(p){
   if(p==='capacitacion'){renderCapacitacion();return;}
   if(p==='headcount-autorizado'){renderHeadcountAutorizado();return;}
 }
-function _renderEmpresaCardsGrid(onClickFn){
-  const cards=DB.empresas.map(emp=>{
+function _renderEmpresaCardsGrid(onClickFn,moduloKey){
+  const cards=DB.empresas.filter(emp=>!moduloKey||emp.modulos?.[moduloKey]!==false).map(emp=>{
     const color=emp.color||'#2AAADE';
     return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px;transition:box-shadow .15s" onclick="${onClickFn}('${emp.id}')" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,.12)'" onmouseleave="this.style.boxShadow=''">
       <div style="display:flex;align-items:center;gap:12px">
@@ -4000,9 +4003,9 @@ function _renderEmpresaCardsGrid(onClickFn){
     ${cards||'<div style="color:var(--text3);font-size:13px;grid-column:1/-1;text-align:center;padding:40px"><i class="fa fa-building" style="font-size:28px;display:block;margin-bottom:12px;opacity:.4"></i>Sin empresas registradas</div>'}
   </div>`;
 }
-function _renderModuloDashboard(pageId,onClickFn){
+function _renderModuloDashboard(pageId,onClickFn,moduloKey){
   const page=document.getElementById(pageId); if(!page) return;
-  page.innerHTML=`<div style="padding:24px 28px">${_renderEmpresaCardsGrid(onClickFn)}</div>`;
+  page.innerHTML=`<div style="padding:24px 28px">${_renderEmpresaCardsGrid(onClickFn,moduloKey)}</div>`;
 }
 function _renderModuloEmpresaDetalle(pageId,icono,titulo,empId,backFn){
   const page=document.getElementById(pageId); if(!page) return;
@@ -4024,19 +4027,19 @@ function _renderModuloEmpresaDetalle(pageId,icono,titulo,empId,backFn){
 let _contOpenEmpId=null,_capOpenEmpId=null,_hcaOpenEmpId=null;
 function renderContratos(){
   if(_contOpenEmpId){_renderModuloEmpresaDetalle('page-contratos','fa-file-contract','Contratos',_contOpenEmpId,'contratosBack');return;}
-  _renderModuloDashboard('page-contratos','contratosOpenEmpresa');
+  _renderModuloDashboard('page-contratos','contratosOpenEmpresa','contratos');
 }
 function contratosOpenEmpresa(empId){_contOpenEmpId=empId;renderContratos();}
 function contratosBack(){_contOpenEmpId=null;renderContratos();}
 function renderCapacitacion(){
   if(_capOpenEmpId){_renderModuloEmpresaDetalle('page-capacitacion','fa-chalkboard-user','Capacitación',_capOpenEmpId,'capacitacionBack');return;}
-  _renderModuloDashboard('page-capacitacion','capacitacionOpenEmpresa');
+  _renderModuloDashboard('page-capacitacion','capacitacionOpenEmpresa','capacitacion');
 }
 function capacitacionOpenEmpresa(empId){_capOpenEmpId=empId;renderCapacitacion();}
 function capacitacionBack(){_capOpenEmpId=null;renderCapacitacion();}
 function renderHeadcountAutorizado(){
   if(_hcaOpenEmpId){_renderModuloEmpresaDetalle('page-headcount-autorizado','fa-users-gear','Headcount autorizado',_hcaOpenEmpId,'headcountAutorizadoBack');return;}
-  _renderModuloDashboard('page-headcount-autorizado','headcountAutorizadoOpenEmpresa');
+  _renderModuloDashboard('page-headcount-autorizado','headcountAutorizadoOpenEmpresa','headcount_autorizado');
 }
 function headcountAutorizadoOpenEmpresa(empId){_hcaOpenEmpId=empId;renderHeadcountAutorizado();}
 function headcountAutorizadoBack(){_hcaOpenEmpId=null;renderHeadcountAutorizado();}
@@ -4358,6 +4361,29 @@ async function uploadEmpLogo(empId){
   return data.publicUrl + '?t=' + Date.now();
 }
 
+const EMPRESA_MODULOS=[
+  {key:'personal',label:'Administrador de personal'},
+  {key:'expedientes',label:'Expedientes'},
+  {key:'contratos',label:'Contratos'},
+  {key:'capacitacion',label:'Capacitación'},
+  {key:'headcount_autorizado',label:'Headcount autorizado'},
+];
+let empModulos={};
+function renderEmpModulos(){
+  const el=document.getElementById('emp-modulos-list');
+  if(!el)return;
+  el.innerHTML=EMPRESA_MODULOS.map(m=>{
+    const on=empModulos[m.key]!==false;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 2px;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px;color:${on?'var(--text)':'var(--text3)'}">${m.label}</span>
+      <button type="button" onclick="empModuloToggle('${m.key}')" title="${on?'Desactivar':'Activar'}" style="background:none;border:none;cursor:pointer;font-size:20px;color:${on?'var(--accent)':'var(--text3)'};line-height:1"><i class="fa fa-toggle-${on?'on':'off'}"></i></button>
+    </div>`;
+  }).join('');
+}
+function empModuloToggle(key){
+  empModulos[key]=empModulos[key]===false;
+  renderEmpModulos();
+}
 function openEmpresaModal(id=null){
   document.getElementById('mod-emp-title').textContent=id?'Editar Empresa':'Nueva Empresa Cliente';
   document.getElementById('emp-id').value='';
@@ -4371,6 +4397,8 @@ function openEmpresaModal(id=null){
   renderEmpChips('departamentos');
   renderEmpChips('proyectos');
   renderEmpChips('razones');
+  empModulos=Object.fromEntries(EMPRESA_MODULOS.map(m=>[m.key,true]));
+  renderEmpModulos();
   empColorSel=EMPRESA_COLORS[DB.empresas.length%EMPRESA_COLORS.length];
   buildColorPicker(empColorSel);
   if(id){
@@ -4392,6 +4420,8 @@ function openEmpresaModal(id=null){
       renderEmpChips('departamentos');
       renderEmpChips('proyectos');
       renderEmpChips('razones');
+      empModulos=Object.fromEntries(EMPRESA_MODULOS.map(m=>[m.key,e.modulos?.[m.key]!==false]));
+      renderEmpModulos();
       empColorSel=e.color||EMPRESA_COLORS[0];
       buildColorPicker(empColorSel);
       const preview = document.getElementById('emp-logo-preview');
@@ -4407,7 +4437,7 @@ async function saveEmpresa(){
   const nombre=document.getElementById('emp-nombre').value.trim();
   if(!nombre){showToast('Ingresa el nombre de la empresa','err');return}
   const id=document.getElementById('emp-id').value;
-  const data={nombre,sector:document.getElementById('emp-sector').value,contacto:document.getElementById('emp-contacto').value,tel:document.getElementById('emp-tel').value,dir:document.getElementById('emp-dir').value,notas:document.getElementById('emp-notas').value,color:empColorSel,departamentos:[...empDepartamentos],proyectos:[...empProyectos],razones_sociales:[...empRazones],proyectos_inactivos:[...empProyectosInactivos],departamentos_inactivos:[...empDepartamentosInactivos],razones_sociales_inactivos:[...empRazonesInactivos]};
+  const data={nombre,sector:document.getElementById('emp-sector').value,contacto:document.getElementById('emp-contacto').value,tel:document.getElementById('emp-tel').value,dir:document.getElementById('emp-dir').value,notas:document.getElementById('emp-notas').value,color:empColorSel,departamentos:[...empDepartamentos],proyectos:[...empProyectos],razones_sociales:[...empRazones],proyectos_inactivos:[...empProyectosInactivos],departamentos_inactivos:[...empDepartamentosInactivos],razones_sociales_inactivos:[...empRazonesInactivos],modulos:{...empModulos}};
   const _empAnterior = id ? {...(DB.empresas.find(x=>x.id===id)||{})} : null;
   if(id){const i=DB.empresas.findIndex(e=>e.id===id);DB.empresas[i]={...DB.empresas[i],...data};showToast('Empresa actualizada ✓')}
   else{DB.empresas.push({id:uid(),...data,etapas:DEFAULT_ETAPAS.map(e=>({...e,id:uid()}))});showToast('Empresa creada ✓')}
@@ -12698,7 +12728,7 @@ async function renderPersonal(){
 
 function _persRenderDashboard(){
   const page=document.getElementById('page-personal'); if(!page) return;
-  const cards=DB.empresas.map(emp=>{
+  const cards=DB.empresas.filter(emp=>emp.modulos?.personal!==false).map(emp=>{
     const color=emp.color||'#2AAADE';
     const n=(DB.colaboradores||[]).filter(c=>c.empresa_id===emp.id).length;
     const activos=(DB.colaboradores||[]).filter(c=>c.empresa_id===emp.id&&c.estado!=='Baja').length;
@@ -13049,7 +13079,7 @@ async function renderExpedientes(){
 }
 function _expRenderDashboard(){
   const page=document.getElementById('page-expedientes'); if(!page) return;
-  const cards=DB.empresas.map(emp=>{
+  const cards=DB.empresas.filter(emp=>emp.modulos?.expedientes!==false).map(emp=>{
     const color=emp.color||'#2AAADE';
     const n=(DB.colaboradores||[]).filter(c=>c.empresa_id===emp.id).length;
     return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px;transition:box-shadow .15s" onclick="expOpenEmpresa('${emp.id}')" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,.12)'" onmouseleave="this.style.boxShadow=''">

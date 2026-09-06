@@ -2792,6 +2792,72 @@ function adaptUIToRole() {
     }
   }
 
+  // CONTRATOS — justo debajo de Expedientes
+  if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-contratos')){
+    const navEl = document.querySelector('.sb-nav');
+    if(navEl){
+      const contItem = document.createElement('div');
+      contItem.className = 'nav-item';
+      contItem.id = 'nav-contratos';
+      contItem.dataset.tooltip = 'Contratos';
+      contItem.innerHTML = '<i class="fa fa-file-contract"></i><span class="nav-item-text"> Contratos</span>';
+      contItem.setAttribute('onclick', "showPage('contratos')");
+      const anchor = document.getElementById('nav-expedientes');
+      if(anchor) anchor.parentNode.insertBefore(contItem, anchor.nextSibling);
+      else navEl.appendChild(contItem);
+    }
+    if(!document.getElementById('page-contratos')){
+      const pg=document.createElement('div');
+      pg.className='page';
+      pg.id='page-contratos';
+      document.querySelector('.main').appendChild(pg);
+    }
+  }
+
+  // CAPACITACIÓN — justo debajo de Contratos
+  if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-capacitacion')){
+    const navEl = document.querySelector('.sb-nav');
+    if(navEl){
+      const capItem = document.createElement('div');
+      capItem.className = 'nav-item';
+      capItem.id = 'nav-capacitacion';
+      capItem.dataset.tooltip = 'Capacitación';
+      capItem.innerHTML = '<i class="fa fa-chalkboard-user"></i><span class="nav-item-text"> Capacitación</span>';
+      capItem.setAttribute('onclick', "showPage('capacitacion')");
+      const anchor = document.getElementById('nav-contratos');
+      if(anchor) anchor.parentNode.insertBefore(capItem, anchor.nextSibling);
+      else navEl.appendChild(capItem);
+    }
+    if(!document.getElementById('page-capacitacion')){
+      const pg=document.createElement('div');
+      pg.className='page';
+      pg.id='page-capacitacion';
+      document.querySelector('.main').appendChild(pg);
+    }
+  }
+
+  // HEADCOUNT AUTORIZADO — justo debajo de Capacitación
+  if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-headcount-autorizado')){
+    const navEl = document.querySelector('.sb-nav');
+    if(navEl){
+      const hcaItem = document.createElement('div');
+      hcaItem.className = 'nav-item';
+      hcaItem.id = 'nav-headcount-autorizado';
+      hcaItem.dataset.tooltip = 'Headcount autorizado';
+      hcaItem.innerHTML = '<i class="fa fa-users-gear"></i><span class="nav-item-text"> Headcount autorizado</span>';
+      hcaItem.setAttribute('onclick', "showPage('headcount-autorizado')");
+      const anchor = document.getElementById('nav-capacitacion');
+      if(anchor) anchor.parentNode.insertBefore(hcaItem, anchor.nextSibling);
+      else navEl.appendChild(hcaItem);
+    }
+    if(!document.getElementById('page-headcount-autorizado')){
+      const pg=document.createElement('div');
+      pg.className='page';
+      pg.id='page-headcount-autorizado';
+      document.querySelector('.main').appendChild(pg);
+    }
+  }
+
   // Perfiles de puesto — visible para admin, reclutador y rh_cliente
   if(!document.getElementById('nav-perfiles')){
     const navEl = document.querySelector('.sb-nav');
@@ -3876,7 +3942,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',kpis:'KPIs',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount',perfiles:'Perfiles de puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal',personal:'Administrador de personal',expedientes:'Expedientes',procedimientos:'Procedimientos'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',kpis:'KPIs',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'HeadCount',perfiles:'Perfiles de puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal',personal:'Administrador de personal',expedientes:'Expedientes',contratos:'Contratos',capacitacion:'Capacitación','headcount-autorizado':'Headcount autorizado',procedimientos:'Procedimientos'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);
@@ -3913,7 +3979,23 @@ async function renderPage(p){
   // if(p==='basedatos')renderBaseDatos(); // desactivado temporalmente
   if(p==='personal'){renderPersonal();return;}
   if(p==='expedientes'){renderExpedientes();return;}
+  if(p==='contratos'){renderContratos();return;}
+  if(p==='capacitacion'){renderCapacitacion();return;}
+  if(p==='headcount-autorizado'){renderHeadcountAutorizado();return;}
 }
+function _renderModuloEnConstruccion(pageId,icono,titulo){
+  const page=document.getElementById(pageId); if(!page) return;
+  page.innerHTML=`<div style="padding:24px 28px">
+    <div style="text-align:center;padding:80px 20px;color:var(--text3)">
+      <i class="fa ${icono}" style="font-size:44px;margin-bottom:16px;display:block"></i>
+      <div style="font-size:16px;font-weight:600;color:var(--text2);margin-bottom:6px">${titulo}</div>
+      <div style="font-size:13px">Este módulo está en construcción. Dime qué necesitas capturar o gestionar aquí y lo armamos.</div>
+    </div>
+  </div>`;
+}
+function renderContratos(){_renderModuloEnConstruccion('page-contratos','fa-file-contract','Contratos');}
+function renderCapacitacion(){_renderModuloEnConstruccion('page-capacitacion','fa-chalkboard-user','Capacitación');}
+function renderHeadcountAutorizado(){_renderModuloEnConstruccion('page-headcount-autorizado','fa-users-gear','Headcount autorizado');}
 
 /* ============================================================
    BADGES

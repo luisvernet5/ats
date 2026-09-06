@@ -15038,9 +15038,10 @@ async function doImportColaboradores(empId){
   if(!valid.length)return;
   const btn=document.getElementById('btn-imp-colab-confirm');
   if(btn){btn.disabled=true;btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Importando...';}
-  const nuevos=valid.map(r=>{
+  const _tImp=Date.now();
+  const nuevos=valid.map((r,i)=>{
     const {_row,_errors,...datos}=r;
-    return {id:'col-'+Date.now()+'-'+Math.random().toString(36).substr(2,6),empresa_id:empId,...datos};
+    return {id:'col-'+(_tImp+i)+'-'+Math.random().toString(36).substr(2,6),empresa_id:empId,...datos};
   });
   try{
     if(!SANDBOX_MODE){

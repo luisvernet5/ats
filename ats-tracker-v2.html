@@ -4167,8 +4167,8 @@ function _capVencerHtml(empId){
       ${pill('7','Próximos 7 días')}
       ${pill('30','Próximos 30 días')}
       ${pill('90','Próximos 90 días')}
-      <input type="date" value="${_capVencerDesde}" onchange="_capVencerSetRango('${empId}','desde',this.value)" title="Desde" style="height:32px;padding:0 6px;font-size:12px;border:1px solid var(--border);border-radius:6px">
-      <input type="date" value="${_capVencerHasta}" onchange="_capVencerSetRango('${empId}','hasta',this.value)" title="Hasta" style="height:32px;padding:0 6px;font-size:12px;border:1px solid var(--border);border-radius:6px">
+      <input type="date" value="${_capVencerDesde}" onchange="_capVencerSetRango('${empId}','desde',this.value)" title="Desde" style="width:130px;flex-shrink:0;height:32px;padding:0 6px;font-size:12px;border:1px solid var(--border);border-radius:6px">
+      <input type="date" value="${_capVencerHasta}" onchange="_capVencerSetRango('${empId}','hasta',this.value)" title="Hasta" style="width:130px;flex-shrink:0;height:32px;padding:0 6px;font-size:12px;border:1px solid var(--border);border-radius:6px">
       ${(_capVencerDesde||_capVencerHasta)?`<button class="btn btn-ghost btn-sm" onclick="_capVencerLimpiarRango('${empId}')">× Limpiar fechas</button>`:''}
     </div>
     <div class="table-wrap"><table>

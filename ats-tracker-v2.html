@@ -6246,6 +6246,7 @@ function _filaSolicitudEmpleoHtml(candId){
       <div style="font-size:11px;color:var(--text3)">Liga enviada el ${fecha} · pendiente de respuesta</div>
     </div>
     <div style="display:flex;gap:6px;flex-shrink:0">
+      <button class="btn btn-ghost btn-sm" title="Verificar si ya respondió" onclick="actualizarEstatusSolicitudEmpleo('${candId}')"><i class="fa fa-magnifying-glass"></i></button>
       <button class="btn btn-ghost btn-sm" title="Copiar liga" onclick="copiarLigaSolicitudEmpleo('${se.token}')"><i class="fa fa-copy"></i></button>
       <button class="btn btn-ghost btn-sm" title="Generar nueva liga" onclick="generarLigaSolicitudEmpleo('${candId}')"><i class="fa fa-rotate"></i></button>
       <button class="btn btn-danger btn-sm" title="Eliminar" onclick="eliminarSolicitudEmpleo('${candId}')"><i class="fa fa-trash"></i></button>
@@ -6293,6 +6294,25 @@ async function generarLigaSolicitudEmpleo(candId){
 }
 function copiarLigaSolicitudEmpleo(token){
   navigator.clipboard?.writeText(_seLink(token)).then(()=>showToast('Liga copiada ✓')).catch(()=>{});
+}
+async function actualizarEstatusSolicitudEmpleo(candId){
+  const se=_seParaCandidato(candId); if(!se) return;
+  try{
+    const {data,error}=await sbClient.from('solicitudes_empleo').select('*').eq('id',se.id).limit(1);
+    if(error) throw new Error(error.message);
+    const fresh=data?.[0]?.data||data?.[0];
+    if(fresh){
+      const idx=(DB.solicitudesEmpleo||[]).findIndex(s=>s.id===fresh.id);
+      if(idx>=0) DB.solicitudesEmpleo[idx]=fresh; else DB.solicitudesEmpleo.push(fresh);
+      showToast(fresh.estado==='completado'?'¡El candidato ya completó la solicitud! ✓':'Sigue pendiente de respuesta');
+    }else{
+      showToast('No se encontró la solicitud','err');
+    }
+    abrirDocumentosCandidato(candId);
+    recargarVistaActiva();
+  }catch(e){
+    showToast('Error al actualizar: '+e.message,'err');
+  }
 }
 function _hexToRgb(hex){
   let h=(hex||'').replace('#','');

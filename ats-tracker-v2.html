@@ -5889,7 +5889,7 @@ function abrirDocumentosCandidato(candId){
       <div class="sep">Procesos</div>
       ${filaAcceso('fa-clipboard-list','Reporte de entrevista',_tieneEi,`document.getElementById('modal-cand-docs').remove();openEntrevistaModal('${candId}')`)}
       ${filaAcceso('fa-users','Referencias',_tieneRef,`document.getElementById('modal-cand-docs').remove();openReferenciasModal('${candId}')`)}
-      <button class="btn btn-primary btn-sm" style="width:100%;justify-content:center;margin-top:6px" onclick="descargarTodosDocumentosCandidatoPDF('${candId}')"><i class="fa fa-file-pdf"></i> Descargar todos los documentos en un PDF</button>
+      <button class="btn btn-primary btn-sm" style="width:100%;justify-content:center;margin-top:6px" onclick="descargarTodosDocumentosCandidatoPDF('${candId}')"><i class="fa fa-file-pdf"></i> Descargar informe en PDF</button>
     </div>`;
   document.body.appendChild(modal);
 }
@@ -5944,15 +5944,30 @@ async function descargarDocumentoCandidatoPDF(candId,categoria){
 }
 async function descargarTodosDocumentosCandidatoPDF(candId){
   const c=DB.candidatos.find(x=>x.id===candId); if(!c) return;
+  const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+  const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
   const docsMap=_cdDocsMap(candId);
   const se=_seParaCandidato(candId);
   const archivos=CANDIDATO_DOC_CATEGORIAS.map(cat=>docsMap[cat.key]).filter(Boolean);
   const incluirSolicitud=se&&se.estado==='completado';
   if(!archivos.length&&!incluirSolicitud){showToast('No hay documentos para descargar','err');return;}
-  showToast('Generando PDF combinado...');
+  showToast('Generando informe en PDF...');
   try{
     const merged=await PDFLib.PDFDocument.create();
     const font=await merged.embedFont(PDFLib.StandardFonts.Helvetica);
+    const fontBold=await merged.embedFont(PDFLib.StandardFonts.HelveticaBold);
+    merged.setTitle(`Informe — ${c.nombre||'Candidato'}${v.puesto?' — '+v.puesto:''}`);
+    const A4W=595,A4H=842;
+    const centerText=(page,text,y,size,fnt,color)=>{
+      const w=fnt.widthOfTextAtSize(text,size);
+      page.drawText(text,{x:(A4W-w)/2,y,size,font:fnt,color:color||PDFLib.rgb(0.1,0.1,0.1)});
+    };
+    const cover=merged.addPage([A4W,A4H]);
+    let cy=A4H/2+80;
+    centerText(cover,'INFORME',cy,30,fontBold); cy-=42;
+    centerText(cover,c.nombre||'Candidato',cy,18,fontBold); cy-=26;
+    if(v.puesto){ centerText(cover,v.puesto,cy,14,font,PDFLib.rgb(0.35,0.35,0.35)); cy-=22; }
+    if(emp.nombre){ centerText(cover,emp.nombre,cy,11,font,PDFLib.rgb(0.55,0.55,0.55)); }
     for(const doc of archivos){
       try{
         const res=await fetch(doc.url);
@@ -5981,7 +5996,7 @@ async function descargarTodosDocumentosCandidatoPDF(candId){
     const blob=new Blob([pdfBytes],{type:'application/pdf'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
-    a.href=url; a.download=`Documentos_${(c.nombre||'candidato').replace(/[^\w\-]+/g,'_')}.pdf`;
+    a.href=url; a.download=`Informe_${(c.nombre||'candidato').replace(/[^\w\-]+/g,'_')}.pdf`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),4000);
     showToast('PDF combinado descargado ✓');

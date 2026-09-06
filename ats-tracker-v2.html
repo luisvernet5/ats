@@ -5955,11 +5955,12 @@ const SOLICITUD_EMPLEO_SECCIONES=[
   ]},
   {titulo:'Datos generales',campos:[
     {key:'como_se_entero',label:'¿Cómo se enteró de este empleo?',tipo:'texto',req:true},
-    {key:'familiares_empresa',label:'¿Tiene familiares o amigos que laboren en esta empresa?',tipo:'texto',req:true},
+    {key:'familiares_empresa',label:'¿Tiene familiares o amigos que laboren en esta empresa?',tipo:'select',opciones:SI_NO_SE,req:true},
+    {key:'familiares_empresa_nombres',label:'Nómbrelos (si aplica)',tipo:'texto'},
     {key:'sindicato',label:'¿Pertenece a algún sindicato?',tipo:'select',opciones:SI_NO_SE,req:true},
     {key:'puede_viajar',label:'¿Puede viajar?',tipo:'select',opciones:SI_NO_SE,req:true},
     {key:'cambiar_residencia',label:'¿Está dispuesto a cambiar de lugar de residencia?',tipo:'select',opciones:SI_NO_SE,req:true},
-    {key:'fecha_disponible',label:'¿Fecha en que podría presentarse a trabajar?',tipo:'fecha'},
+    {key:'fecha_disponible',label:'¿Fecha en que podría presentarse a trabajar?',tipo:'fecha_o_inmediato'},
   ]},
   {titulo:'Observaciones',campos:[
     {key:'observaciones',label:'Observaciones',tipo:'parrafo'},
@@ -6026,6 +6027,60 @@ function _seToggleDesempleado(){
   const wrap=document.getElementById('se-desempleado-desde-wrap');
   if(wrap) wrap.style.display=chk?'':'none';
 }
+function _seToggleFechaInmediato(id){
+  const modo=document.getElementById(id+'-modo')?.value;
+  const dateEl=document.getElementById(id);
+  if(dateEl) dateEl.style.display=modo==='Inmediatamente'?'none':'';
+}
+function _seToggleFirmaModo(modo){
+  window._seFirmaModo=modo;
+  const dibujoWrap=document.getElementById('se-firma-dibujo-wrap');
+  const textoWrap=document.getElementById('se-firma-texto-wrap');
+  const tabDibujo=document.getElementById('se-firma-tab-dibujo');
+  const tabTexto=document.getElementById('se-firma-tab-texto');
+  if(dibujoWrap) dibujoWrap.style.display=modo==='dibujo'?'':'none';
+  if(textoWrap) textoWrap.style.display=modo==='texto'?'':'none';
+  if(tabDibujo){tabDibujo.style.background=modo==='dibujo'?'var(--primary)':'var(--surface2)';tabDibujo.style.color=modo==='dibujo'?'#fff':'var(--text)';}
+  if(tabTexto){tabTexto.style.background=modo==='texto'?'var(--primary)':'var(--surface2)';tabTexto.style.color=modo==='texto'?'#fff':'var(--text)';}
+  if(modo==='dibujo') setTimeout(_seInitFirmaCanvas,0);
+}
+function _seInitFirmaCanvas(){
+  const canvas=document.getElementById('se-firma-canvas');
+  if(!canvas||canvas._seInit)return;
+  canvas._seInit=true;
+  const ctx=canvas.getContext('2d');
+  ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#111';
+  let drawing=false,last=null;
+  const pos=(e)=>{
+    const rect=canvas.getBoundingClientRect();
+    const t=e.touches&&e.touches[0];
+    const cx=(t?t.clientX:e.clientX)-rect.left;
+    const cy=(t?t.clientY:e.clientY)-rect.top;
+    return {x:cx*(canvas.width/rect.width),y:cy*(canvas.height/rect.height)};
+  };
+  const start=(e)=>{ drawing=true; last=pos(e); e.preventDefault(); };
+  const move=(e)=>{
+    if(!drawing)return;
+    const p=pos(e);
+    ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();
+    last=p;
+    canvas.dataset.hasDrawing='1';
+    e.preventDefault();
+  };
+  const end=()=>{ drawing=false; };
+  canvas.addEventListener('mousedown',start);
+  canvas.addEventListener('mousemove',move);
+  window.addEventListener('mouseup',end);
+  canvas.addEventListener('touchstart',start,{passive:false});
+  canvas.addEventListener('touchmove',move,{passive:false});
+  canvas.addEventListener('touchend',end);
+}
+function _seLimpiarFirma(){
+  const canvas=document.getElementById('se-firma-canvas');
+  if(!canvas)return;
+  canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+  canvas.dataset.hasDrawing='';
+}
 function _seToggleAcc(idx){
   const body=document.getElementById('se-acc-body-'+idx);
   const chev=document.getElementById('se-acc-chev-'+idx);
@@ -6040,10 +6095,11 @@ function _seOpenBlock(idx){
   body?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function _seSectionWrap(idx,titulo,contenidoHtml,color,openDefault){
+  const textRgb=_contrastText(..._hexToRgb(color)).join(',');
   return `<div style="margin-bottom:14px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
     <div onclick="_seToggleAcc(${idx})" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:${color}">
-      <span style="font-size:13px;font-weight:700;color:#fff">${_esc(titulo)}</span>
-      <i class="fa fa-chevron-down" id="se-acc-chev-${idx}" style="color:#fff;transition:transform .15s;${openDefault?'transform:rotate(180deg)':''}"></i>
+      <span style="font-size:13px;font-weight:700;color:rgb(${textRgb})">${_esc(titulo)}</span>
+      <i class="fa fa-chevron-down" id="se-acc-chev-${idx}" style="color:rgb(${textRgb});transition:transform .15s;${openDefault?'transform:rotate(180deg)':''}"></i>
     </div>
     <div id="se-acc-body-${idx}" style="padding:18px 16px;display:${openDefault?'':'none'}">${contenidoHtml}</div>
   </div>`;
@@ -6137,6 +6193,17 @@ async function generarLigaSolicitudEmpleo(candId){
 function copiarLigaSolicitudEmpleo(token){
   navigator.clipboard?.writeText(_seLink(token)).then(()=>showToast('Liga copiada ✓')).catch(()=>{});
 }
+function _hexToRgb(hex){
+  let h=(hex||'').replace('#','');
+  if(h.length===3) h=h.split('').map(c=>c+c).join('');
+  const num=parseInt(h,16);
+  if(isNaN(num)||h.length!==6) return [42,170,222];
+  return [(num>>16)&255,(num>>8)&255,num&255];
+}
+function _contrastText(r,g,b){
+  const lum=(0.299*r+0.587*g+0.114*b)/255;
+  return lum>0.6?[20,20,20]:[255,255,255];
+}
 async function _buildSolicitudEmpleoPDFDoc(se,candId){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
@@ -6176,11 +6243,13 @@ async function _buildSolicitudEmpleoPDFDoc(se,candId){
       y+=maxH;
     }
   };
+  const [hr,hg,hb]=_hexToRgb(se.empresa_color||'#2AAADE');
+  const [htr,htg,htb]=_contrastText(hr,hg,hb);
   const sectionHeader=(titulo)=>{
     chkPg(14);
-    doc.setFillColor(255,242,153);
+    doc.setFillColor(hr,hg,hb);
     doc.rect(M,y,CW,6.5,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(60,50,0);
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(htr,htg,htb);
     doc.text(titulo.toUpperCase(),M+2,y+4.6);
     y+=6.5;
   };
@@ -6216,14 +6285,25 @@ async function _buildSolicitudEmpleoPDFDoc(se,candId){
 
   _seBloquesMeta().forEach(b=>b.isEmpleo?sectionEmpleos():section(b.titulo,b.campos));
 
-  chkPg(28);
+  chkPg(40);
   y+=8;
+  if(campos.firma_imagen){
+    const fw=60,fh=18; // el canvas se dibuja a 600x180 (misma proporción 10:3)
+    try{ doc.addImage(campos.firma_imagen,'PNG',W/2-fw/2,y,fw,fh); }catch(e){}
+    y+=fh+2;
+  }else if(campos.firma_texto){
+    doc.setFont('helvetica','italic');doc.setFontSize(16);doc.setTextColor(20);
+    doc.text(campos.firma_texto,W/2,y+13,{align:'center'});
+    y+=16;
+  }else{
+    y+=14;
+  }
   doc.setDrawColor(150);doc.setLineWidth(0.2);
-  doc.line(M+40,y+14,W-M-40,y+14);
+  doc.line(M+40,y+2,W-M-40,y+2);
   doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(90);
-  doc.text('Firma del solicitante',W/2,y+19,{align:'center'});
+  doc.text('Firma del solicitante',W/2,y+7,{align:'center'});
   doc.setFontSize(7.5);doc.setTextColor(130);
-  doc.text(`Completada el ${se.fecha_completada?new Date(se.fecha_completada).toLocaleDateString('es-MX'):''}`,W/2,y+25,{align:'center'});
+  doc.text(`Completada el ${se.fecha_completada?new Date(se.fecha_completada).toLocaleDateString('es-MX'):''}`,W/2,y+13,{align:'center'});
 
   return doc;
 }
@@ -6271,6 +6351,7 @@ async function _checkSolicitudPublica(){
     }
     _sePubData={se};
     screen.innerHTML=se.estado==='completado'?_seRenderCompletada():_seRenderForm(se);
+    if(se.estado!=='completado') setTimeout(_seInitFirmaCanvas,0);
   }catch(e){
     screen.innerHTML=`<div style="max-width:500px;margin:60px auto;text-align:center"><i class="fa fa-exclamation-circle" style="font-size:48px;color:var(--danger);margin-bottom:16px"></i><div style="font-size:18px;font-weight:600">Error al cargar</div><div style="font-size:14px;color:var(--text2);margin-top:8px">${_esc(e.message)}</div></div>`;
   }
@@ -6291,6 +6372,15 @@ function _seCampoHtml(f,val,idOverride){
     input=`<textarea id="${id}" rows="3" style="width:100%;resize:vertical">${_esc(val||'')}</textarea>`;
   }else if(f.tipo==='fecha'){
     input=`<input type="date" id="${id}" value="${_esc(val||'')}" style="width:100%">`;
+  }else if(f.tipo==='fecha_o_inmediato'){
+    const isInmediato=val?val==='Inmediatamente':true;
+    input=`<div>
+      <select id="${id}-modo" onchange="_seToggleFechaInmediato('${id}')" style="width:100%;margin-bottom:8px">
+        <option value="Inmediatamente" ${isInmediato?'selected':''}>Inmediatamente</option>
+        <option value="Fecha específica" ${!isInmediato?'selected':''}>Fecha específica</option>
+      </select>
+      <input type="date" id="${id}" value="${_esc(isInmediato?'':(val||''))}" style="width:100%;${isInmediato?'display:none':''}">
+    </div>`;
   }else if(f.tipo==='numero'){
     input=`<input type="number" id="${id}" value="${_esc(val||'')}" style="width:100%">`;
   }else{
@@ -6300,6 +6390,7 @@ function _seCampoHtml(f,val,idOverride){
 }
 function _seRenderForm(se){
   const color=se.empresa_color||'#2AAADE';
+  window._seFirmaModo='dibujo';
   try{ _seEmpleos=JSON.parse(se.campos?.empleos_json||'[]'); }catch(e){ _seEmpleos=[]; }
   if(!_seEmpleos.length) _seEmpleos=[{}];
   const desempleadoChecked=se.campos?.empleo_desempleado==='Sí';
@@ -6327,6 +6418,23 @@ function _seRenderForm(se){
     </div>
     <div id="se-error" style="display:none;background:#fef2f2;color:#dc2626;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px"></div>
     ${bloques}
+    <div id="se-firma-block" style="margin:20px 0;padding:16px;border:1px solid var(--border);border-radius:10px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">Firma del solicitante <span style="color:var(--danger)">*</span></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button type="button" id="se-firma-tab-dibujo" onclick="_seToggleFirmaModo('dibujo')" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--primary);color:#fff;cursor:pointer;font-size:12px"><i class="fa fa-pen"></i> Dibujar firma</button>
+        <button type="button" id="se-firma-tab-texto" onclick="_seToggleFirmaModo('texto')" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px"><i class="fa fa-keyboard"></i> Escribir mi nombre</button>
+      </div>
+      <div id="se-firma-dibujo-wrap">
+        <canvas id="se-firma-canvas" width="600" height="180" style="width:100%;height:140px;border:1px dashed var(--border);border-radius:6px;background:#fff;touch-action:none;cursor:crosshair;display:block"></canvas>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+          <span style="font-size:11px;color:var(--text3)">Dibuja con el mouse o el dedo</span>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="_seLimpiarFirma()"><i class="fa fa-eraser"></i> Limpiar</button>
+        </div>
+      </div>
+      <div id="se-firma-texto-wrap" style="display:none">
+        <input type="text" id="se-firma-nombre" placeholder="Escribe tu nombre completo como firma" style="width:100%;font-family:'Brush Script MT',cursive;font-size:20px">
+      </div>
+    </div>
     <div style="display:flex;align-items:flex-start;gap:10px;margin:20px 0;padding:14px;background:var(--surface2);border-radius:8px">
       <input type="checkbox" id="se-acepto" style="margin-top:3px;accent-color:var(--primary)">
       <label for="se-acepto" style="font-size:12px;color:var(--text2);cursor:pointer">Certifico que los datos proporcionados son correctos y autorizo a la empresa para que los verifique.</label>
@@ -6358,6 +6466,9 @@ async function submitSolicitudEmpleo(){
           if(otroVal) vals.push(otroVal);
         }
         val=vals.join(', ');
+      }else if(f.tipo==='fecha_o_inmediato'){
+        const modo=document.getElementById(`se-f-${f.key}-modo`)?.value;
+        val=modo==='Inmediatamente'?'Inmediatamente':(document.getElementById('se-f-'+f.key)?.value||'').trim();
       }else{
         const el=document.getElementById('se-f-'+f.key);
         val=(el?.value||'').trim();
@@ -6377,6 +6488,24 @@ async function submitSolicitudEmpleo(){
   }
   campos.empleos_json=JSON.stringify(_seEmpleos.filter(j=>SE_EMPLEO_CAMPOS.some(f=>(j[f.key]||'').trim())));
   const errDiv=document.getElementById('se-error');
+  const firmaModo=window._seFirmaModo||'dibujo';
+  campos.firma_tipo=firmaModo;
+  campos.firma_imagen=null;
+  campos.firma_texto=null;
+  let firmaOk=false;
+  if(firmaModo==='dibujo'){
+    const canvas=document.getElementById('se-firma-canvas');
+    if(canvas?.dataset.hasDrawing==='1'){ campos.firma_imagen=canvas.toDataURL('image/png'); firmaOk=true; }
+  }else{
+    const nombreFirma=(document.getElementById('se-firma-nombre')?.value||'').trim();
+    if(nombreFirma){ campos.firma_texto=nombreFirma; firmaOk=true; }
+  }
+  if(!firmaOk&&!primerError){
+    errDiv.textContent='Por favor firma la solicitud (dibujando o escribiendo tu nombre) antes de enviarla.';
+    errDiv.style.display='';
+    document.getElementById('se-firma-block')?.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
   if(!document.getElementById('se-acepto')?.checked){
     errDiv.textContent='Debes aceptar la declaración de datos correctos para continuar.';
     errDiv.style.display='';

@@ -3667,6 +3667,7 @@ const DB={
   capacitacionCursos:[],
   capacitacionAsistencias:[],
   capacitacionMatriz:[],
+  contratos:[],
   personal:[],
   colaboradores:[],
   evaluaciones:[],
@@ -4032,12 +4033,429 @@ function _renderModuloEmpresaDetalle(pageId,icono,titulo,empId,backFn){
   </div>`;
 }
 let _contOpenEmpId=null,_capOpenEmpId=null,_hcaOpenEmpId=null;
+let _contVista='contratos'; // 'contratos' | 'vencer'
+let _contVencerFiltro='todos',_contVencerDesde='',_contVencerHasta='';
+const CONTRATO_TIPOS=['Determinado','Indeterminado','Por obra o proyecto','Periodo de prueba','Capacitación inicial'];
 function renderContratos(){
-  if(_contOpenEmpId){_renderModuloEmpresaDetalle('page-contratos','fa-file-contract','Contratos',_contOpenEmpId,'contratosBack');return;}
+  if(_contOpenEmpId){_contRenderEmpresa(_contOpenEmpId);return;}
   _renderModuloDashboard('page-contratos','contratosOpenEmpresa','contratos');
 }
-function contratosOpenEmpresa(empId){_contOpenEmpId=empId;renderContratos();}
+async function contratosOpenEmpresa(empId){
+  _contOpenEmpId=empId;
+  _contVista='contratos';
+  _contVencerFiltro='todos'; _contVencerDesde=''; _contVencerHasta='';
+  const page=document.getElementById('page-contratos');
+  if(page) page.innerHTML='<div style="padding:60px;text-align:center;color:var(--text3)"><i class="fa fa-spinner fa-spin" style="font-size:22px;margin-bottom:12px;display:block"></i>Cargando...</div>';
+  if(!_persLoaded&&!SANDBOX_MODE){
+    try{
+      const {data,error}=await sbClient.from('colaboradores').select('*');
+      if(error) throw new Error(error.message);
+      DB.colaboradores=data||[];
+      _persLoaded=true;
+    }catch(e){ console.warn('[Contratos] Error al cargar colaboradores:',e.message); }
+  }
+  await _contCargarDatosEmpresa(empId);
+  renderContratos();
+}
 function contratosBack(){_contOpenEmpId=null;renderContratos();}
+function contratosSetVista(empId,vista){ _contVista=vista; _contRenderEmpresa(empId); }
+async function _contCargarDatosEmpresa(empId){
+  if(SANDBOX_MODE) return;
+  try{
+    const {data,error}=await sbClient.from('contratos').select('*').filter('data->>empresa_id','eq',empId);
+    if(error) throw error;
+    DB.contratos=(DB.contratos||[]).filter(c=>c.empresa_id!==empId).concat((data||[]).map(r=>r.data||r).filter(Boolean));
+  }catch(e){ console.warn('[Contratos] Error al cargar:',e.message); }
+}
+function _contEstadoContrato(c){
+  if(!c.fecha_vencimiento) return {label:'Indeterminado',color:'var(--accent)'};
+  const hoy=new Date().toISOString().slice(0,10);
+  if(c.fecha_vencimiento<hoy) return {label:'Vencido',color:'#e5484d'};
+  const en30=new Date(); en30.setDate(en30.getDate()+30);
+  if(c.fecha_vencimiento<=en30.toISOString().slice(0,10)) return {label:'Por vencer',color:'#f59e0b'};
+  return {label:'Vigente',color:'#22c55e'};
+}
+function _contRenderEmpresa(empId){
+  const page=document.getElementById('page-contratos'); if(!page) return;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const color=emp.color||'#2AAADE';
+  page.innerHTML=`<div style="padding:24px 28px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="contratosBack()"><i class="fa fa-arrow-left"></i> Empresas</button>
+      ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
+      <span style="font-size:16px;font-weight:700">${_esc(emp.nombre||'')}</span>
+      <span style="flex:1"></span>
+      <button class="btn btn-ghost btn-sm" onclick="contratosDescargarPlantilla('${empId}')"><i class="fa fa-download"></i> Plantilla</button>
+      <button class="btn btn-ghost btn-sm" onclick="abrirImportContratosModal('${empId}')"><i class="fa fa-upload"></i> Carga masiva</button>
+      <button class="btn btn-primary btn-sm" onclick="abrirContratoModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo contrato</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn ${_contVista==='contratos'?'btn-primary':'btn-ghost'} btn-sm" onclick="contratosSetVista('${empId}','contratos')"><i class="fa fa-file-contract"></i> Contratos</button>
+      <button class="btn ${_contVista==='vencer'?'btn-primary':'btn-ghost'} btn-sm" onclick="contratosSetVista('${empId}','vencer')"><i class="fa fa-triangle-exclamation"></i> Control de contratos</button>
+    </div>
+    ${_contVista==='vencer'?_contVencerHtml(empId):_contListaHtml(empId)}
+  </div>`;
+}
+function _contListaHtml(empId){
+  const colabById={};
+  (DB.colaboradores||[]).filter(c=>c.empresa_id===empId).forEach(c=>{colabById[c.id]=c;});
+  const lista=(DB.contratos||[]).filter(c=>c.empresa_id===empId).sort((a,b)=>(b.fecha_inicio||'').localeCompare(a.fecha_inicio||''));
+  const rows=lista.map(c=>{
+    const colab=colabById[c.colaborador_id]||{};
+    const est=_contEstadoContrato(c);
+    return `<tr>
+      <td class="td-p">${_esc(colab.nombre||'—')}</td>
+      <td style="font-size:12px;color:var(--text2)">${_esc(c.puesto||colab.puesto||'—')}</td>
+      <td style="font-size:12px;color:var(--text2)">${_esc(c.tipo||'—')}</td>
+      <td style="font-size:12px;color:var(--text2)">${c.fecha_inicio?fmt(c.fecha_inicio):'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${c.fecha_vencimiento?fmt(c.fecha_vencimiento):'—'}</td>
+      <td><span class="badge" style="background:${est.color}22;color:${est.color}">${est.label}</span></td>
+      <td>${c.archivo_url?`<a href="${c.archivo_url}" target="_blank" class="btn btn-ghost btn-sm" title="Ver contrato firmado"><i class="fa fa-file-pdf"></i></a>`:'<span style="color:var(--text3);font-size:12px">—</span>'}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="abrirContratoModal('${empId}','${c.id}')" title="Editar"><i class="fa fa-edit"></i></button>
+        <button class="btn btn-danger btn-sm" onclick="eliminarContrato('${c.id}','${empId}')" title="Eliminar"><i class="fa fa-trash"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>Colaborador</th><th>Puesto</th><th>Tipo de contrato</th><th>Fecha inicio</th><th>Vencimiento</th><th>Estado</th><th>Archivo</th><th></th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:32px">Sin contratos registrados — agrega el primero o usa carga masiva</td></tr>'}</tbody>
+  </table></div>`;
+}
+function _contVencerItems(empId){
+  const colabById={};
+  (DB.colaboradores||[]).filter(c=>c.empresa_id===empId).forEach(c=>{colabById[c.id]=c;});
+  const hoy=new Date().toISOString().slice(0,10);
+  let items=(DB.contratos||[]).filter(c=>c.empresa_id===empId&&c.fecha_vencimiento);
+  if(_contVencerFiltro==='vencidos') items=items.filter(c=>c.fecha_vencimiento<hoy);
+  else if(['7','30','90'].includes(_contVencerFiltro)){
+    const limite=new Date(); limite.setDate(limite.getDate()+parseInt(_contVencerFiltro,10));
+    const limiteStr=limite.toISOString().slice(0,10);
+    items=items.filter(c=>c.fecha_vencimiento>=hoy&&c.fecha_vencimiento<=limiteStr);
+  }
+  if(_contVencerDesde) items=items.filter(c=>c.fecha_vencimiento>=_contVencerDesde);
+  if(_contVencerHasta) items=items.filter(c=>c.fecha_vencimiento<=_contVencerHasta);
+  items=items.slice().sort((a,b)=>(a.fecha_vencimiento||'').localeCompare(b.fecha_vencimiento||''));
+  return items.map(c=>{
+    const colab=colabById[c.colaborador_id]||{};
+    return{
+      nombre:colab.nombre||'—',puesto:c.puesto||colab.puesto||'—',tipo:c.tipo||'—',
+      fecha_inicio:c.fecha_inicio,fecha_vencimiento:c.fecha_vencimiento,
+      vencido:c.fecha_vencimiento<hoy,contratoId:c.id,
+    };
+  });
+}
+function _contVencerSetFiltro(empId,val){ _contVencerFiltro=val; _contRenderEmpresa(empId); }
+function _contVencerSetRango(empId,campo,val){ if(campo==='desde')_contVencerDesde=val; else _contVencerHasta=val; _contRenderEmpresa(empId); }
+function _contVencerLimpiarRango(empId){ _contVencerDesde='';_contVencerHasta=''; _contRenderEmpresa(empId); }
+function _contVencerHtml(empId){
+  const items=_contVencerItems(empId);
+  const rows=items.map(it=>`<tr>
+      <td class="td-p">${_esc(it.nombre)}</td>
+      <td style="font-size:12px;color:var(--text2)">${_esc(it.puesto)}</td>
+      <td style="font-size:12px;color:var(--text2)">${_esc(it.tipo)}</td>
+      <td style="font-size:12px;color:var(--text2)">${it.fecha_inicio?fmt(it.fecha_inicio):'—'}</td>
+      <td style="font-size:12px;font-weight:600;color:${it.vencido?'#e5484d':'var(--accent)'}">${fmt(it.fecha_vencimiento)}${it.vencido?' · Vencido':''}</td>
+      <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="abrirContratoModal('${empId}','${it.contratoId}')" title="Ver/editar"><i class="fa fa-edit"></i></button></td>
+    </tr>`).join('');
+  const pill=(val,label)=>`<button class="btn ${_contVencerFiltro===val?'btn-primary':'btn-ghost'} btn-sm" onclick="_contVencerSetFiltro('${empId}','${val}')">${label}</button>`;
+  return `<div style="font-size:11px;color:var(--text3);margin-bottom:8px">Contratos con fecha de vencimiento definida (los indeterminados no aplican). Ordenados del más próximo a vencer al más lejano.</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      ${pill('todos','Todos')}
+      ${pill('vencidos','Vencidos')}
+      ${pill('7','Próximos 7 días')}
+      ${pill('30','Próximos 30 días')}
+      ${pill('90','Próximos 90 días')}
+      <input type="date" value="${_contVencerDesde}" onchange="_contVencerSetRango('${empId}','desde',this.value)" title="Desde" style="width:130px;flex-shrink:0;height:32px;padding:0 6px;font-size:12px;border:1px solid var(--border);border-radius:6px">
+      <input type="date" value="${_contVencerHasta}" onchange="_contVencerSetRango('${empId}','hasta',this.value)" title="Hasta" style="width:130px;flex-shrink:0;height:32px;padding:0 6px;font-size:12px;border:1px solid var(--border);border-radius:6px">
+      ${(_contVencerDesde||_contVencerHasta)?`<button class="btn btn-ghost btn-sm" onclick="_contVencerLimpiarRango('${empId}')">× Limpiar fechas</button>`:''}
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Colaborador</th><th>Puesto</th><th>Tipo de contrato</th><th>Fecha inicio</th><th>Vencimiento</th><th></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">No hay contratos con fecha de vencimiento en este rango</td></tr>'}</tbody>
+    </table></div>`;
+}
+function abrirContratoModal(empId,contratoId){
+  const contrato=contratoId?(DB.contratos||[]).find(c=>c.id===contratoId):null;
+  const colabs=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId&&c.estado!=='Baja').sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
+  document.getElementById('modal-contrato')?.remove();
+  const modal=document.createElement('div');
+  modal.id='modal-contrato';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3100;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:560px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 32px #0004">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-weight:700;font-size:16px">${contratoId?'Editar contrato':'Nuevo contrato'}</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-contrato').remove()"><i class="fa fa-times"></i></button>
+    </div>
+    <input type="hidden" id="ct-empresa-id" value="${empId}">
+    <input type="hidden" id="ct-id" value="${contratoId||''}">
+    <div class="fg"><label>Colaborador *</label><select id="ct-colaborador" onchange="_ctPrefillPuesto()">
+      <option value="">— Selecciona —</option>
+      ${colabs.map(c=>`<option value="${c.id}" data-puesto="${_esc(c.puesto||'')}" ${contrato?.colaborador_id===c.id?'selected':''}>${_esc(c.nombre||'')}</option>`).join('')}
+    </select></div>
+    <div class="fr">
+      <div class="fg"><label>Tipo de contrato *</label><select id="ct-tipo">${CONTRATO_TIPOS.map(t=>`<option ${contrato?.tipo===t?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="fg"><label>Puesto</label><input id="ct-puesto" value="${_esc(contrato?.puesto||'')}"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Fecha de inicio</label><input type="date" id="ct-fecha-inicio" value="${contrato?.fecha_inicio||''}"></div>
+      <div class="fg"><label>Fecha de vencimiento</label><input type="date" id="ct-fecha-vencimiento" value="${contrato?.fecha_vencimiento||''}"><div style="font-size:11px;color:var(--text3);margin-top:2px">Vacío si es indeterminado</div></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Salario</label><input id="ct-salario" value="${_esc(contrato?.salario||'')}"></div>
+      <div class="fg"><label>Archivo del contrato (PDF)</label><input type="file" id="ct-archivo" accept="application/pdf">
+        ${contrato?.archivo_url?`<div style="margin-top:4px"><a href="${contrato.archivo_url}" target="_blank" style="font-size:12px">Ver archivo actual</a></div>`:''}
+      </div>
+    </div>
+    <div class="fr full"><div class="fg"><label>Notas</label><textarea id="ct-notas">${_esc(contrato?.notas||'')}</textarea></div></div>
+    <div style="display:flex;justify-content:${contratoId?'space-between':'flex-end'};gap:8px;margin-top:10px">
+      ${contratoId?`<button class="btn btn-ghost" style="color:#e5484d" onclick="eliminarContrato('${contratoId}','${empId}')"><i class="fa fa-trash"></i> Eliminar</button>`:''}
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-contrato').remove()">Cancelar</button>
+        <button class="btn btn-primary" id="btn-guardar-contrato" onclick="guardarContrato()"><i class="fa fa-save"></i> Guardar</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+function _ctPrefillPuesto(){
+  const sel=document.getElementById('ct-colaborador');
+  const opt=sel.options[sel.selectedIndex];
+  const puestoInput=document.getElementById('ct-puesto');
+  if(opt&&opt.dataset.puesto&&!puestoInput.value) puestoInput.value=opt.dataset.puesto;
+}
+let _ctBucketReady=false;
+async function _ctEnsureBucket(){
+  if(_ctBucketReady) return;
+  await sbClient.storage.createBucket('contratos-pdf',{public:true,fileSizeLimit:20971520}).catch(()=>{});
+  _ctBucketReady=true;
+}
+async function guardarContrato(){
+  const id=document.getElementById('ct-id').value;
+  const empId=document.getElementById('ct-empresa-id').value;
+  const colaboradorId=document.getElementById('ct-colaborador').value;
+  if(!colaboradorId){showToast('Selecciona un colaborador','err');return;}
+  const btn=document.getElementById('btn-guardar-contrato');
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Guardando...';}
+  try{
+    const existente=id?(DB.contratos||[]).find(c=>c.id===id):null;
+    let archivo_url=existente?.archivo_url||null;
+    let archivo_nombre=existente?.archivo_nombre||null;
+    const file=document.getElementById('ct-archivo').files[0];
+    if(file){
+      await _ctEnsureBucket();
+      const path=`${empId}/${colaboradorId}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+      const {error:upErr}=await sbClient.storage.from('contratos-pdf').upload(path,file,{upsert:true});
+      if(upErr) throw new Error('No se pudo subir el archivo: '+upErr.message);
+      const {data:urlData}=sbClient.storage.from('contratos-pdf').getPublicUrl(path);
+      archivo_url=urlData.publicUrl;
+      archivo_nombre=file.name;
+    }
+    const registro={
+      id:id||uid(),
+      empresa_id:empId,
+      colaborador_id:colaboradorId,
+      tipo:document.getElementById('ct-tipo').value,
+      puesto:(document.getElementById('ct-puesto').value||'').trim()||null,
+      fecha_inicio:document.getElementById('ct-fecha-inicio').value||null,
+      fecha_vencimiento:document.getElementById('ct-fecha-vencimiento').value||null,
+      salario:(document.getElementById('ct-salario').value||'').trim()||null,
+      notas:(document.getElementById('ct-notas').value||'').trim()||null,
+      archivo_url,archivo_nombre,
+      created_at:existente?.created_at||new Date().toISOString(),
+    };
+    await saveRecord('contratos',registro);
+    const idx=(DB.contratos||[]).findIndex(c=>c.id===registro.id);
+    if(idx>=0) DB.contratos[idx]=registro; else{ if(!DB.contratos)DB.contratos=[]; DB.contratos.push(registro); }
+    const colab=(DB.colaboradores||[]).find(c=>c.id===colaboradorId);
+    showToast(id?'Contrato actualizado ✓':'Contrato agregado ✓');
+    await logActivity(id?'Editar contrato':'Nuevo contrato','contratos',registro.id,`${colab?.nombre||colaboradorId} — ${registro.tipo}`);
+    document.getElementById('modal-contrato')?.remove();
+    _contRenderEmpresa(empId);
+  }catch(e){
+    showToast('Error: '+e.message,'err');
+  }finally{
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="fa fa-save"></i> Guardar';}
+  }
+}
+async function eliminarContrato(id,empId){
+  if(!confirm('¿Eliminar este contrato?'))return;
+  const contrato=(DB.contratos||[]).find(c=>c.id===id);
+  const colab=contrato?(DB.colaboradores||[]).find(c=>c.id===contrato.colaborador_id):null;
+  try{
+    await deleteRecord('contratos',id);
+    DB.contratos=(DB.contratos||[]).filter(c=>c.id!==id);
+    showToast('Contrato eliminado ✓');
+    await logActivity('Eliminar contrato','contratos',id,`${colab?.nombre||''} — ${(DB.empresas.find(e=>e.id===empId)||{}).nombre||empId}`);
+    document.getElementById('modal-contrato')?.remove();
+    _contRenderEmpresa(empId);
+  }catch(e){
+    showToast('Error: '+e.message,'err');
+  }
+}
+function contratosDescargarPlantilla(empId){
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const header=['Nombre del colaborador (debe existir en Administrador de Personal)','Tipo de contrato','Fecha de inicio (AAAA-MM-DD)','Fecha de vencimiento (AAAA-MM-DD, vacío si es indeterminado)','Puesto','Salario','Notas'];
+  const ejemplo=['Juan Pérez López','Determinado',today(),'2026-12-31','Auxiliar','$8,000','Ejemplo de nota'];
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet([header,ejemplo]);
+  ws['!cols']=header.map(()=>({wch:26}));
+  XLSX.utils.book_append_sheet(wb,ws,'Contratos');
+  XLSX.writeFile(wb,`Plantilla_Contratos_${(emp.nombre||'empresa').replace(/[^a-zA-Z0-9]/g,'_')}.xlsx`);
+}
+function abrirImportContratosModal(empId){
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  document.getElementById('modal-import-contratos')?.remove();
+  const modal=document.createElement('div');
+  modal.id='modal-import-contratos';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3100;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:760px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 32px #0004">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-weight:700;font-size:16px">Carga masiva de contratos — ${_esc(emp.nombre||'')}</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-import-contratos').remove()"><i class="fa fa-times"></i></button>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;margin-bottom:14px">
+      <i class="fa fa-info-circle" style="color:var(--accent);font-size:18px;flex-shrink:0"></i>
+      <span style="font-size:13px;color:var(--text2)">Descarga la plantilla, llénala y súbela aquí. El colaborador debe existir ya en Administrador de Personal (se relaciona por nombre exacto). Las fechas van en formato AAAA-MM-DD.</span>
+      <button class="btn btn-ghost btn-sm" style="flex-shrink:0;white-space:nowrap" onclick="contratosDescargarPlantilla('${empId}')"><i class="fa fa-download"></i> Plantilla</button>
+    </div>
+    <div style="border:2px dashed var(--border2);border-radius:8px;padding:24px;text-align:center;cursor:pointer" id="imp-cont-dropzone" onclick="document.getElementById('imp-cont-file').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border2)'" ondrop="event.preventDefault();this.style.borderColor='var(--border2)';handleImportContratosFile({target:{files:event.dataTransfer.files}},'${empId}')">
+      <i class="fa fa-file-excel" style="font-size:32px;color:var(--text3);margin-bottom:8px"></i>
+      <div style="font-size:14px;color:var(--text2)">Arrastra tu archivo aquí o <span style="color:var(--accent);font-weight:600">haz clic para seleccionar</span></div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px">Soporta .xlsx, .xls, .csv</div>
+      <input type="file" id="imp-cont-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportContratosFile(event,'${empId}')">
+    </div>
+    <div id="imp-cont-preview" style="display:none;margin-top:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span id="imp-cont-summary" style="font-size:13px;font-weight:600"></span>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('imp-cont-file').value='';document.getElementById('imp-cont-preview').style.display='none';document.getElementById('btn-imp-cont-confirm').style.display='none'"><i class="fa fa-times"></i> Limpiar</button>
+      </div>
+      <div class="table-wrap" style="max-height:280px;overflow:auto">
+        <table style="font-size:12px;width:100%" id="imp-cont-table"><thead></thead><tbody></tbody></table>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-import-contratos').remove()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-imp-cont-confirm" style="display:none" onclick="doImportContratos('${empId}')"><i class="fa fa-upload"></i> Importar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+let _impContRows=[];
+function handleImportContratosFile(e,empId){
+  const file=e.target?.files?.[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'binary',cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(raw.length<2){showToast('El archivo no tiene filas de datos','err');return;}
+      const headers=raw[0].map(h=>String(h).trim().toLowerCase());
+      const idxOf=label=>headers.findIndex(h=>h.includes(label));
+      const colIdx={
+        nombre:idxOf('nombre del colaborador'),
+        tipo:idxOf('tipo de contrato'),
+        fecha_inicio:idxOf('fecha de inicio'),
+        fecha_vencimiento:idxOf('fecha de vencimiento'),
+        puesto:idxOf('puesto'),
+        salario:idxOf('salario'),
+        notas:idxOf('notas'),
+      };
+      const normFecha=val=>{
+        if(!val) return '';
+        if(val instanceof Date) return val.toISOString().split('T')[0];
+        const f=String(val).trim();
+        if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(f)){const [y,m,d]=f.split('-');return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;}
+        if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(f)){const [d,m,y]=f.split('/');return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;}
+        if(/^\d{1,2}-\d{1,2}-\d{4}$/.test(f)){const [d,m,y]=f.split('-');return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;}
+        return '';
+      };
+      const colabsEmp=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId);
+      _impContRows=[];
+      for(let i=1;i<raw.length;i++){
+        const r=raw[i];
+        if(r.every(c=>String(c).trim()==='')) continue;
+        const get=idx=>idx>=0?String(r[idx]||'').trim():'';
+        const nombre=get(colIdx.nombre);
+        const errors=[];
+        if(!nombre) errors.push('Nombre vacío');
+        const colab=colabsEmp.find(c=>(c.nombre||'').toLowerCase().trim()===nombre.toLowerCase());
+        if(nombre&&!colab) errors.push('Colaborador no encontrado en esta empresa');
+        const tipoRaw=get(colIdx.tipo);
+        const tipo=CONTRATO_TIPOS.find(t=>t.toLowerCase()===tipoRaw.toLowerCase())||tipoRaw||CONTRATO_TIPOS[0];
+        _impContRows.push({
+          _row:i+1,_errors:errors,
+          colaborador_id:colab?.id||null,colaborador_nombre:nombre,
+          tipo,puesto:get(colIdx.puesto)||colab?.puesto||null,
+          fecha_inicio:normFecha(r[colIdx.fecha_inicio])||null,
+          fecha_vencimiento:normFecha(r[colIdx.fecha_vencimiento])||null,
+          salario:get(colIdx.salario)||null,
+          notas:get(colIdx.notas)||null,
+        });
+      }
+      _impContRenderPreview(empId);
+    }catch(err){
+      showToast('Error al leer el archivo: '+err.message,'err');
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+function _impContRenderPreview(empId){
+  const ok=_impContRows.filter(r=>r._errors.length===0);
+  const errR=_impContRows.filter(r=>r._errors.length>0);
+  document.getElementById('imp-cont-preview').style.display='block';
+  const sum=document.getElementById('imp-cont-summary');
+  sum.innerHTML=`<span style="color:var(--green)"><i class="fa fa-check-circle"></i> ${ok.length} válidos</span>`
+    +(errR.length?`&nbsp;&nbsp;<span style="color:var(--red)"><i class="fa fa-exclamation-circle"></i> ${errR.length} con errores</span>`:'');
+  const thead=document.querySelector('#imp-cont-table thead');
+  const tbody=document.querySelector('#imp-cont-table tbody');
+  thead.innerHTML=`<tr>${['#','Colaborador','Tipo','Inicio','Vencimiento','Puesto','Status'].map(h=>`<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">${h}</th>`).join('')}</tr>`;
+  tbody.innerHTML=_impContRows.map(r=>{
+    const isOk=r._errors.length===0;
+    const bg=isOk?'':'background:rgba(239,68,68,.07)';
+    const status=isOk
+      ?`<span style="color:var(--green);font-size:11px"><i class="fa fa-check"></i> OK</span>`
+      :`<span style="color:var(--red);font-size:11px" title="${_esc(r._errors.join('; '))}"><i class="fa fa-times"></i> ${_esc(r._errors.join('; '))}</span>`;
+    return `<tr style="${bg}">
+      <td style="padding:5px 8px;color:var(--text3)">${r._row}</td>
+      <td style="padding:5px 8px">${_esc(r.colaborador_nombre)||'—'}</td>
+      <td style="padding:5px 8px">${_esc(r.tipo)||'—'}</td>
+      <td style="padding:5px 8px">${r.fecha_inicio||'—'}</td>
+      <td style="padding:5px 8px">${r.fecha_vencimiento||'—'}</td>
+      <td style="padding:5px 8px">${_esc(r.puesto)||'—'}</td>
+      <td style="padding:5px 8px">${status}</td>
+    </tr>`;
+  }).join('');
+  const btn=document.getElementById('btn-imp-cont-confirm');
+  btn.style.display=ok.length>0?'':'none';
+  if(ok.length>0) btn.innerHTML=`<i class="fa fa-upload"></i> Importar ${ok.length} contrato${ok.length!==1?'s':''}`;
+}
+async function doImportContratos(empId){
+  const valid=_impContRows.filter(r=>r._errors.length===0);
+  if(!valid.length)return;
+  const btn=document.getElementById('btn-imp-cont-confirm');
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Importando...';}
+  const _tImp=Date.now();
+  const nuevos=valid.map((r,i)=>{
+    const {_row,_errors,colaborador_nombre,...datos}=r;
+    return {id:'ctr-'+(_tImp+i)+'-'+Math.random().toString(36).substr(2,6),empresa_id:empId,...datos,archivo_url:null,archivo_nombre:null,created_at:new Date().toISOString()};
+  });
+  try{
+    await Promise.all(nuevos.map(registro=>saveRecord('contratos',registro)));
+    DB.contratos.push(...nuevos);
+    showToast(`${nuevos.length} contrato${nuevos.length!==1?'s':''} importado${nuevos.length!==1?'s':''} ✓`);
+    const emp=DB.empresas.find(e=>e.id===empId)||{};
+    const nombresImp=nuevos.slice(0,10).map(n=>n.colaborador_id&&(DB.colaboradores.find(c=>c.id===n.colaborador_id)||{}).nombre).filter(Boolean).join(', ');
+    await logActivity('Importar contratos','contratos',empId,`${nuevos.length} contrato${nuevos.length!==1?'s':''} importado${nuevos.length!==1?'s':''} — ${emp.nombre||empId}: ${nombresImp}`);
+    document.getElementById('modal-import-contratos')?.remove();
+    _contRenderEmpresa(empId);
+  }catch(e){
+    showToast('Error al importar: '+e.message,'err');
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="fa fa-upload"></i> Importar';}
+  }
+}
 function renderCapacitacion(){
   if(_capOpenEmpId){_capRenderEmpresa(_capOpenEmpId);return;}
   _renderModuloDashboard('page-capacitacion','capacitacionOpenEmpresa','capacitacion');
@@ -16028,7 +16446,7 @@ const RESPALDO_TABLAS = [
   'evaluaciones','evaluaciones_enviadas','procesos_evaluacion','procesos_enviados',
   'kpis','procedimientos','coordinadores','colaboradores','permisos_usuarios','activity_log',
   'expediente_documentos','candidato_documentos','solicitudes_empleo',
-  'capacitacion_cursos','capacitacion_asistencias','capacitacion_matriz',
+  'capacitacion_cursos','capacitacion_asistencias','capacitacion_matriz','contratos',
 ];
 
 async function exportarRespaldo(){

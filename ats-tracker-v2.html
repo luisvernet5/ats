@@ -13736,7 +13736,19 @@ function exportContratados(){
    ADMINISTRADOR DE PERSONAL (módulo nuevo — independiente de
    "Base de datos de personal" de abajo, que sigue desactivado)
    ============================================================ */
-let _persOpenEmpId=null,_persQ='',_persLoaded=false,_persSearchTimer=null;
+let _persOpenEmpId=null,_persQ='',_persLoaded=false,_persSearchTimer=null,_persOrden='antiguos';
+function _persComparar(a,b,orden){
+  if(orden==='numero'){
+    const na=parseFloat(a.numero_colaborador),nb=parseFloat(b.numero_colaborador);
+    const va=isNaN(na)?Infinity:na,vb=isNaN(nb)?Infinity:nb;
+    if(va!==vb) return va-vb;
+    return (a.numero_colaborador||'').localeCompare(b.numero_colaborador||'','es',{numeric:true});
+  }
+  if(orden==='alfa') return (a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'});
+  if(orden==='recientes') return (b.id||'').localeCompare(a.id||'');
+  return (a.id||'').localeCompare(b.id||'');
+}
+function personalSetOrden(empId,orden){ _persOrden=orden; _persRenderDetalle(empId); }
 let _persFiltFechaDesde='',_persFiltFechaHasta='';
 
 async function renderPersonal(){
@@ -13795,7 +13807,7 @@ function _persColabList(empId){
   const mfEst=_mfGet('pers-flt-estado'); if(mfEst) list=list.filter(c=>mfEst.has(c.estado||'Activo'));
   if(_persFiltFechaDesde) list=list.filter(c=>(c.fecha_ingreso||'')>=_persFiltFechaDesde);
   if(_persFiltFechaHasta) list=list.filter(c=>(c.fecha_ingreso||'')<=_persFiltFechaHasta);
-  return list.sort((a,b)=>(a.id||'').localeCompare(b.id||''));
+  return list.sort((a,b)=>_persComparar(a,b,_persOrden));
 }
 function _persSearchDebounce(empId){clearTimeout(_persSearchTimer);_persSearchTimer=setTimeout(()=>_persRenderDetalle(empId),220);}
 function _persApplyFiltrosFecha(empId){
@@ -13855,6 +13867,13 @@ function _persRenderDetalle(empId){
       <input type="date" id="pers-flt-hasta" value="${_persFiltFechaHasta}" onchange="_persApplyFiltrosFecha('${empId}')" title="Fecha de alta — hasta" style="width:120px;flex-shrink:0;padding:0 4px;height:32px;font-size:12px">
       <div id="wrap-pers-flt-estado" style="flex-shrink:0"><button id="btn-pers-flt-estado" onclick="_mfOpen('pers-flt-estado',event)" style="display:flex;align-items:center;gap:4px;padding:0 8px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:88px;justify-content:space-between"><span id="lbl-pers-flt-estado">Estado</span><i class="fa fa-chevron-down" style="font-size:9px;color:var(--text3)"></i></button></div>
       <button class="btn btn-ghost btn-sm" onclick="_persLimpiarFiltros('${empId}')" style="flex-shrink:0;padding:0 8px;height:32px;font-size:12px">× Limpiar</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <span style="font-size:12px;color:var(--text3)">Ordenar por:</span>
+      <button class="btn ${_persOrden==='numero'?'btn-primary':'btn-ghost'} btn-sm" onclick="personalSetOrden('${empId}','numero')">Núm. de empleado</button>
+      <button class="btn ${_persOrden==='alfa'?'btn-primary':'btn-ghost'} btn-sm" onclick="personalSetOrden('${empId}','alfa')">Alfabético</button>
+      <button class="btn ${_persOrden==='antiguos'?'btn-primary':'btn-ghost'} btn-sm" onclick="personalSetOrden('${empId}','antiguos')">Más antiguo primero</button>
+      <button class="btn ${_persOrden==='recientes'?'btn-primary':'btn-ghost'} btn-sm" onclick="personalSetOrden('${empId}','recientes')">Más reciente primero</button>
     </div>
     <div class="table-wrap"><table>
       <thead><tr>
@@ -14851,7 +14870,7 @@ function personalExportarExcel(empId){
   const camposCustom=emp.colab_campos_custom||[];
   const base=_personalCamposBase();
   const header=[...base.map(c=>c.label.replace('*','')),...camposCustom.map(cf=>cf.label)];
-  const lista=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
+  const lista=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId).sort((a,b)=>_persComparar(a,b,_persOrden));
   if(!lista.length){showToast('No hay colaboradores para exportar','err');return;}
   const rows=lista.map(c=>[
     ...base.map(cInfo=>{

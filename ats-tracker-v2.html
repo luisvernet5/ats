@@ -5876,7 +5876,7 @@ function abrirDocumentosCandidato(candId){
     <div style="background:var(--surface);border-radius:12px;width:600px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:22px;box-shadow:0 8px 32px #0004">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:10px">
         <div>
-          <div style="font-weight:700;font-size:16px"><i class="fa fa-folder-open" style="color:var(--primary);margin-right:6px"></i>Documentos <span style="font-size:12px;font-weight:600;color:${_prog.done===_prog.total?'#22c55e':'var(--text3)'}">(${_prog.done}/${_prog.total})</span></div>
+          <div style="font-weight:700;font-size:16px"><i class="fa fa-folder-open" style="color:var(--accent);margin-right:6px"></i>Documentos <span style="font-size:12px;font-weight:600;color:${_prog.done===_prog.total?'#22c55e':'var(--text3)'}">(${_prog.done}/${_prog.total})</span></div>
           <div style="font-size:12px;color:var(--text3)">${_esc(c.nombre||'')}</div>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-cand-docs').remove()"><i class="fa fa-times"></i></button>
@@ -6141,8 +6141,8 @@ function _seToggleFirmaModo(modo){
   const tabTexto=document.getElementById('se-firma-tab-texto');
   if(dibujoWrap) dibujoWrap.style.display=modo==='dibujo'?'':'none';
   if(textoWrap) textoWrap.style.display=modo==='texto'?'':'none';
-  if(tabDibujo){tabDibujo.style.background=modo==='dibujo'?'var(--primary)':'var(--surface2)';tabDibujo.style.color=modo==='dibujo'?'#fff':'var(--text)';}
-  if(tabTexto){tabTexto.style.background=modo==='texto'?'var(--primary)':'var(--surface2)';tabTexto.style.color=modo==='texto'?'#fff':'var(--text)';}
+  if(tabDibujo){tabDibujo.style.borderColor=modo==='dibujo'?'var(--accent)':'var(--border)';tabDibujo.style.fontWeight=modo==='dibujo'?'700':'400';}
+  if(tabTexto){tabTexto.style.borderColor=modo==='texto'?'var(--accent)':'var(--border)';tabTexto.style.fontWeight=modo==='texto'?'700':'400';}
   if(modo==='dibujo') setTimeout(_seInitFirmaCanvas,0);
 }
 function _seInitFirmaCanvas(){
@@ -6468,7 +6468,7 @@ function _seCampoHtml(f,val,idOverride){
   }else if(f.tipo==='multiselect'){
     const selected=(val||'').split(',').map(s=>s.trim()).filter(Boolean);
     const otroVal=selected.find(s=>!f.opciones.includes(s))||'';
-    input=`<div style="display:flex;flex-wrap:wrap;gap:8px">${f.opciones.map(o=>`<label style="display:flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer"><input type="checkbox" class="se-ms-${f.key}" value="${_esc(o)}" ${selected.includes(o)?'checked':''} style="accent-color:var(--primary)">${_esc(o)}</label>`).join('')}${f.otro?`<label style="display:flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer"><input type="checkbox" class="se-ms-${f.key}" data-otro="1" value="Otro" ${otroVal?'checked':''} style="accent-color:var(--primary)">Otro</label><input type="text" id="${id}-otro" value="${_esc(otroVal)}" placeholder="Especifica el idioma" style="flex:1;min-width:140px">`:''}</div>`;
+    input=`<div style="display:flex;flex-wrap:wrap;gap:8px">${f.opciones.map(o=>`<label style="display:flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer"><input type="checkbox" class="se-ms-${f.key}" value="${_esc(o)}" ${selected.includes(o)?'checked':''} style="accent-color:var(--accent)">${_esc(o)}</label>`).join('')}${f.otro?`<label style="display:flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer"><input type="checkbox" class="se-ms-${f.key}" data-otro="1" value="Otro" ${otroVal?'checked':''} style="accent-color:var(--accent)">Otro</label><input type="text" id="${id}-otro" value="${_esc(otroVal)}" placeholder="Especifica el idioma" style="flex:1;min-width:140px">`:''}</div>`;
   }else if(f.tipo==='parrafo'){
     input=`<textarea id="${id}" rows="3" style="width:100%;resize:vertical">${_esc(val||'')}</textarea>`;
   }else if(f.tipo==='fecha'){
@@ -6522,8 +6522,8 @@ function _seRenderForm(se){
     <div id="se-firma-block" style="margin:20px 0;padding:16px;border:1px solid var(--border);border-radius:10px">
       <div style="font-size:13px;font-weight:700;margin-bottom:10px">Firma del solicitante <span style="color:var(--danger)">*</span></div>
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <button type="button" id="se-firma-tab-dibujo" onclick="_seToggleFirmaModo('dibujo')" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--primary);color:#fff;cursor:pointer;font-size:12px"><i class="fa fa-pen"></i> Dibujar firma</button>
-        <button type="button" id="se-firma-tab-texto" onclick="_seToggleFirmaModo('texto')" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px"><i class="fa fa-keyboard"></i> Escribir mi nombre</button>
+        <button type="button" id="se-firma-tab-dibujo" onclick="_seToggleFirmaModo('dibujo')" style="flex:1;padding:8px;border:2px solid var(--accent);border-radius:6px;background:var(--surface2);color:var(--text);font-weight:700;cursor:pointer;font-size:12px"><i class="fa fa-pen"></i> Dibujar firma</button>
+        <button type="button" id="se-firma-tab-texto" onclick="_seToggleFirmaModo('texto')" style="flex:1;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-weight:400;cursor:pointer;font-size:12px"><i class="fa fa-keyboard"></i> Escribir mi nombre</button>
       </div>
       <div id="se-firma-dibujo-wrap">
         <canvas id="se-firma-canvas" width="600" height="180" style="width:100%;height:140px;border:1px dashed var(--border);border-radius:6px;background:#fff;touch-action:none;cursor:crosshair;display:block"></canvas>
@@ -6537,7 +6537,7 @@ function _seRenderForm(se){
       </div>
     </div>
     <div style="display:flex;align-items:flex-start;gap:10px;margin:20px 0;padding:14px;background:var(--surface2);border-radius:8px">
-      <input type="checkbox" id="se-acepto" style="margin-top:3px;accent-color:var(--primary)">
+      <input type="checkbox" id="se-acepto" style="margin-top:3px;accent-color:var(--accent)">
       <label for="se-acepto" style="font-size:12px;color:var(--text2);cursor:pointer">Certifico que los datos proporcionados son correctos y autorizo a la empresa para que los verifique.</label>
     </div>
     <button class="btn btn-primary" id="se-submit-btn" style="width:100%;justify-content:center;padding:12px" onclick="submitSolicitudEmpleo()"><i class="fa fa-paper-plane"></i> Enviar solicitud</button>

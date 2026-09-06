@@ -4851,19 +4851,21 @@ function _dc3Overlay(page,font,d){
   put(d.duracionHoras,92,363,9);
   if(d.fechaInicio){
     const dt=new Date(d.fechaInicio+'T00:00:00');
-    const yr=String(dt.getFullYear());
-    centerText(yr.slice(0,2),271.5,363,8);
-    centerText(yr.slice(2,4),287.0,363,8);
-    centerText(String(dt.getMonth()+1).padStart(2,'0'),321.0,363,8);
-    centerText(String(dt.getDate()).padStart(2,'0'),363.0,363,8);
+    const yr=String(dt.getFullYear()).padStart(4,'0');
+    const mes=String(dt.getMonth()+1).padStart(2,'0');
+    const dia=String(dt.getDate()).padStart(2,'0');
+    [253.4,265.1,276.9,288.6].forEach((cx,i)=>centerText(yr[i],cx,363,8));
+    [315.8,326.3].forEach((cx,i)=>centerText(mes[i],cx,363,8));
+    [357.8,368.3].forEach((cx,i)=>centerText(dia[i],cx,363,8));
   }
   if(d.fechaFin){
     const dt=new Date(d.fechaFin+'T00:00:00');
-    const yr=String(dt.getFullYear());
-    centerText(yr.slice(0,2),445.0,363,8);
-    centerText(yr.slice(2,4),464.5,363,8);
-    centerText(String(dt.getMonth()+1).padStart(2,'0'),504.0,363,8);
-    centerText(String(dt.getDate()).padStart(2,'0'),546.0,363,8);
+    const yr=String(dt.getFullYear()).padStart(4,'0');
+    const mes=String(dt.getMonth()+1).padStart(2,'0');
+    const dia=String(dt.getDate()).padStart(2,'0');
+    [422.9,437.6,452.4,467.1].forEach((cx,i)=>centerText(yr[i],cx,363,8));
+    [498.8,509.3].forEach((cx,i)=>centerText(mes[i],cx,363,8));
+    [540.8,551.3].forEach((cx,i)=>centerText(dia[i],cx,363,8));
   }
   put(d.areaTematica,109,350.8,8);
   put(d.agenteCapacitador,162,325.3,8);

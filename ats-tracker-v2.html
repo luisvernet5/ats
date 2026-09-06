@@ -5847,11 +5847,12 @@ function abrirDocumentosCandidato(candId){
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600">${_esc(cat.label)}</div>
         ${doc
-          ?`<div style="font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(doc.nombre||'')}${_cdFmtSize(doc.tamano_bytes)?' · '+_cdFmtSize(doc.tamano_bytes):''} · Subido el ${fecha}</div>`
+          ?`<div style="font-size:11px;color:var(--text3);white-space:normal;word-break:break-word">${_esc(doc.nombre||'')}${_cdFmtSize(doc.tamano_bytes)?' · '+_cdFmtSize(doc.tamano_bytes):''} · Subido el ${fecha}</div>`
           :`<div style="font-size:11px;color:var(--text3)">Sin subir</div>`}
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
-        ${doc?`<a class="btn btn-ghost btn-sm" href="${doc.url}" target="_blank" rel="noopener" title="Ver / descargar"><i class="fa fa-eye"></i></a>
+        ${doc?`<a class="btn btn-ghost btn-sm" href="${doc.url}" target="_blank" rel="noopener" title="Previsualizar"><i class="fa fa-eye"></i></a>
+        <button class="btn btn-ghost btn-sm" title="Descargar en PDF" onclick="descargarDocumentoCandidatoPDF('${candId}','${cat.key}')"><i class="fa fa-file-pdf"></i></button>
         <button class="btn btn-danger btn-sm" title="Eliminar" onclick="eliminarDocumentoCandidato('${candId}','${cat.key}')"><i class="fa fa-trash"></i></button>`:''}
         <input type="file" id="cd-file-${slug}" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onchange="subirDocumentoCandidato('${candId}','${cat.key}')">
         <button class="btn btn-ghost btn-sm" title="${doc?'Reemplazar':'Subir'}" onclick="document.getElementById('cd-file-${slug}').click()"><i class="fa fa-upload"></i></button>
@@ -5871,7 +5872,7 @@ function abrirDocumentosCandidato(candId){
   modal.id='modal-cand-docs';
   modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3200;display:flex;align-items:center;justify-content:center;padding:20px';
   modal.innerHTML=`
-    <div style="background:var(--surface);border-radius:12px;width:480px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:22px;box-shadow:0 8px 32px #0004">
+    <div style="background:var(--surface);border-radius:12px;width:600px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:22px;box-shadow:0 8px 32px #0004">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:10px">
         <div>
           <div style="font-weight:700;font-size:16px"><i class="fa fa-folder-open" style="color:var(--primary);margin-right:6px"></i>Documentos <span style="font-size:12px;font-weight:600;color:${_prog.done===_prog.total?'#22c55e':'var(--text3)'}">(${_prog.done}/${_prog.total})</span></div>
@@ -5886,8 +5887,106 @@ function abrirDocumentosCandidato(candId){
       <div class="sep">Procesos</div>
       ${filaAcceso('fa-clipboard-list','Reporte de entrevista',_tieneEi,`document.getElementById('modal-cand-docs').remove();openEntrevistaModal('${candId}')`)}
       ${filaAcceso('fa-users','Referencias',_tieneRef,`document.getElementById('modal-cand-docs').remove();openReferenciasModal('${candId}')`)}
+      <button class="btn btn-primary btn-sm" style="width:100%;justify-content:center;margin-top:6px" onclick="descargarTodosDocumentosCandidatoPDF('${candId}')"><i class="fa fa-file-pdf"></i> Descargar todos los documentos en un PDF</button>
     </div>`;
   document.body.appendChild(modal);
+}
+
+async function _agregarArchivoAlPdf(merged,font,doc,bytes,ext){
+  const A4W=595,A4H=842;
+  if(ext==='pdf'){
+    const src=await PDFLib.PDFDocument.load(bytes,{ignoreEncryption:true});
+    const pages=await merged.copyPages(src,src.getPageIndices());
+    pages.forEach(p=>merged.addPage(p));
+  }else if(['jpg','jpeg','png'].includes(ext)){
+    const img=ext==='png'?await merged.embedPng(bytes):await merged.embedJpg(bytes);
+    const scale=Math.min((A4W-60)/img.width,(A4H-60)/img.height,1);
+    const w=img.width*scale,h=img.height*scale;
+    const page=merged.addPage([A4W,A4H]);
+    if(doc.categoria) page.drawText(doc.categoria,{x:30,y:A4H-30,size:11,font,color:PDFLib.rgb(0.3,0.3,0.3)});
+    page.drawImage(img,{x:(A4W-w)/2,y:(A4H-h)/2-(doc.categoria?10:0),width:w,height:h});
+  }else{
+    const page=merged.addPage([A4W,A4H]);
+    page.drawText(`${doc.categoria?doc.categoria+'\n\n':''}Archivo: ${doc.nombre||''}\n\nEste tipo de archivo no se puede convertir automáticamente a PDF.\nDescárgalo desde "Previsualizar".`,{x:40,y:A4H-80,size:12,font,lineHeight:18,maxWidth:A4W-80});
+  }
+}
+async function descargarDocumentoCandidatoPDF(candId,categoria){
+  const doc=_cdDocsMap(candId)[categoria];
+  if(!doc){showToast('No hay archivo subido','err');return;}
+  showToast('Generando PDF...');
+  try{
+    const ext=(doc.nombre||'').split('.').pop().toLowerCase();
+    let blob;
+    if(ext==='pdf'){
+      const res=await fetch(doc.url);
+      if(!res.ok) throw new Error('No se pudo descargar el archivo');
+      blob=await res.blob();
+    }else{
+      const res=await fetch(doc.url);
+      if(!res.ok) throw new Error('No se pudo descargar el archivo');
+      const bytes=await res.arrayBuffer();
+      const merged=await PDFLib.PDFDocument.create();
+      const font=await merged.embedFont(PDFLib.StandardFonts.Helvetica);
+      await _agregarArchivoAlPdf(merged,font,{},bytes,ext);
+      const pdfBytes=await merged.save();
+      blob=new Blob([pdfBytes],{type:'application/pdf'});
+    }
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=(doc.nombre||'documento').replace(/\.[^.]+$/,'')+'.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+  }catch(e){
+    showToast('Error al generar PDF: '+e.message,'err');
+  }
+}
+async function descargarTodosDocumentosCandidatoPDF(candId){
+  const c=DB.candidatos.find(x=>x.id===candId); if(!c) return;
+  const docsMap=_cdDocsMap(candId);
+  const se=_seParaCandidato(candId);
+  const archivos=CANDIDATO_DOC_CATEGORIAS.map(cat=>docsMap[cat.key]).filter(Boolean);
+  const incluirSolicitud=se&&se.estado==='completado';
+  if(!archivos.length&&!incluirSolicitud){showToast('No hay documentos para descargar','err');return;}
+  showToast('Generando PDF combinado...');
+  try{
+    const merged=await PDFLib.PDFDocument.create();
+    const font=await merged.embedFont(PDFLib.StandardFonts.Helvetica);
+    for(const doc of archivos){
+      try{
+        const res=await fetch(doc.url);
+        if(!res.ok) throw new Error('No se pudo descargar el archivo');
+        const bytes=await res.arrayBuffer();
+        const ext=(doc.nombre||'').split('.').pop().toLowerCase();
+        await _agregarArchivoAlPdf(merged,font,doc,bytes,ext);
+      }catch(errDoc){
+        const page=merged.addPage([595,842]);
+        page.drawText(`No se pudo incluir: ${doc.categoria||doc.nombre||''}\n${errDoc.message||''}`,{x:40,y:762,size:12,font,lineHeight:18,maxWidth:515});
+      }
+    }
+    if(incluirSolicitud){
+      try{
+        const jd=await _buildSolicitudEmpleoPDFDoc(se,candId);
+        const bytes=jd.output('arraybuffer');
+        const src=await PDFLib.PDFDocument.load(bytes);
+        const pages=await merged.copyPages(src,src.getPageIndices());
+        pages.forEach(p=>merged.addPage(p));
+      }catch(errSe){
+        const page=merged.addPage([595,842]);
+        page.drawText(`No se pudo incluir la solicitud de empleo\n${errSe.message||''}`,{x:40,y:762,size:12,font,lineHeight:18,maxWidth:515});
+      }
+    }
+    const pdfBytes=await merged.save();
+    const blob=new Blob([pdfBytes],{type:'application/pdf'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=`Documentos_${(c.nombre||'candidato').replace(/[^\w\-]+/g,'_')}.pdf`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+    showToast('PDF combinado descargado ✓');
+  }catch(e){
+    console.error(e);
+    showToast('Error al generar el PDF: '+(e.message||e),'err');
+  }
 }
 
 /* ── Solicitud de empleo virtual — liga pública para que el candidato la llene (misma lógica que Procesos de Evaluación) ── */

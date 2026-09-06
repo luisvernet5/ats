@@ -3521,6 +3521,7 @@ async function loadDB(silent=false){
     try{const procRes=await sbClient.from('procedimientos').select('*');DB.procedimientos=(procRes.data||[]).map(r=>({id:r.id,...(r.data||r), coordinadores_ids:r.coordinadores_ids||r.data?.coordinadores_ids||[]})).filter(Boolean);}catch(e){DB.procedimientos=[];}
     try{const usrRes=await sbClient.from('usuarios').select('*');DB.usuarios=(usrRes.data||[]).filter(Boolean);}catch(e){DB.usuarios=[];}
     try{const coordRes=await sbClient.from('coordinadores').select('*');DB.coordinadores=(coordRes.data||[]).filter(Boolean);}catch(e){DB.coordinadores=[];}
+    try{const cdRes=await sbClient.from('candidato_documentos').select('*');DB.candidatoDocumentos=(cdRes.data||[]).filter(Boolean);}catch(e){DB.candidatoDocumentos=[];}
   }catch(e){
     console.error('[loadDB] ERROR:',e?.message||e);
     showToast('Error al cargar datos: '+(e?.message||'revisa la consola'),'err');
@@ -3587,6 +3588,7 @@ const DB={
   perfilesPuesto:[],
   docPlantillas:[],
   docCandidato:[],
+  candidatoDocumentos:[],
   personal:[],
   colaboradores:[],
   evaluaciones:[],
@@ -5726,6 +5728,154 @@ async function openReferenciasModal(id){
   _updateCandModalMode();
   openModal('modal-candidato');
 }
+
+/* ── Documentos del candidato: CV / Solicitud de empleo / Resultados psicométricos + accesos a Entrevista/Referencias ── */
+const CANDIDATO_DOC_CATEGORIAS=[
+  {key:'CV',label:'CV / Currículum',icon:'fa-user-tie'},
+  {key:'Solicitud de empleo',label:'Solicitud de empleo',icon:'fa-file-signature'},
+  {key:'Resultados psicométricos',label:'Resultados de pruebas psicométricas',icon:'fa-brain'},
+];
+let _cdBucketReady=false;
+async function _cdEnsureBucket(){
+  if(_cdBucketReady) return;
+  await sbClient.storage.createBucket('candidato-documentos',{public:true,fileSizeLimit:20*1024*1024}).catch(()=>{});
+  _cdBucketReady=true;
+}
+function _cdDocsMap(candId){
+  const map={};
+  (DB.candidatoDocumentos||[]).filter(d=>d.candidato_id===candId)
+    .sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''))
+    .forEach(d=>{ if(!map[d.categoria]) map[d.categoria]=d; });
+  return map;
+}
+function _cdTieneTodos(candId){
+  const map=_cdDocsMap(candId);
+  return CANDIDATO_DOC_CATEGORIAS.every(cat=>map[cat.key]);
+}
+function _cdSlug(categoria){return (categoria||'').toLowerCase().replace(/[^a-z0-9]+/g,'-');}
+function _cdFmtSize(bytes){
+  if(!bytes) return '';
+  if(bytes<1024) return bytes+' B';
+  if(bytes<1024*1024) return (bytes/1024).toFixed(0)+' KB';
+  return (bytes/(1024*1024)).toFixed(1)+' MB';
+}
+async function _cdSubirArchivo(candId,categoria,file){
+  await _cdEnsureBucket();
+  const existente=_cdDocsMap(candId)[categoria];
+  if(existente){
+    if(existente.storage_path) await sbClient.storage.from('candidato-documentos').remove([existente.storage_path]).catch(()=>{});
+    await sbClient.from('candidato_documentos').delete().eq('id',existente.id);
+    DB.candidatoDocumentos=(DB.candidatoDocumentos||[]).filter(d=>d.id!==existente.id);
+  }
+  const docId='cd-'+Date.now()+'-'+Math.random().toString(36).substr(2,6);
+  const ext=(file.name.split('.').pop()||'bin');
+  const path=`${candId}/${docId}.${ext}`;
+  const {error:upErr}=await sbClient.storage.from('candidato-documentos').upload(path,file,{upsert:true});
+  if(upErr) throw new Error(upErr.message);
+  const {data:urlData}=sbClient.storage.from('candidato-documentos').getPublicUrl(path);
+  const registro={
+    id:docId, candidato_id:candId, categoria,
+    nombre:file.name, storage_path:path, url:urlData.publicUrl,
+    tamano_bytes:file.size, subido_por:currentUserData?.nombre||currentUser?.email||null,
+    created_at:new Date().toISOString(),
+  };
+  const {error:insErr}=await sbClient.from('candidato_documentos').insert(registro);
+  if(insErr) throw new Error(insErr.message);
+  if(!DB.candidatoDocumentos) DB.candidatoDocumentos=[];
+  DB.candidatoDocumentos.push(registro);
+  return {registro,reemplazo:!!existente};
+}
+async function subirDocumentoCandidato(candId,categoria){
+  if(SANDBOX_MODE){showToast('La carga de documentos no está disponible en modo de prueba','err');return;}
+  const slug=_cdSlug(categoria);
+  const fileInput=document.getElementById('cd-file-'+slug);
+  const file=fileInput?.files?.[0];
+  if(!file){showToast('Selecciona un archivo','err');return;}
+  try{
+    const {reemplazo}=await _cdSubirArchivo(candId,categoria,file);
+    const c=DB.candidatos.find(x=>x.id===candId);
+    await logActivity(reemplazo?'Reemplazar documento de candidato':'Subir documento de candidato','candidatos',candId,`${file.name} (${categoria}) — ${c?.nombre||candId}`);
+    showToast('Documento subido ✓');
+    abrirDocumentosCandidato(candId);
+    recargarVistaActiva();
+  }catch(e){
+    showToast('Error al subir: '+e.message,'err');
+  }
+}
+async function eliminarDocumentoCandidato(candId,categoria){
+  if(!confirm('¿Eliminar este documento?'))return;
+  const doc=_cdDocsMap(candId)[categoria];
+  if(!doc) return;
+  try{
+    if(doc.storage_path) await sbClient.storage.from('candidato-documentos').remove([doc.storage_path]).catch(()=>{});
+    const {error}=await sbClient.from('candidato_documentos').delete().eq('id',doc.id);
+    if(error) throw new Error(error.message);
+    DB.candidatoDocumentos=(DB.candidatoDocumentos||[]).filter(d=>d.id!==doc.id);
+    const c=DB.candidatos.find(x=>x.id===candId);
+    await logActivity('Eliminar documento de candidato','candidatos',candId,`${doc.nombre||''} (${categoria}) — ${c?.nombre||candId}`);
+    showToast('Documento eliminado ✓');
+    abrirDocumentosCandidato(candId);
+    recargarVistaActiva();
+  }catch(e){
+    showToast('Error: '+e.message,'err');
+  }
+}
+function abrirDocumentosCandidato(candId){
+  const c=DB.candidatos.find(x=>x.id===candId); if(!c) return;
+  document.getElementById('modal-cand-docs')?.remove();
+  const docsMap=_cdDocsMap(candId);
+  const _tieneEi=!!(c.fecha_entrevista||c.impresion_general||c.nivel_estudios||c.estado_civil);
+  const _tieneRef=_candConRefs.has(c.id);
+  const filaDoc=(cat)=>{
+    const doc=docsMap[cat.key];
+    const slug=_cdSlug(cat.key);
+    const fecha=doc?.created_at?new Date(doc.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}):null;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border-radius:8px;margin-bottom:10px">
+      <i class="fa ${cat.icon}" style="font-size:18px;color:${doc?'#22c55e':'#9ca3af'};flex-shrink:0;width:20px;text-align:center"></i>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600">${_esc(cat.label)}</div>
+        ${doc
+          ?`<div style="font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(doc.nombre||'')}${_cdFmtSize(doc.tamano_bytes)?' · '+_cdFmtSize(doc.tamano_bytes):''} · Subido el ${fecha}</div>`
+          :`<div style="font-size:11px;color:var(--text3)">Sin subir</div>`}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+        ${doc?`<a class="btn btn-ghost btn-sm" href="${doc.url}" target="_blank" rel="noopener" title="Ver / descargar"><i class="fa fa-eye"></i></a>
+        <button class="btn btn-danger btn-sm" title="Eliminar" onclick="eliminarDocumentoCandidato('${candId}','${cat.key}')"><i class="fa fa-trash"></i></button>`:''}
+        <input type="file" id="cd-file-${slug}" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onchange="subirDocumentoCandidato('${candId}','${cat.key}')">
+        <button class="btn btn-ghost btn-sm" title="${doc?'Reemplazar':'Subir'}" onclick="document.getElementById('cd-file-${slug}').click()"><i class="fa fa-upload"></i></button>
+      </div>
+    </div>`;
+  };
+  const filaAcceso=(icon,label,tiene,onclick)=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border-radius:8px;margin-bottom:10px;cursor:pointer" onclick="${onclick}">
+      <i class="fa ${icon}" style="font-size:18px;color:${tiene?'#22c55e':'#9ca3af'};flex-shrink:0;width:20px;text-align:center"></i>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600">${label}</div>
+        <div style="font-size:11px;color:var(--text3)">${tiene?'Completado':'Pendiente'}</div>
+      </div>
+      <i class="fa fa-chevron-right" style="color:var(--text3);font-size:12px"></i>
+    </div>`;
+  const modal=document.createElement('div');
+  modal.id='modal-cand-docs';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3200;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`
+    <div style="background:var(--surface);border-radius:12px;width:480px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:22px;box-shadow:0 8px 32px #0004">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:10px">
+        <div>
+          <div style="font-weight:700;font-size:16px"><i class="fa fa-folder-open" style="color:var(--primary);margin-right:6px"></i>Documentos</div>
+          <div style="font-size:12px;color:var(--text3)">${_esc(c.nombre||'')}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-cand-docs').remove()"><i class="fa fa-times"></i></button>
+      </div>
+      <div class="sep" style="margin-top:0">Documentos del candidato</div>
+      ${CANDIDATO_DOC_CATEGORIAS.map(filaDoc).join('')}
+      <div class="sep">Procesos</div>
+      ${filaAcceso('fa-clipboard-list','Reporte de entrevista',_tieneEi,`document.getElementById('modal-cand-docs').remove();openEntrevistaModal('${candId}')`)}
+      ${filaAcceso('fa-users','Referencias',_tieneRef,`document.getElementById('modal-cand-docs').remove();openReferenciasModal('${candId}')`)}
+    </div>`;
+  document.body.appendChild(modal);
+}
+
 function openCandModal(vacanteIdOrNull,reemplazaId=null){
   document.getElementById('mod-cand-title').textContent=reemplazaId?'Nuevo candidato (reemplazo)':'Nuevo Candidato';
   document.getElementById('cand-id').value='';
@@ -6118,8 +6268,6 @@ async function saveCandidato(){
       closeModal('modal-candidato');
       showToast('Entrevista guardada ✓');
       recargarVistaActiva();
-      const _eiI=document.getElementById('ei-icon-'+_id);
-      if(_eiI)_eiI.style.color='#22c55e';
     }
     catch(e){showToast('Error: '+e.message,'err');}
     return;
@@ -6127,11 +6275,7 @@ async function saveCandidato(){
   if(_candModalMode==='referencias'){
     try{
       const _saved=await saveReferencias(_id);
-      if(_saved){
-        _candConRefs.add(_id);
-        const _refI=document.getElementById('ref-icon-'+_id);
-        if(_refI)_refI.style.color='#22c55e';
-      }
+      if(_saved) _candConRefs.add(_id);
       closeModal('modal-candidato');
       showToast('Referencias guardadas ✓');
       recargarVistaActiva();
@@ -6296,8 +6440,7 @@ function openPanel(candId){
     <div class="divider"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="editCandidato('${c.id}')"><i class="fa fa-edit"></i> Editar</button>
-      <button class="btn btn-ghost btn-sm" onclick="openEntrevistaModal('${c.id}')"><i class="fa fa-clipboard-list"></i> Entrevista</button>
-      <button class="btn btn-ghost btn-sm" onclick="openReferenciasModal('${c.id}')"><i class="fa fa-users"></i> Referencias</button>
+      <button class="btn btn-ghost btn-sm" onclick="abrirDocumentosCandidato('${c.id}')"><i class="fa fa-folder-open"></i> Documentos</button>
       ${!c.activo||ETAPAS_SALIDA.includes(c.etapa)?`<button class="btn btn-primary btn-sm" onclick="closePanel();openCandModal('${c.vacante_id}','${c.id}')"><i class="fa fa-user-plus"></i> Nuevo candidato</button>`:''}
     </div>
   `;
@@ -8075,8 +8218,7 @@ function renderCandidatosTable(){
     const isSalida=ETAPAS_SALIDA.includes(c.etapa);
     const _tieneEi=!!(c.fecha_entrevista||c.impresion_general||c.nivel_estudios||c.estado_civil);
     const _tieneRef=_candConRefs.has(c.id);
-    const _eiColor=_tieneEi?'#22c55e':'#9ca3af';
-    const _refColor=_tieneRef?'#22c55e':'#9ca3af';
+    const _docsColor=(_tieneEi&&_tieneRef&&_cdTieneTodos(c.id))?'#22c55e':'#9ca3af';
     const _allEtapaLabels=[...empEtapas.map(e=>e.label),...ETAPAS_SALIDA];
     const _etapaDisplay=_allEtapaLabels.includes(c.etapa)?c.etapa:(empEtapas.find(e=>e.tipo==='cierre')?.label||'Validado');
     const _dropdownOpts=isSalida?[...empEtapas.map(e=>e.label),c.etapa]:empEtapas.map(e=>e.label);
@@ -8118,8 +8260,7 @@ function renderCandidatosTable(){
         <div style="display:flex;gap:6px;align-items:center">
           <button class="btn btn-ghost btn-sm" onclick="openPanel('${c.id}')" title="Ver detalle"><i class="fa fa-eye"></i></button>
           <button class="btn btn-ghost btn-sm" onclick="editCandidato('${c.id}')" title="Editar datos"><i class="fa fa-edit"></i></button>
-          <button class="btn btn-ghost btn-sm" onclick="openEntrevistaModal('${c.id}')" title="Entrevista"><i id="ei-icon-${c.id}" class="fa fa-clipboard-list" style="color:${_eiColor}"></i></button>
-          <button class="btn btn-ghost btn-sm" onclick="openReferenciasModal('${c.id}')" title="Referencias"><i id="ref-icon-${c.id}" class="fa fa-users" style="color:${_refColor}"></i></button>
+          <button class="btn btn-ghost btn-sm" onclick="abrirDocumentosCandidato('${c.id}')" title="Documentos"><i id="cd-icon-${c.id}" class="fa fa-folder-open" style="color:${_docsColor}"></i></button>
           <button class="btn btn-ghost btn-sm" onclick="toggleAccionesCand('${c.id}')" title="Más acciones"><i class="fa fa-ellipsis-v"></i></button>
           ${currentUserData?.rol==='admin'?`<button onclick="eliminarCandidatoPermanente('${c.id}')" title="Eliminar candidato" style="background:var(--red);color:#fff;border:none;border-radius:6px;cursor:pointer;padding:5px 8px;font-size:12px"><i class="fa fa-trash"></i></button>`:''}
           <div id="menu-${c.id}" style="display:none;position:absolute;right:0;bottom:32px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;z-index:50;min-width:220px;box-shadow:0 4px 20px rgba(0,0,0,.15);padding:6px 0">
@@ -13595,7 +13736,7 @@ const RESPALDO_TABLAS = [
   'doc_plantillas','doc_candidato','perfiles_puesto',
   'evaluaciones','evaluaciones_enviadas','procesos_evaluacion','procesos_enviados',
   'kpis','procedimientos','coordinadores','colaboradores','permisos_usuarios','activity_log',
-  'expediente_documentos',
+  'expediente_documentos','candidato_documentos',
 ];
 
 async function exportarRespaldo(){

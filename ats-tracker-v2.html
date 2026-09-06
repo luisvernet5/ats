@@ -3983,19 +3983,63 @@ async function renderPage(p){
   if(p==='capacitacion'){renderCapacitacion();return;}
   if(p==='headcount-autorizado'){renderHeadcountAutorizado();return;}
 }
-function _renderModuloEnConstruccion(pageId,icono,titulo){
+function _renderEmpresaCardsGrid(onClickFn){
+  const cards=DB.empresas.map(emp=>{
+    const color=emp.color||'#2AAADE';
+    return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px;transition:box-shadow .15s" onclick="${onClickFn}('${emp.id}')" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,.12)'" onmouseleave="this.style.boxShadow=''">
+      <div style="display:flex;align-items:center;gap:12px">
+        ${emp.logo?`<img src="${emp.logo}" style="width:40px;height:40px;object-fit:contain;border-radius:8px;flex-shrink:0">`:`<div style="width:40px;height:40px;flex-shrink:0;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color};font-size:18px"></i></div>`}
+        <div style="min-width:0">
+          <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(emp.nombre)}</div>
+        </div>
+      </div>
+      <div style="height:3px;border-radius:2px;background:${color}33;overflow:hidden"><div style="height:100%;width:100%;background:${color};border-radius:2px"></div></div>
+    </div>`;
+  }).join('');
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">
+    ${cards||'<div style="color:var(--text3);font-size:13px;grid-column:1/-1;text-align:center;padding:40px"><i class="fa fa-building" style="font-size:28px;display:block;margin-bottom:12px;opacity:.4"></i>Sin empresas registradas</div>'}
+  </div>`;
+}
+function _renderModuloDashboard(pageId,onClickFn){
   const page=document.getElementById(pageId); if(!page) return;
+  page.innerHTML=`<div style="padding:24px 28px">${_renderEmpresaCardsGrid(onClickFn)}</div>`;
+}
+function _renderModuloEmpresaDetalle(pageId,icono,titulo,empId,backFn){
+  const page=document.getElementById(pageId); if(!page) return;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const color=emp.color||'#2AAADE';
   page.innerHTML=`<div style="padding:24px 28px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <button class="btn btn-ghost btn-sm" onclick="${backFn}()"><i class="fa fa-arrow-left"></i> Empresas</button>
+      ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
+      <span style="font-size:16px;font-weight:700">${_esc(emp.nombre||'')}</span>
+    </div>
     <div style="text-align:center;padding:80px 20px;color:var(--text3)">
       <i class="fa ${icono}" style="font-size:44px;margin-bottom:16px;display:block"></i>
-      <div style="font-size:16px;font-weight:600;color:var(--text2);margin-bottom:6px">${titulo}</div>
+      <div style="font-size:16px;font-weight:600;color:var(--text2);margin-bottom:6px">${titulo} — ${_esc(emp.nombre||'')}</div>
       <div style="font-size:13px">Este módulo está en construcción. Dime qué necesitas capturar o gestionar aquí y lo armamos.</div>
     </div>
   </div>`;
 }
-function renderContratos(){_renderModuloEnConstruccion('page-contratos','fa-file-contract','Contratos');}
-function renderCapacitacion(){_renderModuloEnConstruccion('page-capacitacion','fa-chalkboard-user','Capacitación');}
-function renderHeadcountAutorizado(){_renderModuloEnConstruccion('page-headcount-autorizado','fa-users-gear','Headcount autorizado');}
+let _contOpenEmpId=null,_capOpenEmpId=null,_hcaOpenEmpId=null;
+function renderContratos(){
+  if(_contOpenEmpId){_renderModuloEmpresaDetalle('page-contratos','fa-file-contract','Contratos',_contOpenEmpId,'contratosBack');return;}
+  _renderModuloDashboard('page-contratos','contratosOpenEmpresa');
+}
+function contratosOpenEmpresa(empId){_contOpenEmpId=empId;renderContratos();}
+function contratosBack(){_contOpenEmpId=null;renderContratos();}
+function renderCapacitacion(){
+  if(_capOpenEmpId){_renderModuloEmpresaDetalle('page-capacitacion','fa-chalkboard-user','Capacitación',_capOpenEmpId,'capacitacionBack');return;}
+  _renderModuloDashboard('page-capacitacion','capacitacionOpenEmpresa');
+}
+function capacitacionOpenEmpresa(empId){_capOpenEmpId=empId;renderCapacitacion();}
+function capacitacionBack(){_capOpenEmpId=null;renderCapacitacion();}
+function renderHeadcountAutorizado(){
+  if(_hcaOpenEmpId){_renderModuloEmpresaDetalle('page-headcount-autorizado','fa-users-gear','Headcount autorizado',_hcaOpenEmpId,'headcountAutorizadoBack');return;}
+  _renderModuloDashboard('page-headcount-autorizado','headcountAutorizadoOpenEmpresa');
+}
+function headcountAutorizadoOpenEmpresa(empId){_hcaOpenEmpId=empId;renderHeadcountAutorizado();}
+function headcountAutorizadoBack(){_hcaOpenEmpId=null;renderHeadcountAutorizado();}
 
 /* ============================================================
    BADGES

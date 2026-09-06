@@ -4367,6 +4367,7 @@ async function uploadEmpLogo(empId){
 const EMPRESA_MODULOS=[
   {key:'personal',label:'Administrador de Personal'},
   {key:'expedientes',label:'Expedientes'},
+  {key:'headcount',label:'Headcount Semanal'},
   {key:'contratos',label:'Contratos'},
   {key:'capacitacion',label:'Capacitación'},
   {key:'headcount_autorizado',label:'Headcount Autorizado'},
@@ -10965,8 +10966,8 @@ async function renderHeadCount(){
   const isRhC = _isEmpresaRole();
   const rhEmpId = currentUserData?.empresa_id || null;
   // Roles empresa van directo a su empresa
-  if(isRhC && rhEmpId){ await renderHCEmpresa(rhEmpId); return; }
-  const empresas = DB.empresas;
+  if(isRhC && rhEmpId && DB.empresas.find(e=>e.id===rhEmpId)?.modulos?.headcount!==false){ await renderHCEmpresa(rhEmpId); return; }
+  const empresas = DB.empresas.filter(e=>e.modulos?.headcount!==false);
   const {data:semanasRows} = await sbClient.from('hc_resumen').select('empresa_id,semana,anio');
   const semanasPorEmpresa = new Map();
   (semanasRows||[]).forEach(r=>{

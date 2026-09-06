@@ -5738,6 +5738,7 @@ async function openReferenciasModal(id){
 const CANDIDATO_DOC_CATEGORIAS=[
   {key:'CV',label:'CV / Currículum',icon:'fa-user-tie'},
   {key:'Resultados psicométricos',label:'Resultados de pruebas psicométricas',icon:'fa-brain'},
+  {key:'Resultados pruebas técnicas',label:'Resultados de pruebas técnicas',icon:'fa-toolbox'},
 ];
 let _cdBucketReady=false;
 async function _cdEnsureBucket(){
@@ -5884,6 +5885,7 @@ function abrirDocumentosCandidato(candId){
       ${filaDoc(CANDIDATO_DOC_CATEGORIAS[0])}
       ${_filaSolicitudEmpleoHtml(candId)}
       ${filaDoc(CANDIDATO_DOC_CATEGORIAS[1])}
+      ${filaDoc(CANDIDATO_DOC_CATEGORIAS[2])}
       <div class="sep">Procesos</div>
       ${filaAcceso('fa-clipboard-list','Reporte de entrevista',_tieneEi,`document.getElementById('modal-cand-docs').remove();openEntrevistaModal('${candId}')`)}
       ${filaAcceso('fa-users','Referencias',_tieneRef,`document.getElementById('modal-cand-docs').remove();openReferenciasModal('${candId}')`)}

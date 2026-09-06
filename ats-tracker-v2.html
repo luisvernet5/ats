@@ -5902,7 +5902,7 @@ const SOLICITUD_EMPLEO_SECCIONES=[
     {key:'edad',label:'Edad',tipo:'numero',req:true},
     {key:'sexo',label:'Sexo',tipo:'select',opciones:[{v:'Masculino'},{v:'Femenino'}],req:true},
     {key:'fecha_nacimiento',label:'Fecha de nacimiento',tipo:'fecha',req:true},
-    {key:'nacionalidad',label:'Nacionalidad',tipo:'texto'},
+    {key:'nacionalidad',label:'Nacionalidad',tipo:'texto',req:true},
     {key:'estado_civil',label:'Estado civil',tipo:'select',opciones:[{v:'Soltero(a)'},{v:'Casado(a)'},{v:'Unión libre'},{v:'Divorciado(a)'},{v:'Viudo(a)'}],req:true},
     {key:'telefono',label:'Teléfono / Celular',tipo:'texto',req:true},
     {key:'domicilio',label:'Domicilio (calle y número)',tipo:'texto',req:true},
@@ -5933,18 +5933,6 @@ const SOLICITUD_EMPLEO_SECCIONES=[
     {key:'herramientas',label:'Herramientas / equipo de oficina que maneja',tipo:'texto'},
     {key:'otros_conocimientos',label:'Otros trabajos o funciones que domina',tipo:'parrafo'},
   ]},
-  {titulo:'Empleo actual o más reciente',campos:[
-    {key:'emp_nombre',label:'Nombre de la empresa',tipo:'texto'},
-    {key:'emp_puesto',label:'Puesto',tipo:'texto'},
-    {key:'emp_telefono',label:'Teléfono de la empresa',tipo:'texto'},
-    {key:'emp_jefe',label:'Nombre de su jefe inmediato',tipo:'texto'},
-    {key:'emp_inicio',label:'Fecha de inicio',tipo:'fecha'},
-    {key:'emp_fin',label:'Fecha de término',tipo:'fecha'},
-    {key:'emp_sueldo',label:'Sueldo',tipo:'texto'},
-    {key:'emp_motivo_separacion',label:'Motivo de separación',tipo:'texto'},
-    {key:'emp_actividades',label:'Actividades desempeñadas',tipo:'parrafo'},
-    {key:'emp_solicitar_informes',label:'¿Podemos solicitar informes de usted?',tipo:'select',opciones:SI_NO_SE},
-  ]},
   {titulo:'Referencias personales',campos:[
     {key:'ref1_nombre',label:'Referencia 1 — Nombre',tipo:'texto',req:true},
     {key:'ref1_telefono',label:'Referencia 1 — Teléfono',tipo:'texto',req:true},
@@ -5967,6 +5955,89 @@ const SOLICITUD_EMPLEO_SECCIONES=[
     {key:'observaciones',label:'Observaciones',tipo:'parrafo'},
   ]},
 ];
+// "Empleo actual o más reciente" es un bloque especial y repetible (el candidato puede agregar
+// varios empleos), por eso vive fuera de SOLICITUD_EMPLEO_SECCIONES y se inserta a mano en el
+// orden de acordeones (_seBloquesMeta) tanto en el formulario público como en el PDF.
+const SE_EMPLEO_CAMPOS=[
+  {key:'empresa',label:'Nombre de la empresa',tipo:'texto'},
+  {key:'puesto',label:'Puesto',tipo:'texto'},
+  {key:'telefono',label:'Teléfono de la empresa',tipo:'texto'},
+  {key:'jefe',label:'Nombre de su jefe inmediato',tipo:'texto'},
+  {key:'inicio',label:'Fecha de inicio',tipo:'fecha'},
+  {key:'fin',label:'Fecha de término',tipo:'fecha'},
+  {key:'sueldo',label:'Sueldo',tipo:'texto'},
+  {key:'motivo',label:'Motivo de separación',tipo:'texto'},
+  {key:'actividades',label:'Actividades desempeñadas',tipo:'parrafo'},
+  {key:'informes',label:'¿Podemos solicitar informes de usted?',tipo:'select',opciones:SI_NO_SE},
+];
+function _seBloquesMeta(){
+  const out=[];
+  SOLICITUD_EMPLEO_SECCIONES.forEach(sec=>{
+    out.push({titulo:sec.titulo,campos:sec.campos});
+    if(sec.titulo==='Conocimientos generales') out.push({titulo:'Empleo actual o más reciente',campos:[],isEmpleo:true});
+  });
+  return out;
+}
+let _seEmpleos=[{}];
+function _seAgregarEmpleo(datos){
+  _seEmpleos.push(datos||{});
+  _seRenderEmpleosBlock();
+}
+function _seQuitarEmpleo(idx){
+  if(_seEmpleos.length<=1)return;
+  _seEmpleos.splice(idx,1);
+  _seRenderEmpleosBlock();
+}
+function _seLeerEmpleosDelDOM(){
+  _seEmpleos=_seEmpleos.map((job,idx)=>{
+    const nuevo={};
+    SE_EMPLEO_CAMPOS.forEach(f=>{ nuevo[f.key]=document.getElementById(`se-emp-${idx}-${f.key}`)?.value||''; });
+    return nuevo;
+  });
+}
+function _seEmpleosListHtml(){
+  return _seEmpleos.map((job,idx)=>`
+    <div style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:12px;font-weight:700;color:var(--text2)">Empleo ${idx+1}</div>
+        ${_seEmpleos.length>1?`<button type="button" onclick="_seLeerEmpleosDelDOM();_seQuitarEmpleo(${idx})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:12px"><i class="fa fa-trash"></i> Quitar</button>`:''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        ${SE_EMPLEO_CAMPOS.map(f=>_seCampoHtml(f,job[f.key],`se-emp-${idx}-${f.key}`)).join('')}
+      </div>
+    </div>`).join('');
+}
+function _seRenderEmpleosBlock(){
+  const cont=document.getElementById('se-empleos-list');
+  if(cont) cont.innerHTML=_seEmpleosListHtml();
+}
+function _seToggleDesempleado(){
+  const chk=document.getElementById('se-desempleado')?.checked;
+  const wrap=document.getElementById('se-desempleado-desde-wrap');
+  if(wrap) wrap.style.display=chk?'':'none';
+}
+function _seToggleAcc(idx){
+  const body=document.getElementById('se-acc-body-'+idx);
+  const chev=document.getElementById('se-acc-chev-'+idx);
+  if(!body)return;
+  const open=body.style.display!=='none';
+  body.style.display=open?'none':'';
+  if(chev) chev.style.transform=open?'':'rotate(180deg)';
+}
+function _seOpenBlock(idx){
+  const body=document.getElementById('se-acc-body-'+idx);
+  if(body&&body.style.display==='none') _seToggleAcc(idx);
+  body?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function _seSectionWrap(idx,titulo,contenidoHtml,color,openDefault){
+  return `<div style="margin-bottom:14px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+    <div onclick="_seToggleAcc(${idx})" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:${color}">
+      <span style="font-size:13px;font-weight:700;color:#fff">${_esc(titulo)}</span>
+      <i class="fa fa-chevron-down" id="se-acc-chev-${idx}" style="color:#fff;transition:transform .15s;${openDefault?'transform:rotate(180deg)':''}"></i>
+    </div>
+    <div id="se-acc-body-${idx}" style="padding:18px 16px;display:${openDefault?'':'none'}">${contenidoHtml}</div>
+  </div>`;
+}
 function _seParaCandidato(candId){
   const list=(DB.solicitudesEmpleo||[]).filter(s=>s.candidato_id===candId);
   return list.sort((a,b)=>(b.fecha_envio||'').localeCompare(a.fecha_envio||''))[0]||null;
@@ -6032,9 +6103,12 @@ async function eliminarSolicitudEmpleo(candId){
 async function generarLigaSolicitudEmpleo(candId){
   if(SANDBOX_MODE){showToast('No disponible en modo de prueba','err');return;}
   const c=DB.candidatos.find(x=>x.id===candId); if(!c) return;
+  const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
+  const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
   const token=uid()+uid();
   const registro={
     id:uid(), candidato_id:candId, candidato_nombre:c.nombre||'',
+    empresa_id:emp.id||null, empresa_nombre:emp.nombre||'', empresa_logo:emp.logo||'', empresa_color:emp.color||'#2AAADE',
     token, estado:'pendiente', campos:{},
     fecha_envio:new Date().toISOString(), fecha_completada:null,
   };
@@ -6054,40 +6128,29 @@ function copiarLigaSolicitudEmpleo(token){
   navigator.clipboard?.writeText(_seLink(token)).then(()=>showToast('Liga copiada ✓')).catch(()=>{});
 }
 async function _buildSolicitudEmpleoPDFDoc(se,candId){
-  const c=DB.candidatos.find(x=>x.id===candId)||{};
-  const v=DB.vacantes.find(x=>x.id===c.vacante_id)||{};
-  const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
   const W=216,M=14,CW=W-2*M;
   let y=M;
   const chkPg=(n=10)=>{if(y+n>272){doc.addPage();y=M;}};
 
-  if(emp.logo){const b64=await urlToBase64(emp.logo);if(b64){try{const{w,h}=await _imgFit(b64,28,16);doc.addImage(b64,'PNG',M,y,w,h);}catch(e){}}}
+  if(se.empresa_logo){const b64=await urlToBase64(se.empresa_logo);if(b64){try{const{w,h}=await _imgFit(b64,28,16);doc.addImage(b64,'PNG',M,y,w,h);}catch(e){}}}
   doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(0);
   doc.text('SOLICITUD DE EMPLEO',W/2,y+7,{align:'center'});
   doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(80);
-  doc.text(emp.nombre||'',W/2,y+13,{align:'center'});
+  doc.text(se.empresa_nombre||'',W/2,y+13,{align:'center'});
   y+=24;
 
   const campos=se.campos||{};
-  const section=(titulo,items)=>{
-    const visibles=items.filter(f=>campos[f.key]);
-    if(!visibles.length) return;
-    chkPg(14);
-    doc.setFillColor(255,242,153);
-    doc.rect(M,y,CW,6.5,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(60,50,0);
-    doc.text(titulo.toUpperCase(),M+2,y+4.6);
-    y+=6.5;
+  const drawGrid=(items,getVal)=>{
     const colW=CW/2;
     let col=0,maxH=0;
-    visibles.forEach(f=>{
+    items.forEach(f=>{
       const x=M+col*colW;
       doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(120);
       doc.text(f.label,x+2,y+3.2);
       doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(20);
-      const valLines=doc.splitTextToSize(String(campos[f.key]||''),colW-4);
+      const valLines=doc.splitTextToSize(String(getVal(f)||''),colW-4);
       doc.text(valLines,x+2,y+7.2);
       maxH=Math.max(maxH,Math.max(11,valLines.length*4+7));
       col++;
@@ -6102,10 +6165,46 @@ async function _buildSolicitudEmpleoPDFDoc(se,candId){
       doc.setDrawColor(220);doc.line(M,y+maxH,W-M,y+maxH);
       y+=maxH;
     }
+  };
+  const sectionHeader=(titulo)=>{
+    chkPg(14);
+    doc.setFillColor(255,242,153);
+    doc.rect(M,y,CW,6.5,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(60,50,0);
+    doc.text(titulo.toUpperCase(),M+2,y+4.6);
+    y+=6.5;
+  };
+  const section=(titulo,items)=>{
+    const visibles=items.filter(f=>campos[f.key]);
+    if(!visibles.length) return;
+    sectionHeader(titulo);
+    drawGrid(visibles,f=>campos[f.key]);
+    y+=4;
+  };
+  const sectionEmpleos=()=>{
+    let empleos=[];
+    try{ empleos=JSON.parse(campos.empleos_json||'[]'); }catch(e){}
+    const sinEmpleo=campos.empleo_desempleado==='Sí';
+    if(!empleos.length&&!sinEmpleo) return;
+    sectionHeader('Empleo actual o más reciente');
+    if(sinEmpleo){
+      doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(20);
+      doc.text(`Actualmente sin empleo${campos.empleo_desempleado_desde?' — desde '+campos.empleo_desempleado_desde:''}`,M+2,y+5);
+      y+=10;
+    }
+    empleos.forEach((job,idx)=>{
+      const visibles=SE_EMPLEO_CAMPOS.filter(f=>job[f.key]);
+      if(!visibles.length) return;
+      chkPg(12);
+      doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(80);
+      doc.text(`Empleo ${idx+1}`,M+2,y+4);
+      y+=5;
+      drawGrid(visibles,f=>job[f.key]);
+    });
     y+=4;
   };
 
-  SOLICITUD_EMPLEO_SECCIONES.forEach(sec=>section(sec.titulo,sec.campos));
+  _seBloquesMeta().forEach(b=>b.isEmpleo?sectionEmpleos():section(b.titulo,b.campos));
 
   chkPg(28);
   y+=8;
@@ -6167,41 +6266,57 @@ async function _checkSolicitudPublica(){
   }
   return true;
 }
-function _seCampoHtml(f,val){
+function _seCampoHtml(f,val,idOverride){
+  const id=idOverride||('se-f-'+f.key);
   const req=f.req?' <span style="color:var(--danger)">*</span>':'';
   const wide=(f.tipo==='parrafo'||f.tipo==='multiselect')?'grid-column:1/-1':'';
   let input='';
   if(f.tipo==='select'){
-    input=`<select id="se-f-${f.key}" style="width:100%"><option value="">Selecciona...</option>${f.opciones.map(o=>`<option value="${_esc(o.v)}" ${val===o.v?'selected':''}>${_esc(o.l||o.v)}</option>`).join('')}</select>`;
+    input=`<select id="${id}" style="width:100%"><option value="">Selecciona...</option>${f.opciones.map(o=>`<option value="${_esc(o.v)}" ${val===o.v?'selected':''}>${_esc(o.l||o.v)}</option>`).join('')}</select>`;
   }else if(f.tipo==='multiselect'){
     const selected=(val||'').split(',').map(s=>s.trim()).filter(Boolean);
     const otroVal=selected.find(s=>!f.opciones.includes(s))||'';
-    input=`<div style="display:flex;flex-wrap:wrap;gap:8px">${f.opciones.map(o=>`<label style="display:flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer"><input type="checkbox" class="se-ms-${f.key}" value="${_esc(o)}" ${selected.includes(o)?'checked':''} style="accent-color:var(--primary)">${_esc(o)}</label>`).join('')}${f.otro?`<label style="display:flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer"><input type="checkbox" class="se-ms-${f.key}" data-otro="1" value="Otro" ${otroVal?'checked':''} style="accent-color:var(--primary)">Otro</label><input type="text" id="se-f-${f.key}-otro" value="${_esc(otroVal)}" placeholder="Especifica el idioma" style="flex:1;min-width:140px">`:''}</div>`;
+    input=`<div style="display:flex;flex-wrap:wrap;gap:8px">${f.opciones.map(o=>`<label style="display:flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer"><input type="checkbox" class="se-ms-${f.key}" value="${_esc(o)}" ${selected.includes(o)?'checked':''} style="accent-color:var(--primary)">${_esc(o)}</label>`).join('')}${f.otro?`<label style="display:flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer"><input type="checkbox" class="se-ms-${f.key}" data-otro="1" value="Otro" ${otroVal?'checked':''} style="accent-color:var(--primary)">Otro</label><input type="text" id="${id}-otro" value="${_esc(otroVal)}" placeholder="Especifica el idioma" style="flex:1;min-width:140px">`:''}</div>`;
   }else if(f.tipo==='parrafo'){
-    input=`<textarea id="se-f-${f.key}" rows="3" style="width:100%;resize:vertical">${_esc(val||'')}</textarea>`;
+    input=`<textarea id="${id}" rows="3" style="width:100%;resize:vertical">${_esc(val||'')}</textarea>`;
   }else if(f.tipo==='fecha'){
-    input=`<input type="date" id="se-f-${f.key}" value="${_esc(val||'')}" style="width:100%">`;
+    input=`<input type="date" id="${id}" value="${_esc(val||'')}" style="width:100%">`;
   }else if(f.tipo==='numero'){
-    input=`<input type="number" id="se-f-${f.key}" value="${_esc(val||'')}" style="width:100%">`;
+    input=`<input type="number" id="${id}" value="${_esc(val||'')}" style="width:100%">`;
   }else{
-    input=`<input type="text" id="se-f-${f.key}" value="${_esc(val||'')}" style="width:100%">`;
+    input=`<input type="text" id="${id}" value="${_esc(val||'')}" style="width:100%">`;
   }
   return `<div style="${wide}"><label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">${_esc(f.label)}${req}</label>${input}</div>`;
 }
 function _seRenderForm(se){
-  const secciones=SOLICITUD_EMPLEO_SECCIONES.map(sec=>`
-    <div style="margin-bottom:26px">
-      <div style="font-size:14px;font-weight:700;color:var(--primary);border-bottom:2px solid var(--primary);padding-bottom:6px;margin-bottom:14px">${_esc(sec.titulo)}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">${sec.campos.map(f=>_seCampoHtml(f,se.campos?.[f.key])).join('')}</div>
-    </div>`).join('');
+  const color=se.empresa_color||'#2AAADE';
+  try{ _seEmpleos=JSON.parse(se.campos?.empleos_json||'[]'); }catch(e){ _seEmpleos=[]; }
+  if(!_seEmpleos.length) _seEmpleos=[{}];
+  const desempleadoChecked=se.campos?.empleo_desempleado==='Sí';
+  const empleoHtml=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <input type="checkbox" id="se-desempleado" onchange="_seToggleDesempleado()" ${desempleadoChecked?'checked':''}>
+      <label for="se-desempleado" style="font-size:13px;cursor:pointer">Actualmente no tengo empleo</label>
+    </div>
+    <div id="se-desempleado-desde-wrap" style="${desempleadoChecked?'':'display:none'};margin-bottom:16px;max-width:240px">
+      <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">¿Desde cuándo?</label>
+      <input type="date" id="se-desempleado-desde" value="${_esc(se.campos?.empleo_desempleado_desde||'')}" style="width:100%">
+    </div>
+    <div id="se-empleos-list">${_seEmpleosListHtml()}</div>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="_seLeerEmpleosDelDOM();_seAgregarEmpleo({})"><i class="fa fa-plus"></i> Agregar otro empleo</button>`;
+  const bloques=_seBloquesMeta().map((b,idx)=>{
+    const contenido=b.isEmpleo?empleoHtml:`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">${b.campos.map(f=>_seCampoHtml(f,se.campos?.[f.key])).join('')}</div>`;
+    return _seSectionWrap(idx,b.titulo,contenido,color,idx===0);
+  }).join('');
   return `<div style="max-width:720px;margin:0 auto;padding:32px 16px 60px">
     <div style="text-align:center;margin-bottom:26px">
-      <i class="fa fa-file-signature" style="font-size:28px;color:var(--primary)"></i>
+      ${se.empresa_logo?`<img src="${se.empresa_logo}" style="height:48px;object-fit:contain;margin-bottom:8px">`:`<i class="fa fa-file-signature" style="font-size:28px;color:${color}"></i>`}
       <div style="font-size:20px;font-weight:700;margin-top:6px">Solicitud de empleo</div>
-      <div style="font-size:13px;color:var(--text3);margin-top:4px">${_esc(se.candidato_nombre||'')}</div>
+      ${se.empresa_nombre?`<div style="font-size:13px;color:var(--text3);margin-top:2px">${_esc(se.empresa_nombre)}</div>`:''}
+      <div style="font-size:13px;color:var(--text3);margin-top:2px">${_esc(se.candidato_nombre||'')}</div>
     </div>
     <div id="se-error" style="display:none;background:#fef2f2;color:#dc2626;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px"></div>
-    ${secciones}
+    ${bloques}
     <div style="display:flex;align-items:flex-start;gap:10px;margin:20px 0;padding:14px;background:var(--surface2);border-radius:8px">
       <input type="checkbox" id="se-acepto" style="margin-top:3px;accent-color:var(--primary)">
       <label for="se-acepto" style="font-size:12px;color:var(--text2);cursor:pointer">Certifico que los datos proporcionados son correctos y autorizo a la empresa para que los verifique.</label>
@@ -6220,6 +6335,7 @@ async function submitSolicitudEmpleo(){
   if(!_sePubData) return;
   const {se}=_sePubData;
   const campos={};
+  const meta=_seBloquesMeta();
   let primerError=null;
   for(const sec of SOLICITUD_EMPLEO_SECCIONES){
     for(const f of sec.campos){
@@ -6240,15 +6356,28 @@ async function submitSolicitudEmpleo(){
       campos[f.key]=val||null;
     }
   }
+  _seLeerEmpleosDelDOM();
+  const desempleado=document.getElementById('se-desempleado')?.checked;
+  campos.empleo_desempleado=desempleado?'Sí':'No';
+  campos.empleo_desempleado_desde=null;
+  if(desempleado){
+    const desde=(document.getElementById('se-desempleado-desde')?.value||'').trim();
+    if(!desde&&!primerError) primerError={label:'¿Desde cuándo? (sin empleo actualmente)',__empleoBlock:true};
+    campos.empleo_desempleado_desde=desde||null;
+  }
+  campos.empleos_json=JSON.stringify(_seEmpleos.filter(j=>SE_EMPLEO_CAMPOS.some(f=>(j[f.key]||'').trim())));
   const errDiv=document.getElementById('se-error');
   if(!document.getElementById('se-acepto')?.checked){
     errDiv.textContent='Debes aceptar la declaración de datos correctos para continuar.';
     errDiv.style.display='';
+    errDiv.scrollIntoView({behavior:'smooth',block:'center'});
     return;
   }
   if(primerError){
     errDiv.textContent=`Por favor completa: "${primerError.label}"`;
     errDiv.style.display='';
+    const idx=primerError.__empleoBlock?meta.findIndex(b=>b.isEmpleo):meta.findIndex(b=>b.campos.includes(primerError));
+    if(idx>=0) _seOpenBlock(idx);
     return;
   }
   errDiv.style.display='none';

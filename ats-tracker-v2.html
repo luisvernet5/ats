@@ -5993,6 +5993,7 @@ function _filaSolicitudEmpleoHtml(candId){
         <div style="font-size:11px;color:var(--text3)">Completada el ${fecha}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" title="Previsualizar" onclick="previsualizarSolicitudEmpleoPDF('${candId}')"><i class="fa fa-eye"></i></button>
         <button class="btn btn-ghost btn-sm" title="Descargar PDF" onclick="descargarSolicitudEmpleoPDF('${candId}')"><i class="fa fa-file-pdf"></i></button>
         <button class="btn btn-ghost btn-sm" title="Reenviar liga (crea una nueva solicitud)" onclick="generarLigaSolicitudEmpleo('${candId}')"><i class="fa fa-rotate"></i></button>
         <button class="btn btn-danger btn-sm" title="Eliminar" onclick="eliminarSolicitudEmpleo('${candId}')"><i class="fa fa-trash"></i></button>
@@ -6116,6 +6117,17 @@ async function _buildSolicitudEmpleoPDFDoc(se,candId){
   doc.text(`Completada el ${se.fecha_completada?new Date(se.fecha_completada).toLocaleDateString('es-MX'):''}`,W/2,y+25,{align:'center'});
 
   return doc;
+}
+async function previsualizarSolicitudEmpleoPDF(candId){
+  if(!window.jspdf){showToast('jsPDF no disponible','err');return;}
+  const se=_seParaCandidato(candId);
+  if(!se||se.estado!=='completado'){showToast('Aún no ha sido completada','err');return;}
+  try{
+    const doc=await _buildSolicitudEmpleoPDFDoc(se,candId);
+    window.open(doc.output('bloburl'),'_blank');
+  }catch(e){
+    showToast('Error al generar PDF: '+e.message,'err');
+  }
 }
 async function descargarSolicitudEmpleoPDF(candId){
   if(!window.jspdf){showToast('jsPDF no disponible','err');return;}

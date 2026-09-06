@@ -4818,39 +4818,52 @@ async function generarDC3(){
 }
 // Coordenadas medidas directamente sobre el PDF oficial (pdfjs + análisis de píxeles) — origen
 // inferior-izquierdo en puntos, igual que pdf-lib, así que se usan tal cual sin conversión.
+// Centros x de cada casilla de CURP/RFC medidos sobre las líneas divisorias reales del recuadro
+// (no son celdas de ancho uniforme — el propio formato oficial las dibuja con anchos distintos).
+const DC3_CURP_CELL_X=[31.5,48.5,62.5,77.0,92.0,106.5,120.5,134.5,149.0,163.5,177.5,191.5,206.0,224.0,241.5,255.5,269.5,287.0];
+const DC3_RFC_CELL_X=[31.5,48.5,62.5,77.0,92.0,106.5,120.5,134.5,149.0,163.5,177.5,191.5,206.0];
 function _dc3Overlay(page,font,d){
   const put=(text,x,y,size=9)=>{ if(text) page.drawText(String(text),{x,y,size,font,color:PDFLib.rgb(0,0,0)}); };
-  const putCells=(text,x,y,n,cellW)=>{
-    const code=(text||'').toUpperCase().slice(0,n);
-    for(let i=0;i<code.length;i++){
-      if(code[i]===' ')continue;
-      page.drawText(code[i],{x:x+i*cellW+cellW/2-3,y,size:8,font,color:PDFLib.rgb(0,0,0)});
-    }
-  };
   const centerText=(text,cx,y,size=8)=>{
     if(!text)return;
     const w=font.widthOfTextAtSize(String(text),size);
     page.drawText(String(text),{x:cx-w/2,y,size,font,color:PDFLib.rgb(0,0,0)});
   };
+  const putCellsAt=(text,xs,y,size=8)=>{
+    const code=(text||'').toUpperCase();
+    for(let i=0;i<xs.length&&i<code.length;i++){
+      const ch=code[i];
+      if(ch===' ')continue;
+      const w=font.widthOfTextAtSize(ch,size);
+      page.drawText(ch,{x:xs[i]-w/2,y,size,font,color:PDFLib.rgb(0,0,0)});
+    }
+  };
+  // Cubre la leyenda impresa "En este espacio la empresa puede imprimir su logotipo..." —
+  // no se usa ese espacio para logo, así que se blanquea en vez de dejarla visible.
+  page.drawRectangle({x:60,y:734,width:460,height:16,color:PDFLib.rgb(1,1,1)});
   put(d.nombreTrabajador,30,587,9);
-  putCells(d.curp,30,559,18,15);
+  putCellsAt(d.curp,DC3_CURP_CELL_X,559);
   put(d.ocupacionEspecifica,307,559,8);
   put(d.puesto,60,545.3,9);
   put(d.razonSocial,30,471,9);
-  putCells(d.rfcEmpresa,30,443,13,19.2);
+  putCellsAt(d.rfcEmpresa,DC3_RFC_CELL_X,443);
   put(d.nombreCurso,90,401.8,9);
   put(d.duracionHoras,92,363,9);
   if(d.fechaInicio){
     const dt=new Date(d.fechaInicio+'T00:00:00');
-    put(String(dt.getFullYear()),272.6,363,8);
-    put(String(dt.getMonth()+1).padStart(2,'0'),324.7,363,8);
-    put(String(dt.getDate()).padStart(2,'0'),367.9,363,8);
+    const yr=String(dt.getFullYear());
+    centerText(yr.slice(0,2),271.5,363,8);
+    centerText(yr.slice(2,4),287.0,363,8);
+    centerText(String(dt.getMonth()+1).padStart(2,'0'),321.0,363,8);
+    centerText(String(dt.getDate()).padStart(2,'0'),363.0,363,8);
   }
   if(d.fechaFin){
     const dt=new Date(d.fechaFin+'T00:00:00');
-    put(String(dt.getFullYear()),448.1,363,8);
-    put(String(dt.getMonth()+1).padStart(2,'0'),507.7,363,8);
-    put(String(dt.getDate()).padStart(2,'0'),550.9,363,8);
+    const yr=String(dt.getFullYear());
+    centerText(yr.slice(0,2),445.0,363,8);
+    centerText(yr.slice(2,4),464.5,363,8);
+    centerText(String(dt.getMonth()+1).padStart(2,'0'),504.0,363,8);
+    centerText(String(dt.getDate()).padStart(2,'0'),546.0,363,8);
   }
   put(d.areaTematica,109,350.8,8);
   put(d.agenteCapacitador,162,325.3,8);

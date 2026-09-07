@@ -4183,7 +4183,6 @@ function abrirContratoModal(empId,contratoId){
   const colabs=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId&&c.estado!=='Baja').sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const plantillas=_ctPlantillas(emp);
-  const camposCustom=emp.contrato_campos_custom||[];
   document.getElementById('modal-contrato')?.remove();
   const modal=document.createElement('div');
   modal.id='modal-contrato';
@@ -4208,11 +4207,11 @@ function abrirContratoModal(empId,contratoId){
       <div class="fg"><label>Fecha de vencimiento</label><input type="date" id="ct-fecha-vencimiento" value="${contrato?.fecha_vencimiento||''}"><div style="font-size:11px;color:var(--text3);margin-top:2px">Vacío si es indeterminado</div></div>
     </div>
     <div class="fg"><label>Salario</label><input id="ct-salario" value="${_esc(contrato?.salario||'')}"></div>
-    ${plantillas.length?`<div class="fg"><label>Plantilla de contrato a usar</label><select id="ct-plantilla-usar">
+    ${plantillas.length?`<div class="fg"><label>Plantilla de contrato a usar</label><select id="ct-plantilla-usar" onchange="_ctActualizarCamposExtra('${empId}','${contratoId||''}')">
       <option value="">— Automática (según razón social) —</option>
       ${plantillas.map(p=>`<option value="${p.id}" ${contrato?.plantilla_id===p.id?'selected':''}>${_esc(p.nombre)}</option>`).join('')}
     </select></div>`:''}
-    ${camposCustom.length?`<div class="sep">Campos personalizados</div>${camposCustom.map(cf=>`<div class="fg"><label>${_esc(cf.label)}</label><input id="ct-extra-${cf.key}" value="${_esc((contrato?.campos_extra||{})[cf.key]||'')}"></div>`).join('')}`:''}
+    <div id="ct-campos-extra-wrap"></div>
     <div class="fr full"><div class="fg"><label>Notas</label><textarea id="ct-notas">${_esc(contrato?.notas||'')}</textarea></div></div>
     <div style="display:flex;justify-content:${contratoId?'space-between':'flex-end'};gap:8px;margin-top:10px">
       ${contratoId?`<button class="btn btn-ghost" style="color:#e5484d" onclick="eliminarContrato('${contratoId}','${empId}')"><i class="fa fa-trash"></i> Eliminar</button>`:''}
@@ -4223,12 +4222,31 @@ function abrirContratoModal(empId,contratoId){
     </div>
   </div>`;
   document.body.appendChild(modal);
+  _ctActualizarCamposExtra(empId,contratoId);
 }
 function _ctPrefillPuesto(){
   const sel=document.getElementById('ct-colaborador');
   const opt=sel.options[sel.selectedIndex];
   const puestoInput=document.getElementById('ct-puesto');
   if(opt&&opt.dataset.puesto&&!puestoInput.value) puestoInput.value=opt.dataset.puesto;
+}
+// Los campos personalizados que se muestran dependen de la plantilla elegida en el
+// contrato: si es "Automática" (no sabemos aún cuál se usará) se muestran todos los de
+// la empresa; si se elige una plantilla en concreto, solo los que ella realmente usa.
+function _ctActualizarCamposExtra(empId,contratoId){
+  const wrap=document.getElementById('ct-campos-extra-wrap');
+  if(!wrap) return;
+  const contrato=contratoId?(DB.contratos||[]).find(c=>c.id===contratoId):null;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const plantillaId=document.getElementById('ct-plantilla-usar')?.value||'';
+  const camposCustom=plantillaId?_ctCamposCustomDePlantilla(empId,plantillaId):(emp.contrato_campos_custom||[]);
+  const valoresPrevios={};
+  wrap.querySelectorAll('input[id^="ct-extra-"]').forEach(inp=>{ valoresPrevios[inp.id]=inp.value; });
+  wrap.innerHTML=camposCustom.length?`<div class="sep">Campos personalizados</div>${camposCustom.map(cf=>{
+    const id='ct-extra-'+cf.key;
+    const valor=valoresPrevios[id]!==undefined?valoresPrevios[id]:((contrato?.campos_extra||{})[cf.key]||'');
+    return `<div class="fg"><label>${_esc(cf.label)}</label><input id="${id}" value="${_esc(valor)}"></div>`;
+  }).join('')}`:'';
 }
 async function guardarContrato(){
   const id=document.getElementById('ct-id').value;
@@ -4240,11 +4258,14 @@ async function guardarContrato(){
   try{
     const existente=id?(DB.contratos||[]).find(c=>c.id===id):null;
     const emp=DB.empresas.find(e=>e.id===empId)||{};
-    const camposCustomDef=emp.contrato_campos_custom||[];
-    const campos_extra={};
-    camposCustomDef.forEach(cf=>{
-      const v=(document.getElementById('ct-extra-'+cf.key)?.value||'').trim();
-      if(v) campos_extra[cf.key]=v;
+    // Parte de los valores ya guardados y solo actualiza los campos que están visibles
+    // para la plantilla elegida — así no se pierden valores de otros campos personalizados
+    // si el usuario cambia de plantilla antes de guardar.
+    const campos_extra={...(existente?.campos_extra||{})};
+    document.querySelectorAll('#ct-campos-extra-wrap input[id^="ct-extra-"]').forEach(inp=>{
+      const key=inp.id.replace('ct-extra-','');
+      const v=(inp.value||'').trim();
+      if(v) campos_extra[key]=v; else delete campos_extra[key];
     });
     const registro={
       id:id||uid(),
@@ -4289,31 +4310,63 @@ async function eliminarContrato(id,empId){
     showToast('Error: '+e.message,'err');
   }
 }
-function contratosDescargarPlantilla(empId){
+function _ctCamposBaseImport(){
+  return [
+    {key:'nombre',label:'Nombre del colaborador (debe existir en Administrador de Personal)'},
+    {key:'tipo',label:'Tipo de contrato'},
+    {key:'fecha_inicio',label:'Fecha de inicio (AAAA-MM-DD)'},
+    {key:'fecha_vencimiento',label:'Fecha de vencimiento (AAAA-MM-DD, vacío si es indeterminado)'},
+    {key:'puesto',label:'Puesto'},
+    {key:'salario',label:'Salario'},
+    {key:'notas',label:'Notas'},
+  ];
+}
+function contratosDescargarPlantilla(empId,plantillaId){
   const emp=DB.empresas.find(e=>e.id===empId)||{};
-  const header=['Nombre del colaborador (debe existir en Administrador de Personal)','Tipo de contrato','Fecha de inicio (AAAA-MM-DD)','Fecha de vencimiento (AAAA-MM-DD, vacío si es indeterminado)','Puesto','Salario','Notas'];
-  const ejemplo=['Juan Pérez López','Determinado',today(),'2026-12-31','Auxiliar','$8,000','Ejemplo de nota'];
+  const extra=_ctCamposCustomDePlantilla(empId,plantillaId);
+  const base=_ctCamposBaseImport();
+  const header=base.map(c=>c.label).concat(extra.map(cf=>cf.label));
+  const ejemplo=['Juan Pérez López','Determinado',today(),'2026-12-31','Auxiliar','$8,000','Ejemplo de nota'].concat(extra.map(()=>'Ejemplo'));
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet([header,ejemplo]);
   ws['!cols']=header.map(()=>({wch:26}));
   XLSX.utils.book_append_sheet(wb,ws,'Contratos');
-  XLSX.writeFile(wb,`Plantilla_Contratos_${(emp.nombre||'empresa').replace(/[^a-zA-Z0-9]/g,'_')}.xlsx`);
+  const plantilla=plantillaId?_ctPlantillas(emp).find(p=>p.id===plantillaId):null;
+  const sufijo=plantilla?'_'+plantilla.nombre.replace(/[^a-zA-Z0-9]/g,'_'):'';
+  XLSX.writeFile(wb,`Plantilla_Contratos_${(emp.nombre||'empresa').replace(/[^a-zA-Z0-9]/g,'_')}${sufijo}.xlsx`);
 }
 function abrirImportContratosModal(empId){
   const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const plantillas=_ctPlantillas(emp);
   document.getElementById('modal-import-contratos')?.remove();
   const modal=document.createElement('div');
   modal.id='modal-import-contratos';
   modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3100;display:flex;align-items:center;justify-content:center;padding:20px';
-  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:760px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 32px #0004">
+  if(!plantillas.length){
+    modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:480px;max-width:96vw;padding:24px;box-shadow:0 8px 32px #0004;text-align:center">
+      <i class="fa fa-file-word" style="font-size:32px;color:var(--text3);margin-bottom:12px;display:block"></i>
+      <div style="font-weight:700;font-size:15px;margin-bottom:8px">Primero crea una plantilla de contrato</div>
+      <div style="font-size:13px;color:var(--text3);margin-bottom:16px">La carga masiva arma sus columnas según los campos que use la plantilla que elijas, así que necesitas al menos una para esta empresa.</div>
+      <div style="display:flex;justify-content:center;gap:8px">
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-import-contratos').remove()">Cerrar</button>
+        <button class="btn btn-primary" onclick="document.getElementById('modal-import-contratos').remove();abrirGestionPlantillasContrato('${empId}')"><i class="fa fa-plus"></i> Crear plantilla</button>
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+    return;
+  }
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:820px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 32px #0004">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div style="font-weight:700;font-size:16px">Carga masiva de contratos — ${_esc(emp.nombre||'')}</div>
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-import-contratos').remove()"><i class="fa fa-times"></i></button>
     </div>
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;margin-bottom:14px">
+    <div class="fg"><label>Plantilla de contrato para este lote *</label><select id="imp-cont-plantilla" onchange="_impContPlantillaCambio('${empId}')">
+      ${plantillas.map(p=>`<option value="${p.id}">${_esc(p.nombre)}${p.razon_social?' ('+_esc(p.razon_social)+')':''}</option>`).join('')}
+    </select></div>
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;margin:10px 0 14px">
       <i class="fa fa-info-circle" style="color:var(--accent);font-size:18px;flex-shrink:0"></i>
-      <span style="font-size:13px;color:var(--text2)">Descarga la plantilla, llénala y súbela aquí. El colaborador debe existir ya en Administrador de Personal (se relaciona por nombre exacto). Las fechas van en formato AAAA-MM-DD.</span>
-      <button class="btn btn-ghost btn-sm" style="flex-shrink:0;white-space:nowrap" onclick="contratosDescargarPlantilla('${empId}')"><i class="fa fa-download"></i> Plantilla</button>
+      <span id="imp-cont-info" style="font-size:13px;color:var(--text2)">Descarga la plantilla de Excel de arriba, llénala y súbela aquí. El colaborador debe existir ya en Administrador de Personal (se relaciona por nombre exacto). Las fechas van en formato AAAA-MM-DD.</span>
+      <button class="btn btn-ghost btn-sm" style="flex-shrink:0;white-space:nowrap" onclick="contratosDescargarPlantilla('${empId}',document.getElementById('imp-cont-plantilla').value)"><i class="fa fa-download"></i> Plantilla</button>
     </div>
     <div style="border:2px dashed var(--border2);border-radius:8px;padding:24px;text-align:center;cursor:pointer" id="imp-cont-dropzone" onclick="document.getElementById('imp-cont-file').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border2)'" ondrop="event.preventDefault();this.style.borderColor='var(--border2)';handleImportContratosFile({target:{files:event.dataTransfer.files}},'${empId}')">
       <i class="fa fa-file-excel" style="font-size:32px;color:var(--text3);margin-bottom:8px"></i>
@@ -4337,10 +4390,23 @@ function abrirImportContratosModal(empId){
   </div>`;
   document.body.appendChild(modal);
 }
+function _impContPlantillaCambio(empId){
+  document.getElementById('imp-cont-file').value='';
+  document.getElementById('imp-cont-preview').style.display='none';
+  document.getElementById('btn-imp-cont-confirm').style.display='none';
+  const extra=_ctCamposCustomDePlantilla(empId,document.getElementById('imp-cont-plantilla').value);
+  const info=document.getElementById('imp-cont-info');
+  info.textContent=extra.length
+    ?`Esta plantilla usa además: ${extra.map(cf=>cf.label).join(', ')}. Descarga la plantilla de Excel de nuevo si cambiaste de plantilla.`
+    :'Descarga la plantilla de Excel de arriba, llénala y súbela aquí. El colaborador debe existir ya en Administrador de Personal (se relaciona por nombre exacto). Las fechas van en formato AAAA-MM-DD.';
+}
 let _impContRows=[];
+let _impContExtraCols=[];
 function handleImportContratosFile(e,empId){
   const file=e.target?.files?.[0];
   if(!file)return;
+  const plantillaId=document.getElementById('imp-cont-plantilla')?.value||null;
+  _impContExtraCols=_ctCamposCustomDePlantilla(empId,plantillaId);
   const reader=new FileReader();
   reader.onload=ev=>{
     try{
@@ -4359,6 +4425,7 @@ function handleImportContratosFile(e,empId){
         salario:idxOf('salario'),
         notas:idxOf('notas'),
       };
+      const extraIdx=_impContExtraCols.map(cf=>({key:cf.key,idx:idxOf(cf.label.toLowerCase())}));
       const normFecha=val=>{
         if(!val) return '';
         if(val instanceof Date) return val.toISOString().split('T')[0];
@@ -4381,6 +4448,8 @@ function handleImportContratosFile(e,empId){
         if(nombre&&!colab) errors.push('Colaborador no encontrado en esta empresa');
         const tipoRaw=get(colIdx.tipo);
         const tipo=CONTRATO_TIPOS.find(t=>t.toLowerCase()===tipoRaw.toLowerCase())||tipoRaw||CONTRATO_TIPOS[0];
+        const campos_extra={};
+        extraIdx.forEach(cf=>{ const v=get(cf.idx); if(v) campos_extra[cf.key]=v; });
         _impContRows.push({
           _row:i+1,_errors:errors,
           colaborador_id:colab?.id||null,colaborador_nombre:nombre,
@@ -4389,6 +4458,8 @@ function handleImportContratosFile(e,empId){
           fecha_vencimiento:normFecha(r[colIdx.fecha_vencimiento])||null,
           salario:get(colIdx.salario)||null,
           notas:get(colIdx.notas)||null,
+          plantilla_id:plantillaId||null,
+          campos_extra,
         });
       }
       _impContRenderPreview(empId);
@@ -4407,13 +4478,15 @@ function _impContRenderPreview(empId){
     +(errR.length?`&nbsp;&nbsp;<span style="color:var(--red)"><i class="fa fa-exclamation-circle"></i> ${errR.length} con errores</span>`:'');
   const thead=document.querySelector('#imp-cont-table thead');
   const tbody=document.querySelector('#imp-cont-table tbody');
-  thead.innerHTML=`<tr>${['#','Colaborador','Tipo','Inicio','Vencimiento','Puesto','Status'].map(h=>`<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">${h}</th>`).join('')}</tr>`;
+  const cabeceras=['#','Colaborador','Tipo','Inicio','Vencimiento','Puesto'].concat(_impContExtraCols.map(cf=>cf.label)).concat(['Status']);
+  thead.innerHTML=`<tr>${cabeceras.map(h=>`<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">${h}</th>`).join('')}</tr>`;
   tbody.innerHTML=_impContRows.map(r=>{
     const isOk=r._errors.length===0;
     const bg=isOk?'':'background:rgba(239,68,68,.07)';
     const status=isOk
       ?`<span style="color:var(--green);font-size:11px"><i class="fa fa-check"></i> OK</span>`
       :`<span style="color:var(--red);font-size:11px" title="${_esc(r._errors.join('; '))}"><i class="fa fa-times"></i> ${_esc(r._errors.join('; '))}</span>`;
+    const extraCells=_impContExtraCols.map(cf=>`<td style="padding:5px 8px">${_esc((r.campos_extra||{})[cf.key])||'—'}</td>`).join('');
     return `<tr style="${bg}">
       <td style="padding:5px 8px;color:var(--text3)">${r._row}</td>
       <td style="padding:5px 8px">${_esc(r.colaborador_nombre)||'—'}</td>
@@ -4421,6 +4494,7 @@ function _impContRenderPreview(empId){
       <td style="padding:5px 8px">${r.fecha_inicio||'—'}</td>
       <td style="padding:5px 8px">${r.fecha_vencimiento||'—'}</td>
       <td style="padding:5px 8px">${_esc(r.puesto)||'—'}</td>
+      ${extraCells}
       <td style="padding:5px 8px">${status}</td>
     </tr>`;
   }).join('');
@@ -4481,6 +4555,23 @@ function _ctCamposDisponibles(empId){
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const custom=(emp.contrato_campos_custom||[]).map(cf=>({key:'extra_'+cf.key,label:'Personalizado — '+cf.label}));
   return base.concat(custom);
+}
+// Detecta qué placeholders {{campo}} aparecen realmente escritos en el texto de una plantilla.
+function _ctCamposUsadosEnHtml(html){
+  const found=new Set();
+  const re=/\{\{\s*([a-z_]+)\s*\}\}/gi;
+  let m;
+  while((m=re.exec(html||''))) found.add(m[1].toLowerCase());
+  return found;
+}
+// Campos personalizados (definición {key,label}) que una plantilla en particular usa —
+// para que la carga masiva de Excel solo pida columnas relevantes a esa plantilla.
+function _ctCamposCustomDePlantilla(empId,plantillaId){
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const plantilla=plantillaId?_ctPlantillas(emp).find(p=>p.id===plantillaId):null;
+  if(!plantilla) return [];
+  const usados=_ctCamposUsadosEnHtml(plantilla.html);
+  return (emp.contrato_campos_custom||[]).filter(cf=>usados.has('extra_'+cf.key));
 }
 function abrirGestionPlantillasContrato(empId){
   const emp=DB.empresas.find(e=>e.id===empId)||{};

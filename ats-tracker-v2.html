@@ -1567,7 +1567,8 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       </div>
       <!-- Paso 2: Guía de Entrevista -->
       <div id="cand-step-2" style="display:none">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <button id="btn-cand-volver-docs" onclick="volverADocumentosCandidato()" style="display:none;padding:6px 14px;border:1.5px solid var(--border2);color:var(--text2);background:#fff;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500"><i class="fa fa-arrow-left"></i> Documentos</button>
           <button onclick="exportEntrevistaPDF()" style="padding:6px 14px;border:1.5px solid #2AAADE;color:#2AAADE;background:#fff;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;transition:all .15s" onmouseover="this.style.background='rgba(42,170,222,.08)'" onmouseout="this.style.background='#fff'">&#128196; Exportar PDF</button>
         </div>
         <!-- I. Datos personales -->
@@ -7939,6 +7940,8 @@ function _updateCandModalMode(){
   const saveTexts={new:'Guardar candidato',edit:'Guardar datos',entrevista:'Guardar entrevista',referencias:'Guardar referencias'};
   const btn=document.getElementById('cand-save-btn');
   if(btn)btn.textContent=saveTexts[_candModalMode]||'Guardar';
+  const btnVolverDocs=document.getElementById('btn-cand-volver-docs');
+  if(btnVolverDocs) btnVolverDocs.style.display=_candModalMode==='entrevista'?'':'none';
 }
 function openEntrevistaModal(id){
   const c=DB.candidatos.find(x=>x.id===id);if(!c)return;
@@ -7955,6 +7958,12 @@ function openEntrevistaModal(id){
   candWizardSetStep(2);
   _updateCandModalMode();
   openModal('modal-candidato');
+}
+function volverADocumentosCandidato(){
+  const candId=document.getElementById('cand-id').value;
+  if(!candId) return;
+  closeModal('modal-candidato');
+  abrirDocumentosCandidato(candId);
 }
 async function openReferenciasModal(id){
   const c=DB.candidatos.find(x=>x.id===id);if(!c)return;

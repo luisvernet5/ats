@@ -4581,6 +4581,10 @@ function _ctFuentesColaborador(empId){
   const base=[
     {value:'colab:edad',label:'Colaborador — Edad (calculada de su fecha de nacimiento)'},
     {value:'colab:fecha_nacimiento',label:'Colaborador — Fecha de nacimiento'},
+    {value:'colab:genero',label:'Colaborador — Género'},
+    {value:'colab:pais_nacimiento',label:'Colaborador — País de nacimiento'},
+    {value:'colab:nacionalidad',label:'Colaborador — Nacionalidad'},
+    {value:'colab:codigo_postal',label:'Colaborador — Código postal'},
     {value:'colab:telefono',label:'Colaborador — Teléfono'},
     {value:'colab:correo',label:'Colaborador — Correo'},
     {value:'colab:direccion',label:'Colaborador — Domicilio'},
@@ -15836,6 +15840,20 @@ function abrirColaboradorModal(empId,id=null){
         <div class="fg"><label>RFC</label><input type="text" id="colab-rfc" value="${_esc(existing?.rfc||'')}" maxlength="13" style="text-transform:uppercase" placeholder="12 o 13 caracteres"></div>
         <div class="fg"><label>NSS</label><input type="text" id="colab-nss" value="${_esc(existing?.nss||'')}" maxlength="11" inputmode="numeric" placeholder="11 dígitos"></div>
       </div>
+      <div class="fr g3c" style="margin-bottom:16px">
+        <div class="fg"><label>Género</label>
+          <select id="colab-genero">
+            <option value="">Seleccionar...</option>
+            <option value="Masculino" ${existing?.genero==='Masculino'?'selected':''}>Masculino</option>
+            <option value="Femenino" ${existing?.genero==='Femenino'?'selected':''}>Femenino</option>
+            <option value="Otro" ${existing?.genero==='Otro'?'selected':''}>Otro</option>
+            <option value="Prefiero no decir" ${existing?.genero==='Prefiero no decir'?'selected':''}>Prefiero no decir</option>
+          </select>
+        </div>
+        <div class="fg"><label>País de nacimiento</label><input type="text" id="colab-pais-nacimiento" value="${_esc(existing?.pais_nacimiento||'')}" placeholder="Ej. México"></div>
+        <div class="fg"><label>Nacionalidad</label><input type="text" id="colab-nacionalidad" value="${_esc(existing?.nacionalidad||'')}" placeholder="Ej. Mexicana"></div>
+        <div class="fg"><label>Código postal</label><input type="text" id="colab-codigo-postal" value="${_esc(existing?.codigo_postal||'')}" maxlength="5" inputmode="numeric" placeholder="5 dígitos"></div>
+      </div>
 
       <div class="sep">Datos bancarios y domicilio</div>
       <div class="fr g3c" style="margin-bottom:16px">
@@ -16013,6 +16031,10 @@ async function guardarColaborador(){
     correo:(document.getElementById('colab-correo').value||'').trim()||null,
     notas:(document.getElementById('colab-notas').value||'').trim()||null,
     fecha_nacimiento:document.getElementById('colab-fecha-nacimiento').value||null,
+    genero:document.getElementById('colab-genero').value||null,
+    pais_nacimiento:(document.getElementById('colab-pais-nacimiento').value||'').trim()||null,
+    nacionalidad:(document.getElementById('colab-nacionalidad').value||'').trim()||null,
+    codigo_postal:(document.getElementById('colab-codigo-postal').value||'').trim()||null,
     curp:curpVal||null,
     rfc:rfcVal||null,
     nss:nssVal||null,

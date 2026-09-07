@@ -4722,38 +4722,148 @@ function _ctHtmlToPdfDoc(html){
   const marginX=20,marginTop=20,marginBottom=20;
   const pageW=doc.internal.pageSize.getWidth(),pageH=doc.internal.pageSize.getHeight();
   const maxW=pageW-marginX*2;
-  doc.setFont('helvetica','normal');doc.setFontSize(11);
+  const lineH=6,paraGap=3,gapBuffer=0.6,transBuffer=0.4;
+  doc.setFontSize(11);
   let y=marginTop;
-  const drawLine=(text,align)=>{
-    if(!text||!text.trim()){ y+=5; return; }
-    doc.splitTextToSize(text,maxW).forEach(line=>{
-      if(y>pageH-marginBottom){ doc.addPage(); y=marginTop; }
-      let x=marginX;
-      const opts={};
-      if(align==='center'){ x=pageW/2; opts.align='center'; }
-      else if(align==='right'){ x=pageW-marginX; opts.align='right'; }
-      else if(align==='justify'){ opts.align='justify'; opts.maxWidth=maxW; }
-      doc.text(line,x,y,opts);
-      y+=6;
+  const ensureRoom=(h)=>{ if(y+h>pageH-marginBottom){ doc.addPage(); y=marginTop; } };
+  const setFont=(b,i)=>doc.setFont('helvetica', b&&i?'bolditalic':b?'bold':i?'italic':'normal');
+  const getAlign=(el)=>(el&&el.style&&el.style.textAlign)||'left';
+
+  function extraerRuns(el,bold,italic,underline){
+    let runs=[];
+    el.childNodes.forEach(n=>{
+      if(n.nodeType===Node.TEXT_NODE){
+        if(n.textContent) runs.push({text:n.textContent,bold,italic,underline});
+        return;
+      }
+      if(n.nodeType!==Node.ELEMENT_NODE) return;
+      const tag=n.tagName.toLowerCase();
+      if(tag==='br'){ runs.push({br:true}); return; }
+      const styleAttr=(n.getAttribute&&n.getAttribute('style'))||'';
+      const isBold=bold||tag==='b'||tag==='strong'||/font-weight\s*:\s*(bold|[6-9]00)/i.test(styleAttr);
+      const isItalic=italic||tag==='i'||tag==='em';
+      const isUnderline=underline||tag==='u'||/text-decoration[^;]*underline/i.test(styleAttr);
+      runs=runs.concat(extraerRuns(n,isBold,isItalic,isUnderline));
     });
-  };
-  const tmp=document.createElement('div');
-  tmp.innerHTML=html;
-  const nodes=tmp.childNodes.length?[...tmp.childNodes]:[tmp];
-  nodes.forEach(node=>{
-    if(node.nodeType===Node.TEXT_NODE){ drawLine(node.textContent,'left'); return; }
-    const tag=node.tagName?node.tagName.toLowerCase():'';
-    if(tag==='br'){ y+=6; return; }
-    const blockAlign=(node.style&&node.style.textAlign)||'left';
+    return runs;
+  }
+
+  // Texto sin negrita/cursiva/subrayado: se delega en el motor nativo de jsPDF
+  // (usa la misma métrica para medir y pintar, así el justificado calza exacto).
+  function dibujarUniforme(texto,align){
+    setFont(false,false);
+    texto.split('\n').forEach(parte=>{
+      if(!parte.trim()){ y+=lineH*0.6; return; }
+      const lineas=doc.splitTextToSize(parte,maxW);
+      lineas.forEach((line,li)=>{
+        ensureRoom(lineH);
+        const esUltima=li===lineas.length-1;
+        const opts={};
+        let x=marginX;
+        if(align==='center'){ opts.align='center'; x=marginX+maxW/2; }
+        else if(align==='right'){ opts.align='right'; x=marginX+maxW; }
+        else if(align==='justify'&&!esUltima){ opts.align='justify'; opts.maxWidth=maxW; }
+        doc.text(line,x,y,opts);
+        y+=lineH;
+      });
+    });
+  }
+
+  // Párrafos que mezclan negrita/cursiva/subrayado con texto normal: layout manual
+  // palabra por palabra (jsPDF no soporta estilos mixtos en una sola llamada). Se agrega
+  // un pequeño colchón (transBuffer) cuando dos fragmentos de estilo distinto quedan
+  // pegados sin espacio (ej. "PATRON:"), porque jsPDF puede "comerse" el primer carácter
+  // del segundo fragmento si quedan tocándose justo después de un cambio de fuente.
+  function dibujarMixto(runs,align){
+    const palabras=[];
+    let runIndex=0;
+    runs.forEach(r=>{
+      if(r.br){ palabras.push({br:true,runIndex}); runIndex++; return; }
+      String(r.text).split(/(\s+)/).forEach(tok=>{
+        if(tok==='') return;
+        palabras.push({text:tok,bold:r.bold,italic:r.italic,underline:r.underline,runIndex});
+      });
+      runIndex++;
+    });
+    if(!palabras.length){ y+=lineH*0.6; return; }
+    const esEspacio=t=>/^\s+$/.test(t);
+    const extra=(p,prev)=>{
+      if(esEspacio(p.text)) return gapBuffer;
+      if(prev&&!esEspacio(prev.text)&&prev.runIndex!==p.runIndex) return transBuffer;
+      return 0;
+    };
+    let lineas=[[]],anchoActual=0,prevTok=null;
+    palabras.forEach(p=>{
+      if(p.br){ lineas.push([]); anchoActual=0; prevTok=null; return; }
+      setFont(p.bold,p.italic);
+      const w=doc.getTextWidth(p.text)+extra(p,prevTok);
+      if(anchoActual+w>maxW&&lineas[lineas.length-1].length){ lineas.push([]); anchoActual=0; prevTok=null; }
+      lineas[lineas.length-1].push(p);
+      anchoActual+=w;
+      prevTok=p;
+    });
+    lineas.forEach((linea,li)=>{
+      while(linea.length&&esEspacio(linea[0].text)) linea.shift();
+      while(linea.length&&esEspacio(linea[linea.length-1].text)) linea.pop();
+      if(!linea.length){ y+=lineH*0.6; return; }
+      ensureRoom(lineH);
+      let prev=null;
+      const medidas=linea.map(p=>{ setFont(p.bold,p.italic); const m={w:doc.getTextWidth(p.text),extra:extra(p,prev)}; prev=p; return m; });
+      const anchoTexto=medidas.reduce((s,m)=>s+m.w+m.extra,0);
+      const nEspacios=linea.filter(p=>esEspacio(p.text)).length;
+      const esUltima=li===lineas.length-1;
+      let x=marginX;
+      if(align==='center') x=marginX+(maxW-anchoTexto)/2;
+      else if(align==='right') x=marginX+(maxW-anchoTexto);
+      let extraEspacio=0;
+      if(align==='justify'&&!esUltima&&nEspacios>0) extraEspacio=Math.max(0,(maxW-anchoTexto)/nEspacios);
+      linea.forEach((p,i)=>{
+        setFont(p.bold,p.italic);
+        const esp=esEspacio(p.text);
+        x+=medidas[i].extra+(esp&&align==='justify'&&!esUltima?extraEspacio:0);
+        if(!esp){
+          doc.text(p.text,x,y);
+          if(p.underline){ doc.setLineWidth(0.15); doc.line(x,y+0.8,x+medidas[i].w,y+0.8); }
+        }
+        x+=medidas[i].w;
+      });
+      y+=lineH;
+    });
+  }
+
+  function procesarBloque(el){
+    const tag=el.tagName?el.tagName.toLowerCase():'';
+    const align=getAlign(el);
     if(tag==='ul'||tag==='ol'){
-      [...node.children].forEach(li=>drawLine('• '+li.textContent,(li.style&&li.style.textAlign)||blockAlign));
+      [...el.children].forEach(li=>{
+        const runsLi=extraerRuns(li,false,false,false);
+        const alignLi=getAlign(li)||align;
+        const uniformeLi=runsLi.every(r=>r.br||(!r.bold&&!r.italic&&!r.underline));
+        if(uniformeLi) dibujarUniforme('• '+runsLi.map(r=>r.br?'\n':r.text).join(''),alignLi);
+        else dibujarMixto([{text:'• ',bold:false,italic:false}].concat(runsLi),alignLi);
+      });
+      y+=paraGap;
       return;
     }
-    (node.innerHTML!==undefined?node.innerHTML:node.textContent||'').split(/<br\s*\/?>/i).forEach(part=>{
-      const d=document.createElement('div');
-      d.innerHTML=part;
-      drawLine(d.textContent||'',blockAlign);
-    });
+    const runs=extraerRuns(el,false,false,false);
+    const soloTexto=runs.filter(r=>!r.br);
+    const uniforme=soloTexto.every(r=>!r.bold&&!r.italic&&!r.underline);
+    if(uniforme) dibujarUniforme(runs.map(r=>r.br?'\n':r.text).join(''),align);
+    else dibujarMixto(runs,align);
+    y+=paraGap;
+  }
+
+  const tmp=document.createElement('div');
+  tmp.innerHTML=html;
+  const nodes=[...tmp.childNodes];
+  nodes.forEach(node=>{
+    if(node.nodeType===Node.TEXT_NODE){
+      if(node.textContent.trim()) dibujarUniforme(node.textContent,'left');
+      return;
+    }
+    if(node.nodeType!==Node.ELEMENT_NODE) return;
+    if(node.tagName.toLowerCase()==='br'){ y+=lineH*0.6; return; }
+    procesarBloque(node);
   });
   return doc;
 }

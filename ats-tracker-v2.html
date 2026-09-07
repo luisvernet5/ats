@@ -4113,7 +4113,6 @@ function _contListaHtml(empId){
       <td style="font-size:12px;color:var(--text2)">${c.fecha_inicio?fmt(c.fecha_inicio):'—'}</td>
       <td style="font-size:12px;color:var(--text2)">${c.fecha_vencimiento?fmt(c.fecha_vencimiento):'—'}</td>
       <td><span class="badge" style="background:${est.color}22;color:${est.color}">${est.label}</span></td>
-      <td>${c.archivo_url?`<a href="${c.archivo_url}" target="_blank" class="btn btn-ghost btn-sm" title="Ver contrato firmado"><i class="fa fa-file-pdf"></i></a>`:'<span style="color:var(--text3);font-size:12px">—</span>'}</td>
       <td style="text-align:right;white-space:nowrap">
         <button class="btn btn-ghost btn-sm" onclick="generarContratoPDF('${c.id}','${empId}')" title="Generar PDF desde la plantilla"><i class="fa fa-file-export"></i></button>
         <button class="btn btn-ghost btn-sm" onclick="abrirContratoModal('${empId}','${c.id}')" title="Editar"><i class="fa fa-edit"></i></button>
@@ -4122,8 +4121,8 @@ function _contListaHtml(empId){
     </tr>`;
   }).join('');
   return `<div class="table-wrap"><table>
-    <thead><tr><th>Colaborador</th><th>Puesto</th><th>Tipo de contrato</th><th>Fecha inicio</th><th>Vencimiento</th><th>Estado</th><th>Archivo</th><th></th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:32px">Sin contratos registrados — agrega el primero o usa carga masiva</td></tr>'}</tbody>
+    <thead><tr><th>Colaborador</th><th>Puesto</th><th>Tipo de contrato</th><th>Fecha inicio</th><th>Vencimiento</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:32px">Sin contratos registrados — agrega el primero o usa carga masiva</td></tr>'}</tbody>
   </table></div>`;
 }
 function _contVencerItems(empId){
@@ -4208,12 +4207,7 @@ function abrirContratoModal(empId,contratoId){
       <div class="fg"><label>Fecha de inicio</label><input type="date" id="ct-fecha-inicio" value="${contrato?.fecha_inicio||''}"></div>
       <div class="fg"><label>Fecha de vencimiento</label><input type="date" id="ct-fecha-vencimiento" value="${contrato?.fecha_vencimiento||''}"><div style="font-size:11px;color:var(--text3);margin-top:2px">Vacío si es indeterminado</div></div>
     </div>
-    <div class="fr">
-      <div class="fg"><label>Salario</label><input id="ct-salario" value="${_esc(contrato?.salario||'')}"></div>
-      <div class="fg"><label>Archivo del contrato (PDF)</label><input type="file" id="ct-archivo" accept="application/pdf">
-        ${contrato?.archivo_url?`<div style="margin-top:4px"><a href="${contrato.archivo_url}" target="_blank" style="font-size:12px">Ver archivo actual</a></div>`:''}
-      </div>
-    </div>
+    <div class="fg"><label>Salario</label><input id="ct-salario" value="${_esc(contrato?.salario||'')}"></div>
     ${plantillas.length?`<div class="fg"><label>Plantilla de contrato a usar</label><select id="ct-plantilla-usar">
       <option value="">— Automática (según razón social) —</option>
       ${plantillas.map(p=>`<option value="${p.id}" ${contrato?.plantilla_id===p.id?'selected':''}>${_esc(p.nombre)}</option>`).join('')}
@@ -4236,12 +4230,6 @@ function _ctPrefillPuesto(){
   const puestoInput=document.getElementById('ct-puesto');
   if(opt&&opt.dataset.puesto&&!puestoInput.value) puestoInput.value=opt.dataset.puesto;
 }
-let _ctBucketReady=false;
-async function _ctEnsureBucket(){
-  if(_ctBucketReady) return;
-  await sbClient.storage.createBucket('contratos-pdf',{public:true,fileSizeLimit:20971520}).catch(()=>{});
-  _ctBucketReady=true;
-}
 async function guardarContrato(){
   const id=document.getElementById('ct-id').value;
   const empId=document.getElementById('ct-empresa-id').value;
@@ -4251,18 +4239,6 @@ async function guardarContrato(){
   if(btn){btn.disabled=true;btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Guardando...';}
   try{
     const existente=id?(DB.contratos||[]).find(c=>c.id===id):null;
-    let archivo_url=existente?.archivo_url||null;
-    let archivo_nombre=existente?.archivo_nombre||null;
-    const file=document.getElementById('ct-archivo').files[0];
-    if(file){
-      await _ctEnsureBucket();
-      const path=`${empId}/${colaboradorId}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
-      const {error:upErr}=await sbClient.storage.from('contratos-pdf').upload(path,file,{upsert:true});
-      if(upErr) throw new Error('No se pudo subir el archivo: '+upErr.message);
-      const {data:urlData}=sbClient.storage.from('contratos-pdf').getPublicUrl(path);
-      archivo_url=urlData.publicUrl;
-      archivo_nombre=file.name;
-    }
     const emp=DB.empresas.find(e=>e.id===empId)||{};
     const camposCustomDef=emp.contrato_campos_custom||[];
     const campos_extra={};
@@ -4282,7 +4258,6 @@ async function guardarContrato(){
       plantilla_id:document.getElementById('ct-plantilla-usar')?.value||null,
       campos_extra,
       notas:(document.getElementById('ct-notas').value||'').trim()||null,
-      archivo_url,archivo_nombre,
       created_at:existente?.created_at||new Date().toISOString(),
     };
     await saveRecord('contratos',registro);
@@ -4461,7 +4436,7 @@ async function doImportContratos(empId){
   const _tImp=Date.now();
   const nuevos=valid.map((r,i)=>{
     const {_row,_errors,colaborador_nombre,...datos}=r;
-    return {id:'ctr-'+(_tImp+i)+'-'+Math.random().toString(36).substr(2,6),empresa_id:empId,...datos,archivo_url:null,archivo_nombre:null,created_at:new Date().toISOString()};
+    return {id:'ctr-'+(_tImp+i)+'-'+Math.random().toString(36).substr(2,6),empresa_id:empId,...datos,created_at:new Date().toISOString()};
   });
   try{
     await Promise.all(nuevos.map(registro=>saveRecord('contratos',registro)));

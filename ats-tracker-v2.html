@@ -1853,7 +1853,8 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       <!-- Paso 3: Referencias -->
       <div id="cand-step-3" style="display:none">
         <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--border);margin-bottom:20px">
-          <div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <button id="btn-ref-volver-docs" onclick="volverADocumentosCandidato()" style="display:none;padding:6px 14px;border:1.5px solid var(--border2);color:var(--text2);background:#fff;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500"><i class="fa fa-arrow-left"></i> Documentos</button>
             <button id="ref-tab-lab" onclick="refTabSwitch('lab')" style="padding:9px 20px;border:none;background:none;font-size:13px;font-weight:700;color:var(--accent);border-bottom:3px solid var(--accent);margin-bottom:-2px;cursor:pointer">Referencias Laborales</button>
             <button id="ref-tab-per" onclick="refTabSwitch('per')" style="padding:9px 20px;border:none;background:none;font-size:13px;font-weight:400;color:var(--text3);border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer">Referencias Personales</button>
           </div>
@@ -7953,6 +7954,8 @@ function _updateCandModalMode(){
   if(btn)btn.textContent=saveTexts[_candModalMode]||'Guardar';
   const btnVolverDocs=document.getElementById('btn-cand-volver-docs');
   if(btnVolverDocs) btnVolverDocs.style.display=_candModalMode==='entrevista'?'':'none';
+  const btnRefVolverDocs=document.getElementById('btn-ref-volver-docs');
+  if(btnRefVolverDocs) btnRefVolverDocs.style.display=_candModalMode==='referencias'?'':'none';
 }
 function openEntrevistaModal(id){
   const c=DB.candidatos.find(x=>x.id===id);if(!c)return;

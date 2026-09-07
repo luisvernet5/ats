@@ -4574,18 +4574,40 @@ function _ctContextoContrato(contrato,empId){
 function _ctHtmlToPdfDoc(html){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
-  const text=_rtToText(html);
   const marginX=20,marginTop=20,marginBottom=20;
   const pageW=doc.internal.pageSize.getWidth(),pageH=doc.internal.pageSize.getHeight();
   const maxW=pageW-marginX*2;
   doc.setFont('helvetica','normal');doc.setFontSize(11);
   let y=marginTop;
-  text.split('\n').forEach(p=>{
-    if(p.trim()===''){ y+=5; return; }
-    doc.splitTextToSize(p,maxW).forEach(line=>{
+  const drawLine=(text,align)=>{
+    if(!text||!text.trim()){ y+=5; return; }
+    doc.splitTextToSize(text,maxW).forEach(line=>{
       if(y>pageH-marginBottom){ doc.addPage(); y=marginTop; }
-      doc.text(line,marginX,y);
+      let x=marginX;
+      const opts={};
+      if(align==='center'){ x=pageW/2; opts.align='center'; }
+      else if(align==='right'){ x=pageW-marginX; opts.align='right'; }
+      else if(align==='justify'){ opts.align='justify'; opts.maxWidth=maxW; }
+      doc.text(line,x,y,opts);
       y+=6;
+    });
+  };
+  const tmp=document.createElement('div');
+  tmp.innerHTML=html;
+  const nodes=tmp.childNodes.length?[...tmp.childNodes]:[tmp];
+  nodes.forEach(node=>{
+    if(node.nodeType===Node.TEXT_NODE){ drawLine(node.textContent,'left'); return; }
+    const tag=node.tagName?node.tagName.toLowerCase():'';
+    if(tag==='br'){ y+=6; return; }
+    const blockAlign=(node.style&&node.style.textAlign)||'left';
+    if(tag==='ul'||tag==='ol'){
+      [...node.children].forEach(li=>drawLine('• '+li.textContent,(li.style&&li.style.textAlign)||blockAlign));
+      return;
+    }
+    (node.innerHTML!==undefined?node.innerHTML:node.textContent||'').split(/<br\s*\/?>/i).forEach(part=>{
+      const d=document.createElement('div');
+      d.innerHTML=part;
+      drawLine(d.textContent||'',blockAlign);
     });
   });
   return doc;
@@ -18584,6 +18606,11 @@ function _rtBox(id, html='', placeholder=''){
       <div class="rt-sep"></div>
       <button type="button" class="rt-btn" onmousedown="event.preventDefault();_rtCmd('${id}','insertUnorderedList')" title="Viñetas"><i class="fa fa-list-ul"></i></button>
       <button type="button" class="rt-btn" onmousedown="event.preventDefault();_rtCmd('${id}','insertOrderedList')" title="Lista numerada"><i class="fa fa-list-ol"></i></button>
+      <div class="rt-sep"></div>
+      <button type="button" class="rt-btn" onmousedown="event.preventDefault();_rtCmd('${id}','justifyLeft')" title="Alinear a la izquierda"><i class="fa fa-align-left"></i></button>
+      <button type="button" class="rt-btn" onmousedown="event.preventDefault();_rtCmd('${id}','justifyCenter')" title="Centrar"><i class="fa fa-align-center"></i></button>
+      <button type="button" class="rt-btn" onmousedown="event.preventDefault();_rtCmd('${id}','justifyRight')" title="Alinear a la derecha"><i class="fa fa-align-right"></i></button>
+      <button type="button" class="rt-btn" onmousedown="event.preventDefault();_rtCmd('${id}','justifyFull')" title="Justificar"><i class="fa fa-align-justify"></i></button>
     </div>
     <div id="${id}" class="rt-body" contenteditable="true" data-placeholder="${placeholder}"
       onpaste="_rtPaste(event)"

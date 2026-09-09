@@ -4588,6 +4588,7 @@ function _ctFuentesColaborador(empId){
     {value:'colab:pais_nacimiento',label:'Colaborador — País de nacimiento'},
     {value:'colab:nacionalidad',label:'Colaborador — Nacionalidad'},
     {value:'colab:codigo_postal',label:'Colaborador — Código postal'},
+    {value:'colab:estado_civil',label:'Colaborador — Estado civil'},
     {value:'colab:telefono',label:'Colaborador — Teléfono'},
     {value:'colab:correo',label:'Colaborador — Correo'},
     {value:'colab:direccion',label:'Colaborador — Domicilio'},
@@ -15857,6 +15858,16 @@ function abrirColaboradorModal(empId,id=null){
         <div class="fg"><label>País de nacimiento</label><input type="text" id="colab-pais-nacimiento" value="${_esc(existing?.pais_nacimiento||'')}" placeholder="Ej. México"></div>
         <div class="fg"><label>Nacionalidad</label><input type="text" id="colab-nacionalidad" value="${_esc(existing?.nacionalidad||'')}" placeholder="Ej. Mexicana"></div>
         <div class="fg"><label>Código postal</label><input type="text" id="colab-codigo-postal" value="${_esc(existing?.codigo_postal||'')}" maxlength="5" inputmode="numeric" placeholder="5 dígitos"></div>
+        <div class="fg"><label>Estado civil</label>
+          <select id="colab-estado-civil">
+            <option value="">Seleccionar...</option>
+            <option value="Soltero(a)" ${existing?.estado_civil==='Soltero(a)'?'selected':''}>Soltero(a)</option>
+            <option value="Casado(a)" ${existing?.estado_civil==='Casado(a)'?'selected':''}>Casado(a)</option>
+            <option value="Unión libre" ${existing?.estado_civil==='Unión libre'?'selected':''}>Unión libre</option>
+            <option value="Divorciado(a)" ${existing?.estado_civil==='Divorciado(a)'?'selected':''}>Divorciado(a)</option>
+            <option value="Viudo(a)" ${existing?.estado_civil==='Viudo(a)'?'selected':''}>Viudo(a)</option>
+          </select>
+        </div>
       </div>
 
       <div class="sep">Datos bancarios y domicilio</div>
@@ -16039,6 +16050,7 @@ async function guardarColaborador(){
     pais_nacimiento:(document.getElementById('colab-pais-nacimiento').value||'').trim()||null,
     nacionalidad:(document.getElementById('colab-nacionalidad').value||'').trim()||null,
     codigo_postal:(document.getElementById('colab-codigo-postal').value||'').trim()||null,
+    estado_civil:document.getElementById('colab-estado-civil').value||null,
     curp:curpVal||null,
     rfc:rfcVal||null,
     nss:nssVal||null,

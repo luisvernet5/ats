@@ -4865,6 +4865,37 @@ async function _ctGuardarFuenteCampo(empId,key){
     showToast('Error: '+e.message,'err');
   }
 }
+// Mammoth convierte el .docx a HTML "semántico" y por diseño descarta la alineación de
+// párrafo (justificado/centrado/derecha) — solo conserva negritas/cursivas/subrayado. La
+// recuperamos leyendo directamente el XML del Word (que sí la trae) y la reaplicamos sobre
+// el HTML que generó mammoth, emparejando los párrafos en el mismo orden en que aparecen.
+async function _ctLeerAlineacionesDocx(arrayBuffer){
+  if(typeof JSZip==='undefined') return [];
+  const zip=await JSZip.loadAsync(arrayBuffer);
+  const docXmlFile=zip.file('word/document.xml');
+  if(!docXmlFile) return [];
+  const xmlText=await docXmlFile.async('text');
+  const xml=new DOMParser().parseFromString(xmlText,'application/xml');
+  const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+  const mapa={both:'justify',center:'center',right:'right',end:'right',left:'left',start:'left'};
+  const parrafos=[...xml.getElementsByTagNameNS(ns,'p')];
+  return parrafos.map(p=>{
+    const jc=p.getElementsByTagNameNS(ns,'jc')[0];
+    if(!jc) return null;
+    const val=jc.getAttributeNS(ns,'val')||jc.getAttribute('w:val')||jc.getAttribute('val');
+    return val&&mapa[val]?mapa[val]:null;
+  });
+}
+function _ctAplicarAlineaciones(html,alineaciones){
+  if(!alineaciones||!alineaciones.length) return html;
+  const tmp=document.createElement('div');
+  tmp.innerHTML=html;
+  [...tmp.querySelectorAll('p, li')].forEach((el,i)=>{
+    const align=alineaciones[i];
+    if(align&&align!=='left') el.style.textAlign=align;
+  });
+  return tmp.innerHTML;
+}
 async function _ctCargarDocxPlantilla(input){
   const file=input.files[0];
   if(!file) return;
@@ -4872,8 +4903,13 @@ async function _ctCargarDocxPlantilla(input){
   try{
     const arrayBuffer=await file.arrayBuffer();
     const result=await mammoth.convertToHtml({arrayBuffer});
-    document.getElementById('ct-plantilla-editor').innerHTML=result.value;
-    showToast('Documento cargado ✓ — revisa el formato');
+    let html=result.value;
+    try{
+      const alineaciones=await _ctLeerAlineacionesDocx(arrayBuffer);
+      html=_ctAplicarAlineaciones(html,alineaciones);
+    }catch(e){ console.warn('No se pudo recuperar la alineación del Word:',e.message); }
+    document.getElementById('ct-plantilla-editor').innerHTML=html;
+    showToast('Documento cargado ✓ — revisa el formato (incluido el justificado/centrado)');
   }catch(e){
     showToast('Error al leer el documento: '+e.message,'err');
   }finally{

@@ -5061,7 +5061,10 @@ function _ctHtmlToPdfDoc(html){
   // (usa la misma métrica para medir y pintar, así el justificado calza exacto).
   function dibujarUniforme(texto,align){
     setFont(false,false);
-    texto.split('\n').forEach(parte=>{
+    // Word suele usar tabuladores (no un salto de línea real) para separar textos que en
+    // el documento quedan "uno debajo del otro" visualmente; como el PDF no maneja tabs de
+    // columna, se tratan igual que un salto de línea para respetar esa intención.
+    texto.replace(/\t+/g,'\n').split('\n').forEach(parte=>{
       if(!parte.trim()){ y+=lineH*0.6; return; }
       const lineas=doc.splitTextToSize(parte,maxW);
       lineas.forEach((line,li)=>{
@@ -5088,9 +5091,14 @@ function _ctHtmlToPdfDoc(html){
     let runIndex=0;
     runs.forEach(r=>{
       if(r.br){ palabras.push({br:true,runIndex}); runIndex++; return; }
-      String(r.text).split(/(\s+)/).forEach(tok=>{
-        if(tok==='') return;
-        palabras.push({text:tok,bold:r.bold,italic:r.italic,underline:r.underline,runIndex});
+      // Igual que en dibujarUniforme: un tabulador de Word se trata como salto de línea.
+      String(r.text).split(/(\t+)/).forEach(parte=>{
+        if(parte==='') return;
+        if(/^\t+$/.test(parte)){ palabras.push({br:true,runIndex}); return; }
+        parte.split(/(\s+)/).forEach(tok=>{
+          if(tok==='') return;
+          palabras.push({text:tok,bold:r.bold,italic:r.italic,underline:r.underline,runIndex});
+        });
       });
       runIndex++;
     });

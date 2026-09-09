@@ -4776,6 +4776,8 @@ function abrirPlantillaContratoModal(empId,plantillaId){
     </div>
   </div>`;
   document.body.appendChild(modal);
+  const editorEl=document.getElementById('ct-plantilla-editor');
+  if(editorEl){ editorEl.style.maxHeight='340px'; editorEl.style.overflowY='auto'; }
 }
 function _ctInsertarCampo(){
   const sel=document.getElementById('ct-campo-sel');

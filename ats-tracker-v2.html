@@ -4707,6 +4707,7 @@ function abrirGestionPlantillasContrato(empId){
       </div>
       <button class="btn btn-ghost btn-sm" onclick="abrirPlantillaContratoModal('${empId}','${p.id}')" title="Editar"><i class="fa fa-edit"></i></button>
       <button class="btn btn-ghost btn-sm" onclick="_ctDuplicarPlantilla('${empId}','${p.id}')" title="Duplicar"><i class="fa fa-copy"></i></button>
+      <button class="btn btn-ghost btn-sm" onclick="_ctVerCodigoPlantilla('${empId}','${p.id}')" title="Ver código HTML (soporte técnico)"><i class="fa fa-code"></i></button>
       <button class="btn btn-danger btn-sm" onclick="eliminarPlantillaContrato('${empId}','${p.id}')" title="Eliminar"><i class="fa fa-trash"></i></button>
     </div>`).join('');
   const camposHtml=(emp.contrato_campos_custom||[]).map(cf=>`<span style="display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border-radius:20px;padding:4px 10px;font-size:12px;margin:2px 4px 2px 0" title="Clic para editar el nombre o el origen del dato">
@@ -4724,6 +4725,26 @@ function abrirGestionPlantillasContrato(empId){
     <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
       <div style="font-weight:600;font-size:13px;margin-bottom:8px">Campos personalizados disponibles en el editor</div>
       <div>${camposHtml||'<span style="font-size:12px;color:var(--text3)">Aún no has creado ninguno — se crean desde el editor de la plantilla</span>'}</div>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+function _ctVerCodigoPlantilla(empId,plantillaId){
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const plantilla=_ctPlantillas(emp).find(p=>p.id===plantillaId);
+  if(!plantilla) return;
+  document.getElementById('modal-ver-codigo-plantilla')?.remove();
+  const modal=document.createElement('div');
+  modal.id='modal-ver-codigo-plantilla';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3400;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:700px;max-width:96vw;max-height:88vh;display:flex;flex-direction:column;padding:24px;box-shadow:0 8px 32px #0004">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-weight:700;font-size:15px">Código HTML — ${_esc(plantilla.nombre)}</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-ver-codigo-plantilla').remove()"><i class="fa fa-times"></i></button>
+    </div>
+    <textarea readonly style="flex:1;min-height:300px;font-family:monospace;font-size:11px;padding:10px;border:1px solid var(--border);border-radius:8px;resize:vertical">${_esc(plantilla.html||'')}</textarea>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+      <button class="btn btn-primary" onclick="navigator.clipboard.writeText(document.getElementById('modal-ver-codigo-plantilla').querySelector('textarea').value);showToast('Copiado ✓')"><i class="fa fa-copy"></i> Copiar</button>
     </div>
   </div>`;
   document.body.appendChild(modal);

@@ -4879,12 +4879,18 @@ async function _ctLeerAlineacionesDocx(arrayBuffer){
   const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
   const mapa={both:'justify',center:'center',right:'right',end:'right',left:'left',start:'left'};
   const parrafos=[...xml.getElementsByTagNameNS(ns,'p')];
-  return parrafos.map(p=>{
+  const alineaciones=[];
+  parrafos.forEach(p=>{
+    // Los párrafos totalmente vacíos (sin texto, típicos para dar espacio entre cláusulas)
+    // mammoth los elimina al convertir — si los contáramos aquí, el emparejamiento por
+    // orden con los <p>/<li> reales del HTML se recorre y todo lo siguiente queda mal.
+    const textos=[...p.getElementsByTagNameNS(ns,'t')].map(t=>t.textContent).join('').trim();
+    if(!textos) return;
     const jc=p.getElementsByTagNameNS(ns,'jc')[0];
-    if(!jc) return null;
-    const val=jc.getAttributeNS(ns,'val')||jc.getAttribute('w:val')||jc.getAttribute('val');
-    return val&&mapa[val]?mapa[val]:null;
+    const val=jc?(jc.getAttributeNS(ns,'val')||jc.getAttribute('w:val')||jc.getAttribute('val')):null;
+    alineaciones.push(val&&mapa[val]?mapa[val]:null);
   });
+  return alineaciones;
 }
 function _ctAplicarAlineaciones(html,alineaciones){
   if(!alineaciones||!alineaciones.length) return html;

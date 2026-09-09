@@ -4217,8 +4217,17 @@ function abrirContratoModal(empId,contratoId){
       ${plantillas.map(p=>`<option value="${p.id}" ${contrato?.plantilla_id===p.id?'selected':''}>${_esc(p.nombre)}${p.razon_social?' ('+_esc(p.razon_social)+')':''}</option>`).join('')}
     </select></div>
     <div class="fr">
-      <div class="fg"><label>Fecha de inicio</label><input type="date" id="ct-fecha-inicio" value="${contrato?.fecha_inicio||''}"></div>
-      <div class="fg"><label>Fecha de vencimiento</label><input type="date" id="ct-fecha-vencimiento" value="${contrato?.fecha_vencimiento||''}"><div style="font-size:11px;color:var(--text3);margin-top:2px">Vacío si es indeterminado</div></div>
+      <div class="fg"><label>Fecha de inicio</label><input type="date" id="ct-fecha-inicio" value="${contrato?.fecha_inicio||''}" onchange="_ctRecalcularVencimiento()"></div>
+      <div class="fg">
+        <label>Fecha de vencimiento</label>
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <button type="button" id="ct-venc-modo-fecha" class="btn btn-primary btn-sm" onclick="_ctSetModoVencimiento('fecha')" style="flex:1">Fecha exacta</button>
+          <button type="button" id="ct-venc-modo-dias" class="btn btn-ghost btn-sm" onclick="_ctSetModoVencimiento('dias')" style="flex:1">Por días</button>
+        </div>
+        <input type="date" id="ct-fecha-vencimiento" value="${contrato?.fecha_vencimiento||''}">
+        <input type="number" id="ct-vencimiento-dias" min="1" placeholder="Ej. 90" style="display:none" oninput="_ctRecalcularVencimiento()">
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">Vacío si es indeterminado</div>
+      </div>
     </div>
     <div class="fg"><label>Salario</label><input id="ct-salario" value="${_esc(contrato?.salario||'')}"></div>
     <div id="ct-campos-extra-wrap"></div>
@@ -4243,6 +4252,38 @@ function _ctMostrarPuestoColaborador(){
   if(!sel||!info) return;
   const opt=sel.options[sel.selectedIndex];
   info.textContent='Puesto: '+(opt&&opt.value?(opt.dataset.puesto||'—'):'—');
+}
+// Fecha de vencimiento: se puede escribir directamente, o pedir cuántos días dura el
+// contrato y calcularla sola a partir de la fecha de inicio.
+function _ctSetModoVencimiento(modo){
+  const btnFecha=document.getElementById('ct-venc-modo-fecha');
+  const btnDias=document.getElementById('ct-venc-modo-dias');
+  const inputFecha=document.getElementById('ct-fecha-vencimiento');
+  const inputDias=document.getElementById('ct-vencimiento-dias');
+  if(!btnFecha||!btnDias||!inputFecha||!inputDias) return;
+  if(modo==='dias'){
+    btnFecha.className='btn btn-ghost btn-sm';
+    btnDias.className='btn btn-primary btn-sm';
+    inputFecha.style.display='none';
+    inputDias.style.display='';
+    _ctRecalcularVencimiento();
+  }else{
+    btnFecha.className='btn btn-primary btn-sm';
+    btnDias.className='btn btn-ghost btn-sm';
+    inputFecha.style.display='';
+    inputDias.style.display='none';
+  }
+}
+function _ctRecalcularVencimiento(){
+  const inputDias=document.getElementById('ct-vencimiento-dias');
+  const inputFecha=document.getElementById('ct-fecha-vencimiento');
+  if(!inputDias||!inputFecha||inputDias.style.display==='none') return;
+  const dias=parseInt(inputDias.value,10);
+  const inicio=document.getElementById('ct-fecha-inicio')?.value;
+  if(!inicio||!dias||dias<1){ inputFecha.value=''; return; }
+  const d=new Date(inicio+'T00:00:00');
+  d.setDate(d.getDate()+dias);
+  inputFecha.value=d.toISOString().slice(0,10);
 }
 // Los campos personalizados que se muestran dependen de la plantilla elegida en el
 // contrato: solo se listan los que esa plantilla en particular usa.

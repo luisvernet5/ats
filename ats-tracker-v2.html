@@ -4892,6 +4892,12 @@ async function _ctDuplicarPlantilla(empId,plantillaId){
 function _ctReemplazarPlantilla(html,ctx){
   return html.replace(/\{\{\s*([a-z_]+)\s*\}\}/gi,(m,key)=>(ctx[key]!==undefined&&ctx[key]!==null&&ctx[key]!=='')?_esc(String(ctx[key])):'');
 }
+const _CT_MESES_LARGO=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function _ctFechaLarga(d){
+  if(!d) return '';
+  const [y,m,dd]=d.split('-');
+  return `${dd} de ${_CT_MESES_LARGO[parseInt(m,10)-1]} del ${y}`;
+}
 function _ctContextoContrato(contrato,empId){
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const colab=(DB.colaboradores||[]).find(c=>c.id===contrato.colaborador_id)||{};
@@ -4907,8 +4913,8 @@ function _ctContextoContrato(contrato,empId){
     colaborador_direccion:colab.direccion||'',
     colaborador_departamento:colab.departamento||'',
     contrato_tipo:contrato.tipo||'',
-    contrato_fecha_inicio:contrato.fecha_inicio?fmt(contrato.fecha_inicio):'',
-    contrato_fecha_vencimiento:contrato.fecha_vencimiento?fmt(contrato.fecha_vencimiento):'(indeterminado)',
+    contrato_fecha_inicio:contrato.fecha_inicio?_ctFechaLarga(contrato.fecha_inicio):'',
+    contrato_fecha_vencimiento:contrato.fecha_vencimiento?_ctFechaLarga(contrato.fecha_vencimiento):'(indeterminado)',
     contrato_salario:contrato.salario||'',
     fecha_hoy:fmt(new Date().toISOString().slice(0,10)),
   };

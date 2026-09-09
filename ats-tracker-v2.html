@@ -5048,7 +5048,7 @@ function _ctHtmlToPdfDoc(html){
   let y=marginTop;
   const ensureRoom=(h)=>{ if(y+h>pageH-marginBottom){ doc.addPage(); y=marginTop; } };
   const setFont=(b,i)=>doc.setFont('helvetica', b&&i?'bolditalic':b?'bold':i?'italic':'normal');
-  const getAlign=(el)=>(el&&el.style&&el.style.textAlign)||'left';
+  const alignPropio=(el)=>el&&el.style&&el.style.textAlign;
 
   function extraerRuns(el,bold,italic,underline){
     let runs=[];
@@ -5160,40 +5160,61 @@ function _ctHtmlToPdfDoc(html){
     });
   }
 
-  function procesarBloque(el){
-    const tag=el.tagName?el.tagName.toLowerCase():'';
-    const align=getAlign(el);
-    if(tag==='ul'||tag==='ol'){
-      [...el.children].forEach(li=>{
-        const runsLi=extraerRuns(li,false,false,false);
-        const alignLi=getAlign(li)||align;
-        const uniformeLi=runsLi.every(r=>r.br||(!r.bold&&!r.italic&&!r.underline));
-        if(uniformeLi) dibujarUniforme('• '+runsLi.map(r=>r.br?'\n':r.text).join(''),alignLi);
-        else dibujarMixto([{text:'• ',bold:false,italic:false}].concat(runsLi),alignLi);
-      });
-      y+=paraGap;
-      return;
-    }
-    const runs=extraerRuns(el,false,false,false);
+  function dibujarParrafo(runs,align){
     const soloTexto=runs.filter(r=>!r.br);
     const uniforme=soloTexto.every(r=>!r.bold&&!r.italic&&!r.underline);
     if(uniforme) dibujarUniforme(runs.map(r=>r.br?'\n':r.text).join(''),align);
     else dibujarMixto(runs,align);
     y+=paraGap;
   }
+  function procesarLista(el,alignHerencia){
+    const align=alignPropio(el)||alignHerencia||'left';
+    [...el.children].forEach(li=>{
+      const runsLi=extraerRuns(li,false,false,false);
+      const alignLi=alignPropio(li)||align;
+      const uniformeLi=runsLi.every(r=>r.br||(!r.bold&&!r.italic&&!r.underline));
+      if(uniformeLi) dibujarUniforme('• '+runsLi.map(r=>r.br?'\n':r.text).join(''),alignLi);
+      else dibujarMixto([{text:'• ',bold:false,italic:false}].concat(runsLi),alignLi);
+    });
+    y+=paraGap;
+  }
+  // El editor de texto enriquecido no siempre separa los párrafos en elementos <div>/<p>
+  // hermanos: cuando el usuario escribe todo seguido y luego selecciona un fragmento para
+  // "Justificar" o "Centrar", Chrome guarda esa alineación envolviendo "desde ahí hasta el
+  // final" en un <div> anidado DENTRO del párrafo anterior, en vez de crear un hermano
+  // nuevo. Por eso este recorrido es recursivo: cada vez que aparece un bloque anidado se
+  // cierra el párrafo que se venía acumulando (con la alineación que tenía hasta ahí) y se
+  // abre uno nuevo con la alineación propia del bloque anidado, en vez de arrastrar todo el
+  // texto siguiente con la alineación del primer párrafo (que era el bug reportado).
+  function procesarNodo(el,alignHerencia){
+    const align=alignPropio(el)||alignHerencia||'left';
+    let buffer=[];
+    const flush=()=>{ if(buffer.length){ dibujarParrafo(buffer,align); buffer=[]; } };
+    const walk=(nodo,bold,italic,underline)=>{
+      nodo.childNodes.forEach(n=>{
+        if(n.nodeType===Node.TEXT_NODE){
+          if(n.textContent) buffer.push({text:n.textContent,bold,italic,underline});
+          return;
+        }
+        if(n.nodeType!==Node.ELEMENT_NODE) return;
+        const tag=n.tagName.toLowerCase();
+        if(tag==='br'){ buffer.push({br:true}); return; }
+        if(tag==='div'||tag==='p'){ flush(); procesarNodo(n,align); return; }
+        if(tag==='ul'||tag==='ol'){ flush(); procesarLista(n,align); return; }
+        const styleAttr=(n.getAttribute&&n.getAttribute('style'))||'';
+        const isBold=bold||tag==='b'||tag==='strong'||/font-weight\s*:\s*(bold|[6-9]00)/i.test(styleAttr);
+        const isItalic=italic||tag==='i'||tag==='em';
+        const isUnderline=underline||tag==='u'||/text-decoration[^;]*underline/i.test(styleAttr);
+        walk(n,isBold,isItalic,isUnderline);
+      });
+    };
+    walk(el,false,false,false);
+    flush();
+  }
 
   const tmp=document.createElement('div');
   tmp.innerHTML=html;
-  const nodes=[...tmp.childNodes];
-  nodes.forEach(node=>{
-    if(node.nodeType===Node.TEXT_NODE){
-      if(node.textContent.trim()) dibujarUniforme(node.textContent,'left');
-      return;
-    }
-    if(node.nodeType!==Node.ELEMENT_NODE) return;
-    if(node.tagName.toLowerCase()==='br'){ y+=lineH*0.6; return; }
-    procesarBloque(node);
-  });
+  procesarNodo(tmp,'left');
   return doc;
 }
 function _ctGenerarDocPdf(contrato,empId){

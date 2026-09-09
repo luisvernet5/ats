@@ -4709,7 +4709,7 @@ function abrirGestionPlantillasContrato(empId){
       <button class="btn btn-ghost btn-sm" onclick="_ctDuplicarPlantilla('${empId}','${p.id}')" title="Duplicar"><i class="fa fa-copy"></i></button>
       <button class="btn btn-danger btn-sm" onclick="eliminarPlantillaContrato('${empId}','${p.id}')" title="Eliminar"><i class="fa fa-trash"></i></button>
     </div>`).join('');
-  const camposHtml=(emp.contrato_campos_custom||[]).map(cf=>`<span style="display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border-radius:20px;padding:4px 10px;font-size:12px;margin:2px 4px 2px 0" title="Clic para cambiar de dónde toma el dato">
+  const camposHtml=(emp.contrato_campos_custom||[]).map(cf=>`<span style="display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border-radius:20px;padding:4px 10px;font-size:12px;margin:2px 4px 2px 0" title="Clic para editar el nombre o el origen del dato">
     <span style="cursor:pointer" onclick="_ctEditarFuenteCampo('${empId}','${cf.key}')">${_esc(cf.label)} — <span style="color:${cf.fuente?'var(--accent)':'var(--text3)'}">${cf.fuente?'automático':'manual'}</span></span>
     <button type="button" onclick="_ctEliminarCampoPersonalizado('${empId}','${cf.key}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px">×</button>
   </span>`).join('');
@@ -4844,9 +4844,10 @@ function _ctEditarFuenteCampo(empId,key){
   modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3300;display:flex;align-items:center;justify-content:center;padding:20px';
   modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:420px;max-width:96vw;padding:24px;box-shadow:0 8px 32px #0004">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div style="font-weight:700;font-size:15px">${_esc(cf.label)}</div>
+      <div style="font-weight:700;font-size:15px">Editar campo personalizado</div>
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-editar-fuente-campo').remove()"><i class="fa fa-times"></i></button>
     </div>
+    <div class="fg" style="margin-bottom:14px"><label>Nombre del campo</label><input type="text" id="ct-editar-campo-label" value="${_esc(cf.label)}"></div>
     <div class="fg"><label>¿De dónde toma el dato este campo?</label><select id="ct-editar-campo-fuente">
       <option value="">Se captura al crear cada contrato</option>
       ${_ctFuentesColaborador(empId).map(f=>`<option value="${f.value}" ${cf.fuente===f.value?'selected':''}>${f.label}</option>`).join('')}
@@ -4863,6 +4864,9 @@ async function _ctGuardarFuenteCampo(empId,key){
   if(!emp) return;
   const cf=(emp.contrato_campos_custom||[]).find(x=>x.key===key);
   if(!cf) return;
+  const label=(document.getElementById('ct-editar-campo-label').value||'').trim();
+  if(!label){showToast('Escribe un nombre para el campo','err');return;}
+  cf.label=label;
   cf.fuente=document.getElementById('ct-editar-campo-fuente').value||null;
   try{
     await saveRecord('empresas',emp);

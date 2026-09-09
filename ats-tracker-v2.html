@@ -4633,7 +4633,13 @@ function _ctFuentesColaborador(empId){
     {value:'colab:estado_civil',label:'Colaborador — Estado civil'},
     {value:'colab:telefono',label:'Colaborador — Teléfono'},
     {value:'colab:correo',label:'Colaborador — Correo'},
-    {value:'colab:direccion',label:'Colaborador — Domicilio'},
+    {value:'colab:direccion',label:'Colaborador — Domicilio (completo)'},
+    {value:'colab:domicilio_calle',label:'Colaborador — Domicilio: Calle'},
+    {value:'colab:domicilio_numero_ext',label:'Colaborador — Domicilio: Número ext.'},
+    {value:'colab:domicilio_numero_int',label:'Colaborador — Domicilio: Número int.'},
+    {value:'colab:domicilio_colonia',label:'Colaborador — Domicilio: Colonia'},
+    {value:'colab:domicilio_ciudad',label:'Colaborador — Domicilio: Población/Ciudad'},
+    {value:'colab:domicilio_estado',label:'Colaborador — Domicilio: Estado'},
     {value:'colab:banco',label:'Colaborador — Banco'},
     {value:'colab:cuenta',label:'Colaborador — Cuenta'},
     {value:'colab:clabe',label:'Colaborador — CLABE'},
@@ -15887,6 +15893,7 @@ async function eliminarDocumentoExpedienteInd(colabId,empId,catIndex){
 }
 
 const _BANCOS_MX=['BBVA','Citibanamex','Santander','Banorte','HSBC','Scotiabank','Inbursa','Banco Azteca','BanBajío','Banregio','Afirme','Multiva','Mifel','Invex','Banco del Bienestar','Bancoppel','Compartamos Banco','Nu México','STP'];
+const _ESTADOS_MX=['Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Ciudad de México','Coahuila','Colima','Durango','Estado de México','Guanajuato','Guerrero','Hidalgo','Jalisco','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas'];
 function _colabBancoToggle(){
   const sel=document.getElementById('colab-banco-sel');
   const otro=document.getElementById('colab-banco-otro');
@@ -15964,7 +15971,6 @@ function abrirColaboradorModal(empId,id=null){
         </div>
         <div class="fg"><label>País de nacimiento</label><input type="text" id="colab-pais-nacimiento" value="${_esc(existing?.pais_nacimiento||'')}" placeholder="Ej. México"></div>
         <div class="fg"><label>Nacionalidad</label><input type="text" id="colab-nacionalidad" value="${_esc(existing?.nacionalidad||'')}" placeholder="Ej. Mexicana"></div>
-        <div class="fg"><label>Código postal</label><input type="text" id="colab-codigo-postal" value="${_esc(existing?.codigo_postal||'')}" maxlength="5" inputmode="numeric" placeholder="5 dígitos"></div>
         <div class="fg"><label>Estado civil</label>
           <select id="colab-estado-civil">
             <option value="">Seleccionar...</option>
@@ -15977,7 +15983,7 @@ function abrirColaboradorModal(empId,id=null){
         </div>
       </div>
 
-      <div class="sep">Datos bancarios y domicilio</div>
+      <div class="sep">Datos bancarios</div>
       <div class="fr g3c" style="margin-bottom:16px">
         <div class="fg">
           <label>Banco</label>
@@ -15991,7 +15997,25 @@ function abrirColaboradorModal(empId,id=null){
         <div class="fg"><label>Número de cuenta</label><input type="text" id="colab-cuenta" value="${_esc(existing?.cuenta||existing?.cuenta_clabe||'')}"></div>
         <div class="fg"><label>CLABE</label><input type="text" id="colab-clabe" value="${_esc(existing?.clabe||'')}" maxlength="18" inputmode="numeric" placeholder="18 dígitos"></div>
       </div>
-      <div class="fg" style="margin-bottom:16px"><label>Dirección</label><input type="text" id="colab-direccion" value="${_esc(existing?.direccion||'')}" placeholder="Calle, colonia, ciudad, CP"></div>
+
+      <div class="sep">Domicilio</div>
+      <div class="fr g3c" style="margin-bottom:14px">
+        <div class="fg"><label>Calle</label><input type="text" id="colab-dom-calle" value="${_esc(existing?.domicilio_calle||'')}"></div>
+        <div class="fg"><label>Número ext.</label><input type="text" id="colab-dom-numext" value="${_esc(existing?.domicilio_numero_ext||'')}"></div>
+        <div class="fg"><label>Número int.</label><input type="text" id="colab-dom-numint" value="${_esc(existing?.domicilio_numero_int||'')}"></div>
+      </div>
+      <div class="fr g3c" style="margin-bottom:14px">
+        <div class="fg"><label>Colonia</label><input type="text" id="colab-dom-colonia" value="${_esc(existing?.domicilio_colonia||'')}"></div>
+        <div class="fg"><label>Población / Ciudad</label><input type="text" id="colab-dom-ciudad" value="${_esc(existing?.domicilio_ciudad||'')}"></div>
+        <div class="fg"><label>Código postal</label><input type="text" id="colab-codigo-postal" value="${_esc(existing?.codigo_postal||'')}" maxlength="5" inputmode="numeric" placeholder="5 dígitos"></div>
+      </div>
+      <div class="fg" style="margin-bottom:16px">
+        <label>Estado</label>
+        <select id="colab-dom-estado">
+          <option value="">Selecciona...</option>
+          ${_ESTADOS_MX.map(e=>`<option value="${_esc(e)}" ${existing?.domicilio_estado===e?'selected':''}>${_esc(e)}</option>`).join('')}
+        </select>
+      </div>
 
       <div class="sep">Contacto de emergencia</div>
       <div class="fr" style="margin-bottom:16px">
@@ -16117,6 +16141,20 @@ async function agregarCampoCustomColaborador(empId){
   await logActivity('Agregar campo personalizado','colaboradores',empId,`Campo "${label}" agregado a colaboradores — ${emp.nombre||empId}`);
 }
 
+function _colabComponerDireccion(){
+  const calle=(document.getElementById('colab-dom-calle').value||'').trim();
+  const numExt=(document.getElementById('colab-dom-numext').value||'').trim();
+  const numInt=(document.getElementById('colab-dom-numint').value||'').trim();
+  const colonia=(document.getElementById('colab-dom-colonia').value||'').trim();
+  const ciudad=(document.getElementById('colab-dom-ciudad').value||'').trim();
+  const estado=document.getElementById('colab-dom-estado').value||'';
+  const cp=(document.getElementById('colab-codigo-postal').value||'').trim();
+  let calleNum=calle;
+  if(numExt) calleNum+=(calleNum?' #':'#')+numExt;
+  if(numInt) calleNum+=` int. ${numInt}`;
+  const partes=[calleNum,colonia,ciudad,estado,cp?'CP '+cp:''].filter(Boolean);
+  return partes.join(', ')||null;
+}
 async function guardarColaborador(){
   const id=document.getElementById('colab-id').value;
   const empId=document.getElementById('colab-emp-id').value;
@@ -16164,7 +16202,13 @@ async function guardarColaborador(){
     banco:bancoVal||null,
     cuenta:(document.getElementById('colab-cuenta').value||'').trim()||null,
     clabe:(document.getElementById('colab-clabe').value||'').trim()||null,
-    direccion:(document.getElementById('colab-direccion').value||'').trim()||null,
+    domicilio_calle:(document.getElementById('colab-dom-calle').value||'').trim()||null,
+    domicilio_numero_ext:(document.getElementById('colab-dom-numext').value||'').trim()||null,
+    domicilio_numero_int:(document.getElementById('colab-dom-numint').value||'').trim()||null,
+    domicilio_colonia:(document.getElementById('colab-dom-colonia').value||'').trim()||null,
+    domicilio_ciudad:(document.getElementById('colab-dom-ciudad').value||'').trim()||null,
+    domicilio_estado:document.getElementById('colab-dom-estado').value||null,
+    direccion:_colabComponerDireccion(),
     contacto_emergencia_nombre:(document.getElementById('colab-emerg-nombre').value||'').trim()||null,
     contacto_emergencia_telefono:(document.getElementById('colab-emerg-telefono').value||'').trim()||null,
     campos_extra,

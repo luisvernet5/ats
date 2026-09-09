@@ -4114,6 +4114,7 @@ function _contListaHtml(empId){
       <td style="font-size:12px;color:var(--text2)">${c.fecha_vencimiento?fmt(c.fecha_vencimiento):'—'}</td>
       <td><span class="badge" style="background:${est.color}22;color:${est.color}">${est.label}</span></td>
       <td style="text-align:right;white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="previsualizarContratoPDF('${c.id}','${empId}')" title="Previsualizar contrato"><i class="fa fa-eye"></i></button>
         <button class="btn btn-ghost btn-sm" onclick="generarContratoPDF('${c.id}','${empId}')" title="Generar PDF desde la plantilla"><i class="fa fa-file-export"></i></button>
         <button class="btn btn-ghost btn-sm" onclick="abrirContratoModal('${empId}','${c.id}')" title="Editar"><i class="fa fa-edit"></i></button>
         <button class="btn btn-danger btn-sm" onclick="eliminarContrato('${c.id}','${empId}')" title="Eliminar"><i class="fa fa-trash"></i></button>
@@ -5148,6 +5149,13 @@ function generarContratoPDF(contratoId,empId){
   if(!doc) return;
   const colab=(DB.colaboradores||[]).find(c=>c.id===contrato.colaborador_id)||{};
   doc.save(`Contrato_${(colab.nombre||'colaborador').replace(/[^a-zA-Z0-9]/g,'_')}.pdf`);
+}
+function previsualizarContratoPDF(contratoId,empId){
+  const contrato=(DB.contratos||[]).find(c=>c.id===contratoId);
+  if(!contrato) return;
+  const doc=_ctGenerarDocPdf(contrato,empId);
+  if(!doc) return;
+  window.open(doc.output('bloburl'),'_blank');
 }
 async function generarContratosPDFZip(empId){
   const emp=DB.empresas.find(e=>e.id===empId)||{};

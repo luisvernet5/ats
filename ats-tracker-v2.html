@@ -4929,7 +4929,10 @@ function _ctAplicarAlineaciones(html,alineaciones){
   if(!alineaciones||!alineaciones.length) return html;
   const tmp=document.createElement('div');
   tmp.innerHTML=html;
-  [...tmp.querySelectorAll('p, li')].forEach((el,i)=>{
+  // Un párrafo con estilo "Encabezado" en Word lo convierte mammoth en <h1>-<h6>, no en
+  // <p> — si no se incluyen aquí, no solo ese título se queda sin alinear: como se salta
+  // del conteo, TODOS los párrafos siguientes quedan además desfasados una posición.
+  [...tmp.querySelectorAll('p, li, h1, h2, h3, h4, h5, h6, blockquote')].forEach((el,i)=>{
     const align=alineaciones[i];
     if(align&&align!=='left') el.style.textAlign=align;
   });
@@ -5070,6 +5073,10 @@ function _ctHtmlToPdfDoc(html){
   const ensureRoom=(h)=>{ if(y+h>pageH-marginBottom){ doc.addPage(); y=marginTop; } };
   const setFont=(b,i)=>doc.setFont('helvetica', b&&i?'bolditalic':b?'bold':i?'italic':'normal');
   const alignPropio=(el)=>el&&el.style&&el.style.textAlign;
+  // Word suele marcar algunas cláusulas/títulos con estilo "Encabezado" y mammoth los
+  // convierte en <h1>-<h6> (no en <p>/<div>) — cuentan como su propio párrafo igual que
+  // un <p>, si no su alineación propia (ej. un título centrado) se pierde por completo.
+  const _CT_TAGS_BLOQUE=new Set(['div','p','h1','h2','h3','h4','h5','h6','blockquote']);
 
   function extraerRuns(el,bold,italic,underline){
     let runs=[];
@@ -5220,7 +5227,7 @@ function _ctHtmlToPdfDoc(html){
         if(n.nodeType!==Node.ELEMENT_NODE) return;
         const tag=n.tagName.toLowerCase();
         if(tag==='br'){ buffer.push({br:true}); return; }
-        if(tag==='div'||tag==='p'){ flush(); procesarNodo(n,align); return; }
+        if(_CT_TAGS_BLOQUE.has(tag)){ flush(); procesarNodo(n,align); return; }
         if(tag==='ul'||tag==='ol'){ flush(); procesarLista(n,align); return; }
         const styleAttr=(n.getAttribute&&n.getAttribute('style'))||'';
         const isBold=bold||tag==='b'||tag==='strong'||/font-weight\s*:\s*(bold|[6-9]00)/i.test(styleAttr);

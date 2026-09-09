@@ -4571,7 +4571,10 @@ function _ctCamposDisponibles(empId){
     {key:'fecha_hoy',label:'Fecha de hoy'},
   ];
   const emp=DB.empresas.find(e=>e.id===empId)||{};
-  const custom=(emp.contrato_campos_custom||[]).map(cf=>({key:'extra_'+cf.key,label:'Personalizado — '+cf.label}));
+  const custom=(emp.contrato_campos_custom||[]).map(cf=>({
+    key:'extra_'+cf.key,
+    label:'Personalizado — '+cf.label+(cf.fuente?' (automático, de Personal)':' (se captura al crear el contrato)'),
+  }));
   return base.concat(custom);
 }
 // Fuentes desde Administrador de Personal que un campo personalizado de contrato puede
@@ -4658,7 +4661,7 @@ function abrirGestionPlantillasContrato(empId){
       <button class="btn btn-danger btn-sm" onclick="eliminarPlantillaContrato('${empId}','${p.id}')" title="Eliminar"><i class="fa fa-trash"></i></button>
     </div>`).join('');
   const camposHtml=(emp.contrato_campos_custom||[]).map(cf=>`<span style="display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border-radius:20px;padding:4px 10px;font-size:12px;margin:2px 4px 2px 0" title="Clic para cambiar de dónde toma el dato">
-    <span style="cursor:pointer" onclick="_ctEditarFuenteCampo('${empId}','${cf.key}')">${_esc(cf.label)}${cf.fuente?` <i class="fa fa-link" style="font-size:10px;color:var(--accent)"></i>`:''}</span>
+    <span style="cursor:pointer" onclick="_ctEditarFuenteCampo('${empId}','${cf.key}')">${_esc(cf.label)} — <span style="color:${cf.fuente?'var(--accent)':'var(--text3)'}">${cf.fuente?'automático':'manual'}</span></span>
     <button type="button" onclick="_ctEliminarCampoPersonalizado('${empId}','${cf.key}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px">×</button>
   </span>`).join('');
   modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:560px;max-width:96vw;max-height:88vh;overflow-y:auto;padding:24px;box-shadow:0 8px 32px #0004">
@@ -4710,6 +4713,7 @@ function abrirPlantillaContratoModal(empId,plantillaId){
       </select>
       <button class="btn btn-primary btn-sm" onclick="_ctInsertarCampo()"><i class="fa fa-plus"></i> Insertar</button>
     </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Los que dicen <b>Colaborador —</b>, <b>Contrato —</b> o <b>Empresa —</b> siempre se llenan solos. Los <b>Personalizado —</b> dicen entre paréntesis si son automáticos o si se piden al crear cada contrato.</div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
       <input type="text" id="ct-nuevo-campo-label" placeholder="Nombre de un campo nuevo que no está en la lista…" style="flex:1;min-width:180px">
       <select id="ct-nuevo-campo-fuente" style="width:auto;min-width:240px">

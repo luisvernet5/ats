@@ -22101,55 +22101,28 @@ function renderNom035(){
     </div>
 
     <div class="n035-pane active" id="n035-module-calificacion">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;gap:16px;flex-wrap:wrap">
-        <div>
-          <div class="sec-title" style="margin-bottom:4px">Evaluaciones NOM-035</div>
-          <div style="font-size:12px;color:var(--text3)">Historial de cuestionarios aplicados a esta empresa.</div>
+      <div id="n035-eval-list-view">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;gap:16px;flex-wrap:wrap">
+          <div>
+            <div class="sec-title" style="margin-bottom:4px">Evaluaciones NOM-035</div>
+            <div style="font-size:12px;color:var(--text3)">Historial de evaluaciones aplicadas a esta empresa.</div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="n035-btn-add-eval" onclick="n035AbrirModalNuevaEvaluacion()"><i class="fa fa-plus"></i> Añadir evaluación</button>
         </div>
-        <button class="btn btn-primary" id="n035-btn-add-eval" onclick="n035ToggleFormAgregar()"><i class="fa fa-plus"></i> Añadir evaluación</button>
-      </div>
-      <div id="n035-eval-list" style="margin:16px 0 24px">
-        <div style="text-align:center;padding:40px 20px;color:var(--text3)">Cargando evaluaciones...</div>
+        <div id="n035-eval-list" style="margin:16px 0 24px">
+          <div style="text-align:center;padding:40px 20px;color:var(--text3)">Cargando evaluaciones...</div>
+        </div>
       </div>
 
-      <div id="n035-form-agregar" style="display:none;border-top:1px solid var(--border);padding-top:20px">
-      <div class="sec-title" style="margin-bottom:4px">Subir cuestionario</div>
-      <div style="font-size:12px;color:var(--text3);max-width:560px;margin-bottom:16px">Sube tu Excel de respuestas — el motor detecta automáticamente la hoja con datos y califica con los algoritmos oficiales de las tres guías.</div>
-      <div class="n035-tabs">
-        <button class="n035-tab active" id="n035-tab-c1" onclick="n035SetTab('c1')">Cuestionario I</button>
-        <button class="n035-tab" id="n035-tab-c2" onclick="n035SetTab('c2')">Cuestionario II</button>
-        <button class="n035-tab" id="n035-tab-c3" onclick="n035SetTab('c3')">Cuestionario III</button>
-      </div>
-      <div id="n035-tabpane-c1" class="n035-pane active">
-        <div class="n035-upload-zone" id="n035-drop-c1" onclick="document.getElementById('n035-file-c1').click()">
-          <i class="fa fa-file-arrow-up"></i>
-          <h3>Subir Excel – Cuestionario I</h3>
-          <p>Acontecimiento traumático severo · 20 preguntas Sí/No</p>
-          <input type="file" id="n035-file-c1" accept=".xlsx,.xlsm,.xls" onchange="n035LoadFile(1,this)">
-          <button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="n035DescargarPlantilla(1);event.stopPropagation()"><i class="fa fa-download"></i> Descargar plantilla Excel</button>
+      <div id="n035-eval-detail-view" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:10px">
+            <button class="btn btn-ghost btn-sm" onclick="n035VolverListaEvaluaciones()"><i class="fa fa-arrow-left"></i> Evaluaciones</button>
+            <span style="font-size:15px;font-weight:700" id="n035-eval-detail-titulo"></span>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="n035EliminarEvaluacion(_n035EvaluacionAbierta)"><i class="fa fa-trash"></i> Eliminar evaluación</button>
         </div>
-        <div id="n035-result-c1"></div>
-      </div>
-      <div id="n035-tabpane-c2" class="n035-pane">
-        <div class="n035-upload-zone" id="n035-drop-c2" onclick="document.getElementById('n035-file-c2').click()">
-          <i class="fa fa-file-arrow-up"></i>
-          <h3>Subir Excel – Cuestionario II</h3>
-          <p>Factores de riesgo psicosocial · 46 ítems Likert</p>
-          <input type="file" id="n035-file-c2" accept=".xlsx,.xlsm,.xls" onchange="n035LoadFile(2,this)">
-          <button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="n035DescargarPlantilla(2);event.stopPropagation()"><i class="fa fa-download"></i> Descargar plantilla Excel</button>
-        </div>
-        <div id="n035-result-c2"></div>
-      </div>
-      <div id="n035-tabpane-c3" class="n035-pane">
-        <div class="n035-upload-zone" id="n035-drop-c3" onclick="document.getElementById('n035-file-c3').click()">
-          <i class="fa fa-file-arrow-up"></i>
-          <h3>Subir Excel – Cuestionario III</h3>
-          <p>Factores de riesgo + entorno organizacional · 72 ítems</p>
-          <input type="file" id="n035-file-c3" accept=".xlsx,.xlsm,.xls" onchange="n035LoadFile(3,this)">
-          <button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="n035DescargarPlantilla(3);event.stopPropagation()"><i class="fa fa-download"></i> Descargar plantilla Excel</button>
-        </div>
-        <div id="n035-result-c3"></div>
-      </div>
+        <div id="n035-eval-detail-body"></div>
       </div>
     </div>
 
@@ -22442,6 +22415,29 @@ function renderNom035(){
         <div class="mf">
           <button class="btn btn-ghost" onclick="closeModal('n035-modal-guardar-examen')">Cancelar</button>
           <button class="btn btn-primary" id="n035-guardar-examen-btn" onclick="n035ConfirmarGuardarExamen()">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="n035-modal-nueva-evaluacion">
+      <div class="modal">
+        <div class="mh"><h3>Nueva evaluación NOM-035</h3><button class="xbtn" onclick="closeModal('n035-modal-nueva-evaluacion')">✕</button></div>
+        <div class="mb">
+          <div class="fr full">
+            <div class="fg"><label>Año de la evaluación</label><input type="number" id="n035-nueva-eval-anio" min="2015" max="2100" placeholder="Ej. 2026"></div>
+          </div>
+          <div class="fg" style="margin-top:16px">
+            <label>¿Qué cuestionarios se aplicaron?</label>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;color:var(--text);cursor:pointer"><input type="checkbox" id="n035-nueva-eval-c1"> Cuestionario I — Acontecimiento traumático severo</label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;color:var(--text);cursor:pointer"><input type="checkbox" id="n035-nueva-eval-c2"> Cuestionario II — Factores de riesgo psicosocial</label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;color:var(--text);cursor:pointer"><input type="checkbox" id="n035-nueva-eval-c3"> Cuestionario III — Riesgo + entorno organizacional</label>
+            </div>
+          </div>
+        </div>
+        <div class="mf">
+          <button class="btn btn-ghost" onclick="closeModal('n035-modal-nueva-evaluacion')">Cancelar</button>
+          <button class="btn btn-primary" id="n035-nueva-eval-btn" onclick="n035ConfirmarNuevaEvaluacion()">Crear</button>
         </div>
       </div>
     </div>
@@ -22767,8 +22763,8 @@ async function n035ConfirmarGuardarExamen() {
   const btn = document.getElementById('n035-guardar-examen-btn');
   btn.disabled = true; btn.textContent = 'Guardando...';
   try{
-    const { error } = await sbClient.from('nom035_evaluaciones').insert({
-      empresa_id: _n035EmpresaATS,
+    const { error } = await sbClient.from('nom035_resultados').insert({
+      evaluacion_id: _n035EvaluacionAbierta,
       cuestionario: cuest,
       fecha_aplicacion: fecha,
       nombre_archivo: _n035LastFileName[cuest] || null,
@@ -22778,9 +22774,7 @@ async function n035ConfirmarGuardarExamen() {
     });
     if (error) throw error;
     closeModal('n035-modal-guardar-examen');
-    showToast(`Evaluación del Cuestionario ${['I','II','III'][cuest-1]} guardada ✓`, 'ok');
-    n035ToggleFormAgregar(false);
-    await n035CargarEvaluacionesGuardadas();
+    showToast(`Cuestionario ${['I','II','III'][cuest-1]} guardado ✓`, 'ok');
   }catch(e){
     showToast('Error al guardar: '+e.message, 'error');
   }finally{
@@ -22789,23 +22783,66 @@ async function n035ConfirmarGuardarExamen() {
 }
 
 // ── Evaluaciones guardadas (Supabase del propio ATS, por empresa) ──
+// Una "evaluación" agrupa año + qué cuestionarios se van a aplicar; cada
+// cuestionario subido/calificado se guarda como su propio registro en
+// nom035_resultados, ligado a esa evaluación por evaluacion_id.
+const N035_CUEST_META = {
+  1: {titulo:'Cuestionario I', sub:'Acontecimiento traumático severo · 20 preguntas Sí/No'},
+  2: {titulo:'Cuestionario II', sub:'Factores de riesgo psicosocial · 46 ítems Likert'},
+  3: {titulo:'Cuestionario III', sub:'Factores de riesgo + entorno organizacional · 72 ítems'},
+};
 let _n035Evaluaciones = [];
-function n035ToggleFormAgregar(mostrar){
-  const el=document.getElementById('n035-form-agregar');
-  if(!el) return;
-  const show = mostrar!==undefined ? mostrar : el.style.display==='none';
-  el.style.display = show ? '' : 'none';
-  const btn=document.getElementById('n035-btn-add-eval');
-  if(btn) btn.innerHTML = show ? '<i class="fa fa-xmark"></i> Cerrar' : '<i class="fa fa-plus"></i> Añadir evaluación';
+let _n035ResultadosPorEvaluacion = {}; // evaluacion_id -> [{cuestionario,total_colaboradores,resumen}]
+let _n035EvaluacionAbierta = null;
+let _n035ResultadosActuales = []; // resultados completos de la evaluación abierta
+
+function n035AbrirModalNuevaEvaluacion(){
+  document.getElementById('n035-nueva-eval-anio').value = new Date().getFullYear();
+  [1,2,3].forEach(n=>document.getElementById('n035-nueva-eval-c'+n).checked=false);
+  const btn=document.getElementById('n035-nueva-eval-btn');
+  btn.disabled=false; btn.textContent='Crear';
+  openModal('n035-modal-nueva-evaluacion');
+}
+async function n035ConfirmarNuevaEvaluacion(){
+  const anio=parseInt(document.getElementById('n035-nueva-eval-anio').value,10);
+  if(!anio||anio<2000||anio>2100){showToast('Escribe un año válido','error');return;}
+  const cuestionarios=[1,2,3].filter(n=>document.getElementById('n035-nueva-eval-c'+n).checked);
+  if(!cuestionarios.length){showToast('Selecciona al menos un cuestionario','error');return;}
+  const btn=document.getElementById('n035-nueva-eval-btn');
+  btn.disabled=true; btn.textContent='Creando...';
+  try{
+    const id=crypto.randomUUID();
+    const nuevaEval={id,empresa_id:_n035EmpresaATS,anio,cuestionarios,created_at:new Date().toISOString()};
+    const {error}=await sbClient.from('nom035_evaluaciones').insert(nuevaEval);
+    if(error) throw error;
+    closeModal('n035-modal-nueva-evaluacion');
+    showToast('Evaluación creada ✓');
+    _n035Evaluaciones.unshift(nuevaEval);
+    n035AbrirDetalleEvaluacion(id);
+  }catch(e){
+    showToast('Error al crear: '+e.message,'error');
+  }finally{
+    btn.disabled=false; btn.textContent='Crear';
+  }
 }
 async function n035CargarEvaluacionesGuardadas(){
   const el=document.getElementById('n035-eval-list');
   if(!el || !_n035EmpresaATS) return;
+  _n035EvaluacionAbierta = null;
+  document.getElementById('n035-eval-list-view').style.display='';
+  document.getElementById('n035-eval-detail-view').style.display='none';
   el.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text3)">Cargando evaluaciones...</div>';
   try{
-    const {data,error}=await sbClient.from('nom035_evaluaciones').select('*').eq('empresa_id',_n035EmpresaATS).order('fecha_aplicacion',{ascending:false});
+    const {data:evals,error}=await sbClient.from('nom035_evaluaciones').select('*').eq('empresa_id',_n035EmpresaATS).order('anio',{ascending:false});
     if(error) throw error;
-    _n035Evaluaciones = data||[];
+    _n035Evaluaciones = evals||[];
+    _n035ResultadosPorEvaluacion = {};
+    const ids=_n035Evaluaciones.map(e=>e.id);
+    if(ids.length){
+      const {data:resultados,error:e2}=await sbClient.from('nom035_resultados').select('evaluacion_id,cuestionario,total_colaboradores,resumen').in('evaluacion_id',ids);
+      if(e2) throw e2;
+      (resultados||[]).forEach(r=>{ (_n035ResultadosPorEvaluacion[r.evaluacion_id]=_n035ResultadosPorEvaluacion[r.evaluacion_id]||[]).push(r); });
+    }
     n035RenderEvaluacionesGuardadas();
   }catch(e){
     el.innerHTML = `<div class="n035-msg n035-msg-warn"><span>⚠</span><span>Error al cargar evaluaciones: ${_esc(e.message)}</span></div>`;
@@ -22817,45 +22854,84 @@ function n035RenderEvaluacionesGuardadas(){
   if(!_n035Evaluaciones.length){
     el.innerHTML=`<div style="text-align:center;padding:40px 20px;color:var(--text3)">
       <i class="fa fa-clipboard-check" style="font-size:28px;margin-bottom:12px;display:block"></i>
-      <div style="font-size:14px;font-weight:600">Aún no hay evaluaciones guardadas</div>
-      <div style="font-size:13px">Da clic en "Añadir evaluación" para subir el primer cuestionario.</div>
+      <div style="font-size:14px;font-weight:600">Aún no hay evaluaciones</div>
+      <div style="font-size:13px">Da clic en "Añadir evaluación" para crear la primera.</div>
     </div>`;
     return;
   }
   el.innerHTML=_n035Evaluaciones.map(ev=>{
-    const nombreCuest=['','Cuestionario I','Cuestionario II','Cuestionario III'][ev.cuestionario]||'—';
-    const fecha=n035FmtDate(ev.fecha_aplicacion);
-    const resumenTxt = ev.cuestionario===1
-      ? `${ev.resumen?.atencion||0} requieren atención · ${ev.resumen?.no_atencion||0} sin atención`
-      : `Muy alto ${ev.resumen?.muy_alto||0} · Alto ${ev.resumen?.alto||0} · Medio ${ev.resumen?.medio||0} · Bajo ${ev.resumen?.bajo||0} · Nulo ${ev.resumen?.nulo||0}`;
-    return `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:10px;cursor:pointer" onclick="n035VerEvaluacionGuardada('${ev.id}')">
+    const subidos=new Set((_n035ResultadosPorEvaluacion[ev.id]||[]).map(r=>r.cuestionario));
+    const badges=(ev.cuestionarios||[]).map(n=>{
+      const ok=subidos.has(n);
+      return `<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${ok?'var(--green)':'var(--surface2)'};color:${ok?'#fff':'var(--text3)'};border:1px solid ${ok?'var(--green)':'var(--border2)'}">C.${['','I','II','III'][n]} ${ok?'✓':'—'}</span>`;
+    }).join(' ');
+    return `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:10px;cursor:pointer" onclick="n035AbrirDetalleEvaluacion('${ev.id}')">
       <div style="min-width:0">
-        <div style="font-weight:600;font-size:14px">${nombreCuest} <span style="color:var(--text3);font-weight:400">· ${_esc(ev.nombre_archivo||'')}</span></div>
-        <div style="font-size:12px;color:var(--text3);margin-top:2px">${fecha} · ${ev.total_colaboradores} colaborador${ev.total_colaboradores!==1?'es':''} · ${_esc(resumenTxt)}</div>
+        <div style="font-weight:600;font-size:14px">Evaluación ${ev.anio}</div>
+        <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">${badges}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
-        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();n035VerEvaluacionGuardada('${ev.id}')"><i class="fa fa-eye"></i> Ver</button>
-        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="event.stopPropagation();n035EliminarEvaluacionGuardada('${ev.id}')" title="Eliminar"><i class="fa fa-trash"></i></button>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();n035AbrirDetalleEvaluacion('${ev.id}')"><i class="fa fa-eye"></i> Ver</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="event.stopPropagation();n035EliminarEvaluacion('${ev.id}')" title="Eliminar"><i class="fa fa-trash"></i></button>
       </div>
     </div>`;
   }).join('');
 }
-function n035VerEvaluacionGuardada(id){
-  const ev=_n035Evaluaciones.find(e=>e.id===id);
-  if(!ev){showToast('Evaluación no encontrada','error');return;}
-  n035ToggleFormAgregar(true);
-  n035SetTab('c'+ev.cuestionario);
-  if(ev.cuestionario===1) n035RenderI(ev.resultados, ev.nombre_archivo||'', true);
-  else if(ev.cuestionario===2) n035RenderLikert(2, ev.resultados, ev.nombre_archivo||'', N035_CAT2, N035_THR2);
-  else n035RenderLikert(3, ev.resultados, ev.nombre_archivo||'', N035_CAT3, N035_THR3);
-  document.getElementById('n035-tabpane-c'+ev.cuestionario)?.scrollIntoView({behavior:'smooth',block:'start'});
-}
-async function n035EliminarEvaluacionGuardada(id){
-  if(!confirm('¿Eliminar esta evaluación guardada? Esta acción no se puede deshacer.')) return;
+async function n035AbrirDetalleEvaluacion(evalId){
+  _n035EvaluacionAbierta = evalId;
+  document.getElementById('n035-eval-list-view').style.display='none';
+  document.getElementById('n035-eval-detail-view').style.display='';
+  const ev=_n035Evaluaciones.find(e=>e.id===evalId);
+  document.getElementById('n035-eval-detail-titulo').textContent = ev?('Evaluación '+ev.anio):'';
+  const body=document.getElementById('n035-eval-detail-body');
+  body.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3)">Cargando...</div>';
   try{
-    const {error}=await sbClient.from('nom035_evaluaciones').delete().eq('id',id);
+    const {data,error}=await sbClient.from('nom035_resultados').select('*').eq('evaluacion_id',evalId);
+    if(error) throw error;
+    _n035ResultadosActuales = data||[];
+  }catch(e){
+    showToast('Error al cargar resultados: '+e.message,'error');
+    _n035ResultadosActuales = [];
+  }
+  n035RenderDetalleEvaluacion();
+}
+function n035RenderDetalleEvaluacion(){
+  const ev=_n035Evaluaciones.find(e=>e.id===_n035EvaluacionAbierta);
+  const body=document.getElementById('n035-eval-detail-body');
+  if(!ev||!body) return;
+  body.innerHTML=(ev.cuestionarios||[]).map(n=>{
+    const meta=N035_CUEST_META[n];
+    return `<div class="card" style="margin-bottom:16px;padding:20px">
+      <div style="font-weight:600;margin-bottom:2px">${meta.titulo}</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:14px">${meta.sub}</div>
+      <div class="n035-upload-zone" id="n035-drop-c${n}" onclick="document.getElementById('n035-file-c${n}').click()">
+        <i class="fa fa-file-arrow-up"></i>
+        <h3>Subir Excel</h3>
+        <p>${meta.sub}</p>
+        <input type="file" id="n035-file-c${n}" accept=".xlsx,.xlsm,.xls" onchange="n035LoadFile(${n},this)">
+        <button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="n035DescargarPlantilla(${n});event.stopPropagation()"><i class="fa fa-download"></i> Descargar plantilla Excel</button>
+      </div>
+      <div id="n035-result-c${n}"></div>
+    </div>`;
+  }).join('');
+  n035WireDragDrop();
+  _n035ResultadosActuales.forEach(r=>{
+    if(r.cuestionario===1) n035RenderI(r.resultados, r.nombre_archivo||'', true);
+    else n035RenderLikert(r.cuestionario, r.resultados, r.nombre_archivo||'', r.cuestionario===2?N035_CAT2:N035_CAT3, r.cuestionario===2?N035_THR2:N035_THR3);
+  });
+}
+function n035VolverListaEvaluaciones(){
+  _n035EvaluacionAbierta = null;
+  n035CargarEvaluacionesGuardadas();
+}
+async function n035EliminarEvaluacion(evalId){
+  if(!evalId) return;
+  if(!confirm('¿Eliminar esta evaluación y todos sus resultados guardados? Esta acción no se puede deshacer.')) return;
+  try{
+    const {error}=await sbClient.from('nom035_evaluaciones').delete().eq('id',evalId);
     if(error) throw error;
     showToast('Evaluación eliminada ✓');
+    if(_n035EvaluacionAbierta===evalId) _n035EvaluacionAbierta=null;
     await n035CargarEvaluacionesGuardadas();
   }catch(e){
     showToast('Error al eliminar: '+e.message,'error');

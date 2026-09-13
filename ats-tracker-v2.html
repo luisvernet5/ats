@@ -22115,17 +22115,24 @@ function renderNom035(){
       </div>
 
       <div id="n035-eval-detail-view" style="display:none">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:15px;font-weight:700" id="n035-eval-detail-titulo"></span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-ghost btn-sm" onclick="n035DescargarPlantilla(_n035CuestionarioActivo)"><i class="fa fa-download"></i> Plantilla</button>
-            <button class="btn btn-primary btn-sm" onclick="document.getElementById('n035-file-c'+_n035CuestionarioActivo).click()"><i class="fa fa-file-arrow-up"></i> Importar Excel</button>
-            <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="n035EliminarEvaluacion(_n035EvaluacionAbierta)"><i class="fa fa-trash"></i> Eliminar evaluación</button>
-          </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px" id="n035-eval-detail-titulo-wrap">
+          <span style="font-size:15px;font-weight:700" id="n035-eval-detail-titulo"></span>
         </div>
         <div id="n035-eval-detail-body"></div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="n035-modal-importar">
+      <div class="modal">
+        <div class="mh"><h3 id="n035-importar-titulo">Importar Excel</h3><button class="xbtn" onclick="closeModal('n035-modal-importar')">✕</button></div>
+        <div class="mb">
+          <div class="n035-upload-zone" id="n035-importar-drop" onclick="document.getElementById('n035-importar-file').click()">
+            <i class="fa fa-file-arrow-up"></i>
+            <h3>Arrastra tu archivo aquí</h3>
+            <p>o haz clic para seleccionarlo</p>
+            <input type="file" id="n035-importar-file" accept=".xlsx,.xlsm,.xls" onchange="n035ImportarDesdeModal(this)">
+          </div>
+        </div>
       </div>
     </div>
 
@@ -22943,14 +22950,19 @@ function n035RenderDetalleEvaluacion(){
     backBtn.innerHTML='<i class="fa fa-arrow-left"></i> Evaluaciones';
     backBtn.setAttribute('onclick','n035VolverListaEvaluaciones()');
   }
-  const nav=cuestionarios.length>1?`<div class="n035-tabs" style="margin-bottom:20px">
-    ${cuestionarios.map(c=>`<button class="n035-tab${c===_n035CuestionarioActivo?' active':''}" onclick="n035SeleccionarCuestionario(${c})">${N035_CUEST_META[c].titulo}</button>`).join('')}
-  </div>`:'';
+  const tabsHtml=cuestionarios.length>1?cuestionarios.map(c=>`<button class="n035-tab${c===_n035CuestionarioActivo?' active':''}" onclick="n035SeleccionarCuestionario(${c})">${N035_CUEST_META[c].titulo}</button>`).join(''):'';
+  const nav=`<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${tabsHtml}</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="n035DescargarPlantilla(_n035CuestionarioActivo)"><i class="fa fa-download"></i> Plantilla</button>
+      <button class="btn btn-primary btn-sm" onclick="n035AbrirModalImportar()"><i class="fa fa-file-arrow-up"></i> Importar Excel</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="n035EliminarEvaluacion(_n035EvaluacionAbierta)"><i class="fa fa-trash"></i> Eliminar evaluación</button>
+    </div>
+  </div>`;
   const meta=n?N035_CUEST_META[n]:null;
   const contenido=meta?`<div class="card" id="n035-card-c${n}" style="padding:20px">
       <div style="font-weight:600;margin-bottom:2px">${meta.titulo}</div>
       <div style="font-size:12px;color:var(--text3);margin-bottom:14px">${meta.sub}</div>
-      <input type="file" id="n035-file-c${n}" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="n035LoadFile(${n},this)">
       <div id="n035-result-c${n}"></div>
     </div>`:'';
   body.innerHTML=nav+contenido;
@@ -22959,6 +22971,34 @@ function n035RenderDetalleEvaluacion(){
     if(n===1) n035RenderI(guardado.resultados, guardado.nombre_archivo||'', true);
     else n035RenderLikert(n, guardado.resultados, guardado.nombre_archivo||'', n===2?N035_CAT2:N035_CAT3, n===2?N035_THR2:N035_THR3);
   }
+}
+function n035AbrirModalImportar(){
+  const n=_n035CuestionarioActivo;
+  if(!n) return;
+  document.getElementById('n035-importar-titulo').textContent='Importar Excel — '+N035_CUEST_META[n].titulo;
+  document.getElementById('n035-importar-drop').classList.remove('drag');
+  openModal('n035-modal-importar');
+  n035WireDragDropModal();
+}
+function n035ImportarDesdeModal(inp){
+  const n=_n035CuestionarioActivo;
+  closeModal('n035-modal-importar');
+  if(n) n035LoadFile(n,inp);
+  inp.value='';
+}
+function n035WireDragDropModal(){
+  const z=document.getElementById('n035-importar-drop');
+  if(!z||z._n035Wired) return;
+  z._n035Wired=true;
+  z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('drag')});
+  z.addEventListener('dragleave',()=>z.classList.remove('drag'));
+  z.addEventListener('drop',e=>{
+    e.preventDefault();z.classList.remove('drag');
+    const f=e.dataTransfer.files[0];if(!f)return;
+    const inp=document.getElementById('n035-importar-file');
+    const dt=new DataTransfer();dt.items.add(f);inp.files=dt.files;
+    n035ImportarDesdeModal(inp);
+  });
 }
 function n035VolverListaEvaluaciones(){
   _n035EvaluacionAbierta = null;

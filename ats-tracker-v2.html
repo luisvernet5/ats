@@ -4793,6 +4793,10 @@ function abrirPlantillaContratoModal(empId,plantillaId){
       <button class="btn btn-ghost btn-sm" onclick="_ctAgregarCampoPersonalizado('${empId}')"><i class="fa fa-plus"></i> Crear campo</button>
     </div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Si eliges una fuente de Administrador de Personal, ese dato se toma solo y no se vuelve a pedir al crear cada contrato.</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px 12px;background:var(--surface2);border-radius:8px">
+      <button class="btn btn-primary btn-sm" onclick="_ctNormalizarFormatoPlantilla()"><i class="fa fa-magic"></i> Normalizar formato</button>
+      <div style="font-size:11px;color:var(--text3)">Convierte el texto de abajo (como haya quedado al pegarlo o subirlo) a un formato estándar: párrafos justificados, títulos cortos en mayúsculas centrados, y las etiquetas de cláusula (ej. "PRIMERA.-", "I.1.-", "a)") en negrita automáticamente. Revisa el resultado antes de guardar.</div>
+    </div>
     ${_rtBox('ct-plantilla-editor', plantilla?.html||'', 'Escribe o pega aquí el texto del contrato…')}
     <div style="display:flex;justify-content:${plantillaId?'space-between':'flex-end'};gap:8px;margin-top:14px">
       ${plantillaId?`<button class="btn btn-ghost" style="color:#e5484d" onclick="eliminarPlantillaContrato('${empId}','${plantillaId}')"><i class="fa fa-trash"></i> Eliminar plantilla</button>`:''}
@@ -4957,6 +4961,105 @@ async function _ctCargarDocxPlantilla(input){
   }finally{
     input.value='';
   }
+}
+// Detecta la "etiqueta" con la que suele arrancar una cláusula/declaración legal
+// (PRIMERA.-, I.1.-, 10.1., a), DÉCIMA NOVENA - , etc.) para negritearla automáticamente
+// al normalizar el formato de una plantilla.
+const _CT_ETIQUETA_RE=/^((?:[A-ZÁÉÍÓÚÑ]{2,}(?:\s+[A-ZÁÉÍÓÚÑ]{2,})*|[IVXLCDM]+(?:\.\d+)*|\d+(?:\.\d+)*|[a-vx-z])\s*[.\-\)]+)(\s*)/;
+// Recorre el HTML (por más desordenado/anidado que haya quedado al pegarlo o subirlo)
+// y lo reduce a una lista plana de bloques {tipo:'parrafo'|'item', texto}, usando los
+// mismos límites de bloque que ya usa el generador de PDF. Dos <br> seguidos (o un
+// bloque vacío) separan párrafos; un solo <br> se conserva como salto de línea dentro
+// del mismo párrafo (para no romper cosas como el bloque de firmas, que va apilado a
+// propósito). Los <li> de listas se marcan aparte para no perder la viñeta.
+function _ctExtraerParrafosDeHtml(html){
+  const tmp=document.createElement('div');
+  tmp.innerHTML=html||'';
+  const BLOQUES=new Set(['div','p','h1','h2','h3','h4','h5','h6','blockquote']);
+  const nodos=[];
+  let buffer='';
+  function flush(tipo){
+    if(buffer.trim()) nodos.push({tipo:tipo||'parrafo',texto:buffer});
+    buffer='';
+  }
+  function walk(el,tipoContexto){
+    let brSeguidos=0;
+    el.childNodes.forEach(n=>{
+      if(n.nodeType===Node.TEXT_NODE){
+        if(n.textContent.replace(/\s/g,'')) brSeguidos=0;
+        buffer+=n.textContent;
+        return;
+      }
+      if(n.nodeType!==Node.ELEMENT_NODE) return;
+      const tag=n.tagName.toLowerCase();
+      if(tag==='br'){
+        brSeguidos++;
+        if(brSeguidos>=2){ flush(tipoContexto); brSeguidos=0; }
+        else buffer+='\n';
+        return;
+      }
+      brSeguidos=0;
+      if(tag==='ul'||tag==='ol'){
+        flush(tipoContexto);
+        [...n.children].forEach(li=>{ walk(li,'item'); flush('item'); });
+        return;
+      }
+      if(BLOQUES.has(tag)){ flush(tipoContexto); walk(n,tipoContexto); flush(tipoContexto); return; }
+      walk(n,tipoContexto);
+    });
+  }
+  walk(tmp,'parrafo');
+  flush('parrafo');
+  return nodos;
+}
+// Negritea automáticamente la etiqueta con la que arranca cada línea de un bloque
+// (PRIMERA.-, I.1.-, a), etc.) — usado tanto para párrafos como para ítems de lista.
+function _ctFormatearLineasConEtiqueta(textoBruto){
+  return textoBruto.split('\n').map(s=>s.replace(/[ \t]+/g,' ').trim()).filter(l=>l!=='').map(linea=>{
+    const m=linea.match(_CT_ETIQUETA_RE);
+    if(m) return `<strong>${_esc(m[1])}</strong>${_esc(linea.slice(m[1].length))}`;
+    return _esc(linea);
+  }).join('<br>');
+}
+// Un título de sección (ej. "CLÁUSULAS", "DECLARACIONES") es una línea corta, solo en
+// mayúsculas y SIN puntos — ese último requisito es lo que evita confundir un nombre o
+// abreviatura en mayúsculas (ej. "C. DIEGO GÓMEZ...") con un título de sección.
+function _ctEsTitulo(texto){
+  if(texto.includes('.')||/\{\{/.test(texto)) return false;
+  const soloLetras=texto.replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñ]/g,'');
+  return soloLetras.length>=4&&texto.length<=60&&soloLetras===soloLetras.toUpperCase();
+}
+// Reconstruye un párrafo de texto plano como HTML "estándar": justificado por defecto;
+// títulos cortos en MAYÚSCULAS centrados y en negrita; y la etiqueta inicial de cada
+// línea (PRIMERA.-, I.1.-, a), etc.) en negrita automáticamente.
+function _ctFormatearParrafoEstandar(textoBruto){
+  const lineas=textoBruto.split('\n').map(s=>s.trim()).filter(l=>l!=='');
+  if(!lineas.length) return '';
+  if(lineas.length===1&&_ctEsTitulo(lineas[0])) return `<p style="text-align:center"><strong>${_esc(lineas[0])}</strong></p>`;
+  return `<p style="text-align:justify">${_ctFormatearLineasConEtiqueta(textoBruto)}</p>`;
+}
+function _ctNormalizarFormatoPlantilla(){
+  const el=document.getElementById('ct-plantilla-editor');
+  if(!el) return;
+  const html=el.innerHTML;
+  if(!html||!html.replace(/<[^>]*>/g,'').trim()){ showToast('No hay texto para normalizar','err'); return; }
+  if(!confirm('Esto va a reescribir el formato de todo el texto (alineación y negritas) con reglas estándar: párrafos justificados, títulos cortos centrados y etiquetas de cláusula en negrita automáticamente.\n\nEl texto y los saltos de párrafo se conservan, pero se pierde cualquier negrita/cursiva/subrayado que hayas puesto a mano.\n\n¿Continuar?')) return;
+  const nodos=_ctExtraerParrafosDeHtml(html);
+  const partes=[];
+  let i=0;
+  while(i<nodos.length){
+    if(nodos[i].tipo==='item'){
+      const items=[];
+      while(i<nodos.length&&nodos[i].tipo==='item'){ items.push(nodos[i].texto); i++; }
+      partes.push('<ul>'+items.map(t=>`<li style="text-align:justify">${_ctFormatearLineasConEtiqueta(t)}</li>`).join('')+'</ul>');
+    }else{
+      const html2=_ctFormatearParrafoEstandar(nodos[i].texto);
+      if(html2) partes.push(html2);
+      i++;
+    }
+  }
+  el.innerHTML=partes.join('');
+  showToast('Formato normalizado ✓ — revisa el resultado antes de guardar');
 }
 async function guardarPlantillaContrato(){
   const empId=document.getElementById('ct-plantilla-emp-id').value;

@@ -7092,6 +7092,7 @@ const EMPRESA_MODULOS=[
   {key:'kpis',label:'KPIs'},
   {key:'perfiles',label:'Perfiles de Puesto'},
   {key:'procedimientos',label:'Procedimientos'},
+  {key:'nom035',label:'NOM 035'},
 ];
 let empModulos={};
 function renderEmpModulos(){
@@ -22058,13 +22059,42 @@ function exportESEExcel(){
 
 // ══════════════ NOM-035 ══════════════
 let _n035Built = false;
+let _n035EmpresaATS = null; // id de la empresa (DB.empresas) seleccionada para trabajar su NOM-035
+function n035SeleccionarEmpresaATS(empId){
+  _n035EmpresaATS = empId;
+  _n035Built = false;
+  renderNom035();
+}
+function n035VolverEmpresasATS(){
+  _n035EmpresaATS = null;
+  _n035Built = false;
+  renderNom035();
+}
 
 function renderNom035(){
   const page=document.getElementById('page-nom035');
   if(!page) return;
+  if(!_n035EmpresaATS){
+    _n035Built = false;
+    page.innerHTML = `<div style="padding:24px 28px">
+      <div style="margin-bottom:20px">
+        <div class="sec-title" style="margin-bottom:4px">NOM 035</div>
+        <div style="font-size:12px;color:var(--text3)">Selecciona la empresa cliente para gestionar su cumplimiento de la NOM-035.</div>
+      </div>
+      ${_renderEmpresaCardsGrid('n035SeleccionarEmpresaATS','nom035')}
+    </div>`;
+    return;
+  }
   if(_n035Built) return;
   _n035Built = true;
+  const _n035EmpAts=DB.empresas.find(e=>e.id===_n035EmpresaATS)||{};
+  const _n035ColorAts=_n035EmpAts.color||'#2AAADE';
   page.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin:0 0 16px 2px">
+      <button class="btn btn-ghost btn-sm" onclick="n035VolverEmpresasATS()"><i class="fa fa-arrow-left"></i> Empresas</button>
+      ${_n035EmpAts.logo?`<img src="${_n035EmpAts.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${_n035ColorAts}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${_n035ColorAts}"></i></div>`}
+      <span style="font-size:16px;font-weight:700">${_esc(_n035EmpAts.nombre||'')}</span>
+    </div>
     <div class="n035-tabs">
       <button class="n035-tab active" id="n035-mod-empresas" onclick="n035SetModule('empresas')"><i class="fa fa-building"></i> Empresas</button>
       <button class="n035-tab" id="n035-mod-calificacion" onclick="n035SetModule('calificacion')"><i class="fa fa-chart-column"></i> Calificación</button>

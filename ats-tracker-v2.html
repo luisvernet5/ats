@@ -22828,6 +22828,9 @@ async function n035ConfirmarNuevaEvaluacion(){
     closeModal('n035-modal-nueva-evaluacion');
     showToast('Evaluación creada ✓');
     _n035Evaluaciones.unshift(nuevaEval);
+    const emp=DB.empresas.find(e=>e.id===_n035EmpresaATS);
+    const cuestTxt=cuestionarios.map(c=>['','I','II','III'][c]).join(', ');
+    await logActivity('Nueva evaluación NOM-035','nom035_evaluaciones',id,`${emp?.nombre||_n035EmpresaATS} — Evaluación ${anio} (Cuestionario ${cuestTxt})`);
     n035AbrirDetalleEvaluacion(id);
   }catch(e){
     showToast('Error al crear: '+e.message,'error');
@@ -23007,11 +23010,15 @@ function n035VolverListaEvaluaciones(){
 async function n035EliminarEvaluacion(evalId){
   if(!evalId) return;
   if(!confirm('¿Eliminar esta evaluación y todos sus resultados guardados? Esta acción no se puede deshacer.')) return;
+  const ev=_n035Evaluaciones.find(e=>e.id===evalId);
   try{
     const {error}=await sbClient.from('nom035_evaluaciones').delete().eq('id',evalId);
     if(error) throw error;
     showToast('Evaluación eliminada ✓');
     if(_n035EvaluacionAbierta===evalId) _n035EvaluacionAbierta=null;
+    const emp=DB.empresas.find(e=>e.id===_n035EmpresaATS);
+    const cuestTxt=(ev?.cuestionarios||[]).map(c=>['','I','II','III'][c]).join(', ');
+    await logActivity('Eliminar evaluación NOM-035','nom035_evaluaciones',evalId,`${emp?.nombre||_n035EmpresaATS} — Evaluación ${ev?.anio||''} (Cuestionario ${cuestTxt})`);
     await n035CargarEvaluacionesGuardadas();
   }catch(e){
     showToast('Error al eliminar: '+e.message,'error');

@@ -22094,7 +22094,7 @@ function renderNom035(){
       ${_n035EmpAts.logo?`<img src="${_n035EmpAts.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${_n035ColorAts}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${_n035ColorAts}"></i></div>`}
       <span style="font-size:16px;font-weight:700">${_esc(_n035EmpAts.nombre||'')}</span>
     </div>
-    <div class="n035-tabs">
+    <div class="n035-tabs" id="n035-outer-tabs">
       <button class="n035-tab active" id="n035-mod-calificacion" onclick="n035SetModule('calificacion')"><i class="fa fa-chart-column"></i> Evaluaciones</button>
       <button class="n035-tab" id="n035-mod-reporte" onclick="n035SetModule('reporte')"><i class="fa fa-file-lines"></i> Reporte</button>
       <button class="n035-tab" id="n035-mod-politica" onclick="n035SetModule('politica')"><i class="fa fa-clipboard-list"></i> Política NOM-035</button>
@@ -22829,8 +22829,11 @@ async function n035CargarEvaluacionesGuardadas(){
   const el=document.getElementById('n035-eval-list');
   if(!el || !_n035EmpresaATS) return;
   _n035EvaluacionAbierta = null;
+  _n035CuestionarioActivo = null;
   document.getElementById('n035-eval-list-view').style.display='';
   document.getElementById('n035-eval-detail-view').style.display='none';
+  const outerTabs=document.getElementById('n035-outer-tabs');
+  if(outerTabs) outerTabs.style.display='';
   el.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text3)">Cargando evaluaciones...</div>';
   try{
     const {data:evals,error}=await sbClient.from('nom035_evaluaciones').select('*').eq('empresa_id',_n035EmpresaATS).order('anio',{ascending:false});
@@ -22895,20 +22898,27 @@ async function n035AbrirDetalleEvaluacion(evalId){
   }
   n035RenderDetalleEvaluacion();
 }
-function n035IrACuestionario(n){
-  document.getElementById('n035-card-c'+n)?.scrollIntoView({behavior:'smooth',block:'start'});
+let _n035CuestionarioActivo = null;
+function n035SeleccionarCuestionario(n){
+  _n035CuestionarioActivo = n;
+  n035RenderDetalleEvaluacion();
 }
 function n035RenderDetalleEvaluacion(){
   const ev=_n035Evaluaciones.find(e=>e.id===_n035EvaluacionAbierta);
   const body=document.getElementById('n035-eval-detail-body');
   if(!ev||!body) return;
+  // Mientras se está dentro del detalle de una evaluación, se oculta la barra de
+  // Evaluaciones/Reporte/Política para que la vista quede enfocada en el cuestionario.
+  const outerTabs=document.getElementById('n035-outer-tabs');
+  if(outerTabs) outerTabs.style.display='none';
   const cuestionarios=ev.cuestionarios||[];
+  if(!cuestionarios.includes(_n035CuestionarioActivo)) _n035CuestionarioActivo=cuestionarios[0]||null;
   const nav=cuestionarios.length>1?`<div class="n035-tabs" style="margin-bottom:20px">
-    ${cuestionarios.map(n=>`<button class="n035-tab" onclick="n035IrACuestionario(${n})"><i class="fa fa-arrow-down"></i> ${N035_CUEST_META[n].titulo}</button>`).join('')}
+    ${cuestionarios.map(n=>`<button class="n035-tab${n===_n035CuestionarioActivo?' active':''}" onclick="n035SeleccionarCuestionario(${n})">${N035_CUEST_META[n].titulo}</button>`).join('')}
   </div>`:'';
-  body.innerHTML=nav+cuestionarios.map(n=>{
-    const meta=N035_CUEST_META[n];
-    return `<div class="card" id="n035-card-c${n}" style="margin-bottom:16px;padding:20px;scroll-margin-top:16px">
+  const n=_n035CuestionarioActivo;
+  const meta=n?N035_CUEST_META[n]:null;
+  const contenido=meta?`<div class="card" id="n035-card-c${n}" style="padding:20px">
       <div style="font-weight:600;margin-bottom:2px">${meta.titulo}</div>
       <div style="font-size:12px;color:var(--text3);margin-bottom:14px">${meta.sub}</div>
       <div class="n035-upload-zone" id="n035-drop-c${n}" onclick="document.getElementById('n035-file-c${n}').click()">
@@ -22919,13 +22929,14 @@ function n035RenderDetalleEvaluacion(){
         <button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="n035DescargarPlantilla(${n});event.stopPropagation()"><i class="fa fa-download"></i> Descargar plantilla Excel</button>
       </div>
       <div id="n035-result-c${n}"></div>
-    </div>`;
-  }).join('');
+    </div>`:'';
+  body.innerHTML=nav+contenido;
   n035WireDragDrop();
-  _n035ResultadosActuales.forEach(r=>{
-    if(r.cuestionario===1) n035RenderI(r.resultados, r.nombre_archivo||'', true);
-    else n035RenderLikert(r.cuestionario, r.resultados, r.nombre_archivo||'', r.cuestionario===2?N035_CAT2:N035_CAT3, r.cuestionario===2?N035_THR2:N035_THR3);
-  });
+  const guardado=_n035ResultadosActuales.find(r=>r.cuestionario===n);
+  if(guardado){
+    if(n===1) n035RenderI(guardado.resultados, guardado.nombre_archivo||'', true);
+    else n035RenderLikert(n, guardado.resultados, guardado.nombre_archivo||'', n===2?N035_CAT2:N035_CAT3, n===2?N035_THR2:N035_THR3);
+  }
 }
 function n035VolverListaEvaluaciones(){
   _n035EvaluacionAbierta = null;

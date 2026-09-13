@@ -22089,7 +22089,7 @@ function renderNom035(){
   const _n035EmpAts=DB.empresas.find(e=>e.id===_n035EmpresaATS)||{};
   const _n035ColorAts=_n035EmpAts.color||'#2AAADE';
   page.innerHTML = `
-    <div style="display:flex;align-items:center;gap:12px;margin:0 0 16px 2px">
+    <div style="display:flex;align-items:center;gap:12px;margin:0 0 16px 2px" id="n035-empresa-header">
       <button class="btn btn-ghost btn-sm" onclick="n035VolverEmpresasATS()"><i class="fa fa-arrow-left"></i> Empresas</button>
       ${_n035EmpAts.logo?`<img src="${_n035EmpAts.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${_n035ColorAts}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${_n035ColorAts}"></i></div>`}
       <span style="font-size:16px;font-weight:700">${_esc(_n035EmpAts.nombre||'')}</span>
@@ -22834,6 +22834,10 @@ async function n035CargarEvaluacionesGuardadas(){
   document.getElementById('n035-eval-detail-view').style.display='none';
   const outerTabs=document.getElementById('n035-outer-tabs');
   if(outerTabs) outerTabs.style.display='';
+  const empHeader=document.getElementById('n035-empresa-header');
+  if(empHeader) empHeader.style.display='';
+  const titulo=document.getElementById('n035-eval-detail-titulo');
+  if(titulo) titulo.style.display='';
   el.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text3)">Cargando evaluaciones...</div>';
   try{
     const {data:evals,error}=await sbClient.from('nom035_evaluaciones').select('*').eq('empresa_id',_n035EmpresaATS).order('anio',{ascending:false});
@@ -22907,16 +22911,21 @@ function n035RenderDetalleEvaluacion(){
   const ev=_n035Evaluaciones.find(e=>e.id===_n035EvaluacionAbierta);
   const body=document.getElementById('n035-eval-detail-body');
   if(!ev||!body) return;
-  // Mientras se está dentro del detalle de una evaluación, se oculta la barra de
-  // Evaluaciones/Reporte/Política para que la vista quede enfocada en el cuestionario.
-  const outerTabs=document.getElementById('n035-outer-tabs');
-  if(outerTabs) outerTabs.style.display='none';
   const cuestionarios=ev.cuestionarios||[];
   if(!cuestionarios.includes(_n035CuestionarioActivo)) _n035CuestionarioActivo=cuestionarios[0]||null;
-  const nav=cuestionarios.length>1?`<div class="n035-tabs" style="margin-bottom:20px">
-    ${cuestionarios.map(n=>`<button class="n035-tab${n===_n035CuestionarioActivo?' active':''}" onclick="n035SeleccionarCuestionario(${n})">${N035_CUEST_META[n].titulo}</button>`).join('')}
-  </div>`:'';
   const n=_n035CuestionarioActivo;
+  // Con un cuestionario abierto, la vista se enfoca: se ocultan el encabezado de la
+  // empresa, la barra de Evaluaciones/Reporte/Política y el título de la evaluación,
+  // dejando solo el botón para volver a la lista de evaluaciones.
+  const outerTabs=document.getElementById('n035-outer-tabs');
+  if(outerTabs) outerTabs.style.display=n?'none':'';
+  const empHeader=document.getElementById('n035-empresa-header');
+  if(empHeader) empHeader.style.display=n?'none':'';
+  const titulo=document.getElementById('n035-eval-detail-titulo');
+  if(titulo) titulo.style.display=n?'none':'';
+  const nav=cuestionarios.length>1?`<div class="n035-tabs" style="margin-bottom:20px">
+    ${cuestionarios.map(c=>`<button class="n035-tab${c===_n035CuestionarioActivo?' active':''}" onclick="n035SeleccionarCuestionario(${c})">${N035_CUEST_META[c].titulo}</button>`).join('')}
+  </div>`:'';
   const meta=n?N035_CUEST_META[n]:null;
   const contenido=meta?`<div class="card" id="n035-card-c${n}" style="padding:20px">
       <div style="font-weight:600;margin-bottom:2px">${meta.titulo}</div>

@@ -22925,13 +22925,11 @@ function n035RenderDetalleEvaluacion(){
   const cuestionarios=ev.cuestionarios||[];
   if(!cuestionarios.includes(_n035CuestionarioActivo)) _n035CuestionarioActivo=cuestionarios[0]||null;
   const n=_n035CuestionarioActivo;
-  // Con un cuestionario abierto, la vista se enfoca: se ocultan el encabezado de la
-  // empresa, la barra de Evaluaciones/Reporte/Política y el título de la evaluación,
-  // dejando solo el botón para volver a la lista de evaluaciones.
+  // Con un cuestionario abierto, la vista se enfoca: se ocultan la barra de
+  // Evaluaciones/Reporte/Política y el título de la evaluación, dejando el logo y
+  // nombre de la empresa visibles junto con el botón para volver a evaluaciones.
   const outerTabs=document.getElementById('n035-outer-tabs');
   if(outerTabs) outerTabs.style.display=n?'none':'';
-  const empHeader=document.getElementById('n035-empresa-header');
-  if(empHeader) empHeader.style.display=n?'none':'';
   const titulo=document.getElementById('n035-eval-detail-titulo');
   if(titulo) titulo.style.display=n?'none':'';
   const nav=cuestionarios.length>1?`<div class="n035-tabs" style="margin-bottom:20px">

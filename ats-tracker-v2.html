@@ -22895,13 +22895,20 @@ async function n035AbrirDetalleEvaluacion(evalId){
   }
   n035RenderDetalleEvaluacion();
 }
+function n035IrACuestionario(n){
+  document.getElementById('n035-card-c'+n)?.scrollIntoView({behavior:'smooth',block:'start'});
+}
 function n035RenderDetalleEvaluacion(){
   const ev=_n035Evaluaciones.find(e=>e.id===_n035EvaluacionAbierta);
   const body=document.getElementById('n035-eval-detail-body');
   if(!ev||!body) return;
-  body.innerHTML=(ev.cuestionarios||[]).map(n=>{
+  const cuestionarios=ev.cuestionarios||[];
+  const nav=cuestionarios.length>1?`<div class="n035-tabs" style="margin-bottom:20px">
+    ${cuestionarios.map(n=>`<button class="n035-tab" onclick="n035IrACuestionario(${n})"><i class="fa fa-arrow-down"></i> ${N035_CUEST_META[n].titulo}</button>`).join('')}
+  </div>`:'';
+  body.innerHTML=nav+cuestionarios.map(n=>{
     const meta=N035_CUEST_META[n];
-    return `<div class="card" style="margin-bottom:16px;padding:20px">
+    return `<div class="card" id="n035-card-c${n}" style="margin-bottom:16px;padding:20px;scroll-margin-top:16px">
       <div style="font-weight:600;margin-bottom:2px">${meta.titulo}</div>
       <div style="font-size:12px;color:var(--text3);margin-bottom:14px">${meta.sub}</div>
       <div class="n035-upload-zone" id="n035-drop-c${n}" onclick="document.getElementById('n035-file-c${n}').click()">

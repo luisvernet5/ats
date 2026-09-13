@@ -22259,7 +22259,94 @@ function renderNom035(){
       </div>
     </div>
     <div class="n035-pane" id="n035-module-politica">
-      <div class="card" style="max-width:480px;margin:30px auto;text-align:center;padding:32px 26px;color:var(--text3)">Próximamente</div>
+      <div class="sec-title" style="margin-bottom:4px">Política de Prevención NOM-035</div>
+      <div style="font-size:12px;color:var(--text3);max-width:620px;margin-bottom:16px">Configura los datos de la empresa y edita cada sección del documento. Descarga la política lista como archivo Word (.docx).</div>
+
+      <div class="n035-rep-step">
+        <div class="n035-rep-step-title"><span class="n035-step-num">1</span> Datos de la empresa</div>
+        <div class="fr">
+          <div class="fg"><label>Nombre de la empresa</label><input type="text" id="n035-pol-empresa" placeholder="Ej. Empresa S.A. de C.V." oninput="n035ActualizarPolitica()"></div>
+          <div class="fg"><label>Representante legal</label><input type="text" id="n035-pol-repleg" placeholder="Nombre completo" oninput="n035ActualizarPolitica()"></div>
+          <div class="fg"><label>Responsable de aplicación (RH/Seguridad)</label><input type="text" id="n035-pol-responsable" placeholder="Nombre y puesto" oninput="n035ActualizarPolitica()"></div>
+          <div class="fg"><label>Fecha de vigencia</label><input type="text" id="n035-pol-fecha" placeholder="Ej. Enero 2026" oninput="n035ActualizarPolitica()"></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;display:flex;align-items:center;gap:12px">
+        <div class="sec-title" style="margin-bottom:0">Secciones de la política</div>
+        <span style="font-size:12px;color:var(--text3);font-family:var(--mono)">— edita el contenido de cada sección antes de descargar</span>
+      </div>
+
+      <div class="n035-pol-section">
+        <div class="n035-pol-section-header">
+          <span class="n035-pol-section-num">1</span>
+          <div>
+            <div class="n035-pol-section-title">Declaración de compromiso de la dirección</div>
+            <div class="n035-pol-section-subtitle">Compromiso formal de la alta dirección con la prevención de riesgos psicosociales</div>
+          </div>
+        </div>
+        <div class="n035-pol-section-body"><textarea id="n035-pol-s1" rows="8"></textarea></div>
+      </div>
+
+      <div class="n035-pol-section">
+        <div class="n035-pol-section-header">
+          <span class="n035-pol-section-num">2</span>
+          <div>
+            <div class="n035-pol-section-title">Objetivo y alcance</div>
+            <div class="n035-pol-section-subtitle">Propósito de la política y personal al que aplica</div>
+          </div>
+        </div>
+        <div class="n035-pol-section-body"><textarea id="n035-pol-s2" rows="7"></textarea></div>
+      </div>
+
+      <div class="n035-pol-section">
+        <div class="n035-pol-section-header">
+          <span class="n035-pol-section-num">3</span>
+          <div>
+            <div class="n035-pol-section-title">Identificación y análisis de factores de riesgo psicosocial</div>
+            <div class="n035-pol-section-subtitle">Metodología y periodicidad de evaluación conforme a NOM-035-STPS-2018</div>
+          </div>
+        </div>
+        <div class="n035-pol-section-body"><textarea id="n035-pol-s3" rows="8"></textarea></div>
+      </div>
+
+      <div class="n035-pol-section">
+        <div class="n035-pol-section-header">
+          <span class="n035-pol-section-num">4</span>
+          <div>
+            <div class="n035-pol-section-title">Medidas de prevención y control</div>
+            <div class="n035-pol-section-subtitle">Acciones organizacionales para reducir factores de riesgo</div>
+          </div>
+        </div>
+        <div class="n035-pol-section-body"><textarea id="n035-pol-s4" rows="10"></textarea></div>
+      </div>
+
+      <div class="n035-pol-section">
+        <div class="n035-pol-section-header">
+          <span class="n035-pol-section-num">5</span>
+          <div>
+            <div class="n035-pol-section-title">Mecanismos de participación y difusión</div>
+            <div class="n035-pol-section-subtitle">Canales de comunicación y participación de los colaboradores</div>
+          </div>
+        </div>
+        <div class="n035-pol-section-body"><textarea id="n035-pol-s5" rows="7"></textarea></div>
+      </div>
+
+      <div class="n035-pol-section">
+        <div class="n035-pol-section-header">
+          <span class="n035-pol-section-num">6</span>
+          <div>
+            <div class="n035-pol-section-title">Vigilancia a la salud y exámenes médicos</div>
+            <div class="n035-pol-section-subtitle">Seguimiento médico preventivo para colaboradores expuestos a factores de riesgo</div>
+          </div>
+        </div>
+        <div class="n035-pol-section-body"><textarea id="n035-pol-s6" rows="7"></textarea></div>
+      </div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">
+        <button class="btn btn-primary" onclick="n035DescargarPolitica()"><i class="fa fa-download"></i> Descargar Política (.docx)</button>
+        <button class="btn btn-ghost" onclick="n035ResetPolitica()">Restaurar contenido original</button>
+      </div>
     </div>
 
     <div class="modal-overlay" id="n035-modal-empresa">
@@ -22348,6 +22435,7 @@ function n035SetModule(m){
   document.querySelectorAll('#page-nom035 > .n035-pane').forEach(el=>el.classList.remove('active'));
   const btn=document.getElementById('n035-mod-'+m); if(btn) btn.classList.add('active');
   const pane=document.getElementById('n035-module-'+m); if(pane) pane.classList.add('active');
+  if(m==='politica'&&!window._n035PolInited){n035InitPolitica();window._n035PolInited=true;}
 }
 
 function n035SetTab(t){
@@ -24541,6 +24629,221 @@ function n035GenerarReporte(){
   var win=window.open('','_blank');
   if(!win){showToast('Permite ventanas emergentes para este sitio e intenta de nuevo.','error');return;}
   win.document.write(h);
+  win.document.close();
+}
+
+// ════════════════════════════════════════════════════════════════
+// Módulo Política NOM-035
+// ════════════════════════════════════════════════════════════════
+const N035_POL_DEFAULTS = [
+  (e,rl,resp,fecha)=>`${e||'[EMPRESA]'}, en cumplimiento a lo establecido en la Norma Oficial Mexicana NOM-035-STPS-2018, Factores de Riesgo Psicosocial en el Trabajo — Identificación, Análisis y Prevención, y conforme a los principios de responsabilidad social empresarial, declara su compromiso con la promoción de un entorno organizacional favorable y la prevención de los factores de riesgo psicosocial en el trabajo.
+
+La dirección general, representada por ${rl||'[REPRESENTANTE LEGAL]'}, se compromete a:
+
+• Destinar los recursos humanos, materiales y económicos necesarios para la identificación, análisis y prevención de los factores de riesgo psicosocial.
+• Promover activamente la cultura de respeto, bienestar y salud mental en el trabajo.
+• Garantizar que las acciones derivadas de esta política se implementen de manera efectiva y con continuidad.
+• Rendir cuentas periódicamente sobre los avances en materia de prevención de riesgos psicosociales.
+
+Esta política entra en vigor a partir de ${fecha||'[FECHA]'} y será revisada anualmente para garantizar su vigencia y pertinencia.`,
+
+  (e,rl,resp,fecha)=>`Objetivo: Establecer los lineamientos y compromisos de ${e||'[EMPRESA]'} para identificar, analizar, prevenir y controlar los factores de riesgo psicosocial en el trabajo, promover un entorno organizacional favorable y atender las prácticas opuestas al entorno organizacional favorable, conforme a lo establecido en la NOM-035-STPS-2018.
+
+Alcance: Esta política aplica a la totalidad del personal que labora en ${e||'[EMPRESA]'}, incluyendo trabajadores de planta, eventuales, contratistas y cualquier persona que preste sus servicios en las instalaciones de la organización, independientemente de su nivel jerárquico, puesto o modalidad de contratación.
+
+La aplicación de esta política es obligatoria para todos los niveles de la organización. El incumplimiento de sus disposiciones será atendido conforme a los procedimientos disciplinarios establecidos en el Reglamento Interior de Trabajo.`,
+
+  (e,rl,resp,fecha)=>`${e||'[EMPRESA]'} llevará a cabo la identificación y análisis de los factores de riesgo psicosocial mediante la aplicación periódica de los instrumentos establecidos en la NOM-035-STPS-2018:
+
+• Cuestionario para identificar a los trabajadores que fueron sujetos a acontecimientos traumáticos severos (Guía de Referencia I).
+• Cuestionario para identificar los factores de riesgo psicosocial (Guía de Referencia II — centros de trabajo con hasta 50 trabajadores) o Cuestionario para identificar los factores de riesgo psicosocial y evaluar el entorno organizacional (Guía de Referencia III — centros de trabajo con más de 50 trabajadores).
+
+Periodicidad: La evaluación se realizará al menos una vez al año, o cuando ocurran cambios en la organización del trabajo o en las condiciones de trabajo que puedan modificar los niveles de exposición.
+
+Responsable: ${resp||'[RESPONSABLE]'} será el encargado de coordinar la aplicación de los instrumentos, el análisis de resultados y la elaboración del informe correspondiente.
+
+Los resultados de las evaluaciones serán estrictamente confidenciales y utilizados exclusivamente para fines preventivos, conforme a lo dispuesto por la Secretaría del Trabajo y Previsión Social.`,
+
+  (e,rl,resp,fecha)=>`Con base en los resultados de las evaluaciones periódicas, ${e||'[EMPRESA]'} implementará las siguientes medidas de prevención y control:
+
+Nivel Muy Alto y Alto:
+• Realizar el análisis de cada categoría y dominio para establecer acciones de intervención apropiadas mediante un Programa de Intervención.
+• Contemplar campañas de sensibilización sobre riesgos psicosociales.
+• Revisar la política de prevención de riesgos psicosociales.
+• Promover un entorno organizacional favorable y la prevención de la violencia laboral.
+
+Nivel Medio:
+• Revisar la política de prevención de riesgos psicosociales y los programas existentes.
+• Implementar un Programa de Intervención que promueva el entorno organizacional favorable.
+
+Nivel Bajo:
+• Difundir la política de prevención de riesgos psicosociales entre toda la plantilla.
+• Promover un entorno organizacional favorable y la prevención de la violencia laboral.
+
+Adicionalmente, ${e||'[EMPRESA]'} se compromete a:
+• Establecer mecanismos que promuevan el equilibrio entre la vida laboral y personal.
+• Garantizar que las cargas de trabajo sean acordes con las capacidades del personal.
+• Fomentar el liderazgo positivo y las relaciones interpersonales respetuosas.
+• Implementar canales seguros y confidenciales para la denuncia de actos de violencia laboral.`,
+
+  (e,rl,resp,fecha)=>`${e||'[EMPRESA]'} garantizará la participación activa de los trabajadores en la implementación de esta política a través de los siguientes mecanismos:
+
+Difusión:
+• La presente política será comunicada a todos los trabajadores al momento de su ingreso y cada vez que sea actualizada, mediante:
+  – Sesiones informativas presenciales o en línea.
+  – Publicación en los tableros de avisos y plataformas digitales internas.
+  – Inclusión en el proceso de inducción de nuevo personal.
+
+Participación:
+• Se habilitarán canales para que los trabajadores reporten condiciones de trabajo que consideren generadoras de riesgo psicosocial.
+• Los representantes de los trabajadores, en caso de existir, serán informados de los resultados de las evaluaciones y las medidas adoptadas.
+• Se establecerán reuniones periódicas de seguimiento entre ${resp||'[RESPONSABLE]'} y representantes del personal para evaluar la efectividad de las acciones implementadas.
+
+Toda información obtenida a través de estos mecanismos será tratada con estricta confidencialidad.`,
+
+  (e,rl,resp,fecha)=>`${e||'[EMPRESA]'} implementará un programa de vigilancia a la salud de los trabajadores expuestos a factores de riesgo psicosocial, con los siguientes componentes:
+
+Exámenes médicos:
+• Se realizarán exámenes médicos a los trabajadores que, como resultado de las evaluaciones, presenten exposición a factores de riesgo psicosocial en nivel Alto o Muy Alto, o que hayan sido sujetos a acontecimientos traumáticos severos.
+• Los exámenes serán practicados por personal médico calificado y sus resultados tendrán carácter estrictamente confidencial.
+• La periodicidad de los exámenes se determinará conforme a las indicaciones del médico responsable y la normatividad aplicable.
+
+Canalización y seguimiento:
+• Los trabajadores que requieran atención clínica serán canalizados a los servicios de salud correspondientes (IMSS, ISSSTE, servicio médico propio o externo).
+• ${resp||'[RESPONSABLE]'} dará seguimiento a los casos detectados y coordinará las acciones necesarias para apoyar la recuperación y reintegración del personal afectado.
+• Se mantendrá un registro confidencial de los casos atendidos y los resultados obtenidos, de conformidad con las disposiciones legales en materia de protección de datos personales.
+
+Esta política es de observancia obligatoria. Su incumplimiento será sancionado conforme al Reglamento Interior de Trabajo vigente.
+
+___________________________
+${rl||'[REPRESENTANTE LEGAL]'}
+Representante Legal
+${e||'[EMPRESA]'}
+Fecha de vigencia: ${fecha||'[FECHA]'}`
+];
+
+function n035InitPolitica(){
+  n035ActualizarPolitica();
+  for(let i=1;i<=6;i++){
+    const ta=document.getElementById('n035-pol-s'+i);
+    if(ta && !ta._n035Wired){
+      ta._n035Wired = true;
+      ta.addEventListener('input',()=>{ta.dataset.edited='1';});
+    }
+  }
+}
+
+function n035ActualizarPolitica(){
+  const e=document.getElementById('n035-pol-empresa').value.trim();
+  const rl=document.getElementById('n035-pol-repleg').value.trim();
+  const resp=document.getElementById('n035-pol-responsable').value.trim();
+  const fecha=document.getElementById('n035-pol-fecha').value.trim();
+  N035_POL_DEFAULTS.forEach((fn,i)=>{
+    const ta=document.getElementById('n035-pol-s'+(i+1));
+    if(ta&&!ta.dataset.edited){
+      ta.value=fn(e,rl,resp,fecha);
+    }
+  });
+}
+
+function n035ResetPolitica(){
+  if(!confirm('¿Restaurar todo el contenido original? Se perderán los cambios manuales.'))return;
+  for(let i=1;i<=6;i++){
+    const ta=document.getElementById('n035-pol-s'+i);
+    if(ta)delete ta.dataset.edited;
+  }
+  n035ActualizarPolitica();
+}
+
+function n035DescargarPolitica(){
+  const e=document.getElementById('n035-pol-empresa').value.trim()||'[EMPRESA]';
+  const rl=document.getElementById('n035-pol-repleg').value.trim()||'[REPRESENTANTE LEGAL]';
+  const resp=document.getElementById('n035-pol-responsable').value.trim()||'[RESPONSABLE]';
+  const fecha=document.getElementById('n035-pol-fecha').value.trim()||'[FECHA]';
+
+  const secciones=[
+    {titulo:'1. Declaracion de Compromiso de la Direccion', id:'n035-pol-s1'},
+    {titulo:'2. Objetivo y Alcance', id:'n035-pol-s2'},
+    {titulo:'3. Identificacion y Analisis de Factores de Riesgo Psicosocial', id:'n035-pol-s3'},
+    {titulo:'4. Medidas de Prevencion y Control', id:'n035-pol-s4'},
+    {titulo:'5. Mecanismos de Participacion y Difusion', id:'n035-pol-s5'},
+    {titulo:'6. Vigilancia a la Salud y Examenes Medicos', id:'n035-pol-s6'},
+  ];
+
+  let html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">';
+  html += '<title>Politica NOM-035 - ' + e + '</title>';
+  html += '<style>';
+  html += '@import url(\'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap\');';
+  html += '* { box-sizing:border-box; margin:0; padding:0; }';
+  html += 'body { font-family:\'Plus Jakarta Sans\',Arial,sans-serif; background:#fff; color:#1a1917; font-size:12pt; line-height:1.7; padding:40px; max-width:800px; margin:0 auto; }';
+  html += 'h1 { font-size:22pt; font-weight:800; color:#1a1917; margin-bottom:4px; }';
+  html += 'h2 { font-size:13pt; font-weight:700; color:#1a1917; margin:32px 0 8px; padding-bottom:6px; border-bottom:2px solid #1a1917; }';
+  html += '.subtitle { font-size:10pt; color:#78716c; margin-bottom:6px; }';
+  html += '.divider { width:60px; height:4px; background:#1a1917; margin:10px 0 20px; }';
+  html += '.cover { margin-bottom:48px; }';
+  html += '.cover-meta { font-size:11pt; color:#44403c; margin:6px 0; }';
+  html += 'p { margin-bottom:10px; font-size:11pt; color:#44403c; }';
+  html += '.section-content { white-space:pre-wrap; font-size:11pt; color:#44403c; line-height:1.75; }';
+  html += '.firma { margin-top:60px; text-align:center; }';
+  html += '.firma-line { display:inline-block; width:280px; border-top:1px solid #333; padding-top:8px; font-size:10pt; color:#555; }';
+  html += '.no-print { position:fixed; bottom:20px; right:20px; display:flex; gap:10px; }';
+  html += '.btn-print { background:#4f46e5; color:#fff; border:none; border-radius:8px; padding:10px 22px; font-size:12pt; font-weight:700; cursor:pointer; }';
+  html += '.btn-close { background:#fff; color:#44403c; border:1px solid #ccc; border-radius:8px; padding:10px 18px; font-size:12pt; cursor:pointer; }';
+  html += '.btn-word { background:#1d6f42; color:#fff; border:none; border-radius:8px; padding:10px 22px; font-size:12pt; font-weight:700; cursor:pointer; }';
+  html += '@media print { .no-print { display:none!important; } @page { margin:2cm; } }';
+  html += '</style></head><body>';
+
+  html += '<div class="cover">';
+  html += '<div class="subtitle">NOM-035-STPS-2018</div>';
+  html += '<h1>POLITICA DE PREVENCION DE FACTORES DE RIESGO PSICOSOCIAL</h1>';
+  html += '<div class="divider"></div>';
+  html += '<div class="cover-meta"><strong>Empresa:</strong> ' + e + '</div>';
+  html += '<div class="cover-meta"><strong>Representante legal:</strong> ' + rl + '</div>';
+  html += '<div class="cover-meta"><strong>Responsable de aplicacion:</strong> ' + resp + '</div>';
+  html += '<div class="cover-meta"><strong>Fecha de vigencia:</strong> ' + fecha + '</div>';
+  html += '</div>';
+
+  secciones.forEach(function(sec) {
+    var txt = document.getElementById(sec.id) ? document.getElementById(sec.id).value : '';
+    html += '<h2>' + sec.titulo + '</h2>';
+    html += '<div class="section-content">' + txt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
+  });
+
+  html += '<div class="firma"><div class="firma-line">';
+  html += '<div style="font-weight:700;font-size:11pt">' + rl + '</div>';
+  html += '<div>Representante Legal</div>';
+  html += '<div>' + e + '</div>';
+  html += '</div></div>';
+
+  html += '<div class="no-print">';
+  html += '<button class="btn-print" onclick="window.print()">Imprimir / Guardar PDF</button>';
+  html += '<button class="btn-word" onclick="guardarWordPol()">Guardar como Word</button>';
+  html += '<button class="btn-close" onclick="window.close()">Cerrar</button>';
+  html += '</div>';
+
+  html += '<scr'+'ipt>';
+  html += 'function guardarWordPol(){';
+  html += 'var body=document.body.cloneNode(true);';
+  html += 'var noPrint=body.querySelectorAll(".no-print");';
+  html += 'noPrint.forEach(function(el){el.parentNode.removeChild(el);});';
+  html += 'var htmlContent="<!DOCTYPE html><html xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:w=\"urn:schemas-microsoft-com:office:word\" xmlns=\"http://www.w3.org/TR/REC-html40\"><head><meta charset=\"UTF-8\"><title>Política NOM-035</title>";';
+  html += 'htmlContent+="<style>body{font-family:Arial,sans-serif;font-size:12pt;color:#1a1917;margin:2cm;}h1{font-size:18pt;font-weight:bold;margin-bottom:8pt;}h2{font-size:13pt;font-weight:bold;margin-top:20pt;padding-bottom:4pt;border-bottom:1pt solid #333;}p{font-size:11pt;line-height:1.6;margin:6pt 0;}.section-content{font-size:11pt;line-height:1.75;white-space:pre-wrap;}.no-print{display:none!important;}</style>";';
+  html += 'htmlContent+="</head><body>";';
+  html += 'htmlContent+=body.innerHTML;';
+  html += 'htmlContent+="</body></html>";';
+  html += 'var blob=new Blob([htmlContent],{type:"application/msword"});';
+  html += 'var url=URL.createObjectURL(blob);';
+  html += 'var a=document.createElement("a");';
+  html += 'a.href=url;a.download="Politica_NOM035.doc";';
+  html += 'document.body.appendChild(a);a.click();';
+  html += 'document.body.removeChild(a);URL.revokeObjectURL(url);';
+  html += '}';
+  html += '<\/scr'+'ipt>';
+  html += '</body></html>';
+
+  var win = window.open('','_blank');
+  if(!win){ showToast('Permite ventanas emergentes para este sitio e intenta de nuevo.','error'); return; }
+  win.document.write(html);
   win.document.close();
 }
 

@@ -2879,7 +2879,8 @@ function adaptUIToRole() {
     }
   }
   // Documentación — admin, reclutador, rh_cliente y coordinador
-  if(['admin','reclutador','rh_cliente','coordinador'].includes(rol) && !document.getElementById('nav-documentacion')){
+  // DOCUMENTACIÓN — desactivado, no está en uso
+  /* if(['admin','reclutador','rh_cliente','coordinador'].includes(rol) && !document.getElementById('nav-documentacion')){
     const navEl = document.querySelector('.sb-nav');
     const configItem = document.getElementById('nav-config');
     if(navEl){
@@ -2893,7 +2894,7 @@ function adaptUIToRole() {
       if(candItem) candItem.parentNode.insertBefore(docItem, candItem.nextSibling);
       else navEl.appendChild(docItem);
     }
-  }
+  } */
 
   // BASE DE DATOS — desactivado temporalmente
   /* if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-basedatos')){
@@ -3161,7 +3162,7 @@ function adaptUIToRole() {
     const nav=document.querySelector('.sb-nav');
     if(!nav) return;
     const grupos=[
-      {titulo:'Reclutamiento', ids:['nav-dashboard','nav-vacantes','nav-candidatos','nav-pipeline','nav-descartados','nav-documentacion','nav-perfiles']},
+      {titulo:'Reclutamiento', ids:['nav-dashboard','nav-vacantes','nav-candidatos','nav-pipeline','nav-descartados','nav-perfiles']},
       {titulo:'Evaluación', ids:['nav-evaluaciones','nav-procesos-eval']},
       {titulo:'Empresas y Equipo', ids:['nav-empresas','nav-reclutadores']},
       {titulo:'Gestión de Personal', ids:['nav-personal','nav-expedientes','nav-contratos','nav-capacitacion','nav-headcount-autorizado','nav-nom035','nav-procedimientos']},

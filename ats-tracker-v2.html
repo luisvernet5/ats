@@ -22090,7 +22090,7 @@ function renderNom035(){
   const _n035ColorAts=_n035EmpAts.color||'#2AAADE';
   page.innerHTML = `
     <div style="display:flex;align-items:center;gap:12px;margin:0 0 16px 2px" id="n035-empresa-header">
-      <button class="btn btn-ghost btn-sm" onclick="n035VolverEmpresasATS()"><i class="fa fa-arrow-left"></i> Empresas</button>
+      <button class="btn btn-ghost btn-sm" id="n035-empresa-back-btn" onclick="n035VolverEmpresasATS()"><i class="fa fa-arrow-left"></i> Empresas</button>
       ${_n035EmpAts.logo?`<img src="${_n035EmpAts.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${_n035ColorAts}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${_n035ColorAts}"></i></div>`}
       <span style="font-size:16px;font-weight:700">${_esc(_n035EmpAts.nombre||'')}</span>
     </div>
@@ -22117,7 +22117,6 @@ function renderNom035(){
       <div id="n035-eval-detail-view" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:10px">
-            <button class="btn btn-ghost btn-sm" onclick="n035VolverListaEvaluaciones()"><i class="fa fa-arrow-left"></i> Evaluaciones</button>
             <span style="font-size:15px;font-weight:700" id="n035-eval-detail-titulo"></span>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -22842,6 +22841,11 @@ async function n035CargarEvaluacionesGuardadas(){
   if(empHeader) empHeader.style.display='';
   const titulo=document.getElementById('n035-eval-detail-titulo');
   if(titulo) titulo.style.display='';
+  const backBtn=document.getElementById('n035-empresa-back-btn');
+  if(backBtn){
+    backBtn.innerHTML='<i class="fa fa-arrow-left"></i> Empresas';
+    backBtn.setAttribute('onclick','n035VolverEmpresasATS()');
+  }
   el.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text3)">Cargando evaluaciones...</div>';
   try{
     const {data:evals,error}=await sbClient.from('nom035_evaluaciones').select('*').eq('empresa_id',_n035EmpresaATS).order('anio',{ascending:false});
@@ -22936,12 +22940,17 @@ function n035RenderDetalleEvaluacion(){
   if(!cuestionarios.includes(_n035CuestionarioActivo)) _n035CuestionarioActivo=cuestionarios[0]||null;
   const n=_n035CuestionarioActivo;
   // Con un cuestionario abierto, la vista se enfoca: se ocultan la barra de
-  // Evaluaciones/Reporte/Política y el título de la evaluación, dejando el logo y
-  // nombre de la empresa visibles junto con el botón para volver a evaluaciones.
+  // Evaluaciones/Reporte/Política y el título de la evaluación, y el botón junto al
+  // logo/nombre de la empresa pasa de "Empresas" a "Evaluaciones" (vuelve a la lista).
   const outerTabs=document.getElementById('n035-outer-tabs');
   if(outerTabs) outerTabs.style.display=n?'none':'';
   const titulo=document.getElementById('n035-eval-detail-titulo');
   if(titulo) titulo.style.display=n?'none':'';
+  const backBtn=document.getElementById('n035-empresa-back-btn');
+  if(backBtn){
+    backBtn.innerHTML='<i class="fa fa-arrow-left"></i> Evaluaciones';
+    backBtn.setAttribute('onclick','n035VolverListaEvaluaciones()');
+  }
   const nav=cuestionarios.length>1?`<div class="n035-tabs" style="margin-bottom:20px">
     ${cuestionarios.map(c=>`<button class="n035-tab${c===_n035CuestionarioActivo?' active':''}" onclick="n035SeleccionarCuestionario(${c})">${N035_CUEST_META[c].titulo}</button>`).join('')}
   </div>`:'';

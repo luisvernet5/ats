@@ -19705,7 +19705,7 @@ function renderPerfilesEmpresa(empId){
     <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="renderPerfiles()"><i class="fa fa-arrow-left"></i> Empresas</button>
       <div style="display:flex;align-items:center;gap:8px">
-        ${emp.logo?`<img src="${emp.logo}" style="width:26px;height:26px;object-fit:contain;border-radius:4px">`:`<div style="width:26px;height:26px;border-radius:4px;background:${emp.color||'#2AAADE'}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${emp.color||'#2AAADE'};font-size:12px"></i></div>`}
+        ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${emp.color||'#2AAADE'}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${emp.color||'#2AAADE'}"></i></div>`}
         <span style="font-size:15px;font-weight:600">${_esc(emp.nombre||'')}</span>
       </div>
       <span style="flex:1"></span>
@@ -28589,7 +28589,7 @@ function renderProcedimientosEmpresa(empId){
     <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="renderProcedimientos()"><i class="fa fa-arrow-left"></i> Empresas</button>
       <div style="display:flex;align-items:center;gap:8px">
-        ${emp.logo?`<img src="${emp.logo}" style="width:26px;height:26px;object-fit:contain;border-radius:4px">`:`<div style="width:26px;height:26px;border-radius:4px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color};font-size:12px"></i></div>`}
+        ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
         <span style="font-size:15px;font-weight:600">${_esc(emp.nombre||'')}</span>
       </div>
       <span style="flex:1"></span>

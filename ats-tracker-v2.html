@@ -5242,6 +5242,14 @@ function _ctHtmlToPdfDoc(html){
 
   const tmp=document.createElement('div');
   tmp.innerHTML=html;
+  if(window._CT_DEBUG_ALIGN){
+    const primero=[...tmp.children].find(c=>c.textContent&&c.textContent.trim());
+    alert('DIAGNÓSTICO (temporal)\n\n'
+      +'Primer bloque: <'+(primero?primero.tagName.toLowerCase():'?')+'>\n'
+      +'style attr: '+(primero?JSON.stringify(primero.getAttribute('style')):'null')+'\n'
+      +'style.textAlign (JS): '+(primero?JSON.stringify(primero.style.textAlign):'null')+'\n\n'
+      +'Primeros 200 caracteres del HTML crudo:\n'+JSON.stringify(html.slice(0,200)));
+  }
   procesarNodo(tmp,'left');
   return doc;
 }
@@ -5264,7 +5272,10 @@ function generarContratoPDF(contratoId,empId){
 function previsualizarContratoPDF(contratoId,empId){
   const contrato=(DB.contratos||[]).find(c=>c.id===contratoId);
   if(!contrato) return;
-  const doc=_ctGenerarDocPdf(contrato,empId);
+  window._CT_DEBUG_ALIGN=true;
+  let doc;
+  try{ doc=_ctGenerarDocPdf(contrato,empId); }
+  finally{ window._CT_DEBUG_ALIGN=false; }
   if(!doc) return;
   window.open(doc.output('bloburl'),'_blank');
 }

@@ -23250,9 +23250,7 @@ function n035RenderI(rows,fname,yaCalificado){
   <div class="fbar" style="justify-content:space-between;margin:16px 0">
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <input type="text" placeholder="Filtrar empresa / nombre..." oninput="n035Ftbl('n035-t-c1',this.value)" style="min-width:200px">
-      <select onchange="n035FtblS('n035-t-c1',this.value,9)">
-        <option value="">Todos</option><option>Requiere atención clínica</option><option>No requiere atención clínica</option>
-      </select>
+      <div id="n035-flt-c1" onclick="n035AbrirFiltroDropdown('n035-flt-c1',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:180px;max-width:260px;justify-content:space-between"><span id="lbl-n035-flt-c1">Todos</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3);flex-shrink:0"></i></div>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="n035ExportI()"><i class="fa fa-download"></i> Descargar Excel</button>
@@ -23276,6 +23274,11 @@ function n035RenderI(rows,fname,yaCalificado){
   });
   html+=`</tbody></table></div>`;
   document.getElementById('n035-result-c1').innerHTML=html;
+  n035RegistrarFiltroDropdown('n035-flt-c1','n035-t-c1',9,[
+    {value:'',label:'Todos'},
+    {value:'Requiere atención clínica',label:'Requiere atención clínica'},
+    {value:'No requiere atención clínica',label:'No requiere atención clínica'},
+  ]);
 }
 
 // ── Render Cuestionario II/III (Likert) ──────────────────────────
@@ -23319,10 +23322,7 @@ function n035RenderLikert(cuest,res,fname,cats,thr){
   <div class="fbar" style="justify-content:space-between;margin:16px 0">
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <input type="text" placeholder="Filtrar empresa / nombre..." oninput="n035Ftbl('${tid}',this.value)" style="min-width:200px">
-      <select onchange="n035FtblS('${tid}',this.value,5)">
-        <option value="">Todos los niveles</option>
-        <option>Muy Alto</option><option>Alto</option><option>Medio</option><option>Bajo</option><option>Nulo</option>
-      </select>
+      <div id="n035-flt-${cuest}" onclick="n035AbrirFiltroDropdown('n035-flt-${cuest}',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:180px;max-width:260px;justify-content:space-between"><span id="lbl-n035-flt-${cuest}">Todos los niveles</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3);flex-shrink:0"></i></div>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="n035ExportL(${cuest})"><i class="fa fa-download"></i> Descargar Excel</button>
@@ -23357,10 +23357,48 @@ function n035RenderLikert(cuest,res,fname,cats,thr){
 
   html+=n035BuildSmartPlan(cuest,res,cats);
   document.getElementById('n035-result-c'+cuest).innerHTML=html;
+  n035RegistrarFiltroDropdown('n035-flt-'+cuest,tid,5,[
+    {value:'',label:'Todos los niveles'},
+    {value:'Muy Alto',label:'Muy Alto'},{value:'Alto',label:'Alto'},{value:'Medio',label:'Medio'},
+    {value:'Bajo',label:'Bajo'},{value:'Nulo',label:'Nulo'},
+  ]);
 }
 
 function n035Ftbl(id,q){q=q.toLowerCase();document.querySelectorAll('#'+id+' tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none'});}
 function n035FtblS(id,q,col){document.querySelectorAll('#'+id+' tbody tr').forEach(r=>{r.style.display=!q||(r.cells[col]&&r.cells[col].textContent.includes(q))?'':'none'});}
+
+// ── Dropdown de filtro con el mismo look and feel que los demás filtros
+// de la app (botón + panel flotante), en vez de un <select> nativo. ──
+window._n035FiltroOpts = window._n035FiltroOpts||{};
+function n035RegistrarFiltroDropdown(btnId,tableId,col,opts){
+  window._n035FiltroOpts[btnId]={tableId,col,opts};
+}
+function n035AbrirFiltroDropdown(btnId,e){
+  e.stopPropagation();
+  const existing=document.getElementById('_n035fpanel-'+btnId);
+  if(existing){ existing.remove(); return; }
+  const meta=window._n035FiltroOpts[btnId];
+  const btn=document.getElementById(btnId);
+  if(!meta||!btn) return;
+  const rect=btn.getBoundingClientRect();
+  const panel=document.createElement('div');
+  panel.id='_n035fpanel-'+btnId;
+  panel.style.cssText=`position:fixed;top:${rect.bottom+4}px;left:${rect.left}px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:6px 4px;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,.15);min-width:${Math.max(rect.width,180)}px;max-height:300px;overflow-y:auto`;
+  panel.innerHTML=meta.opts.map(o=>`<div onclick="n035SeleccionarFiltroDropdown('${btnId}','${o.value.replace(/'/g,"\\'")}')" style="padding:6px 12px;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">${_esc(o.label)}</div>`).join('');
+  document.body.appendChild(panel);
+  const closePanel=()=>{ panel.remove(); document.removeEventListener('mousedown',onMouseDown); };
+  const onMouseDown=ev=>{ if(!panel.contains(ev.target)&&!btn.contains(ev.target)) closePanel(); };
+  setTimeout(()=>document.addEventListener('mousedown',onMouseDown),0);
+}
+function n035SeleccionarFiltroDropdown(btnId,value){
+  const meta=window._n035FiltroOpts[btnId];
+  document.getElementById('_n035fpanel-'+btnId)?.remove();
+  if(!meta) return;
+  const o=meta.opts.find(x=>x.value===value);
+  const lbl=document.getElementById('lbl-'+btnId);
+  if(lbl) lbl.textContent=o?o.label:'';
+  n035FtblS(meta.tableId,value,meta.col);
+}
 
 // ── Export a Excel ────────────────────────────────────────────────
 function n035ExportI(){

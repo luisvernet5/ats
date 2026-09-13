@@ -17741,6 +17741,10 @@ function renderConfig(){
   page.innerHTML=`
     <div style="padding:24px 28px">
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:16px">
+        ${currentUser?.email==='lukaarrever@gmail.com'?`
+        <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-usuarios" onclick="switchConfigTab('usuarios')">
+          <i class="fa fa-users-cog"></i> Usuarios
+        </button>`:''}
         <button class="btn btn-ghost btn-sm config-tab-btn active" id="cfg-tab-reclutadores" onclick="switchConfigTab('reclutadores')">
           <i class="fa fa-user-tie"></i> Reclutadores
         </button>
@@ -17757,9 +17761,6 @@ function renderConfig(){
           <i class="fa fa-user-check"></i> Coordinadores
         </button>
         ${currentUser?.email==='lukaarrever@gmail.com'?`
-        <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-usuarios" onclick="switchConfigTab('usuarios')">
-          <i class="fa fa-users-cog"></i> Usuarios
-        </button>
         <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-permisos" onclick="switchConfigTab('permisos')">
           <i class="fa fa-lock"></i> Permisos
         </button>

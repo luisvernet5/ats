@@ -2865,6 +2865,28 @@ function adaptUIToRole() {
     }
   }
 
+  // NOM 035 — justo debajo de Headcount Autorizado
+  if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-nom035')){
+    const navEl = document.querySelector('.sb-nav');
+    if(navEl){
+      const nomItem = document.createElement('div');
+      nomItem.className = 'nav-item';
+      nomItem.id = 'nav-nom035';
+      nomItem.dataset.tooltip = 'NOM 035';
+      nomItem.innerHTML = '<i class="fa fa-heart-pulse"></i><span class="nav-item-text"> NOM 035</span>';
+      nomItem.setAttribute('onclick', "showPage('nom035')");
+      const anchor = document.getElementById('nav-headcount-autorizado');
+      if(anchor) anchor.parentNode.insertBefore(nomItem, anchor.nextSibling);
+      else navEl.appendChild(nomItem);
+    }
+    if(!document.getElementById('page-nom035')){
+      const pg=document.createElement('div');
+      pg.className='page';
+      pg.id='page-nom035';
+      document.querySelector('.main').appendChild(pg);
+    }
+  }
+
   // Perfiles de puesto — visible para admin, reclutador y rh_cliente
   if(!document.getElementById('nav-perfiles')){
     const navEl = document.querySelector('.sb-nav');
@@ -3719,6 +3741,7 @@ const PERMISOS_SECCIONES=[
   {key:'contratos',              label:'Contratos',               grupo:'Gestión',    icon:'fa-file-contract'},
   {key:'capacitacion',           label:'Capacitación',            grupo:'Gestión',    icon:'fa-chalkboard-user'},
   {key:'headcount-autorizado',   label:'Headcount Autorizado',    grupo:'Gestión',    icon:'fa-users-gear'},
+  {key:'nom035',                 label:'NOM 035',                 grupo:'Gestión',    icon:'fa-heart-pulse'},
   {key:'ese',                    label:'ESE',                     grupo:'Gestión',    icon:'fa-file-alt'},
   {key:'candidatos-descartados', navId:'descartados',           label:'Candidatos descartados',  grupo:'Gestión',    icon:'fa-user-times'},
   {key:'vacantes-eliminadas',    label:'Vacantes eliminadas',     grupo:'Gestión',    icon:'fa-briefcase'},
@@ -3956,7 +3979,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',kpis:'KPIs',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'Headcount Semanal',perfiles:'Perfiles de Puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal',personal:'Administrador de Personal',expedientes:'Expedientes',contratos:'Contratos',capacitacion:'Capacitación','headcount-autorizado':'Headcount Autorizado',procedimientos:'Procedimientos'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',kpis:'KPIs',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'Headcount Semanal',perfiles:'Perfiles de Puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal',personal:'Administrador de Personal',expedientes:'Expedientes',contratos:'Contratos',capacitacion:'Capacitación','headcount-autorizado':'Headcount Autorizado',procedimientos:'Procedimientos',nom035:'NOM 035'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);
@@ -3996,6 +4019,7 @@ async function renderPage(p){
   if(p==='contratos'){renderContratos();return;}
   if(p==='capacitacion'){renderCapacitacion();return;}
   if(p==='headcount-autorizado'){renderHeadcountAutorizado();return;}
+  if(p==='nom035'){renderNom035();return;}
 }
 function _renderEmpresaCardsGrid(onClickFn,moduloKey){
   const cards=DB.empresas.filter(emp=>!moduloKey||emp.modulos?.[moduloKey]!==false).map(emp=>{
@@ -21875,6 +21899,17 @@ function exportESEExcel(){
   XLSX.writeFile(wb, `ESE_${today()}.xlsx`);
 }
 
+function renderNom035(){
+  const page=document.getElementById('page-nom035');
+  if(!page) return;
+  page.innerHTML=`<div class="card" style="max-width:520px;margin:40px auto;text-align:center;padding:40px 30px">
+    <div style="width:64px;height:64px;border-radius:50%;background:var(--accent)22;display:flex;align-items:center;justify-content:center;margin:0 auto 18px">
+      <i class="fa fa-heart-pulse" style="color:var(--accent);font-size:26px"></i>
+    </div>
+    <div style="font-weight:700;font-size:18px;margin-bottom:8px">NOM 035</div>
+    <div style="color:var(--text3);font-size:13px;line-height:1.6">Este apartado está en construcción — aquí se gestionará el cumplimiento de la NOM-035-STPS-2018 (factores de riesgo psicosocial). El contenido y las funciones se definirán próximamente.</div>
+  </div>`;
+}
 function renderESE(){
   const page = document.getElementById('page-ese');
   if(!page) return;

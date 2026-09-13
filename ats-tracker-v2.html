@@ -496,10 +496,10 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
 .n035-hidden{display:none!important}
 
 /* sub-nav (módulos + sub-pestañas de Calificación) */
-.n035-tabs{display:flex;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:4px;margin-bottom:16px;width:fit-content;flex-wrap:wrap}
-.n035-tab{background:none;border:none;border-radius:calc(var(--r) - 4px);padding:8px 16px;font-family:var(--font);font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.15s;white-space:nowrap}
-.n035-tab:hover{color:var(--text);background:var(--surface3)}
-.n035-tab.active{background:var(--accent);color:#fff}
+.n035-tabs{display:flex;gap:8px;margin-bottom:16px;width:fit-content;flex-wrap:wrap}
+.n035-tab{background:transparent;border:1px solid var(--border2);border-radius:8px;padding:5px 10px;font-family:var(--font);font-size:12px;font-weight:500;color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.15s;white-space:nowrap}
+.n035-tab:hover{color:var(--text);background:var(--surface2)}
+.n035-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .n035-pane{display:none}
 .n035-pane.active{display:block}
 
@@ -641,7 +641,6 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
 .n035-pol-section-body textarea:focus{outline:none;border-color:var(--accent)}
 
 @media (max-width:768px){
-  .n035-tab{padding:7px 11px;font-size:12px}
   .n035-dash-body{padding:16px}
   .n035-sections-grid,.n035-modal-meta{grid-template-columns:1fr}
 }

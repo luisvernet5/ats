@@ -22096,33 +22096,25 @@ function renderNom035(){
       <span style="font-size:16px;font-weight:700">${_esc(_n035EmpAts.nombre||'')}</span>
     </div>
     <div class="n035-tabs">
-      <button class="n035-tab active" id="n035-mod-empresas" onclick="n035SetModule('empresas')"><i class="fa fa-building"></i> Empresas</button>
-      <button class="n035-tab" id="n035-mod-calificacion" onclick="n035SetModule('calificacion')"><i class="fa fa-chart-column"></i> Calificación</button>
+      <button class="n035-tab active" id="n035-mod-calificacion" onclick="n035SetModule('calificacion')"><i class="fa fa-chart-column"></i> Evaluaciones</button>
       <button class="n035-tab" id="n035-mod-reporte" onclick="n035SetModule('reporte')"><i class="fa fa-file-lines"></i> Reporte</button>
       <button class="n035-tab" id="n035-mod-politica" onclick="n035SetModule('politica')"><i class="fa fa-clipboard-list"></i> Política NOM-035</button>
     </div>
 
-    <div class="n035-pane active" id="n035-module-empresas">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:16px;flex-wrap:wrap">
+    <div class="n035-pane active" id="n035-module-calificacion">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;gap:16px;flex-wrap:wrap">
         <div>
-          <div class="sec-title" style="margin-bottom:4px">Empresas NOM-035</div>
-          <div style="font-size:12px;color:var(--text3)">Gestiona tus clientes y el historial de exámenes NOM-035.</div>
+          <div class="sec-title" style="margin-bottom:4px">Evaluaciones NOM-035</div>
+          <div style="font-size:12px;color:var(--text3)">Historial de cuestionarios aplicados a esta empresa.</div>
         </div>
-        <button class="btn btn-primary" onclick="n035AbrirModalEmpresa()"><i class="fa fa-plus"></i> Agregar empresa</button>
+        <button class="btn btn-primary" id="n035-btn-add-eval" onclick="n035ToggleFormAgregar()"><i class="fa fa-plus"></i> Añadir evaluación</button>
       </div>
-      <div class="fbar" style="margin-bottom:16px">
-        <input type="text" id="n035-emp-search" placeholder="Buscar empresa o RFC..." oninput="n035RenderEmpresas()" style="max-width:340px">
+      <div id="n035-eval-list" style="margin:16px 0 24px">
+        <div style="text-align:center;padding:40px 20px;color:var(--text3)">Cargando evaluaciones...</div>
       </div>
-      <div id="n035-emp-list">
-        <div style="text-align:center;padding:60px 20px;color:var(--text3)">
-          <i class="fa fa-building" style="font-size:28px;margin-bottom:12px;display:block"></i>
-          <div style="font-size:14px;font-weight:600">Cargando empresas...</div>
-        </div>
-      </div>
-    </div>
 
-    <div class="n035-pane" id="n035-module-calificacion">
-      <div class="sec-title" style="margin-bottom:4px">Calificación automática NOM-035</div>
+      <div id="n035-form-agregar" style="display:none;border-top:1px solid var(--border);padding-top:20px">
+      <div class="sec-title" style="margin-bottom:4px">Subir cuestionario</div>
       <div style="font-size:12px;color:var(--text3);max-width:560px;margin-bottom:16px">Sube tu Excel de respuestas — el motor detecta automáticamente la hoja con datos y califica con los algoritmos oficiales de las tres guías.</div>
       <div class="n035-tabs">
         <button class="n035-tab active" id="n035-tab-c1" onclick="n035SetTab('c1')">Cuestionario I</button>
@@ -22158,6 +22150,7 @@ function renderNom035(){
           <button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="n035DescargarPlantilla(3);event.stopPropagation()"><i class="fa fa-download"></i> Descargar plantilla Excel</button>
         </div>
         <div id="n035-result-c3"></div>
+      </div>
       </div>
     </div>
 
@@ -22440,12 +22433,9 @@ function renderNom035(){
 
     <div class="modal-overlay" id="n035-modal-guardar-examen">
       <div class="modal">
-        <div class="mh"><h3>Guardar en empresa</h3><button class="xbtn" onclick="closeModal('n035-modal-guardar-examen')">✕</button></div>
+        <div class="mh"><h3>Guardar evaluación</h3><button class="xbtn" onclick="closeModal('n035-modal-guardar-examen')">✕</button></div>
         <div class="mb">
-          <p style="font-size:13px;color:var(--text3);margin-bottom:16px">Asocia los resultados calificados a una empresa registrada.</p>
-          <div class="fr full">
-            <div class="fg"><label>Empresa</label><select id="n035-guardar-empresa-sel"><option value="">Seleccionar empresa...</option></select></div>
-          </div>
+          <p style="font-size:13px;color:var(--text3);margin-bottom:16px">Se guardará para esta empresa y podrás consultarla después.</p>
           <div class="fr full">
             <div class="fg"><label>Fecha de aplicación</label><input type="date" id="n035-guardar-fecha-input"></div>
           </div>
@@ -22469,7 +22459,7 @@ function renderNom035(){
       <div class="n035-emp-dash-body" id="n035-emp-dash-body"></div>
     </div>
   `;
-  n035LoadEmpresas();
+  n035CargarEvaluacionesGuardadas();
   n035WireDragDrop();
 }
 
@@ -22518,6 +22508,7 @@ let _n035ExamenesByEmpresa = {};
 let _n035EmpEditId = null;
 let _n035EmpDashId = null;
 let _n035GuardarCuest = null;
+let _n035LastFileName = {};
 let _n035EmpDeptos = [];
 let _n035EmpLogoBase64 = undefined;
 
@@ -22757,14 +22748,7 @@ async function n035EliminarExamen(id) {
 }
 
 function n035AbrirGuardarExamen(cuest) {
-  if (!_n035Empresas.length) {
-    showToast('Primero registra al menos una empresa en el módulo "Empresas".', 'error');
-    return;
-  }
   _n035GuardarCuest = cuest;
-  const sel = document.getElementById('n035-guardar-empresa-sel');
-  sel.innerHTML = '<option value="">Seleccionar empresa...</option>' +
-    _n035Empresas.map(e => `<option value="${e.id}">${_esc(e.nombre)}</option>`).join('');
   document.getElementById('n035-guardar-fecha-input').value = new Date().toISOString().substring(0, 10);
   const btn = document.getElementById('n035-guardar-examen-btn');
   btn.disabled = false; btn.textContent = 'Guardar';
@@ -22772,31 +22756,111 @@ function n035AbrirGuardarExamen(cuest) {
 }
 
 async function n035ConfirmarGuardarExamen() {
-  const empresaId = document.getElementById('n035-guardar-empresa-sel').value;
   const fecha = document.getElementById('n035-guardar-fecha-input').value;
-  if (!empresaId) { showToast('Selecciona una empresa', 'error'); return; }
   if (!fecha) { showToast('Selecciona una fecha', 'error'); return; }
   const cuest = _n035GuardarCuest;
   const data = window['_n035Data'+cuest];
   if (!data || !data.length) { showToast('No hay datos calificados', 'error'); return; }
   const total = data.length;
-  const resultados = cuest === 1
+  const resumen = cuest === 1
     ? { atencion: data.filter(r=>r.atencion).length, no_atencion: data.filter(r=>!r.atencion).length }
     : { muy_alto: data.filter(r=>r.finalRisk==='Muy Alto').length, alto: data.filter(r=>r.finalRisk==='Alto').length, medio: data.filter(r=>r.finalRisk==='Medio').length, bajo: data.filter(r=>r.finalRisk==='Bajo').length, nulo: data.filter(r=>r.finalRisk==='Nulo').length };
   const btn = document.getElementById('n035-guardar-examen-btn');
   btn.disabled = true; btn.textContent = 'Guardando...';
-  const { error } = await n035GetSb().from('examenes').insert({ empresa_id: empresaId, cuestionario: cuest, fecha_aplicacion: fecha, total_colaboradores: total, resultados });
-  btn.disabled = false; btn.textContent = 'Guardar';
-  if (error) { showToast('Error: ' + error.message, 'error'); return; }
-  closeModal('n035-modal-guardar-examen');
-  const { data: exs } = await n035GetSb().from('examenes').select('id,empresa_id,cuestionario,fecha_aplicacion').order('fecha_aplicacion',{ascending:false});
-  if (exs) {
-    _n035ExamenesByEmpresa = {};
-    exs.forEach(x => { if(!_n035ExamenesByEmpresa[x.empresa_id]) _n035ExamenesByEmpresa[x.empresa_id]=[]; _n035ExamenesByEmpresa[x.empresa_id].push(x); });
-    n035RenderEmpresas();
+  try{
+    const { error } = await sbClient.from('nom035_evaluaciones').insert({
+      empresa_id: _n035EmpresaATS,
+      cuestionario: cuest,
+      fecha_aplicacion: fecha,
+      nombre_archivo: _n035LastFileName[cuest] || null,
+      total_colaboradores: total,
+      resumen,
+      resultados: data,
+    });
+    if (error) throw error;
+    closeModal('n035-modal-guardar-examen');
+    showToast(`Evaluación del Cuestionario ${['I','II','III'][cuest-1]} guardada ✓`, 'ok');
+    n035ToggleFormAgregar(false);
+    await n035CargarEvaluacionesGuardadas();
+  }catch(e){
+    showToast('Error al guardar: '+e.message, 'error');
+  }finally{
+    btn.disabled = false; btn.textContent = 'Guardar';
   }
-  const empNombre = _n035Empresas.find(e => e.id === empresaId)?.nombre || '';
-  showToast(`Resultados del Cuestionario ${['I','II','III'][cuest-1]} guardados en "${empNombre}"`, 'ok');
+}
+
+// ── Evaluaciones guardadas (Supabase del propio ATS, por empresa) ──
+let _n035Evaluaciones = [];
+function n035ToggleFormAgregar(mostrar){
+  const el=document.getElementById('n035-form-agregar');
+  if(!el) return;
+  const show = mostrar!==undefined ? mostrar : el.style.display==='none';
+  el.style.display = show ? '' : 'none';
+  const btn=document.getElementById('n035-btn-add-eval');
+  if(btn) btn.innerHTML = show ? '<i class="fa fa-xmark"></i> Cerrar' : '<i class="fa fa-plus"></i> Añadir evaluación';
+}
+async function n035CargarEvaluacionesGuardadas(){
+  const el=document.getElementById('n035-eval-list');
+  if(!el || !_n035EmpresaATS) return;
+  el.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text3)">Cargando evaluaciones...</div>';
+  try{
+    const {data,error}=await sbClient.from('nom035_evaluaciones').select('*').eq('empresa_id',_n035EmpresaATS).order('fecha_aplicacion',{ascending:false});
+    if(error) throw error;
+    _n035Evaluaciones = data||[];
+    n035RenderEvaluacionesGuardadas();
+  }catch(e){
+    el.innerHTML = `<div class="n035-msg n035-msg-warn"><span>⚠</span><span>Error al cargar evaluaciones: ${_esc(e.message)}</span></div>`;
+  }
+}
+function n035RenderEvaluacionesGuardadas(){
+  const el=document.getElementById('n035-eval-list');
+  if(!el) return;
+  if(!_n035Evaluaciones.length){
+    el.innerHTML=`<div style="text-align:center;padding:40px 20px;color:var(--text3)">
+      <i class="fa fa-clipboard-check" style="font-size:28px;margin-bottom:12px;display:block"></i>
+      <div style="font-size:14px;font-weight:600">Aún no hay evaluaciones guardadas</div>
+      <div style="font-size:13px">Da clic en "Añadir evaluación" para subir el primer cuestionario.</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML=_n035Evaluaciones.map(ev=>{
+    const nombreCuest=['','Cuestionario I','Cuestionario II','Cuestionario III'][ev.cuestionario]||'—';
+    const fecha=n035FmtDate(ev.fecha_aplicacion);
+    const resumenTxt = ev.cuestionario===1
+      ? `${ev.resumen?.atencion||0} requieren atención · ${ev.resumen?.no_atencion||0} sin atención`
+      : `Muy alto ${ev.resumen?.muy_alto||0} · Alto ${ev.resumen?.alto||0} · Medio ${ev.resumen?.medio||0} · Bajo ${ev.resumen?.bajo||0} · Nulo ${ev.resumen?.nulo||0}`;
+    return `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:10px;cursor:pointer" onclick="n035VerEvaluacionGuardada('${ev.id}')">
+      <div style="min-width:0">
+        <div style="font-weight:600;font-size:14px">${nombreCuest} <span style="color:var(--text3);font-weight:400">· ${_esc(ev.nombre_archivo||'')}</span></div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">${fecha} · ${ev.total_colaboradores} colaborador${ev.total_colaboradores!==1?'es':''} · ${_esc(resumenTxt)}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();n035VerEvaluacionGuardada('${ev.id}')"><i class="fa fa-eye"></i> Ver</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="event.stopPropagation();n035EliminarEvaluacionGuardada('${ev.id}')" title="Eliminar"><i class="fa fa-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function n035VerEvaluacionGuardada(id){
+  const ev=_n035Evaluaciones.find(e=>e.id===id);
+  if(!ev){showToast('Evaluación no encontrada','error');return;}
+  n035ToggleFormAgregar(true);
+  n035SetTab('c'+ev.cuestionario);
+  if(ev.cuestionario===1) n035RenderI(ev.resultados, ev.nombre_archivo||'', true);
+  else if(ev.cuestionario===2) n035RenderLikert(2, ev.resultados, ev.nombre_archivo||'', N035_CAT2, N035_THR2);
+  else n035RenderLikert(3, ev.resultados, ev.nombre_archivo||'', N035_CAT3, N035_THR3);
+  document.getElementById('n035-tabpane-c'+ev.cuestionario)?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+async function n035EliminarEvaluacionGuardada(id){
+  if(!confirm('¿Eliminar esta evaluación guardada? Esta acción no se puede deshacer.')) return;
+  try{
+    const {error}=await sbClient.from('nom035_evaluaciones').delete().eq('id',id);
+    if(error) throw error;
+    showToast('Evaluación eliminada ✓');
+    await n035CargarEvaluacionesGuardadas();
+  }catch(e){
+    showToast('Error al eliminar: '+e.message,'error');
+  }
 }
 
 // ── Motor de calificación NOM-035 ───────────────────────────────
@@ -22936,6 +23000,7 @@ function n035GradeIII(row){
 // ── Carga de archivo ────────────────────────────────────────────
 function n035LoadFile(cuest,inp){
   const file=inp.files[0];if(!file)return;
+  _n035LastFileName[cuest]=file.name;
   const reader=new FileReader();
   reader.onload=e=>{
     try{
@@ -23016,8 +23081,8 @@ function n035LoadFile(cuest,inp){
 function n035ShowErr(c,m){document.getElementById('n035-result-c'+c).innerHTML=`<div class="n035-msg n035-msg-warn"><span>⚠</span><span>${_esc(m)}</span></div>`;}
 
 // ── Render Cuestionario I ────────────────────────────────────────
-function n035RenderI(rows,fname){
-  const res=rows.map(n035GradeI);
+function n035RenderI(rows,fname,yaCalificado){
+  const res=yaCalificado?rows:rows.map(n035GradeI);
   const need=res.filter(r=>r.atencion).length,total=res.length;
   window._n035Data1=res;
   let html=`<div class="n035-msg n035-msg-ok"><span>✓</span><span>Archivo: <strong>${_esc(fname)}</strong> · ${total} registros</span></div>

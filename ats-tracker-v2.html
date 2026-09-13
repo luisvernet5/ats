@@ -4158,7 +4158,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',kpis:'KPIs',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'Headcount Semanal',perfiles:'Perfiles de Puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal',personal:'Administrador de Personal',expedientes:'Expedientes',contratos:'Contratos',capacitacion:'Capacitación','headcount-autorizado':'Headcount Autorizado',procedimientos:'Procedimientos',nom035:'NOM 035'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',kpis:'KPIs',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'Headcount Semanal',perfiles:'Perfiles de Puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal',personal:'Administrador de Personal',expedientes:'Expedientes',contratos:'Contratos',capacitacion:'Capacitación','headcount-autorizado':'Headcount Autorizado',procedimientos:'Procedimientos',nom035:'NOM 035','evaluaciones-eliminadas':'Evaluaciones eliminadas','perfiles-eliminados':'Perfiles eliminados'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);
@@ -10657,7 +10657,6 @@ function renderEvaluacionesEliminadas(){
   if(!page) return;
   const lista = DB.evaluacionesEliminadas||[];
   page.innerHTML = `<div style="padding:24px 28px">
-    <h2 style="margin-bottom:16px;font-size:17px;font-weight:700">Evaluaciones eliminadas</h2>
     ${!lista.length ? '<div style="color:var(--text3);font-size:13px">No hay evaluaciones eliminadas.</div>' :
     `<div class="table-wrap"><table class="table">
       <thead><tr><th>#</th><th>Nombre</th><th>Preguntas</th><th>Fecha eliminación</th><th></th></tr></thead>
@@ -10701,7 +10700,6 @@ function renderPerfilesEliminados(){
   if(!page) return;
   const lista = DB.perfilesEliminados||[];
   page.innerHTML = `<div style="padding:24px 28px">
-    <h2 style="margin-bottom:16px;font-size:17px;font-weight:700">Perfiles de puesto eliminados</h2>
     ${!lista.length ? '<div style="color:var(--text3);font-size:13px">No hay perfiles eliminados.</div>' :
     `<div class="table-wrap"><table class="table">
       <thead><tr><th>#</th><th>Puesto</th><th>Empresa</th><th>Departamento</th><th>Fecha eliminación</th><th></th></tr></thead>

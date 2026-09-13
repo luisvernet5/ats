@@ -22874,26 +22874,30 @@ function n035RenderEvaluacionesGuardadas(){
   const resumenHtml=`<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--text3)">
     ${[1,2,3].map(n=>`<span><strong style="color:var(--text)">${conteoPorCuest[n]}</strong> ${conteoPorCuest[n]!==1?'evaluaciones':'evaluación'} de Cuestionario ${['','I','II','III'][n]}</span>`).join('')}
   </div>`;
-  const listaHtml=_n035Evaluaciones.map(ev=>{
-    const subidos=new Set((_n035ResultadosPorEvaluacion[ev.id]||[]).map(r=>r.cuestionario));
-    const badges=(ev.cuestionarios||[]).map(n=>{
-      const ok=subidos.has(n);
-      return `<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${ok?'var(--green)':'var(--surface2)'};color:${ok?'#fff':'var(--text3)'};border:1px solid ${ok?'var(--green)':'var(--border2)'}">C.${['','I','II','III'][n]} ${ok?'✓':'—'}</span>`;
-    }).join(' ');
+  const filasHtml=_n035Evaluaciones.map(ev=>{
+    const porCuest={};
+    (_n035ResultadosPorEvaluacion[ev.id]||[]).forEach(r=>{ porCuest[r.cuestionario]=r; });
+    const cuestionarios=ev.cuestionarios||[];
     const creada=ev.created_at?new Date(ev.created_at).toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'}):'';
-    return `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:10px;cursor:pointer" onclick="n035AbrirDetalleEvaluacion('${ev.id}')">
-      <div style="min-width:0">
-        <div style="font-weight:600;font-size:14px">Evaluación ${ev.anio}</div>
-        <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">${badges}</div>
-        ${creada?`<div style="font-size:11px;color:var(--text3);margin-top:4px">Creada el ${creada}</div>`:''}
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0">
-        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();n035AbrirDetalleEvaluacion('${ev.id}')"><i class="fa fa-eye"></i> Ver</button>
-        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="event.stopPropagation();n035EliminarEvaluacion('${ev.id}')" title="Eliminar"><i class="fa fa-trash"></i></button>
-      </div>
-    </div>`;
+    const pares=[0,1,2].map(i=>{
+      const n=cuestionarios[i];
+      if(!n) return '<td></td><td></td>';
+      const r=porCuest[n];
+      const respuestas=r?`${r.total_colaboradores} Respuesta${r.total_colaboradores!==1?'s':''}`:'Pendiente';
+      return `<td>Cuestionario ${['','I','II','III'][n]}</td><td>${respuestas}</td>`;
+    }).join('');
+    return `<tr style="cursor:pointer" onclick="n035AbrirDetalleEvaluacion('${ev.id}')">
+      <td><div style="font-weight:600">Evaluación ${ev.anio}</div>${creada?`<div style="font-size:11px;color:var(--text3)">Creada el ${creada}</div>`:''}</td>
+      ${pares}
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-ghost btn-sm" onclick="n035AbrirDetalleEvaluacion('${ev.id}')"><i class="fa fa-eye"></i> Ver</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="n035EliminarEvaluacion('${ev.id}')" title="Eliminar"><i class="fa fa-trash"></i></button>
+      </td>
+    </tr>`;
   }).join('');
-  el.innerHTML=resumenHtml+listaHtml;
+  el.innerHTML=resumenHtml+`<div class="table-wrap"><table><thead><tr>
+    <th>Año</th><th>Cuestionario</th><th>Respuestas</th><th>Cuestionario</th><th>Respuestas</th><th>Cuestionario</th><th>Respuestas</th><th>Acciones</th>
+  </tr></thead><tbody>${filasHtml}</tbody></table></div>`;
 }
 async function n035AbrirDetalleEvaluacion(evalId){
   _n035EvaluacionAbierta = evalId;

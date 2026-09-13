@@ -5107,14 +5107,25 @@ function _ctHtmlToPdfDoc(html){
     texto.replace(/\t+/g,'\n').split('\n').forEach(parte=>{
       if(!parte.trim()){ y+=lineH*0.6; return; }
       const lineas=doc.splitTextToSize(parte,maxW);
+      if(align==='justify'){
+        // jsPDF solo agrega espaciado de "justify" cuando el propio texto que recibe se
+        // divide en MÁS DE UNA línea (su lógica interna es "if maxWidth>0, re-partir el
+        // texto y, si resultan varias líneas, repartir el espacio sobrante en todas menos
+        // la última"). Si le pasamos línea por línea (ya partidas por nosotros), cada
+        // llamada trae una sola línea, jsPDF nunca la vuelve a partir en más de una, y por
+        // lo tanto el "justify" queda sin efecto — hay que pasarle el párrafo completo de
+        // una sola vez para que su propio recorte interno vea todas las líneas.
+        ensureRoom(lineH*lineas.length);
+        doc.text(parte,marginX,y,{align:'justify',maxWidth:maxW});
+        y+=lineH*lineas.length;
+        return;
+      }
       lineas.forEach((line,li)=>{
         ensureRoom(lineH);
-        const esUltima=li===lineas.length-1;
         const opts={};
         let x=marginX;
         if(align==='center'){ opts.align='center'; x=marginX+maxW/2; }
         else if(align==='right'){ opts.align='right'; x=marginX+maxW; }
-        else if(align==='justify'&&!esUltima){ opts.align='justify'; opts.maxWidth=maxW; }
         doc.text(line,x,y,opts);
         y+=lineH;
       });

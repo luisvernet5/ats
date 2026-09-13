@@ -22191,7 +22191,72 @@ function renderNom035(){
     </div>
 
     <div class="n035-pane" id="n035-module-reporte">
-      <div class="card" style="max-width:480px;margin:30px auto;text-align:center;padding:32px 26px;color:var(--text3)">Próximamente</div>
+      <div class="sec-title" style="margin-bottom:4px">Generador de Reporte</div>
+      <div style="font-size:12px;color:var(--text3);max-width:560px;margin-bottom:16px">Configura los datos del cliente y genera el reporte oficial NOM-035 listo para entregar en PDF.</div>
+
+      <div class="n035-rep-step">
+        <div class="n035-rep-step-title"><span class="n035-step-num">1</span> Datos del cliente y consultor</div>
+        <div class="fr">
+          <div class="fg"><label>Nombre de la empresa / organización</label><input type="text" id="n035-rep-empresa" placeholder="Ej. Empresa S.A. de C.V."></div>
+          <div class="fg"><label>Domicilio</label><input type="text" id="n035-rep-domicilio" placeholder="Calle, Colonia, CP, Ciudad"></div>
+          <div class="fg"><label>Giro comercial / Actividad principal</label><input type="text" id="n035-rep-giro" placeholder="Ej. Construcción"></div>
+          <div class="fg"><label>Tamaño de la organización</label>
+            <select id="n035-rep-tamano">
+              <option value="">Seleccionar...</option>
+              <option>Micro (1–10 trabajadores)</option>
+              <option>Pequeña (11–50 trabajadores)</option>
+              <option>Mediana (51–250 trabajadores)</option>
+              <option>Grande (más de 250 trabajadores)</option>
+            </select>
+          </div>
+          <div class="fg"><label>Representante legal</label><input type="text" id="n035-rep-repleg" placeholder="Nombre completo"></div>
+          <div class="fg"><label>Año de inicio de operaciones</label><input type="text" id="n035-rep-anio" placeholder="Ej. 2010"></div>
+          <div class="fg"><label>Cuestionarios aplicados</label>
+            <select id="n035-rep-cuestionarios">
+              <option value="I+II">Cuestionario I + Cuestionario II (empresas pequeñas)</option>
+              <option value="I+III">Cuestionario I + Cuestionario III (empresas medianas/grandes)</option>
+            </select>
+          </div>
+          <div class="fg"><label>Mes y año del reporte</label><input type="text" id="n035-rep-fecha" placeholder="Ej. ENERO 2026"></div>
+          <div class="fg"><label>Nombre del consultor</label><input type="text" id="n035-rep-consultor" placeholder="Ej. Mtro. Juan Pérez García"></div>
+          <div class="fg"><label>Cédula(s) profesional(es)</label><input type="text" id="n035-rep-cedula" placeholder="Ej. 12345678"></div>
+        </div>
+      </div>
+
+      <div class="n035-rep-step">
+        <div class="n035-rep-step-title"><span class="n035-step-num">2</span> Resultados del Cuestionario I</div>
+        <div class="fr">
+          <div class="fg"><label>Total de cuestionarios aplicados</label><input type="number" id="n035-rep-c1-total" placeholder="Ej. 312" min="0"></div>
+          <div class="fg"><label>Colaboradores que requieren atención clínica</label><input type="number" id="n035-rep-c1-atencion" placeholder="Ej. 18" min="0"></div>
+        </div>
+      </div>
+
+      <div class="n035-rep-step" id="n035-rep-c2-block">
+        <div class="n035-rep-step-title"><span class="n035-step-num">3</span> Resultados del Cuestionario II / III</div>
+        <div class="fr">
+          <div class="fg"><label>Total de cuestionarios aplicados</label><input type="number" id="n035-rep-c23-total" placeholder="Ej. 312" min="0"></div>
+          <div class="fg" style="grid-column:1/-1"><label>Distribución de resultados</label></div>
+          <div class="fg"><label>Muy Alto</label><input type="number" id="n035-rep-muyalto" placeholder="0" min="0"></div>
+          <div class="fg"><label>Alto</label><input type="number" id="n035-rep-alto" placeholder="0" min="0"></div>
+          <div class="fg"><label>Medio</label><input type="number" id="n035-rep-medio" placeholder="0" min="0"></div>
+          <div class="fg"><label>Bajo</label><input type="number" id="n035-rep-bajo" placeholder="0" min="0"></div>
+          <div class="fg"><label>Nulo</label><input type="number" id="n035-rep-nulo" placeholder="0" min="0"></div>
+        </div>
+      </div>
+
+      <div class="n035-rep-step">
+        <div class="n035-rep-step-title"><span class="n035-step-num">4</span> Categorías y dominios prioritarios</div>
+        <p style="font-size:13px;color:var(--text3);margin-bottom:16px">Escribe las categorías y dominios que tuvieron mayor incidencia (separados por coma). Aparecerán en la sección de Resultados y Recomendaciones.</p>
+        <div class="fr">
+          <div class="fg"><label>Categorías prioritarias</label><input type="text" id="n035-rep-cat-prior" placeholder="Ej. Organización del tiempo de trabajo, Factores propios de la actividad"></div>
+          <div class="fg"><label>Dominios prioritarios</label><input type="text" id="n035-rep-dom-prior" placeholder="Ej. Carga de trabajo, Jornada de trabajo, Falta de control"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">
+        <button class="btn btn-primary" onclick="n035GenerarReporte()"><i class="fa fa-file-lines"></i> Generar Reporte PDF</button>
+        <button class="btn btn-ghost" onclick="n035LimpiarReporte()">Limpiar campos</button>
+      </div>
     </div>
     <div class="n035-pane" id="n035-module-politica">
       <div class="card" style="max-width:480px;margin:30px auto;text-align:center;padding:32px 26px;color:var(--text3)">Próximamente</div>
@@ -24177,6 +24242,306 @@ function n035DescargarPlantilla(cuest){
 
   XLSX.utils.book_append_sheet(wb, ws, wsName);
   XLSX.writeFile(wb, fname);
+}
+
+// ════════════════════════════════════════════════════════════════
+// Módulo Reporte PDF
+// ════════════════════════════════════════════════════════════════
+function n035LimpiarReporte(){
+  ['n035-rep-empresa','n035-rep-domicilio','n035-rep-giro','n035-rep-repleg','n035-rep-anio',
+   'n035-rep-fecha','n035-rep-consultor','n035-rep-cedula','n035-rep-cat-prior','n035-rep-dom-prior',
+   'n035-rep-c1-total','n035-rep-c1-atencion','n035-rep-c23-total',
+   'n035-rep-muyalto','n035-rep-alto','n035-rep-medio','n035-rep-bajo','n035-rep-nulo'
+  ].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('n035-rep-tamano').value='';
+  document.getElementById('n035-rep-cuestionarios').value='I+II';
+}
+
+function n035GenerarReporte(){
+  var empresa = document.getElementById('n035-rep-empresa').value.trim()||'[EMPRESA]';
+  var domicilio = document.getElementById('n035-rep-domicilio').value.trim()||'[DOMICILIO]';
+  var giro = document.getElementById('n035-rep-giro').value.trim()||'[GIRO]';
+  var tamano = document.getElementById('n035-rep-tamano').value||'[TAMAÑO]';
+  var repleg = document.getElementById('n035-rep-repleg').value.trim()||'[REPRESENTANTE LEGAL]';
+  var anio = document.getElementById('n035-rep-anio').value.trim()||'[AÑO]';
+  var cuests = document.getElementById('n035-rep-cuestionarios').value;
+  var fecha = (document.getElementById('n035-rep-fecha').value.trim()||new Date().toLocaleDateString('es-MX',{month:'long',year:'numeric'})).toUpperCase();
+  var consultor = document.getElementById('n035-rep-consultor').value.trim()||'[CONSULTOR]';
+  var cedula = document.getElementById('n035-rep-cedula').value.trim()||'[CÉDULA]';
+  var catPrior = document.getElementById('n035-rep-cat-prior').value.trim();
+  var domPrior = document.getElementById('n035-rep-dom-prior').value.trim();
+
+  var c1Total = parseInt(document.getElementById('n035-rep-c1-total').value)||0;
+  var c1Atencion = parseInt(document.getElementById('n035-rep-c1-atencion').value)||0;
+  var c1NoAtencion = c1Total - c1Atencion;
+  var c1PctAtencion = c1Total>0?Math.round(c1Atencion/c1Total*100):0;
+  var c1PctNo = 100-c1PctAtencion;
+
+  var c23Total = parseInt(document.getElementById('n035-rep-c23-total').value)||0;
+  var rMA = parseInt(document.getElementById('n035-rep-muyalto').value)||0;
+  var rA  = parseInt(document.getElementById('n035-rep-alto').value)||0;
+  var rM  = parseInt(document.getElementById('n035-rep-medio').value)||0;
+  var rB  = parseInt(document.getElementById('n035-rep-bajo').value)||0;
+  var rN  = parseInt(document.getElementById('n035-rep-nulo').value)||0;
+  var rTot= rMA+rA+rM+rB+rN||1;
+  function pct(n){return Math.round(n/rTot*100);}
+
+  var cuestLabel = cuests==='I+II'?'II':'III';
+  var cuestNombre = cuests==='I+II'
+    ?"para identificar los factores de riesgo psicosocial en los centros de trabajo"
+    :"para identificar los factores de riesgo psicosocial y evaluar el entorno organizacional en los centros de trabajo";
+
+  var cats = catPrior ? catPrior.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
+  var doms = domPrior ? domPrior.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
+
+  var iconMap = {
+    'organización':'🕐','factores propios':'🧠','ambiente':'🏭','liderazgo y relaciones':'👥',
+    'entorno':'🏢','carga':'⚡','jornada':'🕒','falta de control':'🔒',
+    'interferencia':'🏠','liderazgo':'👤','relaciones en el':'🤝','violencia':'⚠️',
+    'reconocimiento':'🏆','insuficiente':'🔄',
+  };
+  function getIcon(name){
+    var k=name.toLowerCase();
+    var keys=Object.keys(iconMap);
+    for(var i=0;i<keys.length;i++){if(k.indexOf(keys[i])>=0)return iconMap[keys[i]];}
+    return '📌';
+  }
+
+  function pill(name){
+    return '<div style="display:inline-flex;align-items:center;gap:8px;background:#f0f0f0;border-radius:10px;padding:10px 16px;margin:6px;font-size:13px;font-weight:600;color:#333">'+getIcon(name)+' '+name+'</div>';
+  }
+
+  var catPills = cats.map(pill).join('');
+  var domPills = doms.map(pill).join('');
+
+  var recomMap = {
+    'carga': ['Analizar la distribución de actividades para identificar posibles sobrecargas laborales.','Ajustar la asignación de tareas y plazos conforme a las capacidades operativas del personal.','Implementar mecanismos de seguimiento para detectar situaciones de exceso de trabajo.'],
+    'jornada': ['Establecer lineamientos claros respecto a horarios, jornadas y tiempos de descanso.','Supervisar que la distribución del tiempo sea congruente con la carga de actividades.','Promover el respeto a los periodos de descanso y límites entre la jornada y la vida personal.'],
+    'falta de control': ['Fortalecer la autonomía del personal en la ejecución de sus funciones.','Proporcionar mayor claridad en los procesos, criterios de evaluación y toma de decisiones.','Fomentar la participación del personal en la mejora de los procesos de trabajo.'],
+    'interferencia': ['Promover prácticas organizacionales que faciliten la conciliación laboral y personal.','Evitar, en la medida de lo posible, requerimientos laborales fuera de la jornada.','Sensibilizar a los mandos sobre el equilibrio trabajo-familia como factor de bienestar.'],
+    'liderazgo': ['Desarrollar programas de formación para mandos orientados al liderazgo positivo.','Establecer canales formales para retroalimentación y reconocimiento del desempeño.','Promover una cultura de respeto, claridad en instrucciones y apertura al diálogo.'],
+    'relaciones': ['Fomentar dinámicas de trabajo colaborativo y comunicación respetuosa.','Implementar actividades de integración que fortalezcan la cohesión del equipo.','Establecer protocolos claros para la resolución de conflictos laborales.'],
+    'violencia': ['Implementar política de cero tolerancia al acoso, discriminación y violencia laboral.','Establecer canales de denuncia confidenciales y seguros para los colaboradores.','Capacitar a mandos en identificación y prevención de conductas de violencia laboral.'],
+    'ambiente': ['Evaluar periódicamente las condiciones físicas y organizacionales del entorno laboral.','Implementar acciones que contribuyan a un clima laboral respetuoso.','Fomentar la comunicación efectiva entre los distintos niveles jerárquicos.'],
+    'reconocimiento': ['Establecer sistema formal de reconocimiento al desempeño vinculado a logros concretos.','Garantizar que la evaluación del desempeño sea clara, objetiva y comunicada oportunamente.','Asegurar equidad en compensación y oportunidades de desarrollo profesional.'],
+    'factores propios': ['Revisar la definición de funciones, responsabilidades y objetivos de los puestos.','Verificar que las tareas sean acordes al perfil del puesto y capacidades del personal.','Promover planeación adecuada de actividades sin generar presión innecesaria.'],
+    'organización del tiempo': ['Establecer lineamientos claros sobre horarios, jornadas y tiempos de descanso.','Supervisar que la distribución del tiempo sea congruente con la carga de actividades.','Respetar periodos de descanso y límites entre la jornada laboral y la vida personal.'],
+    'entorno': ['Promover sentido de pertenencia mediante reconocimiento y comunicación de logros.','Garantizar estabilidad laboral y claridad sobre perspectivas de crecimiento profesional.','Mantener comunicación transparente sobre cambios organizacionales.'],
+    'insuficiente': ['Promover sentido de pertenencia mediante reconocimiento y comunicación de logros.','Garantizar estabilidad laboral y claridad sobre perspectivas de crecimiento profesional.','Mantener comunicación transparente sobre cambios organizacionales que afecten al personal.'],
+  };
+
+  function getRecomendaciones(dominios){
+    var html='';
+    for(var i=0;i<dominios.length;i++){
+      var d=dominios[i];
+      var key=d.toLowerCase();
+      var bullets=null;
+      var keys=Object.keys(recomMap);
+      for(var j=0;j<keys.length;j++){
+        if(key.indexOf(keys[j])>=0){bullets=recomMap[keys[j]];break;}
+      }
+      if(bullets){
+        html+='<h3 style="font-size:14px;font-weight:700;color:#1a1917;margin:20px 0 8px">'+d+'</h3>';
+        for(var k=0;k<bullets.length;k++){
+          html+='<p style="font-size:13px;line-height:1.7;color:#44403c;margin:0 0 6px;padding-left:16px;border-left:3px solid #e2e1da">• '+bullets[k]+'</p>';
+        }
+      }
+    }
+    if(!html){
+      var defaults=['Comunicar de manera abierta y transparente los objetivos, avances y desafíos de la organización.',
+        'Establecer metas claras y alcanzables, alineadas con la visión y valores de la organización.',
+        'Fomentar la participación activa en el proceso de toma de decisiones.',
+        'Proporcionar oportunidades de desarrollo y crecimiento profesional.',
+        'Reconocer y valorar el esfuerzo y los logros de los colaboradores de manera regular.',
+        'Fomentar un ambiente de trabajo positivo, colaborativo e inclusivo.',
+        'Propiciar el equilibrio entre el trabajo y la vida personal.'];
+      for(var d=0;d<defaults.length;d++){
+        html+='<p style="font-size:13px;color:#78716c;margin:0 0 8px">• '+defaults[d]+'</p>';
+      }
+    }
+    return html;
+  }
+
+  function donutSVG(p,color,label,count){
+    var r=52,cx=60,cy=60,circ=2*Math.PI*r;
+    var dash=p/100*circ;
+    return '<svg width="120" height="120" viewBox="0 0 120 120">'
+      +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#e2e1da" stroke-width="14"/>'
+      +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="14"'
+      +' stroke-dasharray="'+dash+' '+circ+'" stroke-dashoffset="'+circ/4+'"'
+      +' stroke-linecap="round" transform="rotate(-90 '+cx+' '+cy+')"/>'
+      +'<text x="'+cx+'" y="'+cy+'" text-anchor="middle" dominant-baseline="central"'
+      +' style="font-size:18px;font-weight:800;fill:#1a1917">'+p+'%</text>'
+      +'</svg>'
+      +'<div style="font-size:12px;font-weight:700;color:#44403c;text-align:center;margin-top:4px">'+label+'</div>'
+      +'<div style="font-size:11px;color:#78716c;text-align:center">'+count+' colaboradores</div>';
+  }
+
+  function barSVG(data){
+    var max=0;
+    for(var i=0;i<data.length;i++){if(data[i].value>max)max=data[i].value;}
+    if(max===0)max=1;
+    var W=420,H=180,pad=30,barW=55,gap=15;
+    var bars='';
+    for(var i=0;i<data.length;i++){
+      var x=pad+i*(barW+gap);
+      var bh=Math.round((data[i].value/max)*(H-50));
+      var y=H-pad-bh;
+      bars+='<rect x="'+x+'" y="'+y+'" width="'+barW+'" height="'+bh+'" rx="5" fill="'+data[i].color+'"/>';
+      bars+='<text x="'+(x+barW/2)+'" y="'+(y-5)+'" text-anchor="middle" style="font-size:11px;font-weight:700;fill:#1a1917">'+data[i].value+'</text>';
+      bars+='<text x="'+(x+barW/2)+'" y="'+(H-8)+'" text-anchor="middle" style="font-size:10px;fill:#78716c">'+data[i].label+'</text>';
+    }
+    return '<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="overflow:visible">'+bars+'</svg>';
+  }
+
+  var barData=[
+    {label:'Muy Alto',value:rMA,color:'#dc2626'},
+    {label:'Alto',value:rA,color:'#d97706'},
+    {label:'Medio',value:rM,color:'#ca8a04'},
+    {label:'Bajo',value:rB,color:'#2563eb'},
+    {label:'Nulo',value:rN,color:'#16a34a'},
+  ];
+
+  var yOp = anio?'('+( new Date().getFullYear()-parseInt(anio) )+' años de operación)':'';
+
+  var recomList = doms.length ? doms : cats;
+  var recomItems = recomList.map(function(x){return '<li>'+x+'</li>';}).join('');
+
+  var h = '';
+  h += '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">';
+  h += '<title>Reporte NOM-035</title>';
+  h += '<style>';
+  h += '@import url(\'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap\');';
+  h += '*{box-sizing:border-box;margin:0;padding:0}';
+  h += 'body{font-family:\'Plus Jakarta Sans\',Arial,sans-serif;background:#fff;color:#1a1917;font-size:13px;line-height:1.6}';
+  h += '.page{width:210mm;min-height:297mm;margin:0 auto;padding:0;background:#fff;position:relative}';
+  h += '@media print{body{margin:0}.page{page-break-after:always;margin:0;width:100%}.no-print{display:none!important}@page{size:A4;margin:0}}';
+  h += '.ch{font-size:26px;font-weight:800;color:#1a1917;margin-bottom:6px;line-height:1.2}';
+  h += '.ch-line{width:40px;height:3px;background:#1a1917;margin-bottom:20px}';
+  h += '.body-text{font-size:13px;color:#44403c;line-height:1.75;margin-bottom:16px;text-align:justify}';
+  h += '.two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px}';
+  h += '.info-list{list-style:none;padding:0}';
+  h += '.info-list li{padding:8px 0;border-bottom:1px solid #f0efe8;font-size:13px;color:#44403c}';
+  h += '.info-list li strong{color:#1a1917;font-weight:700}';
+  h += 'table.dt{width:100%;border-collapse:collapse;margin:16px 0}';
+  h += 'table.dt th{background:#1a1917;color:#fff;padding:10px 12px;font-size:11px;text-align:left;font-weight:600}';
+  h += 'table.dt td{padding:9px 12px;border-bottom:1px solid #f0efe8;font-size:12px;color:#44403c}';
+  h += '.rp{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}';
+  h += '.rp.ma{background:#fef2f2;color:#dc2626}.rp.a{background:#fffbeb;color:#d97706}';
+  h += '.rp.m{background:#fefce8;color:#ca8a04}.rp.b{background:#eff6ff;color:#2563eb}.rp.n{background:#f0fdf4;color:#16a34a}';
+  h += '.cover-page{background:#fff;width:210mm;min-height:297mm;display:flex;flex-direction:column;position:relative;overflow:hidden;page-break-after:always}';
+  h += '.cover-content{position:relative;z-index:2;padding:60px 50px;flex:1;display:flex;flex-direction:column;justify-content:center}';
+  h += '.ph{font-size:11px;color:#aaa;border-bottom:1px solid #eee;padding:12px 30px;display:flex;justify-content:space-between}';
+  h += '.content{padding:28px 40px}';
+  h += '.donut-row{display:flex;gap:40px;justify-content:center;align-items:flex-start;margin:20px 0}';
+  h += '.pills-row{display:flex;flex-wrap:wrap;margin:-4px}';
+  h += '.aviso-box{border:1px solid #e2e1da;border-radius:10px;padding:20px 24px;margin-top:20px;background:#fafaf8}';
+  h += '.no-print{position:fixed;bottom:24px;right:24px;display:flex;gap:10px;z-index:999}';
+  h += '</style></head><body>';
+
+  h += '<div class="cover-page"><div class="cover-content">';
+  h += '<div style="font-size:28px;font-weight:800;color:#1a1917;line-height:1.15;margin-bottom:16px">EVALUACIÓN DE<br>FACTORES DE RIESGO<br>PSICOSOCIAL NOM<br>035-2018 STPS.</div>';
+  h += '<div style="width:60px;height:4px;background:#1a1917;margin:12px 0 20px"></div>';
+  h += '<div style="font-size:12px;color:#666;margin-bottom:6px">'+fecha+'</div>';
+  h += '<div style="font-size:12px;color:#444;margin:4px 0"><strong>ELABORADO POR:</strong><br>'+consultor+'</div>';
+  if(repleg){ h += '<div style="font-size:12px;color:#444;margin-top:8px"><strong>ELABORADO PARA:</strong><br>'+repleg+'</div>'; }
+  h += '<div style="margin-top:40px;font-size:18px;font-weight:800;color:#1a1917">'+empresa.toUpperCase()+'</div>';
+  h += '</div></div>';
+
+  h += '<div class="page"><div class="ph"><span>Evaluación de Factores de Riesgo Psicosocial NOM 035-2018 STPS</span><span>Pág. 03</span></div>';
+  h += '<div class="content"><div class="ch">1. INTRODUCCIÓN</div><div class="ch-line"></div>';
+  h += '<div class="two-col">';
+  h += '<div><p class="body-text">El objetivo de la intervención se basa en desarrollar un diagnóstico organizacional, mediante la recolección de información, el análisis de la estructura organizacional, así como el análisis de las necesidades y áreas de mejora de la organización.</p>';
+  h += '<p class="body-text">Es de vital importancia mencionar que la metodología para la aplicación de la NOM 035 está fundamentada en un marco teórico y en procedimientos científicos que permiten formular conclusiones verídicas sobre la situación organizacional y que aportan elementos de mejora.</p></div>';
+  h += '<div><p class="body-text">Así también ayuda para el cumplimiento de la normatividad solicitada por la Secretaría del Trabajo y Previsión Social (STPS) relacionado a la NOM 035.</p>';
+  h += '<p class="body-text">Como parte importante de esta intervención está el reconocimiento de los factores organizacionales que pueden causar una exposición a posibles riesgos psicosociales, por lo cual la creación de una política de prevención, así como estrategias psicoeducativas y de formación podrán reducir el impacto de estos potenciales riesgos a la salud de los colaboradores.</p></div>';
+  h += '</div></div></div>';
+
+  h += '<div class="page"><div class="ph"><span>Evaluación de Factores de Riesgo Psicosocial NOM 035-2018 STPS</span><span>Pág. 04</span></div>';
+  h += '<div class="content"><div class="ch">2. CARACTERÍSTICAS DE LA ORGANIZACIÓN</div><div class="ch-line"></div>';
+  h += '<p class="body-text">A continuación se presentan los elementos de la organización:</p>';
+  h += '<ul class="info-list" style="margin-top:12px">';
+  h += '<li><strong>Nombre de la empresa:</strong> '+empresa+'</li>';
+  h += '<li><strong>Domicilio:</strong> '+domicilio+'</li>';
+  if(anio){ h += '<li><strong>Año de inicio de operaciones:</strong> '+anio+' '+yOp+'</li>'; }
+  if(repleg){ h += '<li><strong>Representante legal:</strong> '+repleg+'</li>'; }
+  h += '<li><strong>Giro comercial y/o actividad principal:</strong> '+giro+'</li>';
+  h += '<li><strong>Tamaño de la organización:</strong> '+tamano+'</li>';
+  h += '</ul></div></div>';
+
+  h += '<div class="page"><div class="ph"><span>Evaluación de Factores de Riesgo Psicosocial NOM 035-2018 STPS</span><span>Pág. 15</span></div>';
+  h += '<div class="content"><div class="ch">5. RESULTADOS</div><div class="ch-line"></div>';
+  h += '<div style="text-align:center;font-size:16px;font-weight:800;letter-spacing:.5px;margin-bottom:20px">RESULTADOS CUESTIONARIO I</div>';
+  h += '<p class="body-text">Según dispuesto por la Norma Oficial Mexicana – 035 – STPS-2018 se aplicaron <strong>'+c1Total+' cuestionarios</strong> (Cuestionario para identificar a los trabajadores que fueron sujetos a acontecimientos traumáticos severos), teniendo como resultados los siguientes datos:</p>';
+  h += '<div class="donut-row">';
+  h += '<div style="text-align:center">'+donutSVG(c1PctAtencion,'#4f46e5','Requieren atención clínica',c1Atencion)+'</div>';
+  h += '<div style="text-align:center">'+donutSVG(c1PctNo,'#1a1917','No requieren atención clínica',c1NoAtencion)+'</div>';
+  h += '</div>';
+  h += '<p class="body-text" style="margin-top:16px">'+(c1Atencion>0?'Para los trabajadores que requieren atención clínica es recomendable canalizar con un profesional de la salud para realizar una valoración a fondo y tomar acciones en los casos necesarios para prevenir el posible desarrollo de riesgos psicosociales que impacten en el ámbito laboral, familiar y social.':'En caso de existir trabajadores que requieran atención clínica, es recomendable canalizar con un profesional de la salud para realizar una valoración a fondo y tomar acciones preventivas conforme a lo dispuesto en la NOM-035-STPS-2018.')+'</p>';
+  h += '</div></div>';
+
+  h += '<div class="page"><div class="ph"><span>Evaluación de Factores de Riesgo Psicosocial NOM 035-2018 STPS</span><span>Pág. 17</span></div>';
+  h += '<div class="content">';
+  h += '<div style="text-align:center;font-size:16px;font-weight:800;letter-spacing:.5px;margin-bottom:20px">RESULTADOS CUESTIONARIO '+cuestLabel+'</div>';
+  h += '<p class="body-text">Según dispuesto por la Norma Oficial Mexicana – 035 – STPS-2018 se aplicaron <strong>'+c23Total+' cuestionarios</strong> (Cuestionario '+cuestNombre+') a colaboradores de la organización.</p>';
+  h += '<div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;margin:20px 0">';
+  h += '<div style="flex:1;min-width:200px">'+barSVG(barData)+'</div>';
+  h += '<div>';
+  h += '<table class="dt" style="min-width:200px">';
+  h += '<thead><tr><th>Colaboradores</th><th>Resultado</th></tr></thead><tbody>';
+  h += '<tr><td style="font-weight:700">'+rMA+'</td><td><span class="rp ma">Muy Alto</span></td></tr>';
+  h += '<tr><td style="font-weight:700">'+rA+'</td><td><span class="rp a">Alto</span></td></tr>';
+  h += '<tr><td style="font-weight:700">'+rM+'</td><td><span class="rp m">Medio</span></td></tr>';
+  h += '<tr><td style="font-weight:700">'+rB+'</td><td><span class="rp b">Bajo</span></td></tr>';
+  h += '<tr><td style="font-weight:700">'+rN+'</td><td><span class="rp n">Nulo</span></td></tr>';
+  h += '</tbody></table></div></div>';
+  if(cats.length){ h += '<div style="margin-top:16px"><p style="font-size:13px;font-weight:700;margin-bottom:10px">Categorías con mayor incidencia:</p><div class="pills-row">'+catPills+'</div></div>'; }
+  if(doms.length){ h += '<div style="margin-top:14px"><p style="font-size:13px;font-weight:700;margin-bottom:10px">Dominios con mayor incidencia:</p><div class="pills-row">'+domPills+'</div></div>'; }
+  h += '</div></div>';
+
+  h += '<div class="page"><div class="ph"><span>Evaluación de Factores de Riesgo Psicosocial NOM 035-2018 STPS</span><span>Pág. 22</span></div>';
+  h += '<div class="content"><div class="ch">6. RECOMENDACIONES</div><div class="ch-line"></div>';
+  if(recomList.length){
+    h += '<p class="body-text">Las recomendaciones están centradas en el adecuado manejo de los siguientes aspectos:</p>';
+    h += '<ul style="margin:12px 0 20px 20px;color:#44403c;font-size:13px;line-height:1.8">'+recomItems+'</ul>';
+    h += '<p class="body-text">A continuación se extienden las siguientes recomendaciones:</p>';
+  }
+  h += getRecomendaciones(recomList);
+  h += '</div></div>';
+
+  h += '<div class="page"><div class="ph"><span>Evaluación de Factores de Riesgo Psicosocial NOM 035-2018 STPS</span><span>Pág. 29</span></div>';
+  h += '<div class="content"><div class="ch">8. AVISO DE PRIVACIDAD</div><div class="ch-line"></div>';
+  h += '<div class="aviso-box"><p class="body-text" style="margin:0">Todos los datos proporcionados para la realización de las evaluaciones son estrictamente confidenciales y sólo se utilizan con fines de mejora organizacional en un marco de acción de carácter disciplinario, por lo que los datos aquí expuestos sólo son de interés para la organización.</p></div>';
+  h += '<div style="text-align:center;margin-top:50px">';
+  h += '<div style="display:inline-block;width:240px;border-top:1px solid #333;padding-top:8px">';
+  h += '<div style="font-weight:700;font-size:13px">'+consultor+'</div>';
+  h += '<div style="font-size:11px;color:#555;margin-top:2px">Ced. Prof. '+cedula+'</div>';
+  h += '</div></div></div></div>';
+
+  h += '<div class="no-print">';
+  h += '<button onclick="window.print()" style="background:#4f46e5;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer">Imprimir / PDF</button>';
+  h += '<button onclick="guardarWord()" style="background:#1d6f42;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;margin-left:10px">Guardar como Word</button>';
+  h += '<button onclick="window.close()" style="background:#fff;color:#333;border:1px solid #ccc;border-radius:10px;padding:12px 20px;font-size:14px;cursor:pointer;margin-left:10px">Cerrar</button>';
+  h += '</div>';
+
+  h += '<scr'+'ipt>';
+  h += 'function guardarWord(){';
+  h += 'var b=document.body.cloneNode(true);';
+  h += 'b.querySelectorAll(".no-print").forEach(function(el){el.parentNode.removeChild(el);});';
+  h += 'var out="<!DOCTYPE html><html xmlns:o=\'urn:schemas-microsoft-com:office:office\' xmlns:w=\'urn:schemas-microsoft-com:office:word\'><head><meta charset=\'UTF-8\'><style>body{font-family:Arial,sans-serif;font-size:12pt;margin:2cm;}h3{margin:14pt 0 4pt;}.no-print{display:none!important;}</style></head><body>"+b.innerHTML+"</body></html>";';
+  h += 'var blob=new Blob([out],{type:"application/msword"});';
+  h += 'var url=URL.createObjectURL(blob);';
+  h += 'var a=document.createElement("a");a.href=url;a.download="Reporte_NOM035.doc";';
+  h += 'document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);';
+  h += '}';
+  h += '<\/scr'+'ipt>';
+
+  h += '</body></html>';
+
+  var win=window.open('','_blank');
+  if(!win){showToast('Permite ventanas emergentes para este sitio e intenta de nuevo.','error');return;}
+  win.document.write(h);
+  win.document.close();
 }
 
 function renderESE(){

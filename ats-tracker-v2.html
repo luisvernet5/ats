@@ -23194,17 +23194,19 @@ function n035RenderI(rows,fname,yaCalificado){
     <div class="card"><div class="card-value" style="color:var(--red)">${need}</div><div class="card-sub">Requieren atención</div></div>
     <div class="card"><div class="card-value" style="color:${need/total>.2?'var(--red)':'var(--text)'}">${total?Math.round(need/total*100):0}%</div><div class="card-sub">Tasa afectación</div></div>
   </div>
-  <div style="display:flex;gap:10px;margin:16px 0;flex-wrap:wrap">
-    <button class="btn btn-primary" onclick="n035ExportI()"><i class="fa fa-download"></i> Descargar Excel</button>
-    <button class="btn btn-ghost" onclick="n035PrintAllReports()" id="n035-btn-print-all"><i class="fa fa-print"></i> Imprimir fichas</button>
-    <button class="btn btn-ghost" style="color:var(--green)" onclick="n035GenerarCartasC1()"><i class="fa fa-file-lines"></i> Generar cartas</button>
-    <button class="btn btn-ghost" style="color:var(--accent)" onclick="n035AbrirGuardarExamen(1)"><i class="fa fa-floppy-disk"></i> Guardar en empresa</button>
-  </div>
-  <div class="fbar">
-    <input type="text" placeholder="Filtrar empresa / nombre..." oninput="n035Ftbl('n035-t-c1',this.value)" style="min-width:200px">
-    <select onchange="n035FtblS('n035-t-c1',this.value,9)">
-      <option value="">Todos</option><option>Requiere atención clínica</option><option>No requiere atención clínica</option>
-    </select>
+  <div class="fbar" style="justify-content:space-between;margin:16px 0">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <input type="text" placeholder="Filtrar empresa / nombre..." oninput="n035Ftbl('n035-t-c1',this.value)" style="min-width:200px">
+      <select onchange="n035FtblS('n035-t-c1',this.value,9)">
+        <option value="">Todos</option><option>Requiere atención clínica</option><option>No requiere atención clínica</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="n035ExportI()"><i class="fa fa-download"></i> Descargar Excel</button>
+      <button class="btn btn-ghost" onclick="n035PrintAllReports()" id="n035-btn-print-all"><i class="fa fa-print"></i> Imprimir fichas</button>
+      <button class="btn btn-ghost" style="color:var(--green)" onclick="n035GenerarCartasC1()"><i class="fa fa-file-lines"></i> Generar cartas</button>
+      <button class="btn btn-ghost" style="color:var(--accent)" onclick="n035AbrirGuardarExamen(1)"><i class="fa fa-floppy-disk"></i> Guardar en empresa</button>
+    </div>
   </div>
   <div class="table-wrap"><table id="n035-t-c1"><thead><tr>
     <th>#</th><th>Nombre / No.</th><th>Empresa</th><th>Depto</th><th>Fecha</th>
@@ -23261,20 +23263,22 @@ function n035RenderLikert(cuest,res,fname,cats,thr){
     <div class="card"><div class="card-title" style="margin-bottom:10px">Distribución riesgo final</div>${barsHtml}</div>
     <div class="card"><div class="card-title" style="margin-bottom:10px">Alto/Muy alto por categoría</div>${catSumHtml}</div>
   </div>
-  <div style="display:flex;gap:10px;margin:16px 0;flex-wrap:wrap">
-    <button class="btn btn-primary" onclick="n035ExportL(${cuest})"><i class="fa fa-download"></i> Descargar Excel</button>
-    <button class="btn btn-ghost" onclick="n035PrintAllLikert(${cuest})" id="n035-btn-print-all-l${cuest}"><i class="fa fa-print"></i> Imprimir fichas</button>
-    <button class="btn btn-ghost" style="color:var(--accent2)" onclick="n035OpenDash(${cuest})"><i class="fa fa-chart-column"></i> Dashboard</button>
-    <button class="btn btn-ghost" style="color:var(--green)" onclick="n035GenerarCartasLikert(${cuest})"><i class="fa fa-file-lines"></i> Generar cartas</button>
-    <button class="btn btn-ghost" style="color:var(--green)" onclick="n035AbrirPromedios(${cuest})"><i class="fa fa-list-check"></i> Conteo / Porcentajes</button>
-    <button class="btn btn-ghost" style="color:var(--accent)" onclick="n035AbrirGuardarExamen(${cuest})"><i class="fa fa-floppy-disk"></i> Guardar en empresa</button>
-  </div>
-  <div class="fbar">
-    <input type="text" placeholder="Filtrar empresa / nombre..." oninput="n035Ftbl('${tid}',this.value)" style="min-width:200px">
-    <select onchange="n035FtblS('${tid}',this.value,5)">
-      <option value="">Todos los niveles</option>
-      <option>Muy Alto</option><option>Alto</option><option>Medio</option><option>Bajo</option><option>Nulo</option>
-    </select>
+  <div class="fbar" style="justify-content:space-between;margin:16px 0">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <input type="text" placeholder="Filtrar empresa / nombre..." oninput="n035Ftbl('${tid}',this.value)" style="min-width:200px">
+      <select onchange="n035FtblS('${tid}',this.value,5)">
+        <option value="">Todos los niveles</option>
+        <option>Muy Alto</option><option>Alto</option><option>Medio</option><option>Bajo</option><option>Nulo</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="n035ExportL(${cuest})"><i class="fa fa-download"></i> Descargar Excel</button>
+      <button class="btn btn-ghost" onclick="n035PrintAllLikert(${cuest})" id="n035-btn-print-all-l${cuest}"><i class="fa fa-print"></i> Imprimir fichas</button>
+      <button class="btn btn-ghost" style="color:var(--accent2)" onclick="n035OpenDash(${cuest})"><i class="fa fa-chart-column"></i> Dashboard</button>
+      <button class="btn btn-ghost" style="color:var(--green)" onclick="n035GenerarCartasLikert(${cuest})"><i class="fa fa-file-lines"></i> Generar cartas</button>
+      <button class="btn btn-ghost" style="color:var(--green)" onclick="n035AbrirPromedios(${cuest})"><i class="fa fa-list-check"></i> Conteo / Porcentajes</button>
+      <button class="btn btn-ghost" style="color:var(--accent)" onclick="n035AbrirGuardarExamen(${cuest})"><i class="fa fa-floppy-disk"></i> Guardar en empresa</button>
+    </div>
   </div>
   <div class="table-wrap"><table id="${tid}" style="min-width:900px"><thead><tr>
     <th style="width:36px">#</th>

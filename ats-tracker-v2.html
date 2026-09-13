@@ -3151,15 +3151,37 @@ function adaptUIToRole() {
       navEl.style.display = _perms.has(sec.key) ? '' : 'none';
     });
   }
-  // Orden final del nav: Perfiles → Librería → Procesos → Procedimientos → KPIs → Garantías → ESE
+  // Reorganiza el menú completo en grupos temáticos (sigue el flujo del proceso:
+  // reclutar → evaluar → empresas/equipo → gestionar personal → estudios/garantías →
+  // analizar → papelera → sistema), una vez que ya existen en el DOM todos los items
+  // que se inyectan arriba según el rol. Los ids que el usuario no tiene permitidos
+  // simplemente no existen todavía y se omiten sin problema.
   setTimeout(()=>{
-    const refItem=document.getElementById('nav-perfiles');
-    if(!refItem)return;
-    let anchor=refItem;
-    ['nav-evaluaciones','nav-procesos-eval','nav-procedimientos','nav-kpis','nav-garantias','nav-ese'].forEach(id=>{
-      const el=document.getElementById(id);
-      if(el){anchor.parentNode.insertBefore(el,anchor.nextSibling);anchor=el;}
+    if(rol==='facturacion') return; // ese rol oculta todas las secciones a propósito
+    const nav=document.querySelector('.sb-nav');
+    if(!nav) return;
+    const grupos=[
+      {titulo:'Reclutamiento', ids:['nav-dashboard','nav-vacantes','nav-candidatos','nav-pipeline','nav-descartados','nav-documentacion','nav-perfiles']},
+      {titulo:'Evaluación', ids:['nav-evaluaciones','nav-procesos-eval']},
+      {titulo:'Empresas y Equipo', ids:['nav-empresas','nav-reclutadores']},
+      {titulo:'Gestión de Personal', ids:['nav-personal','nav-expedientes','nav-contratos','nav-capacitacion','nav-headcount-autorizado','nav-nom035','nav-procedimientos']},
+      {titulo:'Estudios y Garantías', ids:['nav-ese','nav-garantias']},
+      {titulo:'Análisis y Reportes', ids:['nav-kpis','nav-headcount','nav-contratados','nav-tiempos','nav-ranking','nav-desercion']},
+      {titulo:'Papelera', ids:['nav-vacantes-eliminadas','nav-evaluaciones-eliminadas','nav-perfiles-eliminados']},
+      {titulo:'Sistema', ids:['nav-activity-log','nav-config']},
+    ];
+    const logoutWrap=[...nav.children].find(el=>el.querySelector&&el.querySelector('#logout-btn'));
+    nav.querySelectorAll('.nav-section').forEach(el=>el.remove());
+    grupos.forEach(g=>{
+      const items=g.ids.map(id=>document.getElementById(id)).filter(Boolean);
+      if(!items.length) return;
+      const header=document.createElement('div');
+      header.className='nav-section';
+      header.textContent=g.titulo;
+      nav.appendChild(header);
+      items.forEach(el=>nav.appendChild(el));
     });
+    if(logoutWrap) nav.appendChild(logoutWrap);
   },0);
 }
 

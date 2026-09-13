@@ -22190,6 +22190,19 @@ function renderNom035(){
       </div>
     </div>
 
+    <div class="n035-prom-overlay n035-hidden" id="n035-prom-modal">
+      <div class="n035-prom-header">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('n035-prom-modal').classList.add('n035-hidden')"><i class="fa fa-arrow-left"></i> Volver</button>
+        <div style="flex:1;text-align:center">
+          <div style="font-size:16px;font-weight:600;color:var(--text)" id="n035-prom-titulo">Conteo y Porcentajes</div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--mono)" id="n035-prom-subtitulo"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="n035CopiarPromediosPortapapeles(this)"><i class="fa fa-copy"></i> Copiar</button>
+        <button class="btn btn-ghost btn-sm" onclick="n035ExportarPromediosExcel()"><i class="fa fa-download"></i> Exportar Excel</button>
+      </div>
+      <div class="n035-prom-body" id="n035-prom-content"></div>
+    </div>
+
     <div class="n035-pane" id="n035-module-reporte">
       <div class="sec-title" style="margin-bottom:4px">Generador de Reporte</div>
       <div style="font-size:12px;color:var(--text3);max-width:560px;margin-bottom:16px">Configura los datos del cliente y genera el reporte oficial NOM-035 listo para entregar en PDF.</div>
@@ -24845,6 +24858,153 @@ function n035DescargarPolitica(){
   if(!win){ showToast('Permite ventanas emergentes para este sitio e intenta de nuevo.','error'); return; }
   win.document.write(html);
   win.document.close();
+}
+
+// ── Conteo y promedios ─────────────────────────────────────────────
+let _n035PromCuest = null;
+
+function n035AbrirPromedios(cuest) {
+  const data = window['_n035Data' + cuest];
+  if (!data || !data.length) { showToast('No hay datos cargados', 'error'); return; }
+  _n035PromCuest = cuest;
+  const qLabel = cuest === 2 ? 'II' : 'III';
+  document.getElementById('n035-prom-titulo').textContent = `Cuestionario ${qLabel} — Conteo y Porcentajes`;
+  document.getElementById('n035-prom-subtitulo').textContent = `${data.length} registros evaluados`;
+  document.getElementById('n035-prom-modal').classList.remove('n035-hidden');
+  const cats = cuest === 2 ? N035_CAT2 : N035_CAT3;
+  const doms = cuest === 2 ? N035_DOM2 : N035_DOM3;
+  n035RenderPromediosTable(data, cats, doms);
+}
+
+function n035RenderPromediosTable(data, cats, doms) {
+  const LEVELS = ['Muy Alto','Alto','Medio','Bajo','Nulo'];
+  const LCOLORS = {'Muy Alto':'var(--red)','Alto':'var(--amber)','Medio':'#ca8a04','Bajo':'#2563eb','Nulo':'var(--green)'};
+  const catKeys = Object.keys(cats);
+  const domKeys = Object.keys(doms);
+
+  const SHORT = {
+    'Factores propios de la actividad':'Factores propios',
+    'Organización del tiempo de trabajo':'Org. tiempo',
+    'Liderazgo y relaciones en el trabajo':'Lid. y relaciones',
+    'Entorno organizacional':'Entorno org.',
+    'Condiciones en el ambiente de trabajo':'Cond. ambiente',
+    'Falta de control sobre el trabajo':'Falta control',
+    'Interferencia en la relación trabajo-familia':'Interferencia',
+    'Insuficiente sentido de pertenencia e inestabilidad':'Insuf. pertenencia',
+    'Reconocimiento del desempeño':'Reconocimiento',
+  };
+  const sh = k => SHORT[k] || k;
+
+  function headers() {
+    return `<tr>
+      <th rowspan="2" style="text-align:left;min-width:80px;background:var(--surface2)">Rango</th>
+      <th colspan="1" class="n035-prom-th-cal">Calificación</th>
+      <th colspan="${catKeys.length}" class="n035-prom-th-cat">Categorías</th>
+      <th colspan="${domKeys.length}" class="n035-prom-th-dom">Dominios</th>
+    </tr><tr>
+      <th>Calific. total</th>
+      ${catKeys.map(c=>`<th title="${c}">${sh(c)}</th>`).join('')}
+      ${domKeys.map(d=>`<th title="${d}">${sh(d)}</th>`).join('')}
+    </tr>`;
+  }
+
+  function conteoRows() {
+    const rows = LEVELS.map(lv => {
+      const col = LCOLORS[lv];
+      const n = data.filter(r=>r.finalRisk===lv).length;
+      const cCounts = catKeys.map(c=>data.filter(r=>r.catRisk[c]===lv).length);
+      const dCounts = domKeys.map(d=>data.filter(r=>r.domRisk[d]===lv).length);
+      return `<tr><td style="color:${col}">${lv}</td><td>${n}</td>${cCounts.map(v=>`<td>${v}</td>`).join('')}${dCounts.map(v=>`<td>${v}</td>`).join('')}</tr>`;
+    });
+    rows.push(`<tr><td>Total</td><td>${data.length}</td>${catKeys.map(()=>`<td>${data.length}</td>`).join('')}${domKeys.map(()=>`<td>${data.length}</td>`).join('')}</tr>`);
+    return rows.join('');
+  }
+
+  function pct(n) { return data.length ? (n/data.length*100).toFixed(1) : '—'; }
+
+  function porcentajeRows() {
+    const rows = LEVELS.map(lv => {
+      const col = LCOLORS[lv];
+      const n = data.filter(r=>r.finalRisk===lv).length;
+      const cPcts = catKeys.map(c=>pct(data.filter(r=>r.catRisk[c]===lv).length));
+      const dPcts = domKeys.map(d=>pct(data.filter(r=>r.domRisk[d]===lv).length));
+      return `<tr><td style="color:${col}">${lv}</td><td>${pct(n)}</td>${cPcts.map(v=>`<td>${v}</td>`).join('')}${dPcts.map(v=>`<td>${v}</td>`).join('')}</tr>`;
+    });
+    rows.push(`<tr><td>Total</td><td>100.0</td>${catKeys.map(()=>`<td>100.0</td>`).join('')}${domKeys.map(()=>`<td>100.0</td>`).join('')}</tr>`);
+    return rows.join('');
+  }
+
+  const h = headers();
+  document.getElementById('n035-prom-content').innerHTML = `
+    <div class="sec-title" style="margin-bottom:12px">CONTEO — Número de colaboradores por nivel de riesgo</div>
+    <div class="n035-prom-table-wrap"><table class="n035-prom-table"><thead>${h}</thead><tbody>${conteoRows()}</tbody></table></div>
+    <div class="sec-title" style="margin-bottom:12px">PORCENTAJES — % de colaboradores por nivel de riesgo</div>
+    <div class="n035-prom-table-wrap"><table class="n035-prom-table"><thead>${h}</thead><tbody>${porcentajeRows()}</tbody></table></div>`;
+}
+
+function n035BuildPromediosData(cuest) {
+  const data = window['_n035Data' + cuest];
+  if (!data || !data.length) return null;
+  const cats = cuest === 2 ? N035_CAT2 : N035_CAT3;
+  const doms = cuest === 2 ? N035_DOM2 : N035_DOM3;
+  const LEVELS = ['Muy Alto','Alto','Medio','Bajo','Nulo'];
+  const catKeys = Object.keys(cats);
+  const domKeys = Object.keys(doms);
+  function pct(n) { return data.length ? parseFloat((n/data.length*100).toFixed(1)) : 0; }
+
+  const header = ['Rango','Calificación total',...catKeys,...domKeys];
+  const conteoData = [
+    header,
+    ...LEVELS.map(lv => [lv, data.filter(r=>r.finalRisk===lv).length, ...catKeys.map(c=>data.filter(r=>r.catRisk[c]===lv).length), ...domKeys.map(d=>data.filter(r=>r.domRisk[d]===lv).length)]),
+    ['Total', data.length, ...catKeys.map(()=>data.length), ...domKeys.map(()=>data.length)]
+  ];
+  const pctData = [
+    header,
+    ...LEVELS.map(lv => [lv, pct(data.filter(r=>r.finalRisk===lv).length), ...catKeys.map(c=>pct(data.filter(r=>r.catRisk[c]===lv).length)), ...domKeys.map(d=>pct(data.filter(r=>r.domRisk[d]===lv).length))]),
+    ['Total', 100, ...catKeys.map(()=>100), ...domKeys.map(()=>100)]
+  ];
+  return { conteoData, pctData };
+}
+
+function n035ExportarPromediosExcel() {
+  const built = n035BuildPromediosData(_n035PromCuest);
+  if (!built) return;
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(built.conteoData), 'Conteo');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(built.pctData), 'Porcentajes');
+  XLSX.writeFile(wb, `Conteo_Promedios_C${_n035PromCuest===2?'II':'III'}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+async function n035CopiarPromediosPortapapeles(btn) {
+  const built = n035BuildPromediosData(_n035PromCuest);
+  if (!built) { showToast('No hay datos cargados', 'error'); return; }
+  const toTSV = rows => rows.map(r => r.join('\t')).join('\n');
+  const text = 'CONTEO — Número de colaboradores por nivel de riesgo\n' + toTSV(built.conteoData)
+    + '\n\nPORCENTAJES — % de colaboradores por nivel de riesgo\n' + toTSV(built.pctData);
+
+  let ok = false;
+  try {
+    await navigator.clipboard.writeText(text);
+    ok = true;
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
+    document.body.removeChild(ta);
+  }
+
+  if (btn) {
+    const original = btn.innerHTML;
+    btn.innerHTML = ok ? '✔ Copiado' : '✗ Error al copiar';
+    setTimeout(() => { btn.innerHTML = original; }, 1500);
+  } else if (!ok) {
+    showToast('No se pudo copiar al portapapeles.', 'error');
+  }
 }
 
 function renderESE(){

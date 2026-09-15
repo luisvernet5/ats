@@ -9379,8 +9379,8 @@ async function _checkSolicitudPublica(){
   document.querySelector('.sidebar')?.style.setProperty('display','none');
   document.querySelector('.main')?.style.setProperty('display','none');
   try{
-    const {data:rows}=await sbClient.from('solicitudes_empleo').select('*').filter('data->>token','eq',token).limit(1);
-    const se=rows?.[0]?.data||rows?.[0];
+    const {data:fnData,error:fnErr}=await sbClient.functions.invoke('public-form-access',{body:{action:'get',table:'solicitudes_empleo',token}});
+    const se=(!fnErr && !fnData?.error)?fnData?.data:null;
     if(!se){
       screen.innerHTML=`<div style="max-width:500px;margin:60px auto;text-align:center"><i class="fa fa-exclamation-circle" style="font-size:48px;color:var(--danger);margin-bottom:16px"></i><div style="font-size:18px;font-weight:600">Liga no encontrada</div><div style="font-size:14px;color:var(--text2);margin-top:8px">Este enlace no es válido.</div></div>`;
       return true;
@@ -9560,8 +9560,9 @@ async function submitSolicitudEmpleo(){
   btn.disabled=true;btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Enviando...';
   const updated={...se,campos,estado:'completado',fecha_completada:new Date().toISOString()};
   try{
-    const {error}=await sbClient.from('solicitudes_empleo').update({data:updated}).eq('id',se.id);
-    if(error) throw new Error(error.message);
+    const {data:fnData,error:fnErr}=await sbClient.functions.invoke('public-form-access',{body:{action:'submit',table:'solicitudes_empleo',token:se.token,data:updated}});
+    if(fnErr) throw new Error(fnErr.context?.error || fnErr.message);
+    if(fnData?.error) throw new Error(fnData.error);
     document.getElementById('solicitud-public-screen').innerHTML=_seRenderCompletada();
   }catch(e){
     btn.disabled=false;btn.innerHTML='<i class="fa fa-paper-plane"></i> Enviar solicitud';
@@ -26877,9 +26878,8 @@ async function _checkEvalPublica(){
   _evalPubToken = token;
   // Fetch evaluacion_enviada by token from Supabase (anon)
   try {
-    const { data: rows } = await sbClient.from('evaluaciones_enviadas')
-      .select('*').filter('data->>token','eq',token).limit(1);
-    const enviada = rows?.[0]?.data || rows?.[0];
+    const { data: fnData, error: fnErr } = await sbClient.functions.invoke('public-form-access',{body:{action:'get',table:'evaluaciones_enviadas',token}});
+    const enviada = (!fnErr && !fnData?.error) ? fnData?.data : null;
     if(!enviada){ _showEvalPubError('Evaluación no encontrada.'); return true; }
     if(enviada.estado==='completada'){ _showEvalPubCompleted(); return true; }
     const { data: evRows } = await sbClient.from('evaluaciones')
@@ -28019,8 +28019,8 @@ async function _checkProcesoPublico(){
   document.querySelector('.sidebar')?.style.setProperty('display','none');
   document.querySelector('.main')?.style.setProperty('display','none');
   try{
-    const {data:rows}=await sbClient.from('procesos_enviados').select('*').filter('data->>token','eq',token).limit(1);
-    const enviado=rows?.[0]?.data||rows?.[0];
+    const {data:fnData,error:fnErr}=await sbClient.functions.invoke('public-form-access',{body:{action:'get',table:'procesos_enviados',token}});
+    const enviado=(!fnErr && !fnData?.error)?fnData?.data:null;
     if(!enviado){
       document.getElementById('proceso-public-screen').innerHTML=`<div style="max-width:500px;margin:60px auto;text-align:center"><i class="fa fa-exclamation-circle" style="font-size:48px;color:var(--danger);margin-bottom:16px"></i><div style="font-size:18px;font-weight:600">Proceso no encontrado</div><div style="font-size:14px;color:var(--text2);margin-top:8px">Este enlace no es válido o ha expirado.</div></div>`;
       return true;
@@ -28239,8 +28239,9 @@ async function submitProcesoPrueba(){
     fecha_completada:estadoFinal==='completado'?new Date().toISOString():enviado.fecha_completada
   };
   try{
-    const {error:uperr}=await sbClient.from('procesos_enviados').update({data:updatedEnviado}).eq('id',updatedEnviado.id);
-    if(uperr) throw new Error(uperr.message);
+    const {data:fnData,error:fnErr}=await sbClient.functions.invoke('public-form-access',{body:{action:'submit',table:'procesos_enviados',token:_pepubToken,data:updatedEnviado}});
+    if(fnErr) throw new Error(fnErr.context?.error || fnErr.message);
+    if(fnData?.error) throw new Error(fnData.error);
     _pepubData.enviado=updatedEnviado;
     if(estadoFinal==='completado'){
       document.getElementById('pepub-form').style.display='none';
@@ -28301,7 +28302,9 @@ async function submitEvalPublica(){
   const emailFinal  = window._evpubEmailIngresado  || enviada.candidato_email  || '';
   const updated = {...enviada, candidato_nombre:nombreFinal, candidato_tel:telFinal, candidato_email:emailFinal, estado:'completada', respuestas, fecha_completada:new Date().toISOString()};
   try {
-    await sbClient.from('evaluaciones_enviadas').upsert({id:updated.id, data:updated});
+    const { data: fnData, error: fnErr } = await sbClient.functions.invoke('public-form-access',{body:{action:'submit',table:'evaluaciones_enviadas',token:_evalPubToken,data:updated}});
+    if(fnErr) throw new Error(fnErr.context?.error || fnErr.message);
+    if(fnData?.error) throw new Error(fnData.error);
     document.getElementById('evpub-form').style.display = 'none';
     document.getElementById('evpub-completed').style.display = '';
   } catch(e){

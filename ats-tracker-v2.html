@@ -6772,7 +6772,7 @@ async function _hcaCargarYRenderizar(empId){
   const page=document.getElementById('page-headcount-autorizado');
   if(page) page.innerHTML='<div style="padding:60px;text-align:center;color:var(--text3)"><i class="fa fa-spinner fa-spin" style="font-size:22px;margin-bottom:12px;display:block"></i>Cargando...</div>';
   try{
-    const {data,error}=await sbClient.from('hc_plantilla').select('*').eq('empresa_id',empId).eq('activo',true).order('orden',{ascending:true});
+    const {data,error}=await sbClient.from('headcount_autorizado').select('*').eq('empresa_id',empId).eq('activo',true).order('orden',{ascending:true});
     if(error) throw new Error(error.message);
     _hcaData=data||[];
   }catch(e){ showToast('Error al cargar: '+e.message,'err'); _hcaData=[]; }
@@ -6783,10 +6783,10 @@ function _hcaRender(empId){
   const page=document.getElementById('page-headcount-autorizado'); if(!page) return;
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const color=emp.color||'#2AAADE';
-  const total=_hcaData.reduce((s,r)=>s+(r.plantilla_autorizada||0),0);
+  const total=_hcaData.reduce((s,r)=>s+(r.cantidad||0),0);
   const rows=_hcaData.map(r=>`<tr>
-      <td class="td-p">${_esc(r.proyecto)}</td>
-      <td style="text-align:center" id="hca-cant-${r.id}">${r.plantilla_autorizada||0} <i class="fa fa-pen" style="cursor:pointer;font-size:11px;color:var(--text3);margin-left:6px" onclick="hcaEditarCantidad('${r.id}')" title="Editar cantidad"></i></td>
+      <td class="td-p">${_esc(r.puesto)}</td>
+      <td style="text-align:center" id="hca-cant-${r.id}">${r.cantidad||0} <i class="fa fa-pen" style="cursor:pointer;font-size:11px;color:var(--text3);margin-left:6px" onclick="hcaEditarCantidad('${r.id}')" title="Editar cantidad"></i></td>
       <td style="text-align:right"><button class="btn btn-danger btn-sm" onclick="hcaEliminarPlantilla('${r.id}','${empId}')" title="Eliminar"><i class="fa fa-trash"></i></button></td>
     </tr>`).join('');
   page.innerHTML=`<div style="padding:24px 28px">
@@ -6865,30 +6865,30 @@ async function hcaGuardarPlantilla(empId){
   if(!puesto){ showToast('Selecciona o ingresa un puesto','err'); return; }
   const id=empId+'-'+puesto.replace(/\s+/g,'').substring(0,20)+'-'+Date.now();
   try{
-    const {error}=await sbClient.from('hc_plantilla').upsert({
-      id, empresa_id:empId, proyecto:puesto, plantilla_autorizada:cant,
+    const {error}=await sbClient.from('headcount_autorizado').upsert({
+      id, empresa_id:empId, puesto, cantidad:cant,
       orden:_hcaData.length+1, activo:true, updated_at:new Date().toISOString()
     });
     if(error) throw new Error(error.message);
     showToast('Plantilla dada de alta ✓');
     document.getElementById('hca-modal-alta')?.remove();
     const empNombre=(DB.empresas.find(e=>e.id===empId)||{}).nombre||empId;
-    await logActivity('Dar de alta plantilla autorizada','hc_plantilla',id,`${puesto} (${cant}) — ${empNombre}`);
+    await logActivity('Dar de alta plantilla autorizada','headcount_autorizado',id,`${puesto} (${cant}) — ${empNombre}`);
     await _hcaCargarYRenderizar(empId);
   }catch(e){ showToast('Error: '+e.message,'err'); }
 }
 function hcaEditarCantidad(id){
   const cell=document.getElementById('hca-cant-'+id); if(!cell) return;
   const row=_hcaData.find(r=>r.id===id); if(!row) return;
-  cell.innerHTML=`<input type="number" value="${row.plantilla_autorizada||0}" style="width:60px;text-align:center;font-size:12px" onblur="hcaGuardarCantidad('${id}',this)" onkeydown="if(event.key==='Enter')this.blur()">`;
+  cell.innerHTML=`<input type="number" value="${row.cantidad||0}" style="width:60px;text-align:center;font-size:12px" onblur="hcaGuardarCantidad('${id}',this)" onkeydown="if(event.key==='Enter')this.blur()">`;
   const inp=cell.querySelector('input'); inp.focus(); inp.select();
 }
 async function hcaGuardarCantidad(id,el){
   const nueva=parseInt(el.value||0)||0;
   try{
-    const {error}=await sbClient.from('hc_plantilla').update({plantilla_autorizada:nueva,updated_at:new Date().toISOString()}).eq('id',id);
+    const {error}=await sbClient.from('headcount_autorizado').update({cantidad:nueva,updated_at:new Date().toISOString()}).eq('id',id);
     if(error) throw new Error(error.message);
-    const row=_hcaData.find(r=>r.id===id); if(row) row.plantilla_autorizada=nueva;
+    const row=_hcaData.find(r=>r.id===id); if(row) row.cantidad=nueva;
     showToast('Cantidad actualizada ✓');
     _hcaRender(_hcaOpenEmpId);
   }catch(e){ showToast('Error: '+e.message,'err'); }
@@ -6896,7 +6896,7 @@ async function hcaGuardarCantidad(id,el){
 async function hcaEliminarPlantilla(id,empId){
   if(!confirm('¿Eliminar este puesto de la plantilla autorizada?')) return;
   try{
-    const {error}=await sbClient.from('hc_plantilla').update({activo:false}).eq('id',id);
+    const {error}=await sbClient.from('headcount_autorizado').update({activo:false}).eq('id',id);
     if(error) throw new Error(error.message);
     showToast('Eliminado ✓');
     await _hcaCargarYRenderizar(empId);
@@ -17795,7 +17795,7 @@ const RESPALDO_TABLAS = [
   'kpis','procedimientos','coordinadores','colaboradores','permisos_usuarios','activity_log',
   'expediente_documentos','candidato_documentos','solicitudes_empleo',
   'capacitacion_cursos','capacitacion_asistencias','capacitacion_matriz','contratos',
-  'nom035_evaluaciones','nom035_resultados',
+  'nom035_evaluaciones','nom035_resultados','headcount_autorizado',
 ];
 
 async function exportarRespaldo(){

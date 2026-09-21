@@ -11436,6 +11436,22 @@ function abrirAbandono(candId){
   openModal('modal-salida-cand');
 }
 
+// Si el candidato que se está sacando del proceso (descarte/abandono) era el
+// candidato_contratado de su vacante, hay que soltar esa referencia — si no, la
+// vacante lo sigue contando como colocado/contratado en reportes sin importar
+// su etapa actual ni si la vacante ya se reabrió.
+async function _liberarVacanteDeCandidato(candId){
+  const vi=DB.vacantes.findIndex(v=>v.candidato_contratado===candId);
+  if(vi<0) return;
+  const vAnterior={...DB.vacantes[vi]};
+  DB.vacantes[vi].candidato_contratado=null;
+  DB.vacantes[vi].fecha_cierre=null;
+  if(DB.vacantes[vi].estado==='Cubierta') DB.vacantes[vi].estado='Abierta';
+  const vFinal=DB.vacantes[vi];
+  await saveRecord('vacantes',vFinal);
+  const _detalle=(vFinal.nombre||vFinal.id)+(vFinal.folio?` — Folio: ${vFinal.folio}`:'');
+  await logActivity('Liberar vacante (candidato ya no contratado)','vacantes',vFinal.id,_detalle,vAnterior,vFinal);
+}
 async function confirmarSalidaCand(){
   const candId=document.getElementById('salida-cand-id').value;
   const tipo=document.getElementById('salida-tipo').value;
@@ -11454,6 +11470,7 @@ async function confirmarSalidaCand(){
     DB.candidatos[ci].motivo_descarte=motivo;
   }
   await saveRecord('candidatos',DB.candidatos[ci]);
+  await _liberarVacanteDeCandidato(candId);
   closeModal('modal-salida-cand');
   showToast('Candidato actualizado ✓');
   setTimeout(()=>renderCandidatosTable(),100);
@@ -11480,6 +11497,7 @@ async function ejecutarDescarteCand(){
   DB.candidatos[ci].fecha_salida=DB.candidatos[ci].fecha_salida||today();
   DB.candidatos[ci].motivo_descarte=motivo||null;
   await saveRecord('candidatos',DB.candidatos[ci]);
+  await _liberarVacanteDeCandidato(candId);
   closeModal('modal-descarte-direct');
   renderCandidatosTable();
   showToast('Candidato descartado');

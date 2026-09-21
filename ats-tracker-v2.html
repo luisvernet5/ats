@@ -19852,6 +19852,7 @@ function renderPerfilesEmpresa(empId){
       <span style="flex:1"></span>
       ${todosPerfiles.length>0?`<button class="btn btn-green btn-sm" onclick="descargarTodosPerfilesPDF('${empId}')"><i class="fa fa-file-archive"></i> Descargar todo</button>`:''}
       <button class="btn btn-ghost btn-sm" onclick="openExportPerfilesModal()"><i class="fa fa-download"></i> Exportar</button>
+      ${currentUserData?.rol==='coordinador'?'':`<button class="btn btn-ghost btn-sm" onclick="abrirImportPerfilesModal('${empId}')"><i class="fa fa-upload"></i> Carga masiva</button>`}
       ${currentUserData?.rol==='coordinador'?'':`<button class="btn btn-primary btn-sm" onclick="openPerfilModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo perfil</button>`}
     </div>
     <div class="fbar" style="margin-bottom:14px">
@@ -20144,6 +20145,160 @@ function exportarPerfilesExcel(modo='sencilla'){
   XLSX.utils.book_append_sheet(wb,ws,'Perfiles de puesto');
   XLSX.writeFile(wb,`Perfiles_${(emp.nombre||'empresa').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
   showToast('Excel exportado ✓');
+}
+
+/* ── Carga masiva de perfiles de puesto ──────────────────────── */
+const _PF_IMPORT_COLS=[
+  {key:'nombre_puesto',label:'Nombre del puesto',req:true},
+  {key:'proyecto',label:'Proyecto'},
+  {key:'departamento',label:'Departamento'},
+  {key:'lugar_trabajo',label:'Lugar de trabajo'},
+  {key:'ubicacion_geografica',label:'Ubicación geográfica'},
+  {key:'sexo',label:'Sexo'},
+  {key:'edad_ini',label:'Edad mínima'},
+  {key:'edad_fin',label:'Edad máxima'},
+  {key:'escolaridad',label:'Escolaridad'},
+  {key:'experiencia_previa',label:'Experiencia previa'},
+  {key:'elaboro',label:'Elaboró'},
+];
+function perfilesDescargarPlantilla(empId){
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const header=_PF_IMPORT_COLS.map(c=>c.label);
+  const ejemplo=['Técnico de mantenimiento',(emp.proyectos||[])[0]||'',(emp.departamentos||[])[0]||'','Planta Puebla','Puebla, Pue.','Indistinto','20','45','Preparatoria / Bachillerato','1 año en puesto similar','Recursos Humanos'];
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet([header,ejemplo]);
+  ws['!cols']=header.map(()=>({wch:26}));
+  XLSX.utils.book_append_sheet(wb,ws,'Perfiles de puesto');
+  XLSX.writeFile(wb,`Plantilla_Perfiles_${(emp.nombre||'empresa').replace(/[^a-zA-Z0-9]/g,'_')}.xlsx`);
+}
+function abrirImportPerfilesModal(empId){
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  document.getElementById('modal-import-perfiles')?.remove();
+  const modal=document.createElement('div');
+  modal.id='modal-import-perfiles';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3100;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:820px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 8px 32px #0004">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-weight:700;font-size:16px">Carga masiva de perfiles de puesto — ${_esc(emp.nombre||'')}</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-import-perfiles').remove()"><i class="fa fa-times"></i></button>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;margin-bottom:14px">
+      <i class="fa fa-info-circle" style="color:var(--accent);font-size:18px;flex-shrink:0"></i>
+      <span style="font-size:13px;color:var(--text2)">Descarga la plantilla, llénala con los puestos y súbela aquí. Esto carga los datos básicos de cada puesto (nombre, proyecto, departamento y requisitos generales) — después puedes abrir cada perfil para completar actividades, habilidades, plan de carrera, etc. Si Proyecto/Departamento no coinciden exactamente con los configurados en la empresa, se guardan igual como texto libre.</span>
+      <button class="btn btn-ghost btn-sm" style="flex-shrink:0;white-space:nowrap" onclick="perfilesDescargarPlantilla('${empId}')"><i class="fa fa-download"></i> Plantilla</button>
+    </div>
+    <div style="border:2px dashed var(--border2);border-radius:8px;padding:24px;text-align:center;cursor:pointer" id="imp-pf-dropzone" onclick="document.getElementById('imp-pf-file').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border2)'" ondrop="event.preventDefault();this.style.borderColor='var(--border2)';handleImportPerfilesFile({target:{files:event.dataTransfer.files}},'${empId}')">
+      <i class="fa fa-file-excel" style="font-size:32px;color:var(--text3);margin-bottom:8px"></i>
+      <div style="font-size:14px;color:var(--text2)">Arrastra tu archivo aquí o <span style="color:var(--accent);font-weight:600">haz clic para seleccionar</span></div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px">Soporta .xlsx, .xls, .csv</div>
+      <input type="file" id="imp-pf-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportPerfilesFile(event,'${empId}')">
+    </div>
+    <div id="imp-pf-preview" style="display:none;margin-top:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span id="imp-pf-summary" style="font-size:13px;font-weight:600"></span>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('imp-pf-file').value='';document.getElementById('imp-pf-preview').style.display='none';document.getElementById('btn-imp-pf-confirm').style.display='none'"><i class="fa fa-times"></i> Limpiar</button>
+      </div>
+      <div class="table-wrap" style="max-height:280px;overflow:auto">
+        <table style="font-size:12px;width:100%" id="imp-pf-table"><thead></thead><tbody></tbody></table>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-import-perfiles').remove()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-imp-pf-confirm" style="display:none" onclick="doImportPerfiles('${empId}')"><i class="fa fa-upload"></i> Importar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+let _impPfRows=[];
+function handleImportPerfilesFile(e,empId){
+  const file=e.target?.files?.[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(raw.length<2){showToast('El archivo no tiene filas de datos','err');return;}
+      const headers=raw[0].map(h=>String(h).trim().toLowerCase());
+      const idxOf=label=>headers.findIndex(h=>h.includes(label.toLowerCase()));
+      const colIdx=_PF_IMPORT_COLS.map(c=>({...c,idx:idxOf(c.label)}));
+      _impPfRows=[];
+      for(let i=1;i<raw.length;i++){
+        const r=raw[i];
+        if(r.every(c=>String(c).trim()==='')) continue;
+        const get=idx=>idx>=0?String(r[idx]||'').trim():'';
+        const row={_row:i+1,_errors:[]};
+        colIdx.forEach(c=>{ row[c.key]=get(c.idx); });
+        if(!row.nombre_puesto) row._errors.push('Nombre del puesto vacío');
+        _impPfRows.push(row);
+      }
+      _impPfRenderPreview(empId);
+    }catch(err){
+      showToast('Error al leer el archivo: '+err.message,'err');
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+function _impPfRenderPreview(empId){
+  const ok=_impPfRows.filter(r=>r._errors.length===0);
+  const errR=_impPfRows.filter(r=>r._errors.length>0);
+  document.getElementById('imp-pf-preview').style.display='block';
+  const sum=document.getElementById('imp-pf-summary');
+  sum.innerHTML=`<span style="color:var(--green)"><i class="fa fa-check-circle"></i> ${ok.length} válidos</span>`
+    +(errR.length?`&nbsp;&nbsp;<span style="color:var(--red)"><i class="fa fa-exclamation-circle"></i> ${errR.length} con errores</span>`:'');
+  const thead=document.querySelector('#imp-pf-table thead');
+  const tbody=document.querySelector('#imp-pf-table tbody');
+  const cabeceras=['#'].concat(_PF_IMPORT_COLS.map(c=>c.label)).concat(['Status']);
+  thead.innerHTML=`<tr>${cabeceras.map(h=>`<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">${h}</th>`).join('')}</tr>`;
+  tbody.innerHTML=_impPfRows.map(r=>{
+    const isOk=r._errors.length===0;
+    const bg=isOk?'':'background:rgba(239,68,68,.07)';
+    const status=isOk
+      ?`<span style="color:var(--green);font-size:11px"><i class="fa fa-check"></i> OK</span>`
+      :`<span style="color:var(--red);font-size:11px" title="${_esc(r._errors.join('; '))}"><i class="fa fa-times"></i> ${_esc(r._errors.join('; '))}</span>`;
+    const cells=_PF_IMPORT_COLS.map(c=>`<td style="padding:5px 8px">${_esc(r[c.key])||'—'}</td>`).join('');
+    return `<tr style="${bg}">
+      <td style="padding:5px 8px;color:var(--text3)">${r._row}</td>
+      ${cells}
+      <td style="padding:5px 8px">${status}</td>
+    </tr>`;
+  }).join('');
+  const btn=document.getElementById('btn-imp-pf-confirm');
+  btn.style.display=ok.length>0?'':'none';
+  if(ok.length>0) btn.innerHTML=`<i class="fa fa-upload"></i> Importar ${ok.length} perfil${ok.length!==1?'es':''}`;
+}
+async function doImportPerfiles(empId){
+  const valid=_impPfRows.filter(r=>r._errors.length===0);
+  if(!valid.length) return;
+  const btn=document.getElementById('btn-imp-pf-confirm');
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Importando...';}
+  const _tImp=Date.now();
+  const nuevos=valid.map((r,i)=>({
+    id:'perfil-'+(_tImp+i)+'-'+Math.random().toString(36).substr(2,6),
+    empresa_id:empId,
+    nombre_puesto:r.nombre_puesto, proyecto:r.proyecto, departamento:r.departamento,
+    lugar_trabajo:r.lugar_trabajo, ubicacion_geografica:r.ubicacion_geografica,
+    sexo:r.sexo, edad_ini:r.edad_ini, edad_fin:r.edad_fin,
+    escolaridad:r.escolaridad, experiencia_previa:r.experiencia_previa, elaboro:r.elaboro,
+    coordinadores_ids:[],
+    updated_at:new Date().toISOString(),
+  }));
+  try{
+    await Promise.all(nuevos.map(obj=>sbClient.from('perfiles_puesto').upsert({
+      id:obj.id, empresa_id:obj.empresa_id, data:obj, updated_at:obj.updated_at, coordinadores_ids:[]
+    })));
+    DB.perfilesPuesto.push(...nuevos);
+    showToast(`${nuevos.length} perfil${nuevos.length!==1?'es':''} importado${nuevos.length!==1?'s':''} ✓`);
+    const emp=DB.empresas.find(e=>e.id===empId)||{};
+    const nombresImp=nuevos.slice(0,10).map(n=>n.nombre_puesto).filter(Boolean).join(', ');
+    await logActivity('Importar perfiles de puesto','perfiles',empId,`${nuevos.length} perfil${nuevos.length!==1?'es':''} — ${emp.nombre||empId}: ${nombresImp}`);
+    document.getElementById('modal-import-perfiles')?.remove();
+    _pfRefresh();
+  }catch(e){
+    showToast('Error al importar: '+e.message,'err');
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="fa fa-upload"></i> Importar';}
+  }
 }
 
 let _perfilEmpId=null, _perfilId=null;

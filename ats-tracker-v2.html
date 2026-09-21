@@ -20183,18 +20183,57 @@ function exportarPerfilesExcel(modo='sencilla'){
 }
 
 /* ── Carga masiva de perfiles de puesto ──────────────────────── */
+const _PF_SEXO_VALUES=new Set(['Masculino','Femenino','Indistinto']);
+const _PF_ESCOLARIDAD_VALUES=new Set(['Secundaria','Preparatoria / Bachillerato','Técnico / Tecnólogo','Carrera técnica','Licenciatura','Ingeniería','Maestría','Doctorado','Indistinto']);
+const _PF_SI_NO_VALUES=new Set(['Sí','No']);
+const _PF_APLICA_VALUES=new Set(['Aplica','No aplica']);
+const _PF_PLAN_TIPO_VALUES=new Set(['Neto','Bruto']);
+const _PF_PLAN_FREC_VALUES=new Set(['Semanal','Quincenal','Mensual']);
+const _PF_RESP_FIELDS=[
+  ['resp_efectivo','Efectivo o token institucional'],['resp_cheques','Cheques al portador'],['resp_formas_valoradas','Formas valoradas'],
+  ['resp_mobiliario','Mobiliario'],['resp_equipo_computo','Equipo de cómputo'],['resp_automovil','Automóvil utilitario'],
+  ['resp_telefonia','Telefonía'],['resp_documentos','Documentos e información'],['resp_otros','Otros'],['resp_uniforme','EPP / Uniforme'],
+];
+const _PF_PLAN_NIVELES=['Inicial','Intermedio','Final'];
+// Columnas base — aplican a cualquier empresa. Cubren toda la ficha "Nuevo perfil de
+// puesto" salvo los KPIs (esos siguen siendo exclusivos de Ford, ver _PF_IMPORT_KPI_COLS).
 const _PF_IMPORT_COLS=[
   {key:'nombre_puesto',label:'Nombre del puesto',req:true},
   {key:'proyecto',label:'Proyecto'},
   {key:'departamento',label:'Departamento'},
   {key:'lugar_trabajo',label:'Lugar de trabajo'},
   {key:'ubicacion_geografica',label:'Ubicación geográfica'},
-  {key:'sexo',label:'Sexo'},
+  {key:'sexo',label:'Sexo',oneOf:_PF_SEXO_VALUES},
   {key:'edad_ini',label:'Edad mínima'},
   {key:'edad_fin',label:'Edad máxima'},
-  {key:'escolaridad',label:'Escolaridad'},
+  {key:'escolaridad',label:'Escolaridad',oneOf:_PF_ESCOLARIDAD_VALUES},
   {key:'experiencia_previa',label:'Experiencia previa'},
   {key:'elaboro',label:'Elaboró'},
+  {key:'fecha_elaboracion',label:'Fecha elaboración',dateFmt:true},
+  {key:'fecha_revision',label:'Fecha revisión',dateFmt:true},
+  {key:'no_revision',label:'No. revisión'},
+  {key:'actividades_esenciales',label:'Actividades esenciales',pipes:true},
+  {key:'idiomas',label:'Idiomas'},
+  {key:'conocimientos_tecnicos',label:'Conocimientos técnicos',pipes:true},
+  {key:'habilidades',label:'Habilidades',pipes:true},
+  {key:'actitudes',label:'Actitudes',pipes:true},
+  ...([0,1,2].flatMap(i=>([
+    {key:`_plan${i}_puesto`,label:`Nivel ${_PF_PLAN_NIVELES[i]} - Puesto`,plan:[i,'puesto']},
+    {key:`_plan${i}_salario`,label:`Nivel ${_PF_PLAN_NIVELES[i]} - Salario`,plan:[i,'salario']},
+    {key:`_plan${i}_tipo`,label:`Nivel ${_PF_PLAN_NIVELES[i]} - Tipo`,plan:[i,'tipo_sueldo'],oneOf:_PF_PLAN_TIPO_VALUES},
+    {key:`_plan${i}_frecuencia`,label:`Nivel ${_PF_PLAN_NIVELES[i]} - Frecuencia`,plan:[i,'frecuencia'],oneOf:_PF_PLAN_FREC_VALUES},
+    {key:`_plan${i}_extras`,label:`Nivel ${_PF_PLAN_NIVELES[i]} - Extras`,plan:[i,'extras']},
+    {key:`_plan${i}_tiempo`,label:`Nivel ${_PF_PLAN_NIVELES[i]} - Tiempo`,plan:[i,'tiempo']},
+  ]))),
+  {key:'disponibilidad_viajar',label:'Disponibilidad para viajar',oneOf:_PF_SI_NO_VALUES},
+  {key:'_tipo_trabajo',label:'Tipo de trabajo'},
+  {key:'_tipo_trabajo_pct',label:'% Tipo de trabajo'},
+  {key:'horario_trabajo',label:'Horario de trabajo'},
+  {key:'tipo_contratacion',label:'Tipo de contratación'},
+  {key:'prestaciones',label:'Prestaciones'},
+  {key:'acompanamiento_capacitacion',label:'Acompañamiento - Capacitación',pipes:true},
+  ..._PF_RESP_FIELDS.map(([key,label])=>({key,label,oneOf:_PF_APLICA_VALUES,aplica:true})),
+  {key:'entregables',label:'Entregables',pipes:true},
 ];
 // KPIs del puesto en la carga masiva — solo para Ford, igual que en el formulario individual.
 const _PF_IMPORT_KPI_COLS=[1,2,3].flatMap(n=>([
@@ -20205,13 +20244,36 @@ const _PF_IMPORT_KPI_COLS=[1,2,3].flatMap(n=>([
 function _pfImportCols(empId){
   return empId===_PF_KPI_EMPRESA_ID ? _PF_IMPORT_COLS.concat(_PF_IMPORT_KPI_COLS) : _PF_IMPORT_COLS;
 }
+// "texto | texto | texto" -> <ul><li>...</li></ul>, igual formato que produce el
+// editor de texto enriquecido del formulario al usar viñetas.
+function _pfPipesToHtml(text){
+  const items=String(text||'').split('|').map(s=>s.trim()).filter(Boolean);
+  if(!items.length) return '';
+  return '<ul>'+items.map(i=>`<li>${_esc(i)}</li>`).join('')+'</ul>';
+}
 function perfilesDescargarPlantilla(empId){
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const cols=_pfImportCols(empId);
   const header=cols.map(c=>c.label);
-  const ejemploBase=['Técnico de mantenimiento',(emp.proyectos||[])[0]||'',(emp.departamentos||[])[0]||'','Planta Puebla','Puebla, Pue.','Indistinto','20','45','Preparatoria / Bachillerato','1 año en puesto similar','Recursos Humanos'];
-  const ejemploKpi=empId===_PF_KPI_EMPRESA_ID?['Piezas producidas por hora','Piezas totales / Horas trabajadas','Diaria','','',''  ,'','',''] : [];
-  const ejemplo=ejemploBase.concat(ejemploKpi);
+  const ejemploMap={
+    'Nombre del puesto':'Técnico de mantenimiento','Proyecto':(emp.proyectos||[])[0]||'','Departamento':(emp.departamentos||[])[0]||'',
+    'Lugar de trabajo':'Planta Puebla','Ubicación geográfica':'Puebla, Pue.','Sexo':'Indistinto','Edad mínima':'20','Edad máxima':'45',
+    'Escolaridad':'Preparatoria / Bachillerato','Experiencia previa':'1 año en puesto similar','Elaboró':'Recursos Humanos',
+    'Fecha elaboración':today(),'Fecha revisión':today(),'No. revisión':'1',
+    'Actividades esenciales':'Dar mantenimiento preventivo a maquinaria | Elaborar reportes de fallas',
+    'Idiomas':'Español','Conocimientos técnicos':'Electricidad industrial | Lectura de planos',
+    'Habilidades':'Trabajo en equipo | Resolución de problemas','Actitudes':'Proactividad | Responsabilidad',
+    'Nivel Inicial - Puesto':'Técnico Jr.','Nivel Inicial - Salario':'8000','Nivel Inicial - Tipo':'Bruto','Nivel Inicial - Frecuencia':'Semanal',
+    'Disponibilidad para viajar':'No','Tipo de trabajo':'Presencial',
+    'Horario de trabajo':'Lunes a viernes 7:00 a 16:00','Tipo de contratación':'Planta','Prestaciones':'Prestaciones de ley',
+    'Acompañamiento - Capacitación':'Inducción a planta | Capacitación con técnico senior',
+    'Efectivo o token institucional':'No aplica','Cheques al portador':'No aplica','Formas valoradas':'No aplica',
+    'Mobiliario':'No aplica','Equipo de cómputo':'No aplica','Automóvil utilitario':'No aplica','Telefonía':'No aplica',
+    'Documentos e información':'No aplica','Otros':'No aplica','EPP / Uniforme':'Aplica',
+    'Entregables':'Reporte de mantenimiento diario | Bitácora de fallas',
+    'KPI 1 - Indicador':'Piezas producidas por hora','KPI 1 - Fórmula':'Piezas totales / Horas trabajadas','KPI 1 - Frecuencia':'Diaria',
+  };
+  const ejemplo=header.map(h=>ejemploMap[h]||'');
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet([header,ejemplo]);
   ws['!cols']=header.map(()=>({wch:26}));
@@ -20231,7 +20293,7 @@ function abrirImportPerfilesModal(empId){
     </div>
     <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;margin-bottom:14px">
       <i class="fa fa-info-circle" style="color:var(--accent);font-size:18px;flex-shrink:0"></i>
-      <span style="font-size:13px;color:var(--text2)">Descarga la plantilla, llénala con los puestos y súbela aquí. Esto carga los datos básicos de cada puesto (nombre, proyecto, departamento y requisitos generales) — después puedes abrir cada perfil para completar actividades, habilidades, plan de carrera, etc. Si Proyecto/Departamento no coinciden exactamente con los configurados en la empresa, se guardan igual como texto libre.</span>
+      <span style="font-size:13px;color:var(--text2)">Descarga la plantilla, llénala con los puestos y súbela aquí. Esto carga la ficha completa de cada puesto — actividades, habilidades, plan de carrera, condiciones de trabajo, responsabilidades y entregables, no solo los datos básicos — así que normalmente no hace falta abrir cada perfil después, salvo para algún ajuste puntual. Si Proyecto/Departamento no coinciden exactamente con los configurados en la empresa, se guardan igual como texto libre. Un archivo con solo las columnas básicas (nombre, proyecto, departamento, etc.) también funciona: lo demás queda vacío y lo completas después.</span>
       <button class="btn btn-ghost btn-sm" style="flex-shrink:0;white-space:nowrap" onclick="perfilesDescargarPlantilla('${empId}')"><i class="fa fa-download"></i> Plantilla</button>
     </div>
     <div style="border:2px dashed var(--border2);border-radius:8px;padding:24px;text-align:center;cursor:pointer" id="imp-pf-dropzone" onclick="document.getElementById('imp-pf-file').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border2)'" ondrop="event.preventDefault();this.style.borderColor='var(--border2)';handleImportPerfilesFile({target:{files:event.dataTransfer.files}},'${empId}')">
@@ -20263,30 +20325,86 @@ function handleImportPerfilesFile(e,empId){
   const reader=new FileReader();
   reader.onload=ev=>{
     try{
-      const wb=XLSX.read(ev.target.result,{type:'binary'});
+      const wb=XLSX.read(ev.target.result,{type:'binary',cellDates:true});
       const ws=wb.Sheets[wb.SheetNames[0]];
       const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
       if(raw.length<2){showToast('El archivo no tiene filas de datos','err');return;}
-      const headers=raw[0].map(h=>String(h).trim().toLowerCase());
-      const idxOf=label=>headers.findIndex(h=>h.includes(label.toLowerCase()));
+      // Mapeo por nombre EXACTO de encabezado (no por posición ni coincidencia parcial),
+      // para que un reordenamiento futuro del Excel no desfase los datos.
+      const headers=raw[0].map(h=>String(h).trim());
+      const idxOf=label=>headers.findIndex(h=>h===label);
       const isFord=empId===_PF_KPI_EMPRESA_ID;
-      const colIdx=_PF_IMPORT_COLS.map(c=>({...c,idx:idxOf(c.label)}));
-      const kpiIdx=isFord?_PF_IMPORT_KPI_COLS.map(c=>({...c,idx:idxOf(c.label)})):[];
+      const cols=_PF_IMPORT_COLS.map(c=>({...c,idx:idxOf(c.label)}));
+      const kpiCols=isFord?_PF_IMPORT_KPI_COLS.map(c=>({...c,idx:idxOf(c.label)})):[];
+      const normFecha=val=>{
+        if(!val) return '';
+        if(val instanceof Date) return val.toISOString().split('T')[0];
+        return String(val).trim();
+      };
       _impPfRows=[];
       for(let i=1;i<raw.length;i++){
         const r=raw[i];
         if(r.every(c=>String(c).trim()==='')) continue;
-        const get=idx=>idx>=0?String(r[idx]||'').trim():'';
-        const row={_row:i+1,_errors:[]};
-        colIdx.forEach(c=>{ row[c.key]=get(c.idx); });
+        const get=idx=>idx>=0?String(r[idx]??'').trim():'';
+        const raw2={};
+        cols.forEach(c=>{ raw2[c.key]=c.dateFmt?normFecha(get(c.idx)):get(c.idx); });
+
+        const errors=[];
+        if(!raw2.nombre_puesto) errors.push('Nombre del puesto vacío');
+        cols.forEach(c=>{
+          const v=raw2[c.key];
+          if(v && c.oneOf && !c.oneOf.has(v)) errors.push(`"${c.label}" tiene un valor no válido: "${v}"`);
+        });
+        ['fecha_elaboracion','fecha_revision'].forEach(key=>{
+          const v=raw2[key];
+          if(v && !/^\d{4}-\d{2}-\d{2}$/.test(v)){
+            const col=cols.find(c=>c.key===key);
+            errors.push(`"${col.label}" no tiene formato AAAA-MM-DD: "${v}"`);
+          }
+        });
+
+        // Plan de carrera: 3 niveles, con los mismos valores por defecto que usa
+        // el formulario cuando un nivel se deja en blanco (Bruto / Mensual).
+        const plan=_PF_PLAN_NIVELES.map(nivel=>({nivel,puesto:'',salario:'',tipo_sueldo:'Bruto',frecuencia:'Mensual',extras:'',tiempo:''}));
+        cols.forEach(c=>{ if(c.plan){ const [i2,f]=c.plan; const v=raw2[c.key]; if(v) plan[i2][f]=v; } });
+
+        const kpis=[0,1,2].map(()=>({indicador:'',formula:'',frecuencia:''}));
         if(isFord){
-          const kpiVals={};
-          kpiIdx.forEach(c=>{ kpiVals[c.key]=get(c.idx); });
-          row.kpis_puesto=[1,2,3].map(n=>({
-            indicador:kpiVals[`kpi${n}_indicador`]||'', formula:kpiVals[`kpi${n}_formula`]||'', frecuencia:kpiVals[`kpi${n}_frecuencia`]||''
-          })).filter(k=>k.indicador||k.formula||k.frecuencia);
+          for(let n=0;n<3;n++){
+            const iCol=kpiCols[n*3], fCol=kpiCols[n*3+1], frCol=kpiCols[n*3+2];
+            kpis[n].indicador=get(iCol.idx); kpis[n].formula=get(fCol.idx); kpis[n].frecuencia=get(frCol.idx);
+          }
         }
-        if(!row.nombre_puesto) row._errors.push('Nombre del puesto vacío');
+
+        const row={
+          _row:i+1, _errors:errors,
+          nombre_puesto:raw2.nombre_puesto, proyecto:raw2.proyecto, departamento:raw2.departamento,
+          plan_nivelesLlenos:plan.filter(p=>p.puesto||p.salario).length,
+          kpis_puesto:kpis.filter(k=>k.indicador||k.formula||k.frecuencia),
+          _data:{
+            nombre_puesto:raw2.nombre_puesto, lugar_trabajo:raw2.lugar_trabajo, ubicacion_geografica:raw2.ubicacion_geografica,
+            proyecto:raw2.proyecto, departamento:raw2.departamento,
+            fecha_elaboracion:raw2.fecha_elaboracion, fecha_revision:raw2.fecha_revision, no_revision:raw2.no_revision||'1',
+            actividades_esenciales:_pfPipesToHtml(raw2.actividades_esenciales),
+            sexo:raw2.sexo, edad_ini:raw2.edad_ini, edad_fin:raw2.edad_fin,
+            escolaridad:raw2.escolaridad, experiencia_previa:raw2.experiencia_previa, idiomas:raw2.idiomas,
+            conocimientos_tecnicos:_pfPipesToHtml(raw2.conocimientos_tecnicos),
+            habilidades:_pfPipesToHtml(raw2.habilidades), habilidades_modo:'texto', habilidades_dic:[],
+            actitudes:_pfPipesToHtml(raw2.actitudes),
+            plan_carrera:plan,
+            disponibilidad_viajar:raw2.disponibilidad_viajar,
+            tipo_trabajo_rows:raw2._tipo_trabajo?[{pct:raw2._tipo_trabajo_pct||'',tipo:raw2._tipo_trabajo}]:[],
+            tipo_trabajo:raw2._tipo_trabajo?`${raw2._tipo_trabajo_pct?raw2._tipo_trabajo_pct+'% ':''}${raw2._tipo_trabajo}`:'',
+            horario_trabajo:raw2.horario_trabajo, tipo_contratacion:raw2.tipo_contratacion, prestaciones:raw2.prestaciones,
+            acompanamiento_capacitacion:_pfPipesToHtml(raw2.acompanamiento_capacitacion),
+            ..._PF_RESP_FIELDS.reduce((acc,[key])=>{ acc[key]=_PF_APLICA_VALUES.has(raw2[key])?raw2[key]:'No aplica'; return acc; },{}),
+            entregables:_pfPipesToHtml(raw2.entregables),
+            elaboro:raw2.elaboro,
+            kpis_puesto:kpis.filter(k=>k.indicador||k.formula||k.frecuencia),
+            coordinadores_ids:[],
+            updated_at:new Date().toISOString(),
+          },
+        };
         _impPfRows.push(row);
       }
       _impPfRenderPreview(empId);
@@ -20306,7 +20424,9 @@ function _impPfRenderPreview(empId){
   const isFord=empId===_PF_KPI_EMPRESA_ID;
   const thead=document.querySelector('#imp-pf-table thead');
   const tbody=document.querySelector('#imp-pf-table tbody');
-  const cabeceras=['#'].concat(_PF_IMPORT_COLS.map(c=>c.label)).concat(isFord?['KPIs']:[]).concat(['Status']);
+  // Con 55-64 columnas posibles, la previsualización muestra un resumen por fila
+  // (no una columna por cada campo) — el detalle completo se ve al abrir el perfil ya importado.
+  const cabeceras=['#','Nombre del puesto','Proyecto','Departamento','Plan de carrera'].concat(isFord?['KPIs']:[]).concat(['Status']);
   thead.innerHTML=`<tr>${cabeceras.map(h=>`<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">${h}</th>`).join('')}</tr>`;
   tbody.innerHTML=_impPfRows.map(r=>{
     const isOk=r._errors.length===0;
@@ -20314,11 +20434,13 @@ function _impPfRenderPreview(empId){
     const status=isOk
       ?`<span style="color:var(--green);font-size:11px"><i class="fa fa-check"></i> OK</span>`
       :`<span style="color:var(--red);font-size:11px" title="${_esc(r._errors.join('; '))}"><i class="fa fa-times"></i> ${_esc(r._errors.join('; '))}</span>`;
-    const cells=_PF_IMPORT_COLS.map(c=>`<td style="padding:5px 8px">${_esc(r[c.key])||'—'}</td>`).join('');
-    const kpiCell=isFord?`<td style="padding:5px 8px">${(r.kpis_puesto||[]).length?_esc((r.kpis_puesto||[]).map(k=>k.indicador).filter(Boolean).join(', ')):'—'}</td>`:'';
+    const kpiCell=isFord?`<td style="padding:5px 8px">${r.kpis_puesto.length?r.kpis_puesto.length+' KPI'+(r.kpis_puesto.length!==1?'s':''):'—'}</td>`:'';
     return `<tr style="${bg}">
       <td style="padding:5px 8px;color:var(--text3)">${r._row}</td>
-      ${cells}
+      <td style="padding:5px 8px">${_esc(r.nombre_puesto)||'—'}</td>
+      <td style="padding:5px 8px">${_esc(r.proyecto)||'—'}</td>
+      <td style="padding:5px 8px">${_esc(r.departamento)||'—'}</td>
+      <td style="padding:5px 8px">${r.plan_nivelesLlenos?r.plan_nivelesLlenos+'/3':'—'}</td>
       ${kpiCell}
       <td style="padding:5px 8px">${status}</td>
     </tr>`;
@@ -20336,13 +20458,7 @@ async function doImportPerfiles(empId){
   const nuevos=valid.map((r,i)=>({
     id:'perfil-'+(_tImp+i)+'-'+Math.random().toString(36).substr(2,6),
     empresa_id:empId,
-    nombre_puesto:r.nombre_puesto, proyecto:r.proyecto, departamento:r.departamento,
-    lugar_trabajo:r.lugar_trabajo, ubicacion_geografica:r.ubicacion_geografica,
-    sexo:r.sexo, edad_ini:r.edad_ini, edad_fin:r.edad_fin,
-    escolaridad:r.escolaridad, experiencia_previa:r.experiencia_previa, elaboro:r.elaboro,
-    kpis_puesto:r.kpis_puesto||[],
-    coordinadores_ids:[],
-    updated_at:new Date().toISOString(),
+    ...r._data,
   }));
   try{
     await Promise.all(nuevos.map(obj=>sbClient.from('perfiles_puesto').upsert({

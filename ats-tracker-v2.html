@@ -19874,7 +19874,7 @@ function renderPerfilesEmpresa(empId){
         <span style="font-size:15px;font-weight:600">${_esc(emp.nombre||'')}</span>
       </div>
       <span style="flex:1"></span>
-      ${todosPerfiles.length>0?`<button class="btn btn-green btn-sm" onclick="descargarTodosPerfilesPDF('${empId}')"><i class="fa fa-file-archive"></i> Descargar todo</button>`:''}
+      ${todosPerfiles.length>0?`<button class="btn btn-green btn-sm" onclick="descargarTodosPerfilesPDF('${empId}')"><i class="fa fa-file-pdf" style="color:#ef4444"></i> Descargar todo</button>`:''}
       <button class="btn btn-ghost btn-sm" onclick="openExportPerfilesModal()"><i class="fa fa-download"></i> Exportar</button>
       ${currentUserData?.rol==='coordinador'?'':`<button class="btn btn-ghost btn-sm" onclick="abrirImportPerfilesModal('${empId}')"><i class="fa fa-upload"></i> Carga masiva</button>`}
       ${currentUserData?.rol==='coordinador'?'':`<button class="btn btn-primary btn-sm" onclick="openPerfilModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo perfil</button>`}

@@ -20072,6 +20072,17 @@ function previewPerfilPuesto(perfilId){
       <div style="background:var(--surface2);border-radius:8px;padding:0 12px">${apl('resp_uniforme','EPP / Uniforme')}</div>
 
       ${p.entregables?sec('Entregables')+rt(p.entregables):''}
+
+      ${(p.empresa_id===_PF_KPI_EMPRESA_ID&&(p.kpis_puesto||[]).some(k=>k.indicador||k.formula||k.frecuencia))?sec('KPIs del puesto')+`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:var(--surface2)">
+          ${['Indicador','Fórmula','Frecuencia'].map(h=>`<th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--text3);text-transform:uppercase">${h}</th>`).join('')}
+        </tr></thead>
+        <tbody>${p.kpis_puesto.filter(k=>k.indicador||k.formula||k.frecuencia).map(k=>`<tr style="border-top:1px solid var(--border)">
+          <td style="padding:6px 8px">${_esc(k.indicador||'—')}</td>
+          <td style="padding:6px 8px">${_esc(k.formula||'—')}</td>
+          <td style="padding:6px 8px">${_esc(k.frecuencia||'—')}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>`:''}
     </div>
   </div>`;
   document.body.appendChild(modal);
@@ -21798,6 +21809,35 @@ async function _buildPerfilPDFDoc(p){
   if(_rtToText(p.entregables||'').trim()){
     section('Entregables');
     bulletBlock(p.entregables);
+    y+=2;
+  }
+
+  // ── KPIS DEL PUESTO (solo Ford) ────────────────────────────────
+  const kpiRows=(p.empresa_id===_PF_KPI_EMPRESA_ID)?(p.kpis_puesto||[]).filter(k=>k.indicador||k.formula||k.frecuencia):[];
+  if(kpiRows.length){
+    section('KPIs del puesto');
+    chkNewPage(10);
+    doc.setFillColor(245,245,248);doc.rect(ml,y,mr-ml,7,'F');
+    doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...darkGray);
+    doc.text('Indicador',ml+2,y+5);
+    doc.text('Fórmula',ml+(mr-ml)*0.4,y+5);
+    doc.text('Frecuencia',ml+(mr-ml)*0.8,y+5);
+    y+=7;
+    kpiRows.forEach(k=>{
+      doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
+      const col1W=(mr-ml)*0.4-4, col2W=(mr-ml)*0.4-4, col3W=(mr-ml)*0.2-4;
+      const l1=doc.splitTextToSize(k.indicador||'',col1W);
+      const l2=doc.splitTextToSize(k.formula||'',col2W);
+      const l3=doc.splitTextToSize(k.frecuencia||'',col3W);
+      const maxLines=Math.max(l1.length,l2.length,l3.length,1);
+      const rowH=4+maxLines*4;
+      chkNewPage(rowH);
+      l1.forEach((l,i)=>doc.text(l,ml+2,y+4+i*4));
+      l2.forEach((l,i)=>doc.text(l,ml+(mr-ml)*0.4,y+4+i*4));
+      l3.forEach((l,i)=>doc.text(l,ml+(mr-ml)*0.8,y+4+i*4));
+      doc.setDrawColor(...lineGray);doc.setLineWidth(0.3);doc.line(ml,y+rowH,mr,y+rowH);
+      y+=rowH;
+    });
     y+=2;
   }
 

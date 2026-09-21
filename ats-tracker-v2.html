@@ -19716,6 +19716,30 @@ function _pfTipoToStr(rows){
   return rows.map(r=>`${r.pct?r.pct+'% ':''}${r.tipo}`).join(' y ');
 }
 
+// KPIs del puesto — sección exclusiva de Ford por ahora, no se muestra a otros clientes.
+const _PF_KPI_EMPRESA_ID='msf4718wkocka';
+function _pfKpiRowHTML(r={}){
+  return `<div class="pf-kpi-row" style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+    <input type="text" placeholder="Indicador" value="${_esc(r.indicador||'')}" style="flex:1.2;font-size:13px">
+    <input type="text" placeholder="Fórmula" value="${_esc(r.formula||'')}" style="flex:1.4;font-size:13px">
+    <input type="text" placeholder="Frecuencia" value="${_esc(r.frecuencia||'')}" style="flex:.8;font-size:13px">
+    <button type="button" onclick="this.closest('.pf-kpi-row').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;padding:0 4px;flex-shrink:0">×</button>
+  </div>`;
+}
+function _pfKpiAddRow(){
+  const c=document.getElementById('pf-kpi-rows');
+  if(!c) return;
+  const d=document.createElement('div');
+  d.innerHTML=_pfKpiRowHTML();
+  c.appendChild(d.firstElementChild);
+}
+function _pfGetKpiRows(){
+  return [...document.querySelectorAll('#pf-kpi-rows .pf-kpi-row')].map(row=>{
+    const inputs=[...row.querySelectorAll('input')];
+    return{indicador:inputs[0]?.value||'',formula:inputs[1]?.value||'',frecuencia:inputs[2]?.value||''};
+  }).filter(r=>r.indicador||r.formula||r.frecuencia);
+}
+
 function _pfIdiomaAdd(){
   const sel=document.getElementById('pf-idioma-sel');
   const otro=document.getElementById('pf-idioma-otro');
@@ -20161,10 +20185,22 @@ const _PF_IMPORT_COLS=[
   {key:'experiencia_previa',label:'Experiencia previa'},
   {key:'elaboro',label:'Elaboró'},
 ];
+// KPIs del puesto en la carga masiva — solo para Ford, igual que en el formulario individual.
+const _PF_IMPORT_KPI_COLS=[1,2,3].flatMap(n=>([
+  {key:`kpi${n}_indicador`,label:`KPI ${n} - Indicador`},
+  {key:`kpi${n}_formula`,label:`KPI ${n} - Fórmula`},
+  {key:`kpi${n}_frecuencia`,label:`KPI ${n} - Frecuencia`},
+]));
+function _pfImportCols(empId){
+  return empId===_PF_KPI_EMPRESA_ID ? _PF_IMPORT_COLS.concat(_PF_IMPORT_KPI_COLS) : _PF_IMPORT_COLS;
+}
 function perfilesDescargarPlantilla(empId){
   const emp=DB.empresas.find(e=>e.id===empId)||{};
-  const header=_PF_IMPORT_COLS.map(c=>c.label);
-  const ejemplo=['Técnico de mantenimiento',(emp.proyectos||[])[0]||'',(emp.departamentos||[])[0]||'','Planta Puebla','Puebla, Pue.','Indistinto','20','45','Preparatoria / Bachillerato','1 año en puesto similar','Recursos Humanos'];
+  const cols=_pfImportCols(empId);
+  const header=cols.map(c=>c.label);
+  const ejemploBase=['Técnico de mantenimiento',(emp.proyectos||[])[0]||'',(emp.departamentos||[])[0]||'','Planta Puebla','Puebla, Pue.','Indistinto','20','45','Preparatoria / Bachillerato','1 año en puesto similar','Recursos Humanos'];
+  const ejemploKpi=empId===_PF_KPI_EMPRESA_ID?['Piezas producidas por hora','Piezas totales / Horas trabajadas','Diaria','','',''  ,'','',''] : [];
+  const ejemplo=ejemploBase.concat(ejemploKpi);
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet([header,ejemplo]);
   ws['!cols']=header.map(()=>({wch:26}));
@@ -20222,7 +20258,9 @@ function handleImportPerfilesFile(e,empId){
       if(raw.length<2){showToast('El archivo no tiene filas de datos','err');return;}
       const headers=raw[0].map(h=>String(h).trim().toLowerCase());
       const idxOf=label=>headers.findIndex(h=>h.includes(label.toLowerCase()));
+      const isFord=empId===_PF_KPI_EMPRESA_ID;
       const colIdx=_PF_IMPORT_COLS.map(c=>({...c,idx:idxOf(c.label)}));
+      const kpiIdx=isFord?_PF_IMPORT_KPI_COLS.map(c=>({...c,idx:idxOf(c.label)})):[];
       _impPfRows=[];
       for(let i=1;i<raw.length;i++){
         const r=raw[i];
@@ -20230,6 +20268,13 @@ function handleImportPerfilesFile(e,empId){
         const get=idx=>idx>=0?String(r[idx]||'').trim():'';
         const row={_row:i+1,_errors:[]};
         colIdx.forEach(c=>{ row[c.key]=get(c.idx); });
+        if(isFord){
+          const kpiVals={};
+          kpiIdx.forEach(c=>{ kpiVals[c.key]=get(c.idx); });
+          row.kpis_puesto=[1,2,3].map(n=>({
+            indicador:kpiVals[`kpi${n}_indicador`]||'', formula:kpiVals[`kpi${n}_formula`]||'', frecuencia:kpiVals[`kpi${n}_frecuencia`]||''
+          })).filter(k=>k.indicador||k.formula||k.frecuencia);
+        }
         if(!row.nombre_puesto) row._errors.push('Nombre del puesto vacío');
         _impPfRows.push(row);
       }
@@ -20247,9 +20292,10 @@ function _impPfRenderPreview(empId){
   const sum=document.getElementById('imp-pf-summary');
   sum.innerHTML=`<span style="color:var(--green)"><i class="fa fa-check-circle"></i> ${ok.length} válidos</span>`
     +(errR.length?`&nbsp;&nbsp;<span style="color:var(--red)"><i class="fa fa-exclamation-circle"></i> ${errR.length} con errores</span>`:'');
+  const isFord=empId===_PF_KPI_EMPRESA_ID;
   const thead=document.querySelector('#imp-pf-table thead');
   const tbody=document.querySelector('#imp-pf-table tbody');
-  const cabeceras=['#'].concat(_PF_IMPORT_COLS.map(c=>c.label)).concat(['Status']);
+  const cabeceras=['#'].concat(_PF_IMPORT_COLS.map(c=>c.label)).concat(isFord?['KPIs']:[]).concat(['Status']);
   thead.innerHTML=`<tr>${cabeceras.map(h=>`<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)">${h}</th>`).join('')}</tr>`;
   tbody.innerHTML=_impPfRows.map(r=>{
     const isOk=r._errors.length===0;
@@ -20258,9 +20304,11 @@ function _impPfRenderPreview(empId){
       ?`<span style="color:var(--green);font-size:11px"><i class="fa fa-check"></i> OK</span>`
       :`<span style="color:var(--red);font-size:11px" title="${_esc(r._errors.join('; '))}"><i class="fa fa-times"></i> ${_esc(r._errors.join('; '))}</span>`;
     const cells=_PF_IMPORT_COLS.map(c=>`<td style="padding:5px 8px">${_esc(r[c.key])||'—'}</td>`).join('');
+    const kpiCell=isFord?`<td style="padding:5px 8px">${(r.kpis_puesto||[]).length?_esc((r.kpis_puesto||[]).map(k=>k.indicador).filter(Boolean).join(', ')):'—'}</td>`:'';
     return `<tr style="${bg}">
       <td style="padding:5px 8px;color:var(--text3)">${r._row}</td>
       ${cells}
+      ${kpiCell}
       <td style="padding:5px 8px">${status}</td>
     </tr>`;
   }).join('');
@@ -20281,6 +20329,7 @@ async function doImportPerfiles(empId){
     lugar_trabajo:r.lugar_trabajo, ubicacion_geografica:r.ubicacion_geografica,
     sexo:r.sexo, edad_ini:r.edad_ini, edad_fin:r.edad_fin,
     escolaridad:r.escolaridad, experiencia_previa:r.experiencia_previa, elaboro:r.elaboro,
+    kpis_puesto:r.kpis_puesto||[],
     coordinadores_ids:[],
     updated_at:new Date().toISOString(),
   }));
@@ -20513,6 +20562,18 @@ async function openPerfilModal(empId, perfilId){
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Entregables</div>
       <div class="fg" style="margin-bottom:14px">${_rtBox('pf-entregables',v('entregables'))}</div>
 
+      ${empId===_PF_KPI_EMPRESA_ID?`
+      <!-- KPIS DEL PUESTO (solo Ford) -->
+      <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">KPIs del puesto</div>
+      <div style="display:flex;gap:6px;padding:0 0 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">
+        <div style="flex:1.2">Indicador</div><div style="flex:1.4">Fórmula</div><div style="flex:.8">Frecuencia</div><div style="width:26px"></div>
+      </div>
+      <div id="pf-kpi-rows" style="margin-bottom:8px">
+        ${((p.kpis_puesto&&p.kpis_puesto.length)?p.kpis_puesto:[{}]).map(r=>_pfKpiRowHTML(r)).join('')}
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="_pfKpiAddRow()" style="margin-bottom:14px"><i class="fa fa-plus"></i> Agregar KPI</button>
+      `:''}
+
       <!-- AUTORIZACIONES -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Autorizaciones</div>
       <div class="fg" style="margin-bottom:14px"><label>Elaboró</label><input type="text" id="pf-elaboro" value="${v('elaboro')}"></div>
@@ -20566,6 +20627,7 @@ async function savePerfilPuesto(){
     resp_telefonia:gr('resp_telefonia'), resp_documentos:gr('resp_documentos'),
     resp_otros:gr('resp_otros'), resp_uniforme:gr('resp_uniforme'),
     entregables:_rtGet('pf-entregables'), elaboro:g('pf-elaboro'),
+    kpis_puesto:_pfGetKpiRows(),
     coordinadores_ids:Array.from(document.querySelectorAll('input[name="pf-coord"]:checked')).map(el=>el.value),
     updated_at:new Date().toISOString()
   };
@@ -20608,6 +20670,7 @@ async function exportPerfilPDFBtn(){
     resp_automovil:gr('resp_automovil'), resp_telefonia:gr('resp_telefonia'),
     resp_documentos:gr('resp_documentos'), resp_otros:gr('resp_otros'), resp_uniforme:gr('resp_uniforme'),
     entregables:_rtGet('pf-entregables'), elaboro:g('pf-elaboro'),
+    kpis_puesto:_pfGetKpiRows(),
     updated_at:new Date().toISOString()
   };
   if(!SANDBOX_MODE){

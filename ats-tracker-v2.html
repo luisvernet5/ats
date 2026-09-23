@@ -6804,18 +6804,13 @@ function _hcaRenderProyectos(empId){
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const color=emp.color||'#2AAADE';
   const {proyectos,sinProyecto}=_hcaProyectosResumen();
-  const card=(nombre,puestos,cantidad,onclick)=>`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px;transition:box-shadow .15s" onclick="${onclick}" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,.12)'" onmouseleave="this.style.boxShadow=''">
-      <div style="display:flex;align-items:center;gap:12px">
-        <div style="width:40px;height:40px;flex-shrink:0;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-diagram-project" style="color:${color};font-size:18px"></i></div>
-        <div style="min-width:0">
-          <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(nombre)}</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:2px">${puestos} puesto${puestos!==1?'s':''} · ${cantidad} autorizado${cantidad!==1?'s':''}</div>
-        </div>
-      </div>
-      <div style="height:3px;border-radius:2px;background:${color}33;overflow:hidden"><div style="height:100%;width:100%;background:${color};border-radius:2px"></div></div>
-    </div>`;
-  const cards=proyectos.map(([nombre,s])=>card(nombre,s.puestos,s.cantidad,`hcaAbrirProyecto('${nombre.replace(/'/g,"\\'")}')`)).join('')
-    + (sinProyecto?card('Sin proyecto asignado',sinProyecto,_hcaData.filter(r=>!(r.origen_tipo==='proyecto'&&r.origen)).reduce((s,r)=>s+(r.cantidad||0),0),`hcaAbrirProyecto('__sin_proyecto__')`):'');
+  const fila=(nombre,puestos,cantidad,onclick)=>`<tr style="cursor:pointer" onclick="${onclick}">
+      <td class="td-p">${_esc(nombre)}</td>
+      <td style="text-align:center">${puestos}</td>
+      <td style="text-align:center">${cantidad}</td>
+    </tr>`;
+  const filas=proyectos.map(([nombre,s])=>fila(nombre,s.puestos,s.cantidad,`hcaAbrirProyecto('${nombre.replace(/'/g,"\\'")}')`)).join('')
+    + (sinProyecto?fila('Sin proyecto asignado',sinProyecto,_hcaData.filter(r=>!(r.origen_tipo==='proyecto'&&r.origen)).reduce((s,r)=>s+(r.cantidad||0),0),`hcaAbrirProyecto('__sin_proyecto__')`):'');
   page.innerHTML=`<div style="padding:24px 28px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="headcountAutorizadoBack()"><i class="fa fa-arrow-left"></i> Empresas</button>
@@ -6825,9 +6820,10 @@ function _hcaRenderProyectos(empId){
       <button class="btn btn-ghost btn-sm" onclick="hcaAbrirImportModal('${empId}')"><i class="fa fa-upload"></i> Carga masiva</button>
       <button class="btn btn-primary btn-sm" onclick="hcaAbrirAltaModal('${empId}')"><i class="fa fa-plus"></i> Dar de alta plantilla</button>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">
-      ${cards||'<div style="color:var(--text3);font-size:13px;grid-column:1/-1;text-align:center;padding:40px"><i class="fa fa-diagram-project" style="font-size:28px;display:block;margin-bottom:12px;opacity:.4"></i>Sin plantilla registrada — da de alta el primer puesto</div>'}
-    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Proyecto</th><th style="text-align:center">Puestos</th><th style="text-align:center">Autorizados</th></tr></thead>
+      <tbody>${filas||'<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:32px">Sin plantilla registrada — da de alta el primer puesto</td></tr>'}</tbody>
+    </table></div>
   </div>`;
 }
 

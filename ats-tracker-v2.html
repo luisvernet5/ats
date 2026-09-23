@@ -6804,10 +6804,11 @@ function _hcaRenderProyectos(empId){
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const color=emp.color||'#2AAADE';
   const {proyectos,sinProyecto}=_hcaProyectosResumen();
-  const fila=(nombre,puestos,cantidad,onclick)=>`<tr style="cursor:pointer" onclick="${onclick}">
+  const fila=(nombre,puestos,cantidad,onclick)=>`<tr>
       <td class="td-p">${_esc(nombre)}</td>
       <td style="text-align:center">${puestos}</td>
       <td style="text-align:center">${cantidad}</td>
+      <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="${onclick}">Ver puestos <i class="fa fa-arrow-right"></i></button></td>
     </tr>`;
   const filas=proyectos.map(([nombre,s])=>fila(nombre,s.puestos,s.cantidad,`hcaAbrirProyecto('${nombre.replace(/'/g,"\\'")}')`)).join('')
     + (sinProyecto?fila('Sin proyecto asignado',sinProyecto,_hcaData.filter(r=>!(r.origen_tipo==='proyecto'&&r.origen)).reduce((s,r)=>s+(r.cantidad||0),0),`hcaAbrirProyecto('__sin_proyecto__')`):'');
@@ -6831,8 +6832,8 @@ function _hcaRenderProyectos(empId){
       <input type="file" id="hca-organigrama-file" accept="application/pdf" style="display:none" onchange="hcaSubirOrganigrama(event,'${empId}')">
     </div>
     <div class="table-wrap"><table>
-      <thead><tr><th>Proyecto</th><th style="text-align:center">Puestos</th><th style="text-align:center">Autorizados</th></tr></thead>
-      <tbody>${filas||'<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:32px">Sin plantilla registrada — da de alta el primer puesto</td></tr>'}</tbody>
+      <thead><tr><th>Proyecto</th><th style="text-align:center">Puestos</th><th style="text-align:center">Autorizados</th><th></th></tr></thead>
+      <tbody>${filas||'<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:32px">Sin plantilla registrada — da de alta el primer puesto</td></tr>'}</tbody>
     </table></div>
   </div>`;
 }

@@ -6787,9 +6787,12 @@ function _hcaRender(empId){
   const rows=_hcaData.map(r=>`<tr>
       <td class="td-p">${_esc(r.puesto)}</td>
       <td>${_esc(r.puesto_nomina||'')}</td>
-      <td id="hca-origen-${r.id}">${r.origen?`<span style="font-size:12px;color:var(--text2)">${r.origen_tipo==='departamento'?'Depto.':'Proyecto'}: ${_esc(r.origen)}</span>`:'<span style="font-size:12px;color:var(--text3)">—</span>'} <i class="fa fa-pen" style="cursor:pointer;font-size:11px;color:var(--text3);margin-left:6px" onclick="hcaAbrirAltaModal('${empId}','${r.id}')" title="Editar proyecto/departamento"></i></td>
-      <td style="text-align:center" id="hca-cant-${r.id}">${r.cantidad||0} <i class="fa fa-pen" style="cursor:pointer;font-size:11px;color:var(--text3);margin-left:6px" onclick="hcaEditarCantidad('${r.id}')" title="Editar cantidad"></i></td>
-      <td style="text-align:right"><button class="btn btn-danger btn-sm" onclick="hcaEliminarPlantilla('${r.id}','${empId}')" title="Eliminar"><i class="fa fa-trash"></i></button></td>
+      <td>${r.origen?`<span style="font-size:12px;color:var(--text2)">${r.origen_tipo==='departamento'?'Depto.':'Proyecto'}: ${_esc(r.origen)}</span>`:'<span style="font-size:12px;color:var(--text3)">—</span>'}</td>
+      <td style="text-align:center">${r.cantidad||0}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="hcaAbrirAltaModal('${empId}','${r.id}')" title="Editar"><i class="fa fa-pen"></i></button>
+        <button class="btn btn-danger btn-sm" onclick="hcaEliminarPlantilla('${r.id}','${empId}')" title="Eliminar"><i class="fa fa-trash"></i></button>
+      </td>
     </tr>`).join('');
   page.innerHTML=`<div style="padding:24px 28px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
@@ -6889,22 +6892,6 @@ async function hcaGuardarPlantilla(empId,editId){
     const empNombre=(DB.empresas.find(e=>e.id===empId)||{}).nombre||empId;
     await logActivity(editRow?'Editar plantilla autorizada':'Dar de alta plantilla autorizada','headcount_autorizado',id,`${puesto}${origen?' · '+origen:''} (${cant}) — ${empNombre}`);
     await _hcaCargarYRenderizar(empId);
-  }catch(e){ showToast('Error: '+e.message,'err'); }
-}
-function hcaEditarCantidad(id){
-  const cell=document.getElementById('hca-cant-'+id); if(!cell) return;
-  const row=_hcaData.find(r=>r.id===id); if(!row) return;
-  cell.innerHTML=`<input type="number" value="${row.cantidad||0}" style="width:60px;text-align:center;font-size:12px" onblur="hcaGuardarCantidad('${id}',this)" onkeydown="if(event.key==='Enter')this.blur()">`;
-  const inp=cell.querySelector('input'); inp.focus(); inp.select();
-}
-async function hcaGuardarCantidad(id,el){
-  const nueva=parseInt(el.value||0)||0;
-  try{
-    const {error}=await sbClient.from('headcount_autorizado').update({cantidad:nueva,updated_at:new Date().toISOString()}).eq('id',id);
-    if(error) throw new Error(error.message);
-    const row=_hcaData.find(r=>r.id===id); if(row) row.cantidad=nueva;
-    showToast('Cantidad actualizada ✓');
-    _hcaRender(_hcaOpenEmpId);
   }catch(e){ showToast('Error: '+e.message,'err'); }
 }
 async function hcaEliminarPlantilla(id,empId){

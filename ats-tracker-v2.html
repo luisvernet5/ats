@@ -6787,7 +6787,7 @@ function _hcaRender(empId){
   const rows=_hcaData.map(r=>`<tr>
       <td class="td-p">${_esc(r.puesto)}</td>
       <td>${_esc(r.puesto_nomina||'')}</td>
-      <td id="hca-origen-${r.id}">${r.origen?`<span style="font-size:12px;color:var(--text2)">${r.origen_tipo==='departamento'?'Depto.':'Proyecto'}: ${_esc(r.origen)}</span>`:'<span style="font-size:12px;color:var(--text3)">—</span>'} <i class="fa fa-pen" style="cursor:pointer;font-size:11px;color:var(--text3);margin-left:6px" onclick="hcaEditarOrigen('${r.id}','${empId}')" title="Editar proyecto/departamento"></i></td>
+      <td id="hca-origen-${r.id}">${r.origen?`<span style="font-size:12px;color:var(--text2)">${r.origen_tipo==='departamento'?'Depto.':'Proyecto'}: ${_esc(r.origen)}</span>`:'<span style="font-size:12px;color:var(--text3)">—</span>'} <i class="fa fa-pen" style="cursor:pointer;font-size:11px;color:var(--text3);margin-left:6px" onclick="hcaAbrirAltaModal('${empId}','${r.id}')" title="Editar proyecto/departamento"></i></td>
       <td style="text-align:center" id="hca-cant-${r.id}">${r.cantidad||0} <i class="fa fa-pen" style="cursor:pointer;font-size:11px;color:var(--text3);margin-left:6px" onclick="hcaEditarCantidad('${r.id}')" title="Editar cantidad"></i></td>
       <td style="text-align:right"><button class="btn btn-danger btn-sm" onclick="hcaEliminarPlantilla('${r.id}','${empId}')" title="Eliminar"><i class="fa fa-trash"></i></button></td>
     </tr>`).join('');
@@ -6807,60 +6807,62 @@ function _hcaRender(empId){
   </div>`;
 }
 
-function hcaAbrirAltaModal(empId){
+function hcaAbrirAltaModal(empId,editId){
   const emp=DB.empresas.find(x=>x.id===empId)||{};
   const proyectos=emp.proyectos||[];
   const deptos=emp.departamentos||[];
-  const proyOpts=proyectos.map(p=>`<option value="${_esc(p)}">${_esc(p)}</option>`).join('');
-  const deptoOpts=deptos.map(d=>`<option value="${_esc(d)}">${_esc(d)}</option>`).join('');
+  const editRow=editId?_hcaData.find(r=>r.id===editId):null;
+  const proyOpts=proyectos.map(p=>`<option value="${_esc(p)}"${editRow?.origen_tipo==='proyecto'&&editRow?.origen===p?' selected':''}>${_esc(p)}</option>`).join('');
+  const deptoOpts=deptos.map(d=>`<option value="${_esc(d)}"${editRow?.origen_tipo==='departamento'&&editRow?.origen===d?' selected':''}>${_esc(d)}</option>`).join('');
+  const tipoActual=editRow?(editRow.origen_tipo||'manual'):'proyecto';
   const overlay=document.createElement('div');
   overlay.id='hca-modal-alta';
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
   overlay.innerHTML=`
     <div style="background:var(--surface);border-radius:14px;padding:24px;width:440px;max-width:96vw">
-      <div style="font-size:15px;font-weight:600;margin-bottom:18px">Dar de alta plantilla</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:18px">${editRow?'Editar plantilla':'Dar de alta plantilla'}</div>
       <div class="fg" style="margin-bottom:12px">
         <label>Origen del puesto</label>
         <select id="hca-tipo" onchange="hcaToggleTipo()">
-          <option value="proyecto">Proyecto</option>
-          <option value="departamento">Departamento</option>
-          <option value="manual">Sin proyecto ni departamento</option>
+          <option value="proyecto"${tipoActual==='proyecto'?' selected':''}>Proyecto</option>
+          <option value="departamento"${tipoActual==='departamento'?' selected':''}>Departamento</option>
+          <option value="manual"${tipoActual==='manual'?' selected':''}>Sin proyecto ni departamento</option>
         </select>
       </div>
-      <div id="hca-sel-wrap" class="fg" style="margin-bottom:12px">
+      <div id="hca-sel-wrap" class="fg" style="margin-bottom:12px;${tipoActual==='proyecto'?'':'display:none'}">
         <label>Selecciona el proyecto</label>
         <select id="hca-sel-proyecto">${proyOpts||'<option value="">Sin proyectos configurados</option>'}</select>
       </div>
-      <div id="hca-dep-wrap" class="fg" style="margin-bottom:12px;display:none">
+      <div id="hca-dep-wrap" class="fg" style="margin-bottom:12px;${tipoActual==='departamento'?'':'display:none'}">
         <label>Selecciona el departamento</label>
         <select id="hca-sel-depto">${deptoOpts||'<option value="">Sin departamentos configurados</option>'}</select>
       </div>
       <div class="fg" style="margin-bottom:12px">
         <label>Nombre del puesto</label>
-        <input type="text" id="hca-new-puesto" placeholder="Ej. Operador de línea">
+        <input type="text" id="hca-new-puesto" placeholder="Ej. Operador de línea" value="${_esc(editRow?.puesto||'')}">
       </div>
       <div class="fg" style="margin-bottom:12px">
         <label>Puesto nómina</label>
-        <input type="text" id="hca-new-nomina" placeholder="Ej. Operador general">
+        <input type="text" id="hca-new-nomina" placeholder="Ej. Operador general" value="${_esc(editRow?.puesto_nomina||'')}">
       </div>
       <div class="fg" style="margin-bottom:18px">
         <label>Número de personas autorizadas</label>
-        <input type="number" id="hca-new-cant" placeholder="0" min="0">
+        <input type="number" id="hca-new-cant" placeholder="0" min="0" value="${editRow?.cantidad??''}">
       </div>
       <div style="display:flex;justify-content:flex-end;gap:8px">
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('hca-modal-alta').remove()">Cancelar</button>
-        <button class="btn btn-primary btn-sm" onclick="hcaGuardarPlantilla('${empId}')"><i class="fa fa-save"></i> Guardar</button>
+        <button class="btn btn-primary btn-sm" onclick="hcaGuardarPlantilla('${empId}'${editId?`,'${editId}'`:''})"><i class="fa fa-save"></i> Guardar</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
-  if(!proyectos.length){ document.getElementById('hca-tipo').value=deptos.length?'departamento':'manual'; hcaToggleTipo(); }
+  if(!editRow&&!proyectos.length){ document.getElementById('hca-tipo').value=deptos.length?'departamento':'manual'; hcaToggleTipo(); }
 }
 function hcaToggleTipo(){
   const tipo=document.getElementById('hca-tipo')?.value;
   document.getElementById('hca-sel-wrap').style.display=tipo==='proyecto'?'':'none';
   document.getElementById('hca-dep-wrap').style.display=tipo==='departamento'?'':'none';
 }
-async function hcaGuardarPlantilla(empId){
+async function hcaGuardarPlantilla(empId,editId){
   const tipo=document.getElementById('hca-tipo')?.value;
   let origen='';
   if(tipo==='proyecto') origen=document.getElementById('hca-sel-proyecto')?.value||'';
@@ -6870,21 +6872,22 @@ async function hcaGuardarPlantilla(empId){
   const cant=parseInt(document.getElementById('hca-new-cant')?.value||0)||0;
   if(tipo!=='manual'&&!origen){ showToast(tipo==='proyecto'?'Selecciona un proyecto':'Selecciona un departamento','err'); return; }
   if(!puesto){ showToast('Ingresa el nombre del puesto','err'); return; }
-  const id=empId+'-'+puesto.replace(/\s+/g,'').substring(0,20)+'-'+Date.now();
+  const editRow=editId?_hcaData.find(r=>r.id===editId):null;
+  const id=editRow?editRow.id:empId+'-'+puesto.replace(/\s+/g,'').substring(0,20)+'-'+Date.now();
   try{
     const {error}=await sbClient.from('headcount_autorizado').upsert({
       id, empresa_id:empId, puesto, puesto_nomina:puestoNomina||null,
       origen_tipo:tipo==='manual'?null:tipo, origen:origen||null, cantidad:cant,
-      orden:_hcaData.length+1, activo:true, updated_at:new Date().toISOString()
+      orden:editRow?editRow.orden:_hcaData.length+1, activo:true, updated_at:new Date().toISOString()
     });
     if(error){
       if(/puesto_nomina|origen/.test(error.message)) throw new Error('faltan las columnas puesto_nomina / origen / origen_tipo en la tabla headcount_autorizado de Supabase');
       throw new Error(error.message);
     }
-    showToast('Plantilla dada de alta ✓');
+    showToast(editRow?'Plantilla actualizada ✓':'Plantilla dada de alta ✓');
     document.getElementById('hca-modal-alta')?.remove();
     const empNombre=(DB.empresas.find(e=>e.id===empId)||{}).nombre||empId;
-    await logActivity('Dar de alta plantilla autorizada','headcount_autorizado',id,`${puesto}${origen?' · '+origen:''} (${cant}) — ${empNombre}`);
+    await logActivity(editRow?'Editar plantilla autorizada':'Dar de alta plantilla autorizada','headcount_autorizado',id,`${puesto}${origen?' · '+origen:''} (${cant}) — ${empNombre}`);
     await _hcaCargarYRenderizar(empId);
   }catch(e){ showToast('Error: '+e.message,'err'); }
 }
@@ -6902,51 +6905,6 @@ async function hcaGuardarCantidad(id,el){
     const row=_hcaData.find(r=>r.id===id); if(row) row.cantidad=nueva;
     showToast('Cantidad actualizada ✓');
     _hcaRender(_hcaOpenEmpId);
-  }catch(e){ showToast('Error: '+e.message,'err'); }
-}
-function hcaEditarOrigen(id,empId){
-  const cell=document.getElementById('hca-origen-'+id); if(!cell) return;
-  const row=_hcaData.find(r=>r.id===id); if(!row) return;
-  const emp=DB.empresas.find(x=>x.id===empId)||{};
-  const proyectos=emp.proyectos||[];
-  const deptos=emp.departamentos||[];
-  const proyOpts=proyectos.map(p=>`<option value="${_esc(p)}"${row.origen_tipo==='proyecto'&&row.origen===p?' selected':''}>${_esc(p)}</option>`).join('');
-  const deptoOpts=deptos.map(d=>`<option value="${_esc(d)}"${row.origen_tipo==='departamento'&&row.origen===d?' selected':''}>${_esc(d)}</option>`).join('');
-  cell.innerHTML=`
-    <div style="display:flex;flex-direction:column;gap:4px;min-width:170px">
-      <select id="hca-origen-tipo-${id}" onchange="hcaToggleOrigenTipoEdit('${id}')" style="font-size:12px;padding:3px 4px">
-        <option value="proyecto"${row.origen_tipo==='proyecto'?' selected':''}>Proyecto</option>
-        <option value="departamento"${row.origen_tipo==='departamento'?' selected':''}>Departamento</option>
-        <option value="manual"${!row.origen_tipo?' selected':''}>Sin proyecto ni departamento</option>
-      </select>
-      <select id="hca-origen-proy-${id}" style="font-size:12px;padding:3px 4px;${row.origen_tipo==='departamento'?'display:none':''}">${proyOpts||'<option value="">Sin proyectos configurados</option>'}</select>
-      <select id="hca-origen-dep-${id}" style="font-size:12px;padding:3px 4px;${row.origen_tipo!=='departamento'?'display:none':''}">${deptoOpts||'<option value="">Sin departamentos configurados</option>'}</select>
-      <div style="display:flex;gap:4px;justify-content:flex-end">
-        <button class="btn btn-ghost btn-sm" style="padding:2px 8px" onclick="_hcaRender('${empId}')">Cancelar</button>
-        <button class="btn btn-primary btn-sm" style="padding:2px 8px" onclick="hcaGuardarOrigen('${id}','${empId}')">Guardar</button>
-      </div>
-    </div>`;
-}
-function hcaToggleOrigenTipoEdit(id){
-  const tipo=document.getElementById('hca-origen-tipo-'+id)?.value;
-  document.getElementById('hca-origen-proy-'+id).style.display=tipo==='proyecto'?'':'none';
-  document.getElementById('hca-origen-dep-'+id).style.display=tipo==='departamento'?'':'none';
-}
-async function hcaGuardarOrigen(id,empId){
-  const tipo=document.getElementById('hca-origen-tipo-'+id)?.value;
-  let origen='';
-  if(tipo==='proyecto') origen=document.getElementById('hca-origen-proy-'+id)?.value||'';
-  else if(tipo==='departamento') origen=document.getElementById('hca-origen-dep-'+id)?.value||'';
-  if(tipo!=='manual'&&!origen){ showToast(tipo==='proyecto'?'Selecciona un proyecto':'Selecciona un departamento','err'); return; }
-  try{
-    const {error}=await sbClient.from('headcount_autorizado').update({
-      origen_tipo:tipo==='manual'?null:tipo, origen:origen||null, updated_at:new Date().toISOString()
-    }).eq('id',id);
-    if(error) throw new Error(error.message);
-    const row=_hcaData.find(r=>r.id===id);
-    if(row){ row.origen_tipo=tipo==='manual'?null:tipo; row.origen=origen||null; }
-    showToast('Proyecto/departamento actualizado ✓');
-    _hcaRender(empId);
   }catch(e){ showToast('Error: '+e.message,'err'); }
 }
 async function hcaEliminarPlantilla(id,empId){

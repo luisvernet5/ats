@@ -6820,11 +6820,49 @@ function _hcaRenderProyectos(empId){
       <button class="btn btn-ghost btn-sm" onclick="hcaAbrirImportModal('${empId}')"><i class="fa fa-upload"></i> Carga masiva</button>
       <button class="btn btn-primary btn-sm" onclick="hcaAbrirAltaModal('${empId}')"><i class="fa fa-plus"></i> Dar de alta plantilla</button>
     </div>
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface2);border-radius:8px;margin-bottom:18px;flex-wrap:wrap">
+      <i class="fa fa-sitemap" style="color:${color};font-size:18px;flex-shrink:0"></i>
+      <div style="flex:1;min-width:180px">
+        <div style="font-size:13px;font-weight:600">Organigrama</div>
+        <div style="font-size:12px;color:var(--text3)">${emp.organigrama_url?'PDF cargado':'Sin organigrama cargado'}</div>
+      </div>
+      ${emp.organigrama_url?`<button class="btn btn-ghost btn-sm" onclick="hcaVerOrganigrama('${empId}')"><i class="fa fa-eye"></i> Ver organigrama</button>`:''}
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('hca-organigrama-file').click()"><i class="fa fa-upload"></i> ${emp.organigrama_url?'Reemplazar':'Subir'} PDF</button>
+      <input type="file" id="hca-organigrama-file" accept="application/pdf" style="display:none" onchange="hcaSubirOrganigrama(event,'${empId}')">
+    </div>
     <div class="table-wrap"><table>
       <thead><tr><th>Proyecto</th><th style="text-align:center">Puestos</th><th style="text-align:center">Autorizados</th></tr></thead>
       <tbody>${filas||'<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:32px">Sin plantilla registrada — da de alta el primer puesto</td></tr>'}</tbody>
     </table></div>
   </div>`;
+}
+function hcaVerOrganigrama(empId){
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  if(!emp.organigrama_url){ showToast('Sin organigrama cargado','err'); return; }
+  window.open(emp.organigrama_url,'_blank');
+}
+async function hcaSubirOrganigrama(e,empId){
+  const file=e.target?.files?.[0];
+  if(!file) return;
+  if(file.type!=='application/pdf'){ showToast('Solo se aceptan archivos PDF','err'); e.target.value=''; return; }
+  showToast('Subiendo organigrama...');
+  try{
+    const path=`${empId}.pdf`;
+    const {error:upErr}=await sbClient.storage.from('organigramas').upload(path,file,{upsert:true,contentType:'application/pdf'});
+    if(upErr) throw upErr;
+    const {data}=sbClient.storage.from('organigramas').getPublicUrl(path);
+    const url=data.publicUrl+'?t='+Date.now();
+    const empIdx=DB.empresas.findIndex(x=>x.id===empId);
+    if(empIdx<0) throw new Error('Empresa no encontrada');
+    DB.empresas[empIdx].organigrama_url=url;
+    await saveRecord('empresas',DB.empresas[empIdx]);
+    await logActivity('Subir organigrama','empresas',empId,(DB.empresas[empIdx].nombre||empId));
+    showToast('Organigrama actualizado ✓');
+    _hcaRenderProyectos(empId);
+  }catch(err){
+    showToast('Error al subir: '+err.message,'err');
+  }
+  e.target.value='';
 }
 
 function _hcaRenderListado(empId){

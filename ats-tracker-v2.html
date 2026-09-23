@@ -6799,19 +6799,27 @@ function _hcaProyectosResumen(){
   return {proyectos:[...map.entries()].sort((a,b)=>a[0].localeCompare(b[0],'es')),sinProyecto};
 }
 
+function _hcaSlug(s){ return String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z0-9]/g,'').substring(0,30); }
 function _hcaRenderProyectos(empId){
   const page=document.getElementById('page-headcount-autorizado'); if(!page) return;
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const color=emp.color||'#2AAADE';
+  const organigramas=emp.organigramas||{};
   const {proyectos,sinProyecto}=_hcaProyectosResumen();
-  const fila=(nombre,puestos,cantidad,onclick)=>`<tr>
-      <td class="td-p">${_esc(nombre)}</td>
+  const fila=(nombre,puestos,cantidad,key,onclickVer)=>{
+    const url=organigramas[key];
+    return `<tr>
+      <td class="td-p" style="cursor:pointer" onclick="${onclickVer}">${_esc(nombre)}</td>
       <td style="text-align:center">${puestos}</td>
       <td style="text-align:center">${cantidad}</td>
-      <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="${onclick}">Ver puestos <i class="fa fa-arrow-right"></i></button></td>
+      <td style="text-align:right;white-space:nowrap">
+        ${url?`<button class="btn btn-ghost btn-sm" onclick="hcaVerOrganigrama('${empId}','${key.replace(/'/g,"\\'")}')" title="Ver organigrama"><i class="fa fa-eye"></i> Ver organigrama</button>`:''}
+        <button class="btn btn-ghost btn-sm" onclick="hcaAbrirSubirOrganigrama('${key.replace(/'/g,"\\'")}')" title="${url?'Reemplazar':'Subir'} organigrama"><i class="fa fa-upload"></i> ${url?'Reemplazar':'Subir'} organigrama</button>
+      </td>
     </tr>`;
-  const filas=proyectos.map(([nombre,s])=>fila(nombre,s.puestos,s.cantidad,`hcaAbrirProyecto('${nombre.replace(/'/g,"\\'")}')`)).join('')
-    + (sinProyecto?fila('Sin proyecto asignado',sinProyecto,_hcaData.filter(r=>!(r.origen_tipo==='proyecto'&&r.origen)).reduce((s,r)=>s+(r.cantidad||0),0),`hcaAbrirProyecto('__sin_proyecto__')`):'');
+  };
+  const filas=proyectos.map(([nombre,s])=>fila(nombre,s.puestos,s.cantidad,nombre,`hcaAbrirProyecto('${nombre.replace(/'/g,"\\'")}')`)).join('')
+    + (sinProyecto?fila('Sin proyecto asignado',sinProyecto,_hcaData.filter(r=>!(r.origen_tipo==='proyecto'&&r.origen)).reduce((s,r)=>s+(r.cantidad||0),0),'__sin_proyecto__',`hcaAbrirProyecto('__sin_proyecto__')`):'');
   page.innerHTML=`<div style="padding:24px 28px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="headcountAutorizadoBack()"><i class="fa fa-arrow-left"></i> Empresas</button>
@@ -6821,49 +6829,49 @@ function _hcaRenderProyectos(empId){
       <button class="btn btn-ghost btn-sm" onclick="hcaAbrirImportModal('${empId}')"><i class="fa fa-upload"></i> Carga masiva</button>
       <button class="btn btn-primary btn-sm" onclick="hcaAbrirAltaModal('${empId}')"><i class="fa fa-plus"></i> Dar de alta plantilla</button>
     </div>
-    <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface2);border-radius:8px;margin-bottom:18px;flex-wrap:wrap">
-      <i class="fa fa-sitemap" style="color:${color};font-size:18px;flex-shrink:0"></i>
-      <div style="flex:1;min-width:180px">
-        <div style="font-size:13px;font-weight:600">Organigrama</div>
-        <div style="font-size:12px;color:var(--text3)">${emp.organigrama_url?'PDF cargado':'Sin organigrama cargado'}</div>
-      </div>
-      ${emp.organigrama_url?`<button class="btn btn-ghost btn-sm" onclick="hcaVerOrganigrama('${empId}')"><i class="fa fa-eye"></i> Ver organigrama</button>`:''}
-      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('hca-organigrama-file').click()"><i class="fa fa-upload"></i> ${emp.organigrama_url?'Reemplazar':'Subir'} PDF</button>
-      <input type="file" id="hca-organigrama-file" accept="application/pdf" style="display:none" onchange="hcaSubirOrganigrama(event,'${empId}')">
-    </div>
     <div class="table-wrap"><table>
       <thead><tr><th>Proyecto</th><th style="text-align:center">Puestos</th><th style="text-align:center">Autorizados</th><th></th></tr></thead>
       <tbody>${filas||'<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:32px">Sin plantilla registrada — da de alta el primer puesto</td></tr>'}</tbody>
     </table></div>
+    <input type="file" id="hca-organigrama-file" accept="application/pdf" style="display:none" onchange="hcaSubirOrganigrama(event,'${empId}')">
   </div>`;
 }
-function hcaVerOrganigrama(empId){
+let _hcaOrganigramaProyectoObjetivo=null;
+function hcaAbrirSubirOrganigrama(key){
+  _hcaOrganigramaProyectoObjetivo=key;
+  document.getElementById('hca-organigrama-file').click();
+}
+function hcaVerOrganigrama(empId,key){
   const emp=DB.empresas.find(e=>e.id===empId)||{};
-  if(!emp.organigrama_url){ showToast('Sin organigrama cargado','err'); return; }
-  window.open(emp.organigrama_url,'_blank');
+  const url=(emp.organigramas||{})[key];
+  if(!url){ showToast('Sin organigrama cargado','err'); return; }
+  window.open(url,'_blank');
 }
 async function hcaSubirOrganigrama(e,empId){
   const file=e.target?.files?.[0];
-  if(!file) return;
+  const key=_hcaOrganigramaProyectoObjetivo;
+  if(!file||!key) return;
   if(file.type!=='application/pdf'){ showToast('Solo se aceptan archivos PDF','err'); e.target.value=''; return; }
   showToast('Subiendo organigrama...');
   try{
-    const path=`${empId}.pdf`;
+    const path=`${empId}-${_hcaSlug(key)}.pdf`;
     const {error:upErr}=await sbClient.storage.from('organigramas').upload(path,file,{upsert:true,contentType:'application/pdf'});
     if(upErr) throw upErr;
     const {data}=sbClient.storage.from('organigramas').getPublicUrl(path);
     const url=data.publicUrl+'?t='+Date.now();
     const empIdx=DB.empresas.findIndex(x=>x.id===empId);
     if(empIdx<0) throw new Error('Empresa no encontrada');
-    DB.empresas[empIdx].organigrama_url=url;
+    DB.empresas[empIdx].organigramas={...(DB.empresas[empIdx].organigramas||{}),[key]:url};
     await saveRecord('empresas',DB.empresas[empIdx]);
-    await logActivity('Subir organigrama','empresas',empId,(DB.empresas[empIdx].nombre||empId));
+    const proyLabel=key==='__sin_proyecto__'?'Sin proyecto asignado':key;
+    await logActivity('Subir organigrama','empresas',empId,`${proyLabel} — ${DB.empresas[empIdx].nombre||empId}`);
     showToast('Organigrama actualizado ✓');
     _hcaRenderProyectos(empId);
   }catch(err){
     showToast('Error al subir: '+err.message,'err');
   }
   e.target.value='';
+  _hcaOrganigramaProyectoObjetivo=null;
 }
 
 function _hcaRenderListado(empId){

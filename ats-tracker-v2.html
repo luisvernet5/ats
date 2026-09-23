@@ -6838,7 +6838,8 @@ function _hcaRenderListado(empId){
   const esSinProyecto=_hcaProyectoActual==='__sin_proyecto__';
   const datosFiltrados=_hcaData.filter(r=>esSinProyecto?!(r.origen_tipo==='proyecto'&&r.origen):(r.origen_tipo==='proyecto'&&r.origen===_hcaProyectoActual));
   const total=datosFiltrados.reduce((s,r)=>s+(r.cantidad||0),0);
-  const rows=datosFiltrados.map(r=>`<tr>
+  const rows=datosFiltrados.map((r,i)=>`<tr>
+      <td style="text-align:center;color:var(--text3);width:36px">${i+1}</td>
       <td class="td-p">${_esc(r.puesto)}</td>
       <td>${_esc(r.puesto_nomina||'')}</td>
       <td>${r.origen?`<span style="font-size:12px;color:var(--text2)">${r.origen_tipo==='departamento'?'Depto.':'Proyecto'}: ${_esc(r.origen)}</span>`:'<span style="font-size:12px;color:var(--text3)">—</span>'}</td>
@@ -6858,9 +6859,9 @@ function _hcaRenderListado(empId){
       <button class="btn btn-primary btn-sm" onclick="hcaAbrirAltaModal('${empId}')"><i class="fa fa-plus"></i> Dar de alta plantilla</button>
     </div>
     <div class="table-wrap"><table>
-      <thead><tr><th>Puesto de trabajo</th><th>Puesto nómina</th><th>Proyecto / Departamento</th><th style="text-align:center">Cantidad autorizada</th><th></th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:32px">Sin plantilla registrada — da de alta el primer puesto</td></tr>'}</tbody>
-      ${datosFiltrados.length?`<tfoot><tr><td style="font-weight:700" colspan="3">Total</td><td style="text-align:center;font-weight:700">${total}</td><td></td></tr></tfoot>`:''}
+      <thead><tr><th>#</th><th>Puesto de trabajo</th><th>Puesto nómina</th><th>Proyecto / Departamento</th><th style="text-align:center">Cantidad autorizada</th><th></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">Sin plantilla registrada — da de alta el primer puesto</td></tr>'}</tbody>
+      ${datosFiltrados.length?`<tfoot><tr><td style="font-weight:700" colspan="4">Total</td><td style="text-align:center;font-weight:700">${total}</td><td></td></tr></tfoot>`:''}
     </table></div>
   </div>`;
 }

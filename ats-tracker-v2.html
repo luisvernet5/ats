@@ -9450,7 +9450,10 @@ function _seQuitarEmpleo(idx){
 function _seLeerEmpleosDelDOM(){
   _seEmpleos=_seEmpleos.map((job,idx)=>{
     const nuevo={};
-    SE_EMPLEO_CAMPOS.forEach(f=>{ nuevo[f.key]=document.getElementById(`se-emp-${idx}-${f.key}`)?.value||''; });
+    SE_EMPLEO_CAMPOS.forEach(f=>{
+      const id=`se-emp-${idx}-${f.key}`;
+      nuevo[f.key]=f.tipo==='fecha'?_seFechaGet(id):(document.getElementById(id)?.value||'');
+    });
     return nuevo;
   });
 }
@@ -9477,8 +9480,41 @@ function _seToggleDesempleado(){
 }
 function _seToggleFechaInmediato(id){
   const modo=document.getElementById(id+'-modo')?.value;
-  const dateEl=document.getElementById(id);
-  if(dateEl) dateEl.style.display=modo==='Inmediatamente'?'none':'';
+  const wrap=document.getElementById(id+'-wrap');
+  if(wrap) wrap.style.display=modo==='Inmediatamente'?'none':'flex';
+}
+// Selects de Día/Mes/Año en español para el formulario público de solicitud de
+// empleo — en vez de <input type="date">, cuyo selector nativo en móviles usa
+// el idioma del sistema del candidato (no el de la página), causando que a
+// veces se muestre en un idioma que ni el candidato ni nosotros configuramos.
+const _SE_MESES=[['01','Enero'],['02','Febrero'],['03','Marzo'],['04','Abril'],['05','Mayo'],['06','Junio'],['07','Julio'],['08','Agosto'],['09','Septiembre'],['10','Octubre'],['11','Noviembre'],['12','Diciembre']];
+function _seFechaSelectHTML(id,value,hidden){
+  const [vy,vm,vd]=(value||'').split('-');
+  const dias=Array.from({length:31},(_,i)=>String(i+1).padStart(2,'0'));
+  const anioActual=new Date().getFullYear();
+  const anios=[];
+  for(let y=anioActual+2;y>=anioActual-90;y--) anios.push(String(y));
+  return `<div id="${id}-wrap" style="display:${hidden?'none':'flex'};gap:6px">
+    <select id="${id}-d" style="flex:1;min-width:0">
+      <option value="">Día</option>
+      ${dias.map(d=>`<option value="${d}"${d===vd?' selected':''}>${parseInt(d,10)}</option>`).join('')}
+    </select>
+    <select id="${id}-m" style="flex:1.6;min-width:0">
+      <option value="">Mes</option>
+      ${_SE_MESES.map(([v,l])=>`<option value="${v}"${v===vm?' selected':''}>${l}</option>`).join('')}
+    </select>
+    <select id="${id}-y" style="flex:1;min-width:0">
+      <option value="">Año</option>
+      ${anios.map(y=>`<option value="${y}"${y===vy?' selected':''}>${y}</option>`).join('')}
+    </select>
+  </div>`;
+}
+function _seFechaGet(id){
+  const d=document.getElementById(id+'-d')?.value;
+  const m=document.getElementById(id+'-m')?.value;
+  const y=document.getElementById(id+'-y')?.value;
+  if(!d||!m||!y) return '';
+  return `${y}-${m}-${d}`;
 }
 function _seToggleFirmaModo(modo){
   window._seFirmaModo=modo;
@@ -9839,7 +9875,7 @@ function _seCampoHtml(f,val,idOverride){
   }else if(f.tipo==='parrafo'){
     input=`<textarea id="${id}" rows="3" style="width:100%;resize:vertical">${_esc(val||'')}</textarea>`;
   }else if(f.tipo==='fecha'){
-    input=`<input type="date" id="${id}" value="${_esc(val||'')}" style="width:100%">`;
+    input=_seFechaSelectHTML(id,val,false);
   }else if(f.tipo==='fecha_o_inmediato'){
     const isInmediato=val?val==='Inmediatamente':true;
     input=`<div>
@@ -9847,7 +9883,7 @@ function _seCampoHtml(f,val,idOverride){
         <option value="Inmediatamente" ${isInmediato?'selected':''}>Inmediatamente</option>
         <option value="Fecha específica" ${!isInmediato?'selected':''}>Fecha específica</option>
       </select>
-      <input type="date" id="${id}" value="${_esc(isInmediato?'':(val||''))}" style="width:100%;${isInmediato?'display:none':''}">
+      ${_seFechaSelectHTML(id,isInmediato?'':(val||''),isInmediato)}
     </div>`;
   }else if(f.tipo==='numero'){
     input=`<input type="number" id="${id}" value="${_esc(val||'')}" style="width:100%">`;
@@ -9869,7 +9905,7 @@ function _seRenderForm(se){
     </div>
     <div id="se-desempleado-desde-wrap" style="${desempleadoChecked?'':'display:none'};margin-bottom:16px;max-width:240px">
       <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px">¿Desde cuándo?</label>
-      <input type="date" id="se-desempleado-desde" value="${_esc(se.campos?.empleo_desempleado_desde||'')}" style="width:100%">
+      ${_seFechaSelectHTML('se-desempleado-desde',se.campos?.empleo_desempleado_desde||'',false)}
     </div>
     <div id="se-empleos-list">${_seEmpleosListHtml()}</div>
     <button type="button" class="btn btn-ghost btn-sm" onclick="_seLeerEmpleosDelDOM();_seAgregarEmpleo({})"><i class="fa fa-plus"></i> Agregar otro empleo</button>`;
@@ -9936,7 +9972,9 @@ async function submitSolicitudEmpleo(){
         val=vals.join(', ');
       }else if(f.tipo==='fecha_o_inmediato'){
         const modo=document.getElementById(`se-f-${f.key}-modo`)?.value;
-        val=modo==='Inmediatamente'?'Inmediatamente':(document.getElementById('se-f-'+f.key)?.value||'').trim();
+        val=modo==='Inmediatamente'?'Inmediatamente':_seFechaGet('se-f-'+f.key);
+      }else if(f.tipo==='fecha'){
+        val=_seFechaGet('se-f-'+f.key);
       }else{
         const el=document.getElementById('se-f-'+f.key);
         val=(el?.value||'').trim();
@@ -9950,7 +9988,7 @@ async function submitSolicitudEmpleo(){
   campos.empleo_desempleado=desempleado?'Sí':'No';
   campos.empleo_desempleado_desde=null;
   if(desempleado){
-    const desde=(document.getElementById('se-desempleado-desde')?.value||'').trim();
+    const desde=_seFechaGet('se-desempleado-desde');
     if(!desde&&!primerError) primerError={label:'¿Desde cuándo? (sin empleo actualmente)',__empleoBlock:true};
     campos.empleo_desempleado_desde=desde||null;
   }

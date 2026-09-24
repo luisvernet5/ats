@@ -6874,12 +6874,22 @@ async function hcaSubirOrganigrama(e,empId){
   _hcaOrganigramaProyectoObjetivo=null;
 }
 
-function _hcaRenderListado(empId){
-  const page=document.getElementById('page-headcount-autorizado'); if(!page) return;
-  const emp=DB.empresas.find(e=>e.id===empId)||{};
-  const color=emp.color||'#2AAADE';
+function _hcaDatosProyecto(){
   const esSinProyecto=_hcaProyectoActual==='__sin_proyecto__';
-  const datosFiltrados=_hcaData.filter(r=>esSinProyecto?!(r.origen_tipo==='proyecto'&&r.origen):(r.origen_tipo==='proyecto'&&r.origen===_hcaProyectoActual));
+  return _hcaData.filter(r=>esSinProyecto?!(r.origen_tipo==='proyecto'&&r.origen):(r.origen_tipo==='proyecto'&&r.origen===_hcaProyectoActual));
+}
+function _hcaDatosFiltrados(){
+  const q=(document.getElementById('hca-listado-q')?.value||'').trim().toLowerCase();
+  let datos=_hcaDatosProyecto();
+  if(q) datos=datos.filter(r=>(r.puesto||'').toLowerCase().includes(q)||(r.puesto_nomina||'').toLowerCase().includes(q));
+  return datos;
+}
+function hcaFiltrarListado(empId){
+  const cont=document.getElementById('hca-listado-tabla'); if(!cont) return;
+  cont.innerHTML=_hcaListadoTablaHTML(empId);
+}
+function _hcaListadoTablaHTML(empId){
+  const datosFiltrados=_hcaDatosFiltrados();
   const total=datosFiltrados.reduce((s,r)=>s+(r.cantidad||0),0);
   const rows=datosFiltrados.map((r,i)=>`<tr>
       <td style="text-align:center;color:var(--text3);width:36px">${i+1}</td>
@@ -6892,6 +6902,17 @@ function _hcaRenderListado(empId){
         <button class="btn btn-danger btn-sm" onclick="hcaEliminarPlantilla('${r.id}','${empId}')" title="Eliminar"><i class="fa fa-trash"></i></button>
       </td>
     </tr>`).join('');
+  return `<table>
+      <thead><tr><th>#</th><th>Puesto de trabajo</th><th>Puesto nómina</th><th>Proyecto / Departamento</th><th style="text-align:center">Cantidad autorizada</th><th></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">Sin resultados</td></tr>'}</tbody>
+      ${datosFiltrados.length?`<tfoot><tr><td style="font-weight:700" colspan="4">Total</td><td style="text-align:center;font-weight:700">${total}</td><td></td></tr></tfoot>`:''}
+    </table>`;
+}
+function _hcaRenderListado(empId){
+  const page=document.getElementById('page-headcount-autorizado'); if(!page) return;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const color=emp.color||'#2AAADE';
+  const esSinProyecto=_hcaProyectoActual==='__sin_proyecto__';
   page.innerHTML=`<div style="padding:24px 28px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="hcaVolverProyectos()"><i class="fa fa-arrow-left"></i> Proyectos</button>
@@ -6902,18 +6923,17 @@ function _hcaRenderListado(empId){
       <button class="btn btn-ghost btn-sm" onclick="hcaAbrirImportModal('${empId}')"><i class="fa fa-upload"></i> Carga masiva</button>
       <button class="btn btn-primary btn-sm" onclick="hcaAbrirAltaModal('${empId}')"><i class="fa fa-plus"></i> Dar de alta plantilla</button>
     </div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>#</th><th>Puesto de trabajo</th><th>Puesto nómina</th><th>Proyecto / Departamento</th><th style="text-align:center">Cantidad autorizada</th><th></th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">Sin plantilla registrada — da de alta el primer puesto</td></tr>'}</tbody>
-      ${datosFiltrados.length?`<tfoot><tr><td style="font-weight:700" colspan="4">Total</td><td style="text-align:center;font-weight:700">${total}</td><td></td></tr></tfoot>`:''}
-    </table></div>
+    <div style="margin-bottom:14px">
+      <input type="text" id="hca-listado-q" placeholder="Buscar por puesto o puesto nómina..." oninput="hcaFiltrarListado('${empId}')" style="width:280px;max-width:100%;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
+    </div>
+    <div class="table-wrap" id="hca-listado-tabla">${_hcaListadoTablaHTML(empId)}</div>
   </div>`;
 }
 
 function hcaExportarExcel(empId){
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const esSinProyecto=_hcaProyectoActual==='__sin_proyecto__';
-  const datosFiltrados=_hcaData.filter(r=>esSinProyecto?!(r.origen_tipo==='proyecto'&&r.origen):(r.origen_tipo==='proyecto'&&r.origen===_hcaProyectoActual));
+  const datosFiltrados=_hcaDatosFiltrados();
   if(!datosFiltrados.length){ showToast('No hay datos para exportar','err'); return; }
   const headers=['#','Puesto de trabajo','Puesto nómina','Proyecto / Departamento','Cantidad autorizada'];
   const filas=datosFiltrados.map((r,i)=>[

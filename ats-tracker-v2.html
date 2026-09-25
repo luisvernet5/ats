@@ -4181,7 +4181,10 @@ async function renderPage(p){
   if(p==='nom035'){renderNom035();return;}
 }
 function _renderEmpresaCardsGrid(onClickFn,moduloKey){
-  const cards=DB.empresas.filter(emp=>!moduloKey||emp.modulos?.[moduloKey]!==false).map(emp=>{
+  let empresas=DB.empresas.filter(emp=>!moduloKey||emp.modulos?.[moduloKey]!==false);
+  const empIdScope=_userEmpresaId();
+  if(empIdScope) empresas=empresas.filter(e=>e.id===empIdScope);
+  const cards=empresas.map(emp=>{
     const color=emp.color||'#2AAADE';
     return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px;transition:box-shadow .15s" onclick="${onClickFn}('${emp.id}')" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,.12)'" onmouseleave="this.style.boxShadow=''">
       <div style="display:flex;align-items:center;gap:12px">
@@ -4199,6 +4202,11 @@ function _renderEmpresaCardsGrid(onClickFn,moduloKey){
 }
 function _renderModuloDashboard(pageId,onClickFn,moduloKey){
   const page=document.getElementById(pageId); if(!page) return;
+  const empIdScope=_userEmpresaId();
+  if(empIdScope){
+    const emp=DB.empresas.find(e=>e.id===empIdScope&&(!moduloKey||e.modulos?.[moduloKey]!==false));
+    if(emp){ window[onClickFn](emp.id); return; }
+  }
   page.innerHTML=`<div style="padding:24px 28px">${_renderEmpresaCardsGrid(onClickFn,moduloKey)}</div>`;
 }
 function _renderModuloEmpresaDetalle(pageId,icono,titulo,empId,backFn){

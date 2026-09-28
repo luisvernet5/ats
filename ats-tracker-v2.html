@@ -14559,7 +14559,7 @@ async function showHCWeekList(empId,anio){
 async function crearSemanaHC(empId, semana, anio){
   const{data:plantilla}=await sbClient.from('hc_plantilla').select('*').eq('empresa_id',empId).eq('activo',true).order('orden',{ascending:true});
   if(!plantilla?.length){
-    showToast('No hay proyectos en la plantilla. Configura proyectos primero.','err');
+    showToast('Sin plantilla en Headcount Semanal. Usa el botón "Plantilla" (arriba) para agregar los proyectos aquí.','err');
     return;
   }
   // Buscar la semana anterior más reciente disponible

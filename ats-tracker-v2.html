@@ -19892,8 +19892,8 @@ async function docCfgSave(empId){
    ============================================================ */
 let _pfRowId=0;
 const _PF_GRID='18px 70px 1fr 88px 76px 108px 58px 50px 18px';
-// Sin Salario/Tipo/Frecuencia — plan de carrera simplificado, exclusivo de Ford.
-const _PF_GRID_SIMPLE='18px 110px 1fr 150px 100px 18px';
+// Sin Salario/Tipo/Frecuencia/Extras — plan de carrera simplificado, exclusivo de Ford.
+const _PF_GRID_SIMPLE='18px 130px 1fr 120px 18px';
 function _pfEsFord(empId){ return empId===_PF_KPI_EMPRESA_ID; }
 function _pfPlanRowHTML(r={},esFord){
   const rid='pfr'+(++_pfRowId);
@@ -19904,7 +19904,6 @@ function _pfPlanRowHTML(r={},esFord){
       <span style="cursor:grab;color:var(--text3);font-size:14px;text-align:center">⠿</span>
       <input type="text" placeholder="Nivel" value="${r.nivel||''}" style="font-size:12px;width:100%">
       <input type="text" placeholder="Puesto" value="${r.puesto||''}" style="font-size:12px;width:100%;min-width:0">
-      <input type="text" placeholder="Extras" value="${r.extras||''}" style="font-size:12px;width:100%">
       <input type="text" placeholder="Tiempo" value="${r.tiempo||''}" style="font-size:12px;width:100%">
       <button type="button" onclick="this.closest('.pf-plan-row').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;padding:0;text-align:center">×</button>
     </div>`;
@@ -19953,8 +19952,7 @@ function _pfGetPlanRows(esFord){
       return{
         nivel:texts[0]?.value||'',
         puesto:texts[1]?.value||'',
-        extras:texts[2]?.value||'',
-        tiempo:texts[3]?.value||''
+        tiempo:texts[2]?.value||''
       };
     }
     return{
@@ -20358,7 +20356,7 @@ function previewPerfilPuesto(perfilId){
 
   const planRows=p.plan_carrera||[];
   const esFordPreview=_pfEsFord(p.empresa_id);
-  const planHeaders=esFordPreview?['Nivel','Puesto','Extras','Tiempo']:['Nivel','Puesto','Salario','Tipo','Frecuencia','Extras','Tiempo'];
+  const planHeaders=esFordPreview?['Nivel','Puesto','Tiempo']:['Nivel','Puesto','Salario','Tipo','Frecuencia','Extras','Tiempo'];
   const planHTML=planRows.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
     <thead><tr style="background:var(--surface2)">
       ${planHeaders.map(h=>`<th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--text3);text-transform:uppercase">${h}</th>`).join('')}
@@ -20366,7 +20364,6 @@ function previewPerfilPuesto(perfilId){
     <tbody>${planRows.map(r=>esFordPreview?`<tr style="border-top:1px solid var(--border)">
       <td style="padding:6px 8px;font-weight:600">${_esc(r.nivel||'')}</td>
       <td style="padding:6px 8px">${_esc(r.puesto||'—')}</td>
-      <td style="padding:6px 8px">${_esc(r.extras||'—')}</td>
       <td style="padding:6px 8px">${_esc(r.tiempo||'—')}</td>
     </tr>`:`<tr style="border-top:1px solid var(--border)">
       <td style="padding:6px 8px;font-weight:600">${_esc(r.nivel||'')}</td>
@@ -20997,8 +20994,7 @@ async function openPerfilModal(empId, perfilId){
         <div></div>
         <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Nivel</div>
         <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Puesto</div>
-        ${_pfEsFord(empId)?'':'<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Salario</div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Tipo</div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Frecuencia</div>'}
-        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Extras</div>
+        ${_pfEsFord(empId)?'':'<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Salario</div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Tipo</div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Frecuencia</div><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Extras</div>'}
         <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Tiempo</div>
         <div></div>
       </div>
@@ -22236,22 +22232,20 @@ async function _buildPerfilPDFDoc(p){
     doc.setFillColor(245,245,248);doc.rect(ml,y,mr-ml,7,'F');
     doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...darkGray);
     if(esFordPDF){
-      ['Nivel','Puesto','Extras','Tiempo'].forEach((h,xi)=>
-        doc.text(h,[ml+2,ml+30,ml+120,ml+160][xi],y+5));
+      ['Nivel','Puesto','Tiempo'].forEach((h,xi)=>
+        doc.text(h,[ml+2,ml+30,ml+160][xi],y+5));
       y+=7;
       activeRows.forEach(r=>{
         chkNewPage(10);
         doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
         const lnH=4;
         const nivelLns=doc.splitTextToSize(r.nivel||'',26);
-        const puestoLns=doc.splitTextToSize(r.puesto||'',88);
-        const extrasLns=doc.splitTextToSize(r.extras||'',38);
+        const puestoLns=doc.splitTextToSize(r.puesto||'',126);
         const tiempoLns=doc.splitTextToSize(r.tiempo||'',34);
-        const maxLines=Math.max(nivelLns.length,puestoLns.length,extrasLns.length,tiempoLns.length);
+        const maxLines=Math.max(nivelLns.length,puestoLns.length,tiempoLns.length);
         const rowH=7+maxLines*lnH;
         nivelLns.forEach((l,i)=>doc.text(l,ml+2,y+4+i*lnH));
         puestoLns.forEach((l,i)=>doc.text(l,ml+30,y+4+i*lnH));
-        extrasLns.forEach((l,i)=>doc.text(l,ml+120,y+4+i*lnH));
         tiempoLns.forEach((l,i)=>doc.text(l,ml+160,y+4+i*lnH));
         doc.setDrawColor(...lineGray);doc.setLineWidth(0.3);doc.line(ml,y+rowH,mr,y+rowH);
         y+=rowH;

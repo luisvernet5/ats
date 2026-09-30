@@ -7766,6 +7766,7 @@ function openEmpresaDetail(empId){
         <input type="date" id="filtroFechaHasta" onchange="filtrarVacantesEmpresa()" style="height:28px;font-size:11px;padding:2px 6px;border:1px solid var(--border2);border-radius:6px;width:130px;flex-shrink:0">
         <button onclick="limpiarFiltrosEmpresa()" class="btn btn-ghost btn-sm" style="flex-shrink:0;height:28px;font-size:11px">× Limpiar</button>
         <div style="flex:1;min-width:8px"></div>
+        <button id="btn-ed-resumen" class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="openVacResumenModal('${empId}')"><i class="fa fa-chart-pie"></i> Resumen</button>
         <button id="btn-ed-col-vis" class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="openEDColPanel()"><i class="fa fa-columns"></i> Columnas</button>
         <button class="btn btn-green btn-sm" style="flex-shrink:0" onclick="exportarCSVEmpresa('${empId}')"><i class="fa fa-download"></i> Exportar</button>
         <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="openVacanteModal(null,'${empId}')"><i class="fa fa-plus"></i> Nueva vacante</button>
@@ -8131,6 +8132,59 @@ function openEDColPanel(){
   const closePanel=()=>{panel.remove();document.removeEventListener('mousedown',onDown);window.removeEventListener('scroll',closePanel,true);};
   const onDown=e=>{if(!panel.contains(e.target)&&e.target.id!=='btn-ed-col-vis')closePanel();};
   setTimeout(()=>{document.addEventListener('mousedown',onDown);window.addEventListener('scroll',closePanel,true);},0);
+}
+
+function openVacResumenModal(empId){
+  document.getElementById('modal-vac-resumen')?.remove();
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const activas=DB.vacantes.filter(v=>v.empresa_id===empId&&v.estado==='Abierta');
+
+  const contarPor=campo=>{
+    const m=new Map();
+    activas.forEach(v=>{
+      const val=v[campo];
+      if(!val)return;
+      m.set(val,(m.get(val)||0)+1);
+    });
+    return [...m.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'es'));
+  };
+  const porProyecto=contarPor('proyecto');
+  const porDepto=contarPor('departamento');
+
+  const tabla=(titulo,rows)=>rows.length?`
+    <div style="margin-bottom:18px">
+      <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:8px">${titulo}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="border-bottom:1px solid var(--border2)">
+          <th style="text-align:left;padding:6px 8px;color:var(--text3);font-weight:600">${titulo.replace('Por ','')}</th>
+          <th style="text-align:center;padding:6px 8px;color:var(--text3);font-weight:600;width:100px">Activas</th>
+        </tr></thead>
+        <tbody>${rows.map(([nombre,n])=>`<tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:6px 8px">${_esc(nombre)}</td>
+          <td style="padding:6px 8px;text-align:center;font-weight:600">${n}</td>
+        </tr>`).join('')}</tbody>
+        <tfoot><tr>
+          <td style="padding:6px 8px;font-weight:700">Total</td>
+          <td style="padding:6px 8px;text-align:center;font-weight:700">${rows.reduce((s,[,n])=>s+n,0)}</td>
+        </tr></tfoot>
+      </table>
+    </div>`:'';
+
+  const contenido=(tabla('Por Proyecto',porProyecto)+tabla('Por Departamento',porDepto))
+    || `<div style="text-align:center;color:var(--text3);padding:40px 20px"><i class="fa fa-chart-pie" style="font-size:28px;display:block;margin-bottom:12px;opacity:.4"></i>No hay vacantes activas para resumir</div>`;
+
+  const modal=document.createElement('div');
+  modal.id='modal-vac-resumen';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:480px;max-width:96vw;max-height:85vh;overflow-y:auto;padding:22px 24px;box-shadow:0 8px 32px rgba(0,0,0,.25)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-weight:700;font-size:15px">Resumen de vacantes activas${emp.nombre?` — ${_esc(emp.nombre)}`:''}</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-vac-resumen').remove()" style="padding:4px 8px"><i class="fa fa-times"></i></button>
+    </div>
+    ${contenido}
+  </div>`;
+  modal.addEventListener('mousedown',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
 }
 
 function cambiarVistaEmpresa(vista){

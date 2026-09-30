@@ -7772,7 +7772,7 @@ function openEmpresaDetail(empId){
         <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="openVacanteModal(null,'${empId}')"><i class="fa fa-plus"></i> Nueva vacante</button>
       </div>
       <div id="ed-resumen-panel" style="display:none"></div>
-      <div class="table-wrap">
+      <div class="table-wrap" id="ed-vacantes-tablewrap">
         <table id="ed-vacantes-table"><thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Folio</th><th>Reclutador</th><th>Proyecto</th><th>Departamento</th><th>Apertura</th><th>Estado</th><th>Días</th><th>Cands.</th><th>Acción</th></tr></thead>
         <tbody id="ed-tbody">${vacsRows||'<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:24px">Sin vacantes registradas</td></tr>'}</tbody>
         </table>
@@ -8137,17 +8137,20 @@ function openEDColPanel(){
 
 function toggleVacResumenPanel(empId){
   const panel=document.getElementById('ed-resumen-panel');
+  const tableWrap=document.getElementById('ed-vacantes-tablewrap');
   if(!panel)return;
   const btn=document.getElementById('btn-ed-resumen');
   if(panel.style.display!=='none'){
     panel.style.display='none';
     panel.innerHTML='';
+    if(tableWrap)tableWrap.style.display='';
     btn?.classList.remove('btn-primary');
     btn?.classList.add('btn-ghost');
     return;
   }
   panel.innerHTML=_renderVacResumenPanel(empId);
   panel.style.display='block';
+  if(tableWrap)tableWrap.style.display='none';
   btn?.classList.remove('btn-ghost');
   btn?.classList.add('btn-primary');
 }
@@ -8168,28 +8171,18 @@ function _renderVacResumenPanel(empId){
   const porDepto=contarPor('departamento');
 
   const tabla=(titulo,rows)=>rows.length?`
-    <div style="flex:1;min-width:220px">
-      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em">${titulo}</div>
-      <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr style="border-bottom:1px solid var(--border2)">
-          <th style="text-align:left;padding:6px 8px;color:var(--text3);font-weight:600">${titulo.replace('Por ','')}</th>
-          <th style="text-align:center;padding:6px 8px;color:var(--text3);font-weight:600;width:80px">Activas</th>
-        </tr></thead>
-        <tbody>${rows.map(([nombre,n])=>`<tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:6px 8px">${_esc(nombre)}</td>
-          <td style="padding:6px 8px;text-align:center;font-weight:600">${n}</td>
-        </tr>`).join('')}</tbody>
-        <tfoot><tr>
-          <td style="padding:6px 8px;font-weight:700">Total</td>
-          <td style="padding:6px 8px;text-align:center;font-weight:700">${rows.reduce((s,[,n])=>s+n,0)}</td>
-        </tr></tfoot>
+    <div class="table-wrap" style="margin-bottom:16px">
+      <table>
+        <thead><tr><th>${titulo.replace('Por ','')}</th><th style="text-align:center;width:120px">Vacantes activas</th></tr></thead>
+        <tbody>${rows.map(([nombre,n])=>`<tr><td class="td-p">${_esc(nombre)}</td><td style="text-align:center">${n}</td></tr>`).join('')}</tbody>
+        <tfoot><tr><td class="td-p" style="font-weight:700">Total</td><td style="text-align:center;font-weight:700">${rows.reduce((s,[,n])=>s+n,0)}</td></tr></tfoot>
       </table>
     </div>`:'';
 
   const contenido=(tabla('Por Proyecto',porProyecto)+tabla('Por Departamento',porDepto))
-    || `<div style="text-align:center;color:var(--text3);padding:20px"><i class="fa fa-chart-pie" style="font-size:22px;display:block;margin-bottom:8px;opacity:.4"></i>No hay vacantes activas para resumir</div>`;
+    || `<div class="table-wrap"><div style="text-align:center;color:var(--text3);padding:24px"><i class="fa fa-chart-pie" style="font-size:22px;display:block;margin-bottom:8px;opacity:.4"></i>No hay vacantes activas para resumir</div></div>`;
 
-  return `<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:16px 18px;margin-bottom:12px;display:flex;gap:24px;flex-wrap:wrap">${contenido}</div>`;
+  return contenido;
 }
 
 function cambiarVistaEmpresa(vista){

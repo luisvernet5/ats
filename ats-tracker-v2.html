@@ -8163,19 +8163,26 @@ function toggleVacResumenPanel(empId){
 }
 
 function _renderVacResumenPanel(empId){
+  const emp=DB.empresas.find(x=>x.id===empId)||{};
   const activas=DB.vacantes.filter(v=>v.empresa_id===empId&&v.estado==='Abierta');
 
-  const contarPor=campo=>{
+  const contarPor=(campo,cfgOrder)=>{
     const m=new Map();
     activas.forEach(v=>{
       const val=v[campo];
       if(!val)return;
       m.set(val,(m.get(val)||0)+1);
     });
-    return [...m.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'es'));
+    return [...m.entries()].sort((a,b)=>{
+      const ia=cfgOrder.indexOf(a[0]), ib=cfgOrder.indexOf(b[0]);
+      if(ia===-1&&ib===-1) return a[0].localeCompare(b[0],'es');
+      if(ia===-1) return 1;
+      if(ib===-1) return -1;
+      return ia-ib;
+    });
   };
-  const porProyecto=contarPor('proyecto');
-  const porDepto=contarPor('departamento');
+  const porProyecto=contarPor('proyecto',emp.proyectos||[]);
+  const porDepto=contarPor('departamento',emp.departamentos||[]);
 
   const tabla=(titulo,rows)=>rows.length?`
     <div class="table-wrap" style="margin-bottom:16px">

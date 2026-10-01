@@ -7706,8 +7706,15 @@ function openEmpresaDetail(empId){
   _edCurrentEmpId = empId;
   empresaVistaActual = savedVista;
   const vacsRows = _buildEDVacsRows([..._edVacsAll].sort((a,b)=>(a.folio||'').localeCompare(b.folio||'',undefined,{numeric:true})), empId, etapas);
-  const edProyOptsList = [...new Set(_edVacsAll.map(v=>v.proyecto).filter(Boolean))].sort().map(p=>({value:p,label:p}));
-  const edDepOptsList  = [...new Set(_edVacsAll.map(v=>v.departamento).filter(Boolean))].sort().map(d=>({value:d,label:d}));
+  const _edOrdenar=(valores,cfgOrder)=>valores.sort((a,b)=>{
+    const ia=cfgOrder.indexOf(a), ib=cfgOrder.indexOf(b);
+    if(ia===-1&&ib===-1) return a.localeCompare(b);
+    if(ia===-1) return 1;
+    if(ib===-1) return -1;
+    return ia-ib;
+  });
+  const edProyOptsList = _edOrdenar([...new Set(_edVacsAll.map(v=>v.proyecto).filter(Boolean))], e.proyectos||[]).map(p=>({value:p,label:p}));
+  const edDepOptsList  = _edOrdenar([...new Set(_edVacsAll.map(v=>v.departamento).filter(Boolean))], e.departamentos||[]).map(d=>({value:d,label:d}));
   const edRecOptsList  = [...new Set(_edVacsAll.map(v=>v.reclutador_id).filter(Boolean))].map(rid=>{const r=DB.reclutadores.find(x=>x.id===rid)||{};return{value:rid,label:r.nombre||rid};});
 
   // Process flow for this company
@@ -8250,10 +8257,10 @@ function filtrarVacantesEmpresa(){
   if(edCount) edCount.innerHTML = `Mostrando <strong>${filtered.length}</strong> registros`;
   const filtCands = DB.candidatos.filter(c=>filtered.find(v=>v.id===c.vacante_id));
   const vacAct   = filtered.filter(v=>v.estado==='Abierta').length;
-  const deser    = allEmpCands.filter(_esCandDesercion).length;
   // Contratados y días prom: usar TODAS las vacantes de la empresa, no solo las abiertas/filtradas
   const allEmpVacs = DB.vacantes.filter(v=>v.empresa_id===empId);
   const allEmpCands = DB.candidatos.filter(c=>allEmpVacs.find(v=>v.id===c.vacante_id));
+  const deser    = allEmpCands.filter(_esCandDesercion).length;
   const validados= allEmpCands.filter(esColocado).length;
   const _allVacsConFecha=allEmpVacs.filter(v=>v.fecha_apertura);
   const dArr=_allVacsConFecha.map(v=>{const fc=_vacCierreDate(v);return daysBetween(v.fecha_apertura,fc||today())||0;});

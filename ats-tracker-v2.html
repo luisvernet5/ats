@@ -3969,6 +3969,17 @@ function getWeekNumber(dateStr){
   const yearStart=new Date(thu.getFullYear(),0,1);
   return{week:Math.ceil(((thu-yearStart)/86400000+1)/7),year:thu.getFullYear()};
 }
+function _isoWeekDateRangeLabel(year,week){
+  const MONTHS=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const jan4=new Date(year,0,4);
+  const jan4Day=jan4.getDay()||7;
+  const monday=new Date(jan4);
+  monday.setDate(jan4.getDate()-jan4Day+1+(week-1)*7);
+  const sunday=new Date(monday);
+  sunday.setDate(monday.getDate()+6);
+  const fmt=d=>`${String(d.getDate()).padStart(2,'0')} ${MONTHS[d.getMonth()]}`;
+  return `${fmt(monday)} – ${fmt(sunday)}`;
+}
 function getFechaContratacion(v, contratado){
   // Fuente autoritativa: la fecha de cierre de la vacante (capturada al cerrarla).
   // La fecha en el timeline individual del candidato es solo informativa y únicamente
@@ -15787,7 +15798,7 @@ function renderContratados(){
     if(wn){const key=`${wn.year}-W${String(wn.week).padStart(2,'0')}`;if(!semanasSet.has(key))semanasSet.set(key,wn);}
   });
   const ctSemOptsList=[...semanasSet.entries()].sort((a,b)=>a[0].localeCompare(b[0]))
-    .map(([key,wn])=>({value:key,label:`Semana ${wn.week} – ${wn.year}`}));
+    .map(([key,wn])=>({value:key,label:`Semana ${wn.week} – ${wn.year} (${_isoWeekDateRangeLabel(wn.year,wn.week)})`}));
 
   page._ctCandsVis = candsColocados;
   page._ctPage = 1;

@@ -1463,6 +1463,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
         </div>
         <div id="pe-pruebas-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
         <div id="pe-eval-picker">
+          <input type="text" id="pe-eval-search" placeholder="Buscar evaluación por nombre..." oninput="_peSearchChange()" style="width:100%;margin-bottom:10px;padding:7px 10px;border-radius:6px;border:1px solid var(--border);font-size:13px">
           <div id="pe-cat-pills" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
           <div id="pe-eval-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;max-height:340px;overflow-y:auto;padding:2px"></div>
         </div>
@@ -28262,6 +28263,9 @@ function openProcesoEvalModal(id=null){
   const empSel=document.getElementById('pe-empresa');
   empSel.innerHTML='<option value="">Todas las empresas</option>'+[...DB.empresas].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(e=>`<option value="${e.id}" ${proc?.empresa_id===e.id?'selected':''}>${_esc(e.nombre)}</option>`).join('');
   window._peCatFilt=null;
+  window._peSearchFilt='';
+  const searchEl=document.getElementById('pe-eval-search');
+  if(searchEl) searchEl.value='';
   const list=document.getElementById('pe-pruebas-list');
   list.innerHTML='';
   (proc?.pruebas||[]).forEach(pr=>_peAddPruebaItem(pr.evaluacion_id,pr.nombre,pr.peso));
@@ -28319,10 +28323,12 @@ function _peRenderPicker(){
   }
   let evals=(DB.evaluaciones||[]).filter(e=>e.activa!==false);
   if(filt) evals=evals.filter(e=>e.categoria===filt);
+  const searchTerm=(window._peSearchFilt||'').trim().toLowerCase();
+  if(searchTerm) evals=evals.filter(e=>(e.nombre||'').toLowerCase().includes(searchTerm));
   const existing=new Set([...document.querySelectorAll('#pe-pruebas-list [data-eval-id]')].map(el=>el.dataset.evalId));
   const cardsEl=document.getElementById('pe-eval-cards');
   if(!cardsEl)return;
-  if(!evals.length){cardsEl.innerHTML=`<div style="color:var(--text3);font-size:12px;padding:16px;text-align:center;grid-column:1/-1">Sin evaluaciones en esta categoría</div>`;return;}
+  if(!evals.length){cardsEl.innerHTML=`<div style="color:var(--text3);font-size:12px;padding:16px;text-align:center;grid-column:1/-1">${searchTerm?'Sin evaluaciones que coincidan con la búsqueda':'Sin evaluaciones en esta categoría'}</div>`;return;}
   cardsEl.innerHTML=evals.map(e=>{
     const added=existing.has(e.id);
     const cat=EVAL_CATEGORIAS.find(c=>c.value===e.categoria);
@@ -28340,6 +28346,10 @@ function _peRenderPicker(){
 }
 function _peCatSel(val){
   window._peCatFilt=val;
+  _peRenderPicker();
+}
+function _peSearchChange(){
+  window._peSearchFilt=document.getElementById('pe-eval-search')?.value||'';
   _peRenderPicker();
 }
 function _pePickEval(evalId){

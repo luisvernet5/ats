@@ -11120,6 +11120,8 @@ async function reabrirVacante(vacId){
   if(!confirm(`¿Reactivar "${DB.vacantes[vi].nombre}"? Volverá a estado Abierta.`))return;
   const vAnterior={...DB.vacantes[vi]};
   DB.vacantes[vi].estado='Abierta';
+  DB.vacantes[vi].candidato_contratado=null;
+  DB.vacantes[vi].fecha_cierre=null;
   const vFinal=DB.vacantes[vi];
   await saveRecord('vacantes',vFinal);
   const _reactDetalle=(vFinal.nombre||vacId)+(vFinal.folio?` — Folio: ${vFinal.folio}`:'');

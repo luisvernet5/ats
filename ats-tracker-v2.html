@@ -22713,17 +22713,20 @@ async function _buildPerfilExcelWorkbook(p){
     } else addBullets(txtHtml);
   };
   const addTable=(headers,dataRowsArr)=>{
+    const nCols=headers.length;
     const hRow=r++;
     for(let col=1;col<=TOTAL_COLS;col++){ ws.getCell(hRow,col).border=thinBorder; }
     headers.forEach((h,i)=>{
       const c=ws.getCell(hRow,i+1); c.value=h; c.font=subHeaderFont; c.fill=subHeaderFill; c.alignment={horizontal:'left',vertical:'middle'};
     });
+    if(nCols<TOTAL_COLS) mergeRow(hRow,nCols,TOTAL_COLS);
     dataRowsArr.forEach(vals=>{
       const dRow=r++;
       for(let col=1;col<=TOTAL_COLS;col++){ ws.getCell(dRow,col).border=thinBorder; }
       vals.forEach((v,i)=>{
         const c=ws.getCell(dRow,i+1); c.value=v; c.font=tableCellFont; c.alignment=wrapTop;
       });
+      if(nCols<TOTAL_COLS) mergeRow(dRow,nCols,TOTAL_COLS);
     });
   };
   const addRespRow=(label,val)=>{
@@ -22749,10 +22752,16 @@ async function _buildPerfilExcelWorkbook(p){
         ws.addImage(imgId,{tl:{col:0,row:0},ext:{width:w,height:h}});
         ws.getRow(1).height=Math.max(36,h*0.78);
         for(let row=1;row<=2;row++){ for(let col=1;col<=TOTAL_COLS;col++) ws.getCell(row,col).border=thinBorder; }
+        ws.mergeCells(1,1,2,TOTAL_COLS);
         r=3;
       }
     }catch(e){}
   }
+
+  // ── ACCENT STRIPE ──
+  const accentRow=r++;
+  for(let col=1;col<=TOTAL_COLS;col++){ const cc=ws.getCell(accentRow,col); cc.fill=bannerFill; cc.border=thinBorder; }
+  mergeRow(accentRow,1,TOTAL_COLS);
 
   // ── TITLE ──
   const titleRow=r++;
@@ -22766,7 +22775,6 @@ async function _buildPerfilExcelWorkbook(p){
     const c=ws.getCell(subRow,1); c.value=subtitleParts.join(' — '); c.font={size:10,color:{argb:'FF646478'}};
     mergeRow(subRow,1,TOTAL_COLS);
   }
-  r++;
 
   // ── INFORMACIÓN DEL PUESTO ──
   addBanner('Información del puesto');
@@ -22884,6 +22892,20 @@ async function _buildPerfilExcelWorkbook(p){
   addBanner('Autorizaciones');
   addLabelValue('Elaboró',p.elaboro);
   if(esFordXl) addLabelValue('Jefe directo (comunicación)',p.jefe_directo_comunicacion);
+
+  // ── FIRMAS ──
+  const sigLabelFont={bold:true,size:8,color:{argb:'FF505050'}};
+  const sigLabelRow=r++;
+  for(let col=1;col<=TOTAL_COLS;col++) ws.getCell(sigLabelRow,col).border=thinBorder;
+  ws.getCell(sigLabelRow,1).value='Nombre del colaborador'; ws.getCell(sigLabelRow,1).font=sigLabelFont;
+  mergeRow(sigLabelRow,1,2);
+  ws.getCell(sigLabelRow,3).value='Firma'; ws.getCell(sigLabelRow,3).font=sigLabelFont;
+  mergeRow(sigLabelRow,3,TOTAL_COLS);
+  const sigSpaceRow=r++;
+  ws.getRow(sigSpaceRow).height=34;
+  for(let col=1;col<=TOTAL_COLS;col++) ws.getCell(sigSpaceRow,col).border=thinBorder;
+  mergeRow(sigSpaceRow,1,2);
+  mergeRow(sigSpaceRow,3,TOTAL_COLS);
 
   const clean=s=>(s||'').trim().replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s]/g,'').trim();
   const fname=`Perfil de puesto ${clean(p.nombre_puesto)} ${clean(emp.nombre)}.xlsx`;

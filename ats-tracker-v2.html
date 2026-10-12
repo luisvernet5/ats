@@ -20201,11 +20201,32 @@ function _pfActModeSwitch(mode){
     if(btnDic){btnDic.className='btn btn-primary btn-sm';}
   }
 }
+function _pfDicTipShow(el){
+  _pfDicTipHide();
+  const text=el.getAttribute('data-dic-tip');
+  if(!text) return;
+  const tip=document.createElement('div');
+  tip.id='_pf-dic-tip';
+  tip.textContent=text;
+  tip.style.cssText='position:fixed;background:var(--surface3,#1e1e2e);color:#000000;border:1px solid var(--border2);padding:4px 8px;border-radius:5px;font-size:11px;max-width:220px;text-align:center;pointer-events:none;z-index:99999;box-shadow:0 2px 8px rgba(0,0,0,.15)';
+  document.body.appendChild(tip);
+  const rect=el.getBoundingClientRect();
+  const tipRect=tip.getBoundingClientRect();
+  let left=rect.left+rect.width/2-tipRect.width/2;
+  left=Math.max(8,Math.min(left,window.innerWidth-tipRect.width-8));
+  let top=rect.top-tipRect.height-6;
+  if(top<4) top=rect.bottom+6;
+  tip.style.left=left+'px';
+  tip.style.top=top+'px';
+}
+function _pfDicTipHide(){
+  document.getElementById('_pf-dic-tip')?.remove();
+}
 function _pfActDicHTML(selected=[]){
   return `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px">
     ${[..._ACTITUDES_DIC].sort((a,b)=>a.n.localeCompare(b.n,'es')).map(a=>{
       const sel=selected.includes(a.n);
-      return `<span data-tip="${a.d}" onclick="_pfActDicToggle(this,'${a.n.replace(/'/g,"&#39;")}')"
+      return `<span data-dic-tip="${_esc(a.d)}" onmouseenter="_pfDicTipShow(this)" onmouseleave="_pfDicTipHide()" onclick="_pfActDicToggle(this,'${a.n.replace(/'/g,"&#39;")}')"
         style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);
         background:${sel?'var(--accent)':'var(--surface3)'};color:${sel?'#fff':'#000000'};transition:all .15s">
         ${a.n}</span>`;
@@ -20220,7 +20241,7 @@ function _pfActDicToggle(el, nombre){
 function _pfActDicGetSelected(){
   const dicDiv=document.getElementById('pf-act-dic');
   if(!dicDiv) return [];
-  return [...dicDiv.querySelectorAll('span[data-tip]')].filter(s=>s.style.background.includes('var(--accent)')).map(s=>s.textContent.trim());
+  return [...dicDiv.querySelectorAll('span[data-dic-tip]')].filter(s=>s.style.background.includes('var(--accent)')).map(s=>s.textContent.trim());
 }
 function _pfGetActitudes(){
   const modo=document.getElementById('pf-act-modo')?.value||'texto';
@@ -20252,7 +20273,7 @@ function _pfHabDicHTML(selected=[]){
   return `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px">
     ${[..._COMPETENCIAS].sort((a,b)=>a.n.localeCompare(b.n,'es')).map(c=>{
       const sel=selected.includes(c.n);
-      return `<span data-tip="${c.d}" onclick="_pfHabDicToggle(this,'${c.n.replace(/'/g,"&#39;")}')"
+      return `<span data-dic-tip="${_esc(c.d)}" onmouseenter="_pfDicTipShow(this)" onmouseleave="_pfDicTipHide()" onclick="_pfHabDicToggle(this,'${c.n.replace(/'/g,"&#39;")}')"
         style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);
         background:${sel?'var(--accent)':'var(--surface3)'};color:${sel?'#fff':'#000000'};transition:all .15s">
         ${c.n}</span>`;
@@ -20267,7 +20288,7 @@ function _pfHabDicToggle(el, nombre){
 function _pfHabDicGetSelected(){
   const dicDiv=document.getElementById('pf-hab-dic');
   if(!dicDiv) return [];
-  return [...dicDiv.querySelectorAll('span[data-tip]')].filter(s=>s.style.background.includes('var(--accent)')).map(s=>s.textContent.trim());
+  return [...dicDiv.querySelectorAll('span[data-dic-tip]')].filter(s=>s.style.background.includes('var(--accent)')).map(s=>s.textContent.trim());
 }
 function _pfGetHabilidades(){
   const modo=document.getElementById('pf-hab-modo')?.value||'texto';

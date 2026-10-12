@@ -20133,7 +20133,7 @@ function _pfHabModeSwitch(mode){
 }
 function _pfHabDicHTML(selected=[]){
   return `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px">
-    ${_COMPETENCIAS.map(c=>{
+    ${[..._COMPETENCIAS].sort((a,b)=>a.n.localeCompare(b.n,'es')).map(c=>{
       const sel=selected.includes(c.n);
       return `<span data-tip="${c.d}" onclick="_pfHabDicToggle(this,'${c.n.replace(/'/g,"&#39;")}')"
         style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);

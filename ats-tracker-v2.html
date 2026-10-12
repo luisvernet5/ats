@@ -20504,6 +20504,7 @@ function previewPerfilPuesto(perfilId){
         ${fld('Fecha revisión',v('fecha_revision')?new Date(v('fecha_revision')).toLocaleDateString('es-MX'):'')}
         ${fld('No. revisión',v('no_revision'))}
         ${fld('Elaboró',v('elaboro'))}
+        ${esFordPreview?fld('Jefe directo (comunicación)',v('jefe_directo_comunicacion')):''}
       </div>
 
       ${sec('Actividades Esenciales')}
@@ -21180,6 +21181,7 @@ async function openPerfilModal(empId, perfilId){
       <!-- AUTORIZACIONES -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Autorizaciones</div>
       <div class="fg" style="margin-bottom:14px"><label>Elaboró</label><input type="text" id="pf-elaboro" value="${v('elaboro')}"></div>
+      ${_pfEsFord(empId)?`<div class="fg" style="margin-bottom:14px"><label>Jefe directo (comunicación)</label><input type="text" id="pf-jefe-directo" value="${v('jefe_directo_comunicacion')}"></div>`:''}
 
       ${['admin','rh_cliente','reclutador'].includes(currentUserData?.rol)?(()=>{
         const coords=_coordsEmpresa(empId);
@@ -21230,6 +21232,7 @@ async function savePerfilPuesto(){
     resp_telefonia:gr('resp_telefonia'), resp_documentos:gr('resp_documentos'),
     resp_otros:gr('resp_otros'), resp_uniforme:gr('resp_uniforme'),
     entregables:_rtGet('pf-entregables'), elaboro:g('pf-elaboro'),
+    jefe_directo_comunicacion:g('pf-jefe-directo'),
     kpis_puesto:_pfGetKpiRows(),
     coordinadores_ids:Array.from(document.querySelectorAll('input[name="pf-coord"]:checked')).map(el=>el.value),
     updated_at:new Date().toISOString()
@@ -21273,6 +21276,7 @@ async function exportPerfilPDFBtn(){
     resp_automovil:gr('resp_automovil'), resp_telefonia:gr('resp_telefonia'),
     resp_documentos:gr('resp_documentos'), resp_otros:gr('resp_otros'), resp_uniforme:gr('resp_uniforme'),
     entregables:_rtGet('pf-entregables'), elaboro:g('pf-elaboro'),
+    jefe_directo_comunicacion:g('pf-jefe-directo'),
     kpis_puesto:_pfGetKpiRows(),
     updated_at:new Date().toISOString()
   };
@@ -22459,6 +22463,7 @@ async function _buildPerfilPDFDoc(p){
   if(y>220){doc.addPage();y=14;}
   section('Autorizaciones');
   if((p.elaboro||'').trim()) infoRow([{label:'Elaboró',value:p.elaboro}]);
+  if(esFordPDF&&(p.jefe_directo_comunicacion||'').trim()) infoRow([{label:'Jefe directo (comunicación)',value:p.jefe_directo_comunicacion}]);
   y+=6;
   const bw=(mr-ml-8)/2;
   doc.setDrawColor(180,180,180);doc.setLineWidth(0.4);

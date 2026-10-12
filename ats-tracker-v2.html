@@ -20223,11 +20223,11 @@ function _pfDicTipHide(){
   document.getElementById('_pf-dic-tip')?.remove();
 }
 function _pfActDicHTML(selected=[]){
-  return `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px">
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:8px;padding:10px">
     ${[..._ACTITUDES_DIC].sort((a,b)=>a.n.localeCompare(b.n,'es')).map(a=>{
       const sel=selected.includes(a.n);
       return `<span data-dic-tip="${_esc(a.d)}" onmouseenter="_pfDicTipShow(this)" onmouseleave="_pfDicTipHide()" onclick="_pfActDicToggle(this,'${a.n.replace(/'/g,"&#39;")}')"
-        style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);
+        style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
         background:${sel?'var(--accent)':'var(--surface3)'};color:${sel?'#fff':'#000000'};transition:all .15s">
         ${a.n}</span>`;
     }).join('')}
@@ -20270,11 +20270,11 @@ function _pfHabModeSwitch(mode){
   }
 }
 function _pfHabDicHTML(selected=[]){
-  return `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px">
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:8px;padding:10px">
     ${[..._COMPETENCIAS].sort((a,b)=>a.n.localeCompare(b.n,'es')).map(c=>{
       const sel=selected.includes(c.n);
       return `<span data-dic-tip="${_esc(c.d)}" onmouseenter="_pfDicTipShow(this)" onmouseleave="_pfDicTipHide()" onclick="_pfHabDicToggle(this,'${c.n.replace(/'/g,"&#39;")}')"
-        style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);
+        style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
         background:${sel?'var(--accent)':'var(--surface3)'};color:${sel?'#fff':'#000000'};transition:all .15s">
         ${c.n}</span>`;
     }).join('')}

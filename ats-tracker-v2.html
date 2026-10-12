@@ -22307,7 +22307,7 @@ async function _buildPerfilPDFDoc(p){
       const subLines=doc.splitTextToSize(text,mr-indX-2);
       subLines.forEach((l,li)=>{
         chkNewPage(LH+1);
-        if(li===0&&isBul){doc.setFillColor(...black);doc.circle(ml+2.8,y+LH*0.5,0.75,'F');}
+        if(li===0&&isBul){doc.setFillColor(...black);doc.circle(ml+2.8,y+LH*0.72,0.75,'F');}
         doc.text(l,indX,y+LH);
         y+=LH;
       });
@@ -22405,7 +22405,7 @@ async function _buildPerfilPDFDoc(p){
     doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...black);
     (p.habilidades_dic||[]).forEach(item=>{
       chkNewPage(LH);
-      doc.setFillColor(...black);doc.circle(ml+2.8,y+LH*0.5,0.75,'F');
+      doc.setFillColor(...black);doc.circle(ml+2.8,y+LH*0.72,0.75,'F');
       doc.text(item,ml+6,y+LH);
       y+=LH;
     });
@@ -22419,7 +22419,7 @@ async function _buildPerfilPDFDoc(p){
     doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...black);
     (p.actitudes_dic||[]).forEach(item=>{
       chkNewPage(LH);
-      doc.setFillColor(...black);doc.circle(ml+2.8,y+LH*0.5,0.75,'F');
+      doc.setFillColor(...black);doc.circle(ml+2.8,y+LH*0.72,0.75,'F');
       doc.text(item,ml+6,y+LH);
       y+=LH;
     });

@@ -20141,13 +20141,47 @@ const _COMPETENCIAS=[
 ];
 
 const _ACTITUDES_DIC=[
-  'Responsabilidad','Compromiso','Puntualidad','Disposición','Proactividad','Actitud de servicio',
-  'Respeto','Honestidad','Ética','Lealtad','Integridad','Confidencialidad','Profesionalismo',
-  'Iniciativa','Optimismo','Entusiasmo','Tolerancia','Apertura al cambio','Resiliencia',
-  'Paciencia','Empatía','Amabilidad','Cortesía','Discreción','Colaboración','Solidaridad',
-  'Perseverancia','Disciplina','Constancia','Madurez','Autocontrol','Seguridad en sí mismo',
-  'Orientación a resultados','Enfoque en soluciones','Disposición para aprender','Confianza',
-  'Flexibilidad','Tolerancia a la frustración','Autonomía','Sentido de urgencia','Adaptabilidad',
+  {n:'Responsabilidad',d:'Cumplir los compromisos adquiridos y asumir las consecuencias de los propios actos.'},
+  {n:'Compromiso',d:'Involucrarse de manera activa y constante con los objetivos y valores de la organización.'},
+  {n:'Puntualidad',d:'Cumplir con los horarios y plazos establecidos de manera consistente.'},
+  {n:'Disposición',d:'Mostrar apertura y buena actitud para realizar las tareas asignadas.'},
+  {n:'Proactividad',d:'Anticiparse a los problemas y tomar la iniciativa sin esperar instrucciones.'},
+  {n:'Actitud de servicio',d:'Atender con disposición y amabilidad las necesidades de clientes y compañeros.'},
+  {n:'Respeto',d:'Reconocer y valorar a las demás personas, sus ideas y su forma de trabajar.'},
+  {n:'Honestidad',d:'Actuar con verdad y transparencia en todas las situaciones.'},
+  {n:'Ética',d:'Actuar conforme a principios morales y valores correctos en el trabajo.'},
+  {n:'Lealtad',d:'Mostrar fidelidad y compromiso con la organización y sus compañeros.'},
+  {n:'Integridad',d:'Actuar de manera congruente entre lo que se dice y lo que se hace.'},
+  {n:'Confidencialidad',d:'Resguardar y proteger la información sensible de la empresa y sus clientes.'},
+  {n:'Profesionalismo',d:'Desempeñar las funciones con seriedad, calidad y apego a los estándares del puesto.'},
+  {n:'Iniciativa',d:'Proponer y emprender acciones nuevas sin necesidad de que se lo soliciten.'},
+  {n:'Optimismo',d:'Mantener una visión positiva ante los retos y dificultades del trabajo.'},
+  {n:'Entusiasmo',d:'Mostrar energía y motivación al realizar las actividades diarias.'},
+  {n:'Tolerancia',d:'Aceptar y respetar opiniones, formas de ser y puntos de vista distintos a los propios.'},
+  {n:'Apertura al cambio',d:'Adaptarse con buena disposición a nuevas formas de trabajo o decisiones.'},
+  {n:'Resiliencia',d:'Sobreponerse a situaciones adversas y seguir adelante con una actitud positiva.'},
+  {n:'Paciencia',d:'Mantener la calma y perseverar ante situaciones que requieren tiempo o esfuerzo.'},
+  {n:'Empatía',d:'Comprender y ponerse en el lugar de las demás personas.'},
+  {n:'Amabilidad',d:'Tratar con cortesía y buen trato a compañeros y clientes.'},
+  {n:'Cortesía',d:'Mostrar buenos modales y educación en el trato diario.'},
+  {n:'Discreción',d:'Actuar con prudencia y reserva en situaciones delicadas.'},
+  {n:'Colaboración',d:'Contribuir activamente al logro de metas comunes junto con el equipo.'},
+  {n:'Solidaridad',d:'Apoyar a los compañeros cuando lo necesitan, sin esperar algo a cambio.'},
+  {n:'Perseverancia',d:'Mantener el esfuerzo y la constancia hasta lograr los objetivos planteados.'},
+  {n:'Disciplina',d:'Seguir con orden y constancia las normas y procedimientos establecidos.'},
+  {n:'Constancia',d:'Mantener el esfuerzo de forma sostenida en el tiempo para alcanzar resultados.'},
+  {n:'Madurez',d:'Actuar con responsabilidad y criterio adecuado ante las situaciones del trabajo.'},
+  {n:'Autocontrol',d:'Mantener el dominio de las propias emociones ante situaciones de presión.'},
+  {n:'Seguridad en sí mismo',d:'Confiar en las propias capacidades para tomar decisiones y actuar.'},
+  {n:'Orientación a resultados',d:'Enfocar los esfuerzos en el cumplimiento eficiente de los objetivos.'},
+  {n:'Enfoque en soluciones',d:'Buscar alternativas prácticas ante los problemas que se presentan.'},
+  {n:'Disposición para aprender',d:'Mostrar interés constante por adquirir nuevos conocimientos y mejorar.'},
+  {n:'Confianza',d:'Generar credibilidad y seguridad en el trato con los demás.'},
+  {n:'Flexibilidad',d:'Adaptarse con facilidad a cambios de tareas, horarios o formas de trabajo.'},
+  {n:'Tolerancia a la frustración',d:'Mantener el control y seguir adelante ante contratiempos o fallas.'},
+  {n:'Autonomía',d:'Realizar las tareas con independencia y sin necesidad de supervisión constante.'},
+  {n:'Sentido de urgencia',d:'Actuar con prontitud ante situaciones que requieren atención inmediata.'},
+  {n:'Adaptabilidad',d:'Ajustarse con rapidez a nuevos entornos, equipos o condiciones de trabajo.'},
 ];
 function _pfActModeSwitch(mode){
   const txtDiv=document.getElementById('pf-act-txt');
@@ -20169,12 +20203,12 @@ function _pfActModeSwitch(mode){
 }
 function _pfActDicHTML(selected=[]){
   return `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px">
-    ${[..._ACTITUDES_DIC].sort((a,b)=>a.localeCompare(b,'es')).map(nombre=>{
-      const sel=selected.includes(nombre);
-      return `<span onclick="_pfActDicToggle(this,'${nombre.replace(/'/g,"&#39;")}')"
+    ${[..._ACTITUDES_DIC].sort((a,b)=>a.n.localeCompare(b.n,'es')).map(a=>{
+      const sel=selected.includes(a.n);
+      return `<span data-tip="${a.d}" onclick="_pfActDicToggle(this,'${a.n.replace(/'/g,"&#39;")}')"
         style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);
         background:${sel?'var(--accent)':'var(--surface3)'};color:${sel?'#fff':'#000000'};transition:all .15s">
-        ${nombre}</span>`;
+        ${a.n}</span>`;
     }).join('')}
   </div>`;
 }
@@ -20186,7 +20220,7 @@ function _pfActDicToggle(el, nombre){
 function _pfActDicGetSelected(){
   const dicDiv=document.getElementById('pf-act-dic');
   if(!dicDiv) return [];
-  return [...dicDiv.querySelectorAll('span')].filter(s=>s.style.background.includes('var(--accent)')).map(s=>s.textContent.trim());
+  return [...dicDiv.querySelectorAll('span[data-tip]')].filter(s=>s.style.background.includes('var(--accent)')).map(s=>s.textContent.trim());
 }
 function _pfGetActitudes(){
   const modo=document.getElementById('pf-act-modo')?.value||'texto';

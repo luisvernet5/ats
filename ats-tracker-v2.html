@@ -3995,6 +3995,32 @@ function getFechaContratacion(v, contratado){
   return null;
 }
 function showToast(msg,t='ok'){const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${t==='ok'?'tok':'terr'} show`;setTimeout(()=>el.className='toast',2800)}
+
+// Guarda contra doble clic: bloquea un segundo clic en cualquier botón "Guardar"/save mientras
+// el primero sigue en curso, para que no se dupliquen registros en ningún módulo de la plataforma.
+(function(){
+  const GUARD_MS=2200;
+  document.addEventListener('click',function(e){
+    const el=e.target.closest('[onclick]');
+    if(!el) return;
+    const handler=el.getAttribute('onclick')||'';
+    if(!/(guardar|save)[A-Za-z0-9_]*\s*\(/i.test(handler)) return;
+    if(el.dataset._saveGuard==='1'){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
+    }
+    el.dataset._saveGuard='1';
+    el.style.pointerEvents='none';
+    const prevOpacity=el.style.opacity;
+    el.style.opacity='0.6';
+    setTimeout(()=>{
+      delete el.dataset._saveGuard;
+      el.style.pointerEvents='';
+      el.style.opacity=prevOpacity;
+    },GUARD_MS);
+  },true);
+})();
 function recargarVistaActiva(){const p=document.querySelector('.page.active');if(p)renderPage(p.id.replace('page-',''));}
 async function recargarDatosActivos(){await loadDB();const p=document.querySelector('.page.active')?.id.replace('page-','');if(p)renderPage(p);}
 

@@ -22663,6 +22663,7 @@ async function _buildPerfilExcelWorkbook(p){
   const subHeaderFill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF5F5F8'}};
   const tableCellFont={size:9,color:{argb:'FF141414'}};
   const bulletFont={size:10,color:{argb:'FF141414'}};
+  const thinBorder={top:{style:'thin',color:{argb:'FFD0D0D8'}},left:{style:'thin',color:{argb:'FFD0D0D8'}},bottom:{style:'thin',color:{argb:'FFD0D0D8'}},right:{style:'thin',color:{argb:'FFD0D0D8'}}};
 
   const mergeRow=(row,fromCol,toCol)=>{ if(toCol>fromCol) ws.mergeCells(row,fromCol,row,toCol); };
 
@@ -22670,7 +22671,7 @@ async function _buildPerfilExcelWorkbook(p){
     const row=r++;
     for(let col=1;col<=TOTAL_COLS;col++){
       const cc=ws.getCell(row,col);
-      cc.font=bannerFont; cc.fill=bannerFill; cc.alignment=bannerAlign;
+      cc.font=bannerFont; cc.fill=bannerFill; cc.alignment=bannerAlign; cc.border=thinBorder;
     }
     ws.getCell(row,1).value=String(text).toUpperCase();
     mergeRow(row,1,TOTAL_COLS);
@@ -22678,14 +22679,14 @@ async function _buildPerfilExcelWorkbook(p){
   const addLabelValue=(label,value)=>{
     if(!String(value||'').trim()) return;
     const row=r++;
-    const lc=ws.getCell(row,1); lc.value=label; lc.font=labelFont; lc.alignment=wrapTop;
-    for(let col=2;col<=TOTAL_COLS;col++){ const cc=ws.getCell(row,col); cc.font=valueFont; cc.alignment=wrapTop; }
+    const lc=ws.getCell(row,1); lc.value=label; lc.font=labelFont; lc.alignment=wrapTop; lc.border=thinBorder;
+    for(let col=2;col<=TOTAL_COLS;col++){ const cc=ws.getCell(row,col); cc.font=valueFont; cc.alignment=wrapTop; cc.border=thinBorder; }
     ws.getCell(row,2).value=value;
     mergeRow(row,2,TOTAL_COLS);
   };
   const addSubHeader=(text)=>{
     const row=r++;
-    for(let col=1;col<=TOTAL_COLS;col++){ const cc=ws.getCell(row,col); cc.font=subHeaderFont; cc.fill=subHeaderFill; cc.alignment={vertical:'middle'}; }
+    for(let col=1;col<=TOTAL_COLS;col++){ const cc=ws.getCell(row,col); cc.font=subHeaderFont; cc.fill=subHeaderFill; cc.alignment={vertical:'middle'}; cc.border=thinBorder; }
     ws.getCell(row,1).value=text;
     mergeRow(row,1,TOTAL_COLS);
   };
@@ -22696,6 +22697,7 @@ async function _buildPerfilExcelWorkbook(p){
       const isBul=line.trim().startsWith('• ');
       const text=isBul?('•  '+line.trim().slice(2)):line.trim();
       const row=r++;
+      for(let col=1;col<=TOTAL_COLS;col++){ const cc=ws.getCell(row,col); cc.border=thinBorder; }
       const c=ws.getCell(row,1); c.value=text; c.font=bulletFont; c.alignment=wrapTop;
       mergeRow(row,1,TOTAL_COLS);
     });
@@ -22704,6 +22706,7 @@ async function _buildPerfilExcelWorkbook(p){
     if(modo==='diccionario'&&dicArr?.length){
       dicArr.forEach(item=>{
         const row=r++;
+        for(let col=1;col<=TOTAL_COLS;col++){ const cc=ws.getCell(row,col); cc.border=thinBorder; }
         const c=ws.getCell(row,1); c.value='•  '+item; c.font=bulletFont; c.alignment=wrapTop;
         mergeRow(row,1,TOTAL_COLS);
       });
@@ -22711,11 +22714,13 @@ async function _buildPerfilExcelWorkbook(p){
   };
   const addTable=(headers,dataRowsArr)=>{
     const hRow=r++;
+    for(let col=1;col<=TOTAL_COLS;col++){ ws.getCell(hRow,col).border=thinBorder; }
     headers.forEach((h,i)=>{
       const c=ws.getCell(hRow,i+1); c.value=h; c.font=subHeaderFont; c.fill=subHeaderFill; c.alignment={horizontal:'left',vertical:'middle'};
     });
     dataRowsArr.forEach(vals=>{
       const dRow=r++;
+      for(let col=1;col<=TOTAL_COLS;col++){ ws.getCell(dRow,col).border=thinBorder; }
       vals.forEach((v,i)=>{
         const c=ws.getCell(dRow,i+1); c.value=v; c.font=tableCellFont; c.alignment=wrapTop;
       });
@@ -22726,8 +22731,8 @@ async function _buildPerfilExcelWorkbook(p){
     const vFont={bold:true,size:9,color:{argb:ok?'FF1E8449':'FF808090'}};
     const vAlign={horizontal:'right',vertical:'middle'};
     const row=r++;
-    const lc=ws.getCell(row,1); lc.value=label; lc.font={size:9,color:{argb:'FF323240'}}; lc.alignment={vertical:'middle'};
-    for(let col=2;col<=TOTAL_COLS;col++){ const cc=ws.getCell(row,col); cc.font=vFont; cc.alignment=vAlign; }
+    const lc=ws.getCell(row,1); lc.value=label; lc.font={size:9,color:{argb:'FF323240'}}; lc.alignment={vertical:'middle'}; lc.border=thinBorder;
+    for(let col=2;col<=TOTAL_COLS;col++){ const cc=ws.getCell(row,col); cc.font=vFont; cc.alignment=vAlign; cc.border=thinBorder; }
     ws.getCell(row,2).value=val;
     mergeRow(row,2,TOTAL_COLS);
   };
@@ -22750,11 +22755,13 @@ async function _buildPerfilExcelWorkbook(p){
 
   // ── TITLE ──
   const titleRow=r++;
+  for(let col=1;col<=TOTAL_COLS;col++) ws.getCell(titleRow,col).border=thinBorder;
   { const c=ws.getCell(titleRow,1); c.value=p.nombre_puesto||'Perfil de puesto'; c.font={bold:true,size:14}; }
   mergeRow(titleRow,1,TOTAL_COLS);
   const subtitleParts=[emp.nombre,[p.departamento,p.proyecto].filter(Boolean).join(' · ')].filter(Boolean);
   if(subtitleParts.length){
     const subRow=r++;
+    for(let col=1;col<=TOTAL_COLS;col++) ws.getCell(subRow,col).border=thinBorder;
     const c=ws.getCell(subRow,1); c.value=subtitleParts.join(' — '); c.font={size:10,color:{argb:'FF646478'}};
     mergeRow(subRow,1,TOTAL_COLS);
   }

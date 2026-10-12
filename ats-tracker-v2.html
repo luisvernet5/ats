@@ -20431,6 +20431,7 @@ function renderPerfilesEmpresa(empId){
       </div>
       <span style="flex:1"></span>
       ${todosPerfiles.length>0?`<button class="btn btn-green btn-sm" onclick="descargarTodosPerfilesPDF('${empId}')"><i class="fa fa-file-pdf" style="color:#ef4444"></i> Descargar todo</button>`:''}
+      ${todosPerfiles.length>0?`<button class="btn btn-green btn-sm" onclick="descargarTodosPerfilesExcel('${empId}')"><i class="fa fa-file-excel" style="color:#1d6f42"></i> Descargar todo (Excel)</button>`:''}
       <button class="btn btn-ghost btn-sm" onclick="openExportPerfilesModal()"><i class="fa fa-download"></i> Exportar</button>
       ${currentUserData?.rol==='coordinador'?'':`<button class="btn btn-ghost btn-sm" onclick="abrirImportPerfilesModal('${empId}')"><i class="fa fa-upload"></i> Carga masiva</button>`}
       ${currentUserData?.rol==='coordinador'?'':`<button class="btn btn-primary btn-sm" onclick="openPerfilModal('${empId}',null)"><i class="fa fa-plus"></i> Nuevo perfil</button>`}
@@ -22932,6 +22933,37 @@ async function descargarTodosPerfilesPDF(empId){
   a.href=url; a.download=`Perfiles_${safeName(emp.nombre)}_${today()}.zip`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),30000);
+  showToast('ZIP descargado ✓');
+}
+
+async function descargarTodosPerfilesExcel(empId){
+  if(typeof JSZip==='undefined'){showToast('JSZip no disponible','err');return;}
+  if(typeof ExcelJS==='undefined'){showToast('ExcelJS no disponible','err');return;}
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const perfiles=DB.perfilesPuesto.filter(p=>p.empresa_id===empId);
+  const mfP=_mfGet('pf-flt-proy'),mfD=_mfGet('pf-flt-dep');
+  const perfilesFiltrados=perfiles.filter(p=>{
+    if(mfP&&!mfP.has(p.proyecto||''))return false;
+    if(mfD&&!mfD.has(p.departamento||''))return false;
+    return true;
+  });
+  if(!perfilesFiltrados.length){showToast('No hay perfiles para descargar','err');return;}
+  showToast('Generando ZIP, esto puede tardar unos segundos...');
+  const safeNameX=s=>((s||'archivo').replace(/[\\/:*?"<>|]/g,'_').trim())||'archivo';
+  const zipX=new JSZip();
+  for(const p of perfilesFiltrados){
+    try{
+      const {wb,fname}=await _buildPerfilExcelWorkbook(p);
+      const buffer=await wb.xlsx.writeBuffer();
+      zipX.file(safeNameX(fname),buffer);
+    }catch(e){ console.warn('No se pudo incluir en el ZIP:',p.nombre_puesto,e); }
+  }
+  const zipBlobX=await zipX.generateAsync({type:'blob'});
+  const urlX=URL.createObjectURL(zipBlobX);
+  const aX=document.createElement('a');
+  aX.href=urlX; aX.download=`Perfiles_${safeNameX(emp.nombre)}_${today()}.zip`;
+  document.body.appendChild(aX); aX.click(); aX.remove();
+  setTimeout(()=>URL.revokeObjectURL(urlX),30000);
   showToast('ZIP descargado ✓');
 }
 

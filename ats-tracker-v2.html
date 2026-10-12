@@ -20142,7 +20142,7 @@ function _pfActModeSwitch(mode){
 }
 function _pfActDicHTML(selected=[]){
   return `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px">
-    ${_ACTITUDES_DIC.map(nombre=>{
+    ${[..._ACTITUDES_DIC].sort((a,b)=>a.localeCompare(b,'es')).map(nombre=>{
       const sel=selected.includes(nombre);
       return `<span onclick="_pfActDicToggle(this,'${nombre.replace(/'/g,"&#39;")}')"
         style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);

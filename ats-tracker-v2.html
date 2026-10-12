@@ -20113,6 +20113,62 @@ const _COMPETENCIAS=[
   {n:'Gestión de la información',d:'Manejar información de forma segura: acceder, identificar, analizar, codificar y presentar datos.'},
 ];
 
+const _ACTITUDES_DIC=[
+  'Responsabilidad','Compromiso','Puntualidad','Disposición','Proactividad','Actitud de servicio',
+  'Respeto','Honestidad','Ética','Lealtad','Integridad','Confidencialidad','Profesionalismo',
+  'Iniciativa','Optimismo','Entusiasmo','Tolerancia','Apertura al cambio','Resiliencia',
+  'Paciencia','Empatía','Amabilidad','Cortesía','Discreción','Colaboración','Solidaridad',
+  'Perseverancia','Disciplina','Constancia','Madurez','Autocontrol','Seguridad en sí mismo',
+  'Orientación a resultados','Enfoque en soluciones','Disposición para aprender','Confianza',
+  'Flexibilidad','Tolerancia a la frustración','Autonomía','Sentido de urgencia','Adaptabilidad',
+];
+function _pfActModeSwitch(mode){
+  const txtDiv=document.getElementById('pf-act-txt');
+  const dicDiv=document.getElementById('pf-act-dic');
+  const btnTxt=document.getElementById('pf-act-btn-txt');
+  const btnDic=document.getElementById('pf-act-btn-dic');
+  document.getElementById('pf-act-modo').value=mode;
+  if(mode==='texto'){
+    if(txtDiv) txtDiv.style.display='';
+    if(dicDiv) dicDiv.style.display='none';
+    if(btnTxt){btnTxt.className='btn btn-primary btn-sm';}
+    if(btnDic){btnDic.className='btn btn-ghost btn-sm';}
+  } else {
+    if(txtDiv) txtDiv.style.display='none';
+    if(dicDiv) dicDiv.style.display='';
+    if(btnTxt){btnTxt.className='btn btn-ghost btn-sm';}
+    if(btnDic){btnDic.className='btn btn-primary btn-sm';}
+  }
+}
+function _pfActDicHTML(selected=[]){
+  return `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px">
+    ${_ACTITUDES_DIC.map(nombre=>{
+      const sel=selected.includes(nombre);
+      return `<span onclick="_pfActDicToggle(this,'${nombre.replace(/'/g,"&#39;")}')"
+        style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);
+        background:${sel?'var(--accent)':'var(--surface2)'};color:${sel?'#fff':'var(--text)'};transition:all .15s">
+        ${nombre}</span>`;
+    }).join('')}
+  </div>`;
+}
+function _pfActDicToggle(el, nombre){
+  const isActive=el.getAttribute('style').includes('var(--accent)');
+  if(isActive){el.style.background='var(--surface2)';el.style.color='var(--text)';}
+  else{el.style.background='var(--accent)';el.style.color='#fff';}
+}
+function _pfActDicGetSelected(){
+  const dicDiv=document.getElementById('pf-act-dic');
+  if(!dicDiv) return [];
+  return [...dicDiv.querySelectorAll('span')].filter(s=>s.style.background.includes('var(--accent)')).map(s=>s.textContent.trim());
+}
+function _pfGetActitudes(){
+  const modo=document.getElementById('pf-act-modo')?.value||'texto';
+  if(modo==='diccionario'){
+    const sel=_pfActDicGetSelected();
+    return {actitudes:sel.join(', '), actitudes_modo:'diccionario', actitudes_dic:sel};
+  }
+  return {actitudes:_rtGet('pf-actitudes'), actitudes_modo:'texto', actitudes_dic:[]};
+}
 function _pfHabModeSwitch(mode){
   const txtDiv=document.getElementById('pf-hab-txt');
   const dicDiv=document.getElementById('pf-hab-dic');
@@ -20474,6 +20530,12 @@ function previewPerfilPuesto(perfilId){
   } else {
     habHTML=rt(p.habilidades||'');
   }
+  let actHTML='';
+  if(p.actitudes_modo==='diccionario'&&p.actitudes_dic?.length){
+    actHTML=`<div style="display:flex;flex-wrap:wrap;gap:6px">${p.actitudes_dic.map(a=>`<span style="padding:3px 10px;border-radius:12px;background:${color}22;color:${color};font-size:12px;border:1px solid ${color}44">${_esc(a)}</span>`).join('')}</div>`;
+  } else {
+    actHTML=rt(p.actitudes||'');
+  }
 
   document.getElementById('modal-preview-perfil')?.remove();
   const modal=document.createElement('div');
@@ -20520,7 +20582,7 @@ function previewPerfilPuesto(perfilId){
       </div>
       ${p.conocimientos_tecnicos?`<div style="margin-bottom:12px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Conocimientos técnicos</div>${rt(p.conocimientos_tecnicos)}</div>`:''}
       ${(p.habilidades||p.habilidades_dic?.length)?`<div style="margin-bottom:12px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Habilidades</div>${habHTML}</div>`:''}
-      ${p.actitudes?`<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Actitudes</div>${rt(p.actitudes)}</div>`:''}
+      ${(p.actitudes||p.actitudes_dic?.length)?`<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Actitudes</div>${actHTML}</div>`:''}
 
       ${sec(esFordPreview?'Plan de Carrera':'Plan de Carrera y Propuesta Salarial')}
       ${planHTML}
@@ -21079,7 +21141,24 @@ async function openPerfilModal(empId, perfilId){
           ${_pfHabDicHTML(p.habilidades_dic||[])}
         </div>
       </div>
-      <div class="fg" style="margin-bottom:14px"><label>Actitudes</label>${_rtBox('pf-actitudes',v('actitudes'))}</div>
+      ${_pfEsFord(empId)?`
+      <div class="fg" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <label style="margin:0">Actitudes</label>
+          <div style="display:flex;gap:4px">
+            <button type="button" id="pf-act-btn-txt" class="${(p.actitudes_modo||'texto')==='texto'?'btn btn-primary':'btn btn-ghost'} btn-sm" onclick="_pfActModeSwitch('texto')"><i class="fa fa-pen"></i> Texto libre</button>
+            <button type="button" id="pf-act-btn-dic" class="${p.actitudes_modo==='diccionario'?'btn btn-primary':'btn btn-ghost'} btn-sm" onclick="_pfActModeSwitch('diccionario')"><i class="fa fa-book"></i> Diccionario</button>
+          </div>
+        </div>
+        <input type="hidden" id="pf-act-modo" value="${p.actitudes_modo||'texto'}">
+        <div id="pf-act-txt" style="${p.actitudes_modo==='diccionario'?'display:none':''}">
+          ${_rtBox('pf-actitudes',v('actitudes'))}
+        </div>
+        <div id="pf-act-dic" style="border:1px solid var(--border2);border-radius:8px;background:var(--surface);${p.actitudes_modo!=='diccionario'?'display:none':''}">
+          ${_pfActDicHTML(p.actitudes_dic||[])}
+        </div>
+      </div>
+      `:`<div class="fg" style="margin-bottom:14px"><label>Actitudes</label>${_rtBox('pf-actitudes',v('actitudes'))}</div>`}
 
       <!-- PLAN DE CARRERA -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">${_pfEsFord(empId)?'Plan de carrera':'Plan de carrera y propuesta salarial'}</div>
@@ -21221,7 +21300,7 @@ async function savePerfilPuesto(){
     actividades_esenciales:_rtGet('pf-actividades'),
     sexo:g('pf-sexo'), edad_ini:g('pf-edad-ini'), edad_fin:g('pf-edad-fin'), escolaridad:g('pf-escolaridad'),
     experiencia_previa:g('pf-experiencia'), idiomas:g('pf-idiomas'),
-    conocimientos_tecnicos:_rtGet('pf-conocimientos'), ..._pfGetHabilidades(), actitudes:_rtGet('pf-actitudes'),
+    conocimientos_tecnicos:_rtGet('pf-conocimientos'), ..._pfGetHabilidades(), ..._pfGetActitudes(),
     plan_carrera:_pfGetPlanRows(_pfEsFord(_perfilEmpId)),
     disponibilidad_viajar:g('pf-viajar'), tipo_trabajo_rows:_pfGetTipoRows(), tipo_trabajo:_pfTipoToStr(_pfGetTipoRows()),
     horario_trabajo:g('pf-horario'), tipo_contratacion:g('pf-contratacion'),
@@ -21266,7 +21345,7 @@ async function exportPerfilPDFBtn(){
     actividades_esenciales:_rtGet('pf-actividades'),
     sexo:g('pf-sexo'), edad_ini:g('pf-edad-ini'), edad_fin:g('pf-edad-fin'), escolaridad:g('pf-escolaridad'),
     experiencia_previa:g('pf-experiencia'), idiomas:g('pf-idiomas'),
-    conocimientos_tecnicos:_rtGet('pf-conocimientos'), ..._pfGetHabilidades(), actitudes:_rtGet('pf-actitudes'),
+    conocimientos_tecnicos:_rtGet('pf-conocimientos'), ..._pfGetHabilidades(), ..._pfGetActitudes(),
     plan_carrera:_pfGetPlanRows(_pfEsFord(_perfilEmpId)),
     disponibilidad_viajar:g('pf-viajar'), tipo_trabajo_rows:_pfGetTipoRows(), tipo_trabajo:_pfTipoToStr(_pfGetTipoRows()),
     horario_trabajo:g('pf-horario'), tipo_contratacion:g('pf-contratacion'), prestaciones:g('pf-prestaciones'),
@@ -22309,7 +22388,17 @@ async function _buildPerfilPDFDoc(p){
     subLabel('Habilidades');
     bulletBlock(p.habilidades);
   }
-  if(_rtToText(p.actitudes||'').trim()){
+  if(p.actitudes_modo==='diccionario'&&p.actitudes_dic?.length){
+    subLabel('Actitudes');
+    doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...black);
+    (p.actitudes_dic||[]).forEach(item=>{
+      chkNewPage(LH);
+      doc.setFillColor(...black);doc.circle(ml+2.8,y+LH*0.5,0.75,'F');
+      doc.text(item,ml+6,y+LH);
+      y+=LH;
+    });
+    y+=3;
+  } else if(_rtToText(p.actitudes||'').trim()){
     subLabel('Actitudes');
     bulletBlock(p.actitudes);
   }

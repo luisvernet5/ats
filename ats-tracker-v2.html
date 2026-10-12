@@ -22805,10 +22805,10 @@ async function _buildPerfilExcelWorkbook(p){
         const {w,h}=await _imgFit(b64,175,58);
         const imgId=wb.addImage({base64:b64,extension:ext});
         ws.addImage(imgId,{tl:{col:0,row:0},ext:{width:w,height:h}});
-        ws.getRow(1).height=Math.max(36,h*0.8);
-        for(let row=1;row<=2;row++){ for(let col=1;col<=TOTAL_COLS;col++) ws.getCell(row,col).border=thinBorder; }
-        ws.mergeCells(1,1,2,TOTAL_COLS);
-        r=3;
+        ws.getRow(1).height=h*0.75+4;
+        for(let col=1;col<=TOTAL_COLS;col++) ws.getCell(1,col).border=thinBorder;
+        ws.mergeCells(1,1,1,TOTAL_COLS);
+        r=2;
       }
     }catch(e){}
   }

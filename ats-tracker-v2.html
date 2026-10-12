@@ -20173,14 +20173,14 @@ function _pfActDicHTML(selected=[]){
       const sel=selected.includes(nombre);
       return `<span onclick="_pfActDicToggle(this,'${nombre.replace(/'/g,"&#39;")}')"
         style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);
-        background:${sel?'var(--accent)':'var(--surface3)'};color:${sel?'#fff':'var(--text)'};transition:all .15s">
+        background:${sel?'var(--accent)':'var(--surface3)'};color:${sel?'#fff':'#000000'};transition:all .15s">
         ${nombre}</span>`;
     }).join('')}
   </div>`;
 }
 function _pfActDicToggle(el, nombre){
   const isActive=el.getAttribute('style').includes('var(--accent)');
-  if(isActive){el.style.background='var(--surface3)';el.style.color='var(--text)';}
+  if(isActive){el.style.background='var(--surface3)';el.style.color='#000000';}
   else{el.style.background='var(--accent)';el.style.color='#fff';}
 }
 function _pfActDicGetSelected(){
@@ -20220,14 +20220,14 @@ function _pfHabDicHTML(selected=[]){
       const sel=selected.includes(c.n);
       return `<span data-tip="${c.d}" onclick="_pfHabDicToggle(this,'${c.n.replace(/'/g,"&#39;")}')"
         style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);
-        background:${sel?'var(--accent)':'var(--surface3)'};color:${sel?'#fff':'var(--text)'};transition:all .15s">
+        background:${sel?'var(--accent)':'var(--surface3)'};color:${sel?'#fff':'#000000'};transition:all .15s">
         ${c.n}</span>`;
     }).join('')}
   </div>`;
 }
 function _pfHabDicToggle(el, nombre){
   const isActive=el.style.background.includes('accent')||el.getAttribute('style').includes('var(--accent)');
-  if(isActive){el.style.background='var(--surface3)';el.style.color='var(--text)';}
+  if(isActive){el.style.background='var(--surface3)';el.style.color='#000000';}
   else{el.style.background='var(--accent)';el.style.color='#fff';}
 }
 function _pfHabDicGetSelected(){

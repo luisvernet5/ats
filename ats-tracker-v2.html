@@ -18,6 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
 :root{--bg:#F4F4F8;--surface:#FFFFFF;--surface2:#EBEBF2;--surface3:#E0E0EA;--border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);--accent:#2AAADE;--accent2:#1B7FAF;--glow:rgba(42,170,222,0.10);--text:#16162A;--text2:#4A4A6A;--text3:#8A8AA8;--green:#16A34A;--amber:#D97706;--red:#DC2626;--purple:#9333EA;--orange:#EA580C;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;--r:10px;--rl:14px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -22639,50 +22640,53 @@ async function _buildPerfilPDFDoc(p){
 }
 
 // Excel export mirroring the same sections/content as the PDF above
-function _buildPerfilExcelWorkbook(p){
+async function _buildPerfilExcelWorkbook(p){
   const emp=DB.empresas.find(e=>e.id===p.empresa_id)||{};
-  const colorHex=(emp.color||'#2AAADE').replace('#','').toUpperCase();
+  const colorArgb='FF'+(emp.color||'#2AAADE').replace('#','').toUpperCase();
   const fmt=d=>{try{return new Date(d).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'});}catch(e){return d||'';}};
   const esFordXl=_pfEsFord(p.empresa_id);
   const TOTAL_COLS=5;
 
-  const rows=[];
-  const merges=[];
-  const styles=[];
+  const wb=new ExcelJS.Workbook();
+  const ws=wb.addWorksheet('Perfil de puesto');
+  ws.columns=[{width:30},{width:26},{width:18},{width:18},{width:18}];
+  let r=1;
 
-  const bannerStyle={font:{bold:true,color:{rgb:'FFFFFFFF'},sz:10},fill:{fgColor:{rgb:'FF'+colorHex},patternType:'solid'},alignment:{horizontal:'center',vertical:'center'}};
-  const labelStyle={font:{bold:true,sz:9,color:{rgb:'FF646478'}},alignment:{vertical:'top',wrapText:true}};
-  const valueStyle={font:{sz:10,color:{rgb:'FF141414'}},alignment:{vertical:'top',wrapText:true}};
-  const subHeaderStyle={font:{bold:true,sz:9,color:{rgb:'FF3C3C46'}},fill:{fgColor:{rgb:'FFF5F5F8'},patternType:'solid'},alignment:{vertical:'center'}};
-  const tableHeaderStyle={font:{bold:true,sz:9,color:{rgb:'FF3C3C46'}},fill:{fgColor:{rgb:'FFF5F5F8'},patternType:'solid'},alignment:{horizontal:'left',vertical:'center'}};
-  const tableCellStyle={font:{sz:9,color:{rgb:'FF141414'}},alignment:{vertical:'top',wrapText:true}};
-  const bulletStyle={font:{sz:10,color:{rgb:'FF141414'}},alignment:{vertical:'top',wrapText:true}};
+  const bannerFont={bold:true,color:{argb:'FFFFFFFF'},size:10};
+  const bannerFill={type:'pattern',pattern:'solid',fgColor:{argb:colorArgb}};
+  const bannerAlign={horizontal:'center',vertical:'middle'};
+  const labelFont={bold:true,size:9,color:{argb:'FF646478'}};
+  const valueFont={size:10,color:{argb:'FF141414'}};
+  const wrapTop={vertical:'top',wrapText:true};
+  const subHeaderFont={bold:true,size:9,color:{argb:'FF3C3C46'}};
+  const subHeaderFill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF5F5F8'}};
+  const tableCellFont={size:9,color:{argb:'FF141414'}};
+  const bulletFont={size:10,color:{argb:'FF141414'}};
 
-  const addRow=(cells,rowStyles)=>{
-    const r=new Array(TOTAL_COLS).fill(null);
-    cells.forEach((v,i)=>{ if(i<TOTAL_COLS) r[i]=v; });
-    rows.push(r);
-    const ri=rows.length-1;
-    if(rowStyles) Object.keys(rowStyles).forEach(ci=>styles.push({r:ri,c:Number(ci),s:rowStyles[ci]}));
-    return ri;
-  };
-  const fillRowStyle=(ri,style,fromCol=0)=>{ for(let c=fromCol;c<TOTAL_COLS;c++) styles.push({r:ri,c,s:style}); };
+  const mergeRow=(row,fromCol,toCol)=>{ if(toCol>fromCol) ws.mergeCells(row,fromCol,row,toCol); };
 
   const addBanner=(text)=>{
-    const ri=addRow([String(text).toUpperCase()]);
-    fillRowStyle(ri,bannerStyle);
-    merges.push({s:{r:ri,c:0},e:{r:ri,c:TOTAL_COLS-1}});
+    const row=r++;
+    for(let col=1;col<=TOTAL_COLS;col++){
+      const cc=ws.getCell(row,col);
+      cc.font=bannerFont; cc.fill=bannerFill; cc.alignment=bannerAlign;
+    }
+    ws.getCell(row,1).value=String(text).toUpperCase();
+    mergeRow(row,1,TOTAL_COLS);
   };
   const addLabelValue=(label,value)=>{
     if(!String(value||'').trim()) return;
-    const ri=addRow([label,value],{0:labelStyle,1:valueStyle});
-    fillRowStyle(ri,valueStyle,2);
-    merges.push({s:{r:ri,c:1},e:{r:ri,c:TOTAL_COLS-1}});
+    const row=r++;
+    const lc=ws.getCell(row,1); lc.value=label; lc.font=labelFont; lc.alignment=wrapTop;
+    for(let col=2;col<=TOTAL_COLS;col++){ const cc=ws.getCell(row,col); cc.font=valueFont; cc.alignment=wrapTop; }
+    ws.getCell(row,2).value=value;
+    mergeRow(row,2,TOTAL_COLS);
   };
   const addSubHeader=(text)=>{
-    const ri=addRow([text]);
-    fillRowStyle(ri,subHeaderStyle);
-    merges.push({s:{r:ri,c:0},e:{r:ri,c:TOTAL_COLS-1}});
+    const row=r++;
+    for(let col=1;col<=TOTAL_COLS;col++){ const cc=ws.getCell(row,col); cc.font=subHeaderFont; cc.fill=subHeaderFill; cc.alignment={vertical:'middle'}; }
+    ws.getCell(row,1).value=text;
+    mergeRow(row,1,TOTAL_COLS);
   };
   const addBullets=(htmlOrText)=>{
     const txt=_rtToText(htmlOrText||'');
@@ -22690,45 +22694,70 @@ function _buildPerfilExcelWorkbook(p){
     txt.split('\n').filter(l=>l.trim()).forEach(line=>{
       const isBul=line.trim().startsWith('• ');
       const text=isBul?('•  '+line.trim().slice(2)):line.trim();
-      const ri=addRow([text]);
-      fillRowStyle(ri,bulletStyle);
-      merges.push({s:{r:ri,c:0},e:{r:ri,c:TOTAL_COLS-1}});
+      const row=r++;
+      const c=ws.getCell(row,1); c.value=text; c.font=bulletFont; c.alignment=wrapTop;
+      mergeRow(row,1,TOTAL_COLS);
     });
   };
   const addDictOrText=(modo,dicArr,txtHtml)=>{
     if(modo==='diccionario'&&dicArr?.length){
       dicArr.forEach(item=>{
-        const ri=addRow(['•  '+item]);
-        fillRowStyle(ri,bulletStyle);
-        merges.push({s:{r:ri,c:0},e:{r:ri,c:TOTAL_COLS-1}});
+        const row=r++;
+        const c=ws.getCell(row,1); c.value='•  '+item; c.font=bulletFont; c.alignment=wrapTop;
+        mergeRow(row,1,TOTAL_COLS);
       });
     } else addBullets(txtHtml);
   };
   const addTable=(headers,dataRowsArr)=>{
-    const hRi=addRow(headers);
-    for(let c=0;c<headers.length;c++) styles.push({r:hRi,c,s:tableHeaderStyle});
+    const hRow=r++;
+    headers.forEach((h,i)=>{
+      const c=ws.getCell(hRow,i+1); c.value=h; c.font=subHeaderFont; c.fill=subHeaderFill; c.alignment={horizontal:'left',vertical:'middle'};
+    });
     dataRowsArr.forEach(vals=>{
-      const dRi=addRow(vals);
-      for(let c=0;c<vals.length;c++) styles.push({r:dRi,c,s:tableCellStyle});
+      const dRow=r++;
+      vals.forEach((v,i)=>{
+        const c=ws.getCell(dRow,i+1); c.value=v; c.font=tableCellFont; c.alignment=wrapTop;
+      });
     });
   };
   const addRespRow=(label,val)=>{
     const ok=val==='Aplica';
-    const valStyle={font:{bold:true,sz:9,color:{rgb:ok?'FF1E8449':'FF808090'}},alignment:{horizontal:'right',vertical:'center'}};
-    const ri=addRow([label,val],{0:{font:{sz:9,color:{rgb:'FF323240'}},alignment:{vertical:'center'}},1:valStyle});
-    fillRowStyle(ri,valStyle,2);
-    merges.push({s:{r:ri,c:1},e:{r:ri,c:TOTAL_COLS-1}});
+    const vFont={bold:true,size:9,color:{argb:ok?'FF1E8449':'FF808090'}};
+    const vAlign={horizontal:'right',vertical:'middle'};
+    const row=r++;
+    const lc=ws.getCell(row,1); lc.value=label; lc.font={size:9,color:{argb:'FF323240'}}; lc.alignment={vertical:'middle'};
+    for(let col=2;col<=TOTAL_COLS;col++){ const cc=ws.getCell(row,col); cc.font=vFont; cc.alignment=vAlign; }
+    ws.getCell(row,2).value=val;
+    mergeRow(row,2,TOTAL_COLS);
   };
 
+  // ── LOGO ──
+  if(emp.logo){
+    try{
+      const b64=await urlToBase64(emp.logo);
+      if(b64){
+        const mimeMatch=/^data:image\/(png|jpe?g|gif);/i.exec(b64);
+        const ext=mimeMatch?(mimeMatch[1].toLowerCase()==='jpg'?'jpeg':mimeMatch[1].toLowerCase()):'png';
+        const {w,h}=await _imgFit(b64,150,50);
+        const imgId=wb.addImage({base64:b64,extension:ext});
+        ws.addImage(imgId,{tl:{col:0,row:0},ext:{width:w,height:h}});
+        ws.getRow(1).height=Math.max(36,h*0.78);
+        r=3;
+      }
+    }catch(e){}
+  }
+
   // ── TITLE ──
-  const titleRi=addRow([p.nombre_puesto||'Perfil de puesto'],{0:{font:{bold:true,sz:14}}});
-  merges.push({s:{r:titleRi,c:0},e:{r:titleRi,c:TOTAL_COLS-1}});
+  const titleRow=r++;
+  { const c=ws.getCell(titleRow,1); c.value=p.nombre_puesto||'Perfil de puesto'; c.font={bold:true,size:14}; }
+  mergeRow(titleRow,1,TOTAL_COLS);
   const subtitleParts=[emp.nombre,[p.departamento,p.proyecto].filter(Boolean).join(' · ')].filter(Boolean);
   if(subtitleParts.length){
-    const subRi=addRow([subtitleParts.join(' — ')],{0:{font:{sz:10,color:{rgb:'FF646478'}}}});
-    merges.push({s:{r:subRi,c:0},e:{r:subRi,c:TOTAL_COLS-1}});
+    const subRow=r++;
+    const c=ws.getCell(subRow,1); c.value=subtitleParts.join(' — '); c.font={size:10,color:{argb:'FF646478'}};
+    mergeRow(subRow,1,TOTAL_COLS);
   }
-  addRow([]);
+  r++;
 
   // ── INFORMACIÓN DEL PUESTO ──
   addBanner('Información del puesto');
@@ -22847,30 +22876,23 @@ function _buildPerfilExcelWorkbook(p){
   addLabelValue('Elaboró',p.elaboro);
   if(esFordXl) addLabelValue('Jefe directo (comunicación)',p.jefe_directo_comunicacion);
 
-  const ws=XLSX.utils.aoa_to_sheet(rows);
-  styles.forEach(({r,c,s})=>{
-    const addr=XLSX.utils.encode_cell({r,c});
-    if(!ws[addr]) ws[addr]={v:'',t:'s'};
-    ws[addr].s=s;
-  });
-  ws['!merges']=merges;
-  ws['!cols']=[{wch:28},{wch:24},{wch:18},{wch:18},{wch:18}];
-  ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(rows.length-1,0),c:TOTAL_COLS-1}});
-
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'Perfil de puesto');
-
   const clean=s=>(s||'').trim().replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s]/g,'').trim();
   const fname=`Perfil de puesto ${clean(p.nombre_puesto)} ${clean(emp.nombre)}.xlsx`;
   return {wb,fname};
 }
 
-function generarExcelPerfil(id){
+async function generarExcelPerfil(id){
   const p=DB.perfilesPuesto.find(x=>x.id===id);
   if(!p){showToast('Perfil no encontrado','err');return;}
-  if(typeof XLSX==='undefined'){showToast('XLSX no disponible','err');return;}
-  const {wb,fname}=_buildPerfilExcelWorkbook(p);
-  XLSX.writeFile(wb,fname);
+  if(typeof ExcelJS==='undefined'){showToast('ExcelJS no disponible','err');return;}
+  const {wb,fname}=await _buildPerfilExcelWorkbook(p);
+  const buffer=await wb.xlsx.writeBuffer();
+  const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=fname;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
   showToast('Excel generado ✓');
 }
 

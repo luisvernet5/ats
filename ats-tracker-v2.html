@@ -7564,6 +7564,7 @@ async function uploadEmpLogo(empId){
 }
 
 const EMPRESA_MODULOS=[
+  {key:'dashboard',label:'Dashboard'},
   {key:'personal',label:'Administrador de Personal'},
   {key:'capacitacion',label:'Capacitación'},
   {key:'contratos',label:'Contratos'},
@@ -10750,11 +10751,12 @@ function renderDashboard(){
   const candidatos = recId || empId
     ? DB.candidatos.filter(c=>vacantes.find(v=>v.id===c.vacante_id))
     : DB.candidatos;
-  const empresas = recId
+  const empresas = (recId
     ? DB.empresas.filter(e=>vacantes.find(v=>v.empresa_id===e.id))
     : empId
       ? DB.empresas.filter(e=>e.id===empId)
-      : DB.empresas;
+      : DB.empresas
+  ).filter(e=>e.modulos?.dashboard!==false);
   const vacAct=vacantes.filter(v=>v.estado==='Abierta').length;
   const activos=candidatos.filter(c=>!ETAPAS_SALIDA.includes(c.etapa)).length;
   const validados=candidatos.filter(esColocado).length;

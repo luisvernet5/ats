@@ -918,8 +918,10 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
         <button id="petab-enviados" class="btn btn-ghost btn-sm" onclick="peSetTab('enviados')"><i class="fa fa-paper-plane"></i> Enviados</button>
         <button id="petab-respuestas" class="btn btn-ghost btn-sm" onclick="peSetTab('respuestas')"><i class="fa fa-check-double"></i> Respuestas</button>
       </div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <select id="pe-flt-empresa" onchange="renderPEProcesos()" style="width:auto;min-width:170px"><option value="">Todas las empresas</option></select>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <div id="wrap-pe-flt-empresa" style="flex:none"><button id="btn-pe-flt-empresa" onclick="_mfOpen('pe-flt-empresa',event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:28px;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:11px;white-space:nowrap;min-width:110px;max-width:180px;justify-content:space-between"><span id="lbl-pe-flt-empresa" style="overflow:hidden;text-overflow:ellipsis">Todas las empresas</span><i class="fa fa-chevron-down" style="font-size:9px;color:var(--text3);flex-shrink:0"></i></button></div>
+        <div id="wrap-pe-resp-flt-proceso" style="flex:none;display:none"><button id="btn-pe-resp-flt-proceso" onclick="_mfOpen('pe-resp-flt-proceso',event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:28px;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:11px;white-space:nowrap;min-width:120px;max-width:200px;justify-content:space-between"><span id="lbl-pe-resp-flt-proceso" style="overflow:hidden;text-overflow:ellipsis">Todos los procesos</span><i class="fa fa-chevron-down" style="font-size:9px;color:var(--text3);flex-shrink:0"></i></button></div>
+        <input type="text" id="pe-resp-flt-persona" placeholder="Buscar persona evaluada..." oninput="renderPERespuestas()" style="display:none;height:28px;font-size:11px;padding:2px 8px;border:1px solid var(--border2);border-radius:6px;width:170px">
         <button class="btn btn-ghost btn-sm" id="btn-pe-refresh" onclick="peRecargarDatos()"><i class="fa fa-sync"></i> Actualizar</button>
         <button class="btn btn-primary btn-sm" onclick="openProcesoEvalModal()"><i class="fa fa-plus"></i> Nuevo proceso</button>
       </div>
@@ -937,11 +939,6 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       </table></div>
     </div>
     <div id="pe-panel-respuestas" style="display:none">
-      <div id="pe-resp-filtros" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
-        <select id="pe-resp-flt-empresa" onchange="renderPERespuestas()" style="width:auto;min-width:170px"><option value="">Todas las empresas</option></select>
-        <select id="pe-resp-flt-proceso" onchange="renderPERespuestas()" style="width:auto;min-width:200px"><option value="">Todos los procesos</option></select>
-        <input type="text" id="pe-resp-flt-persona" placeholder="Buscar persona evaluada..." oninput="renderPERespuestas()" style="width:220px">
-      </div>
       <div class="table-wrap"><table class="table" id="pe-respuestas-table">
         <thead><tr><th>Candidato</th><th>Teléfono</th><th>Correo</th><th>Proceso</th><th>Vacante</th><th>Fecha</th><th>Puntaje</th><th>Resultado</th><th></th></tr></thead>
         <tbody id="pe-respuestas-tbody"></tbody>
@@ -12221,6 +12218,8 @@ function _mfOnChange(id){
   else if(id==='usr-flt-rol'||id==='usr-flt-emp') _usrRenderTabla();
   else if(id.startsWith('pers-flt-')) _persRenderDetalle(_persOpenEmpId);
   else if(id.startsWith('n035-flt-')) n035AplicarFiltroTabla(id);
+  else if(id==='pe-flt-empresa'){renderPEProcesos();renderPERespuestas();}
+  else if(id==='pe-resp-flt-proceso') renderPERespuestas();
 }
 
 function _mfReset(...ids){
@@ -28585,6 +28584,13 @@ function peSetTab(tab){
     document.getElementById('pe-panel-'+t).style.display = t===tab?'':'none';
     document.getElementById('petab-'+t).className = `btn btn-sm ${t===tab?'btn-primary':'btn-ghost'}`;
   });
+  const soloRespuestas=tab==='respuestas';
+  const wrapProc=document.getElementById('wrap-pe-resp-flt-proceso');
+  const inpPersona=document.getElementById('pe-resp-flt-persona');
+  if(wrapProc) wrapProc.style.display=soloRespuestas?'':'none';
+  if(inpPersona) inpPersona.style.display=soloRespuestas?'':'none';
+  if(tab==='respuestas') renderPERespuestas();
+  else if(tab==='procesos') renderPEProcesos();
 }
 
 let _peProcFilter = null;
@@ -28600,26 +28606,28 @@ function peLimpiarFiltro(){
   renderPEEnviados();
 }
 
+function _peEmpresaMfPopulate(){
+  const wrap=document.getElementById('wrap-pe-flt-empresa');
+  if(!wrap)return;
+  if(_isEmpresaRole()){
+    wrap.style.display='none'; // rh_cliente/coordinador ya están limitados a su empresa; el filtro no aporta nada
+    return;
+  }
+  wrap.style.display='';
+  const opts=[...DB.empresas].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(e=>({value:e.id,label:e.nombre}));
+  _mfPopulate('pe-flt-empresa',opts,'Todas las empresas');
+}
 function renderPEProcesos(){
   const tbody=document.getElementById('pe-procesos-tbody');
   if(!tbody)return;
-  const flt=document.getElementById('pe-flt-empresa');
-  const fltWrap=flt?.parentElement;
-  if(flt && !_isEmpresaRole()){
-    if(fltWrap) fltWrap.style.display='';
-    if(!flt.dataset.populated){
-      flt.innerHTML='<option value="">Todas las empresas</option>'+[...DB.empresas].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(e=>`<option value="${e.id}">${_esc(e.nombre)}</option>`).join('');
-      flt.dataset.populated='1';
-    }
-  } else if(fltWrap){
-    fltWrap.style.display='none'; // rh_cliente/coordinador ya están limitados a su empresa; el filtro no aporta nada
-  }
+  _peEmpresaMfPopulate();
+  const mfEmp=_mfGet('pe-flt-empresa');
   let list=DB.procesosEval||[];
   const empIdUsuario=_userEmpresaId();
   if(empIdUsuario){
     list=list.filter(p=>!p.empresa_id||p.empresa_id===empIdUsuario);
-  } else if(flt?.value){
-    list=list.filter(p=>p.empresa_id===flt.value);
+  } else if(mfEmp){
+    list=list.filter(p=>mfEmp.has(p.empresa_id||''));
   }
   if(!list.length){
     tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Sin procesos. Crea el primero con "+ Nuevo proceso".</td></tr>`;
@@ -28784,36 +28792,26 @@ function renderPERespuestas(){
   const tbody=document.getElementById('pe-respuestas-tbody');
   if(!tbody)return;
   const empIdUsuario=_userEmpresaId();
+  _peEmpresaMfPopulate();
+  const mfEmp=_mfGet('pe-flt-empresa');
 
-  const fltEmp=document.getElementById('pe-resp-flt-empresa');
-  const fltEmpWrap=fltEmp?.parentElement;
-  if(fltEmp){
-    if(empIdUsuario){
-      if(fltEmpWrap) fltEmpWrap.style.display='none';
-    } else {
-      if(fltEmpWrap) fltEmpWrap.style.display='';
-      if(!fltEmp.dataset.populated){
-        fltEmp.innerHTML='<option value="">Todas las empresas</option>'+[...DB.empresas].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(e=>`<option value="${e.id}">${_esc(e.nombre)}</option>`).join('');
-        fltEmp.dataset.populated='1';
-      }
-    }
-  }
-  const fltProc=document.getElementById('pe-resp-flt-proceso');
-  if(fltProc && !fltProc.dataset.populated){
+  const wrapProc=document.getElementById('wrap-pe-resp-flt-proceso');
+  if(wrapProc && wrapProc.style.display!=='none'){
     let procs=DB.procesosEval||[];
     if(empIdUsuario) procs=procs.filter(p=>!p.empresa_id||p.empresa_id===empIdUsuario);
-    fltProc.innerHTML='<option value="">Todos los procesos</option>'+[...procs].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(p=>`<option value="${p.id}">${_esc(p.nombre)}</option>`).join('');
-    fltProc.dataset.populated='1';
+    const opts=[...procs].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(p=>({value:p.id,label:p.nombre}));
+    _mfPopulate('pe-resp-flt-proceso',opts,'Todos los procesos');
   }
+  const mfProc=_mfGet('pe-resp-flt-proceso');
   const fltPersona=(document.getElementById('pe-resp-flt-persona')?.value||'').trim().toLowerCase();
 
   let completados=(DB.procesosEnviados||[]).filter(e=>e.estado==='completado');
   if(empIdUsuario){
     completados=completados.filter(e=>{const vac=DB.vacantes.find(x=>x.id===e.vacante_id)||{};return vac.empresa_id===empIdUsuario;});
-  } else if(fltEmp?.value){
-    completados=completados.filter(e=>{const vac=DB.vacantes.find(x=>x.id===e.vacante_id)||{};return vac.empresa_id===fltEmp.value;});
+  } else if(mfEmp){
+    completados=completados.filter(e=>{const vac=DB.vacantes.find(x=>x.id===e.vacante_id)||{};return mfEmp.has(vac.empresa_id||'');});
   }
-  if(fltProc?.value) completados=completados.filter(e=>e.proceso_id===fltProc.value);
+  if(mfProc) completados=completados.filter(e=>mfProc.has(e.proceso_id||''));
   if(fltPersona) completados=completados.filter(e=>(e.candidato_nombre||'').toLowerCase().includes(fltPersona));
 
   if(!completados.length){

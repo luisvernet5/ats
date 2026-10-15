@@ -937,6 +937,11 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       </table></div>
     </div>
     <div id="pe-panel-respuestas" style="display:none">
+      <div id="pe-resp-filtros" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+        <select id="pe-resp-flt-empresa" onchange="renderPERespuestas()" style="width:auto;min-width:170px"><option value="">Todas las empresas</option></select>
+        <select id="pe-resp-flt-proceso" onchange="renderPERespuestas()" style="width:auto;min-width:200px"><option value="">Todos los procesos</option></select>
+        <input type="text" id="pe-resp-flt-persona" placeholder="Buscar persona evaluada..." oninput="renderPERespuestas()" style="width:220px">
+      </div>
       <div class="table-wrap"><table class="table" id="pe-respuestas-table">
         <thead><tr><th>Candidato</th><th>Teléfono</th><th>Correo</th><th>Proceso</th><th>Vacante</th><th>Fecha</th><th>Puntaje</th><th>Resultado</th><th></th></tr></thead>
         <tbody id="pe-respuestas-tbody"></tbody>
@@ -28778,9 +28783,41 @@ function exportPEEnviadosExcel(){
 function renderPERespuestas(){
   const tbody=document.getElementById('pe-respuestas-tbody');
   if(!tbody)return;
-  const completados=(DB.procesosEnviados||[]).filter(e=>e.estado==='completado');
+  const empIdUsuario=_userEmpresaId();
+
+  const fltEmp=document.getElementById('pe-resp-flt-empresa');
+  const fltEmpWrap=fltEmp?.parentElement;
+  if(fltEmp){
+    if(empIdUsuario){
+      if(fltEmpWrap) fltEmpWrap.style.display='none';
+    } else {
+      if(fltEmpWrap) fltEmpWrap.style.display='';
+      if(!fltEmp.dataset.populated){
+        fltEmp.innerHTML='<option value="">Todas las empresas</option>'+[...DB.empresas].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(e=>`<option value="${e.id}">${_esc(e.nombre)}</option>`).join('');
+        fltEmp.dataset.populated='1';
+      }
+    }
+  }
+  const fltProc=document.getElementById('pe-resp-flt-proceso');
+  if(fltProc && !fltProc.dataset.populated){
+    let procs=DB.procesosEval||[];
+    if(empIdUsuario) procs=procs.filter(p=>!p.empresa_id||p.empresa_id===empIdUsuario);
+    fltProc.innerHTML='<option value="">Todos los procesos</option>'+[...procs].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(p=>`<option value="${p.id}">${_esc(p.nombre)}</option>`).join('');
+    fltProc.dataset.populated='1';
+  }
+  const fltPersona=(document.getElementById('pe-resp-flt-persona')?.value||'').trim().toLowerCase();
+
+  let completados=(DB.procesosEnviados||[]).filter(e=>e.estado==='completado');
+  if(empIdUsuario){
+    completados=completados.filter(e=>{const vac=DB.vacantes.find(x=>x.id===e.vacante_id)||{};return vac.empresa_id===empIdUsuario;});
+  } else if(fltEmp?.value){
+    completados=completados.filter(e=>{const vac=DB.vacantes.find(x=>x.id===e.vacante_id)||{};return vac.empresa_id===fltEmp.value;});
+  }
+  if(fltProc?.value) completados=completados.filter(e=>e.proceso_id===fltProc.value);
+  if(fltPersona) completados=completados.filter(e=>(e.candidato_nombre||'').toLowerCase().includes(fltPersona));
+
   if(!completados.length){
-    tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin respuestas completadas aún.</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin respuestas que coincidan.</td></tr>`;
     return;
   }
   tbody.innerHTML=completados.map(e=>{

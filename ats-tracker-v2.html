@@ -4024,7 +4024,17 @@ function showToast(msg,t='ok'){const el=document.getElementById('toast');el.text
     },GUARD_MS);
   },true);
 })();
-function recargarVistaActiva(){const p=document.querySelector('.page.active');if(p)renderPage(p.id.replace('page-',''));}
+function recargarVistaActiva(){
+  const p=document.querySelector('.page.active');
+  if(!p) return;
+  const activePage=p.id.replace('page-','');
+  // renderPage() no tiene rama para las vistas de detalle (se abren vía funciones dedicadas,
+  // no por el router): sin este caso especial, guardar algo estando en Detalle de vacante o
+  // Detalle de empresa no vuelve a pintar la tabla y el cambio recién guardado "desaparece".
+  if(activePage==='vacante-detail'&&window._vdParams){ const vp=window._vdParams; openVacanteDetailView(vp.vacId,vp.empId,vp.origen,vp.origenId); return; }
+  if(activePage==='empresa-detail'&&_edCurrentEmpId){ openEmpresaDetail(_edCurrentEmpId); return; }
+  renderPage(activePage);
+}
 async function recargarDatosActivos(){await loadDB();const p=document.querySelector('.page.active')?.id.replace('page-','');if(p)renderPage(p);}
 
 function _showRtBadge(){
@@ -10593,7 +10603,7 @@ async function saveCandidato(){
       await logActivity(_candAnterior?'Editar candidato':'Nuevo candidato','candidatos',_cObj.id,_logDetalle,_candAnterior,_cObj);
     }
     closeModal('modal-candidato');
-    renderPage(document.querySelector('.page.active').id.replace('page-',''));
+    recargarVistaActiva();
   } catch(e) {
     showToast('Error al guardar candidato: '+e.message,'err');
   }

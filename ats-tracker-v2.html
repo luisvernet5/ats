@@ -20238,16 +20238,36 @@ function _pfDicTipShow(el){
 function _pfDicTipHide(){
   document.getElementById('_pf-dic-tip')?.remove();
 }
+function _pfActDicItemsHTML(selected=[]){
+  return [..._ACTITUDES_DIC].sort((a,b)=>a.n.localeCompare(b.n,'es')).map(a=>{
+    const sel=selected.includes(a.n);
+    return `<span class="pf-dic-item" data-search="${_esc(a.n.toLowerCase())}" data-dic-tip="${_esc(a.d)}" onmouseenter="_pfDicTipShow(this)" onmouseleave="_pfDicTipHide()" onclick="_pfActDicToggle(this,'${a.n.replace(/'/g,"&#39;")}')"
+      style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      background:${sel?'var(--accent)':'var(--surface3)'};color:${sel?'#fff':'#000000'};transition:all .15s">
+      ${a.n}</span>`;
+  }).join('');
+}
 function _pfActDicHTML(selected=[]){
-  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:8px;padding:10px">
-    ${[..._ACTITUDES_DIC].sort((a,b)=>a.n.localeCompare(b.n,'es')).map(a=>{
-      const sel=selected.includes(a.n);
-      return `<span data-dic-tip="${_esc(a.d)}" onmouseenter="_pfDicTipShow(this)" onmouseleave="_pfDicTipHide()" onclick="_pfActDicToggle(this,'${a.n.replace(/'/g,"&#39;")}')"
-        style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-        background:${sel?'var(--accent)':'var(--surface3)'};color:${sel?'#fff':'#000000'};transition:all .15s">
-        ${a.n}</span>`;
-    }).join('')}
-  </div>`;
+  return `<div style="padding:10px 10px 0">
+      <input type="text" id="pf-act-dic-search" placeholder="Buscar actitud..." oninput="_pfActDicFilter()" style="width:100%;padding:7px 10px;border-radius:6px;border:1px solid var(--border2);font-size:13px;background:var(--surface)">
+    </div>
+    <div id="pf-act-dic-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:8px;padding:10px">
+      ${_pfActDicItemsHTML(selected)}
+      <div class="pf-dic-empty" style="display:none;grid-column:1/-1;text-align:center;color:var(--text3);font-size:12px;padding:16px">Sin resultados</div>
+    </div>`;
+}
+function _pfActDicFilter(){
+  const term=(document.getElementById('pf-act-dic-search')?.value||'').trim().toLowerCase();
+  const grid=document.getElementById('pf-act-dic-grid');
+  if(!grid) return;
+  let anyVisible=false;
+  grid.querySelectorAll('.pf-dic-item').forEach(el=>{
+    const match=!term||el.dataset.search.includes(term);
+    el.style.display=match?'':'none';
+    if(match) anyVisible=true;
+  });
+  const emptyMsg=grid.querySelector('.pf-dic-empty');
+  if(emptyMsg) emptyMsg.style.display=anyVisible?'none':'';
 }
 function _pfActDicToggle(el, nombre){
   const isActive=el.getAttribute('style').includes('var(--accent)');
@@ -20285,16 +20305,36 @@ function _pfHabModeSwitch(mode){
     if(btnDic){btnDic.className='btn btn-primary btn-sm';}
   }
 }
+function _pfHabDicItemsHTML(selected=[]){
+  return [..._COMPETENCIAS].sort((a,b)=>a.n.localeCompare(b.n,'es')).map(c=>{
+    const sel=selected.includes(c.n);
+    return `<span class="pf-dic-item" data-search="${_esc(c.n.toLowerCase())}" data-dic-tip="${_esc(c.d)}" onmouseenter="_pfDicTipShow(this)" onmouseleave="_pfDicTipHide()" onclick="_pfHabDicToggle(this,'${c.n.replace(/'/g,"&#39;")}')"
+      style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      background:${sel?'var(--accent)':'var(--surface3)'};color:${sel?'#fff':'#000000'};transition:all .15s">
+      ${c.n}</span>`;
+  }).join('');
+}
 function _pfHabDicHTML(selected=[]){
-  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:8px;padding:10px">
-    ${[..._COMPETENCIAS].sort((a,b)=>a.n.localeCompare(b.n,'es')).map(c=>{
-      const sel=selected.includes(c.n);
-      return `<span data-dic-tip="${_esc(c.d)}" onmouseenter="_pfDicTipShow(this)" onmouseleave="_pfDicTipHide()" onclick="_pfHabDicToggle(this,'${c.n.replace(/'/g,"&#39;")}')"
-        style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-        background:${sel?'var(--accent)':'var(--surface3)'};color:${sel?'#fff':'#000000'};transition:all .15s">
-        ${c.n}</span>`;
-    }).join('')}
-  </div>`;
+  return `<div style="padding:10px 10px 0">
+      <input type="text" id="pf-hab-dic-search" placeholder="Buscar habilidad..." oninput="_pfHabDicFilter()" style="width:100%;padding:7px 10px;border-radius:6px;border:1px solid var(--border2);font-size:13px;background:var(--surface)">
+    </div>
+    <div id="pf-hab-dic-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:8px;padding:10px">
+      ${_pfHabDicItemsHTML(selected)}
+      <div class="pf-dic-empty" style="display:none;grid-column:1/-1;text-align:center;color:var(--text3);font-size:12px;padding:16px">Sin resultados</div>
+    </div>`;
+}
+function _pfHabDicFilter(){
+  const term=(document.getElementById('pf-hab-dic-search')?.value||'').trim().toLowerCase();
+  const grid=document.getElementById('pf-hab-dic-grid');
+  if(!grid) return;
+  let anyVisible=false;
+  grid.querySelectorAll('.pf-dic-item').forEach(el=>{
+    const match=!term||el.dataset.search.includes(term);
+    el.style.display=match?'':'none';
+    if(match) anyVisible=true;
+  });
+  const emptyMsg=grid.querySelector('.pf-dic-empty');
+  if(emptyMsg) emptyMsg.style.display=anyVisible?'none':'';
 }
 function _pfHabDicToggle(el, nombre){
   const isActive=el.style.background.includes('accent')||el.getAttribute('style').includes('var(--accent)');

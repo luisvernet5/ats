@@ -22858,10 +22858,10 @@ async function _buildPerfilExcelWorkbook(p){
       if(b64){
         const mimeMatch=/^data:image\/(png|jpe?g|gif);/i.exec(b64);
         const ext=mimeMatch?(mimeMatch[1].toLowerCase()==='jpg'?'jpeg':mimeMatch[1].toLowerCase()):'png';
-        const {w,h}=await _imgFit(b64,175,58);
+        const {w,h}=await _imgFit(b64,175,50);
         const imgId=wb.addImage({base64:b64,extension:ext});
         ws.addImage(imgId,{tl:{col:0,row:0},ext:{width:w,height:h}});
-        ws.getRow(1).height=h*0.75+4;
+        ws.getRow(1).height=Math.max(44,h*0.75+14);
         for(let col=1;col<=TOTAL_COLS;col++) ws.getCell(1,col).border=thinBorder;
         ws.mergeCells(1,1,1,TOTAL_COLS);
         r=2;

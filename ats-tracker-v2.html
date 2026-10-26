@@ -3821,9 +3821,18 @@ async function saveRecord(tabla,objeto){
     localStorage.setItem(key,JSON.stringify(arr));
     return;
   }
-  const {error} = await sbClient.from(tabla).upsert({id:objeto.id,data:objeto});
-  if(error) throw new Error(error.message);
-  window._atsLastSaveTs = Date.now();
+  // Mientras este guardado está en vuelo, _doSilentSync (realtime) no debe hacer loadDB():
+  // si lo hiciera antes de que este upsert confirme, un fetch que todavía no incluye este
+  // registro reemplazaría DB.candidatos/etc. por completo y el registro recién agregado
+  // "desaparecería" de la pantalla hasta la próxima recarga, aunque sí quedó guardado.
+  window._atsSavesInFlight = (window._atsSavesInFlight||0)+1;
+  try{
+    const {error} = await sbClient.from(tabla).upsert({id:objeto.id,data:objeto});
+    if(error) throw new Error(error.message);
+    window._atsLastSaveTs = Date.now();
+  } finally {
+    window._atsSavesInFlight = Math.max(0,(window._atsSavesInFlight||0)-1);
+  }
 }
 async function deleteRecord(tabla,id){
   if(SANDBOX_MODE){
@@ -3832,8 +3841,13 @@ async function deleteRecord(tabla,id){
     localStorage.setItem(key,JSON.stringify(arr));
     return;
   }
-  await sbClient.from(tabla).delete().eq('id',id);
-  window._atsLastSaveTs = Date.now();
+  window._atsSavesInFlight = (window._atsSavesInFlight||0)+1;
+  try{
+    await sbClient.from(tabla).delete().eq('id',id);
+    window._atsLastSaveTs = Date.now();
+  } finally {
+    window._atsSavesInFlight = Math.max(0,(window._atsSavesInFlight||0)-1);
+  }
 }
 
 /* ============================================================
@@ -4052,6 +4066,7 @@ function _setupRealtime(){
   if(SANDBOX_MODE) return;
   let _rtTimer=null;
   const _doSilentSync=async()=>{
+    if(window._atsSavesInFlight>0){ _rtTimer=setTimeout(_doSilentSync,1500); return; } // espera a que terminen nuestros propios guardados
     await loadDB(true); // actualiza DB en memoria, sin re-render de pantalla
     _showRtBadge();
   };

@@ -20772,6 +20772,8 @@ function previewPerfilPuesto(perfilId){
         ${apl('resp_automovil','Automóvil utilitario')}
         ${apl('resp_telefonia','Telefonía (Radio, Celular, teléfono fijo)')}
         ${apl('resp_documentos','Documentos e información')}
+        ${apl('resp_tablet','Tablet')}
+        ${apl('resp_llaves_acceso','Llaves de acceso')}
         ${apl('resp_otros','Otros')}
       </div>
       <div style="background:var(--surface2);border-radius:8px;padding:0 12px">${apl('resp_uniforme','EPP / Uniforme')}</div>
@@ -21401,6 +21403,8 @@ async function openPerfilModal(empId, perfilId){
         ${resp('resp_automovil','Automóvil utilitario')}
         ${resp('resp_telefonia','Telefonía (Radio, Celular, teléfono fijo)')}
         ${resp('resp_documentos','Documentos e información')}
+        ${resp('resp_tablet','Tablet')}
+        ${resp('resp_llaves_acceso','Llaves de acceso')}
         ${resp('resp_otros','Otros')}
       </div>
       <div style="margin-bottom:14px;background:var(--surface2);border-radius:8px;padding:0 12px">
@@ -21477,6 +21481,7 @@ async function savePerfilPuesto(){
     resp_formas_valoradas:gr('resp_formas_valoradas'), resp_mobiliario:gr('resp_mobiliario'),
     resp_equipo_computo:gr('resp_equipo_computo'), resp_automovil:gr('resp_automovil'),
     resp_telefonia:gr('resp_telefonia'), resp_documentos:gr('resp_documentos'),
+    resp_tablet:gr('resp_tablet'), resp_llaves_acceso:gr('resp_llaves_acceso'),
     resp_otros:gr('resp_otros'), resp_uniforme:gr('resp_uniforme'),
     entregables:_rtGet('pf-entregables'), elaboro:g('pf-elaboro'),
     autorizaciones_internas:_rtGet('pf-autorizaciones-internas'),
@@ -21522,7 +21527,8 @@ async function exportPerfilPDFBtn(){
     resp_efectivo:gr('resp_efectivo'), resp_cheques:gr('resp_cheques'), resp_formas_valoradas:gr('resp_formas_valoradas'),
     resp_mobiliario:gr('resp_mobiliario'), resp_equipo_computo:gr('resp_equipo_computo'),
     resp_automovil:gr('resp_automovil'), resp_telefonia:gr('resp_telefonia'),
-    resp_documentos:gr('resp_documentos'), resp_otros:gr('resp_otros'), resp_uniforme:gr('resp_uniforme'),
+    resp_documentos:gr('resp_documentos'), resp_tablet:gr('resp_tablet'), resp_llaves_acceso:gr('resp_llaves_acceso'),
+    resp_otros:gr('resp_otros'), resp_uniforme:gr('resp_uniforme'),
     entregables:_rtGet('pf-entregables'), elaboro:g('pf-elaboro'),
     autorizaciones_internas:_rtGet('pf-autorizaciones-internas'),
     jefe_directo_comunicacion:g('pf-jefe-directo'),
@@ -21561,7 +21567,8 @@ async function exportPerfilExcelBtn(){
     resp_efectivo:gr('resp_efectivo'), resp_cheques:gr('resp_cheques'), resp_formas_valoradas:gr('resp_formas_valoradas'),
     resp_mobiliario:gr('resp_mobiliario'), resp_equipo_computo:gr('resp_equipo_computo'),
     resp_automovil:gr('resp_automovil'), resp_telefonia:gr('resp_telefonia'),
-    resp_documentos:gr('resp_documentos'), resp_otros:gr('resp_otros'), resp_uniforme:gr('resp_uniforme'),
+    resp_documentos:gr('resp_documentos'), resp_tablet:gr('resp_tablet'), resp_llaves_acceso:gr('resp_llaves_acceso'),
+    resp_otros:gr('resp_otros'), resp_uniforme:gr('resp_uniforme'),
     entregables:_rtGet('pf-entregables'), elaboro:g('pf-elaboro'),
     autorizaciones_internas:_rtGet('pf-autorizaciones-internas'),
     jefe_directo_comunicacion:g('pf-jefe-directo'),
@@ -22705,6 +22712,8 @@ async function _buildPerfilPDFDoc(p){
       ['Automóvil utilitario',p.resp_automovil],
       ['Telefonía',p.resp_telefonia],
       ['Documentos e información',p.resp_documentos],
+      ['Tablet',p.resp_tablet],
+      ['Llaves de acceso',p.resp_llaves_acceso],
       ['Otros',p.resp_otros],
       ['EPP/Uniforme',p.resp_uniforme],
     ]},
@@ -23008,6 +23017,8 @@ async function _buildPerfilExcelWorkbook(p){
       ['Automóvil utilitario',p.resp_automovil],
       ['Telefonía',p.resp_telefonia],
       ['Documentos e información',p.resp_documentos],
+      ['Tablet',p.resp_tablet],
+      ['Llaves de acceso',p.resp_llaves_acceso],
       ['Otros',p.resp_otros],
       ['EPP/Uniforme',p.resp_uniforme],
     ]},

@@ -20400,11 +20400,16 @@ function _pfTipoToStr(rows){
 
 // KPIs del puesto — sección exclusiva de Ford por ahora, no se muestra a otros clientes.
 const _PF_KPI_EMPRESA_ID='msf4718wkocka';
+const _PF_KPI_FRECUENCIAS=['Diaria','Semanal','Quincenal','Mensual','Bimestral','Trimestral','Semestral','Anual'];
 function _pfKpiRowHTML(r={}){
   return `<div class="pf-kpi-row" style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-    <input type="text" placeholder="Indicador" value="${_esc(r.indicador||'')}" style="flex:1.2;font-size:13px">
-    <input type="text" placeholder="Fórmula" value="${_esc(r.formula||'')}" style="flex:1.4;font-size:13px">
-    <input type="text" placeholder="Frecuencia" value="${_esc(r.frecuencia||'')}" style="flex:.8;font-size:13px">
+    <input type="text" class="pf-kpi-indicador" placeholder="Indicador" value="${_esc(r.indicador||'')}" style="flex:1.2;font-size:13px">
+    <input type="text" class="pf-kpi-formula" placeholder="Fórmula" value="${_esc(r.formula||'')}" style="flex:1.4;font-size:13px">
+    <input type="text" class="pf-kpi-valor" placeholder="Valor requerido" value="${_esc(r.valor_requerido||'')}" style="flex:.8;font-size:13px">
+    <select class="pf-kpi-frecuencia" style="flex:.8;font-size:13px">
+      <option value=""${r.frecuencia?'':' selected'}>Frecuencia...</option>
+      ${_PF_KPI_FRECUENCIAS.map(f=>`<option value="${f}"${r.frecuencia===f?' selected':''}>${f}</option>`).join('')}
+    </select>
     <button type="button" onclick="this.closest('.pf-kpi-row').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;padding:0 4px;flex-shrink:0">×</button>
   </div>`;
 }
@@ -20416,10 +20421,12 @@ function _pfKpiAddRow(){
   c.appendChild(d.firstElementChild);
 }
 function _pfGetKpiRows(){
-  return [...document.querySelectorAll('#pf-kpi-rows .pf-kpi-row')].map(row=>{
-    const inputs=[...row.querySelectorAll('input')];
-    return{indicador:inputs[0]?.value||'',formula:inputs[1]?.value||'',frecuencia:inputs[2]?.value||''};
-  }).filter(r=>r.indicador||r.formula||r.frecuencia);
+  return [...document.querySelectorAll('#pf-kpi-rows .pf-kpi-row')].map(row=>({
+    indicador:row.querySelector('.pf-kpi-indicador')?.value||'',
+    formula:row.querySelector('.pf-kpi-formula')?.value||'',
+    valor_requerido:row.querySelector('.pf-kpi-valor')?.value||'',
+    frecuencia:row.querySelector('.pf-kpi-frecuencia')?.value||'',
+  })).filter(r=>r.indicador||r.formula||r.valor_requerido||r.frecuencia);
 }
 
 function _pfIdiomaAdd(){
@@ -20771,13 +20778,14 @@ function previewPerfilPuesto(perfilId){
 
       ${p.entregables?sec('Entregables')+rt(p.entregables):''}
 
-      ${(p.empresa_id===_PF_KPI_EMPRESA_ID&&(p.kpis_puesto||[]).some(k=>k.indicador||k.formula||k.frecuencia))?sec('KPIs del puesto')+`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+      ${(p.empresa_id===_PF_KPI_EMPRESA_ID&&(p.kpis_puesto||[]).some(k=>k.indicador||k.formula||k.valor_requerido||k.frecuencia))?sec('KPIs del puesto')+`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead><tr style="background:var(--surface2)">
-          ${['Indicador','Fórmula','Frecuencia'].map(h=>`<th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--text3);text-transform:uppercase">${h}</th>`).join('')}
+          ${['Indicador','Fórmula','Valor requerido','Frecuencia'].map(h=>`<th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--text3);text-transform:uppercase">${h}</th>`).join('')}
         </tr></thead>
-        <tbody>${p.kpis_puesto.filter(k=>k.indicador||k.formula||k.frecuencia).map(k=>`<tr style="border-top:1px solid var(--border)">
+        <tbody>${p.kpis_puesto.filter(k=>k.indicador||k.formula||k.valor_requerido||k.frecuencia).map(k=>`<tr style="border-top:1px solid var(--border)">
           <td style="padding:6px 8px">${_esc(k.indicador||'—')}</td>
           <td style="padding:6px 8px">${_esc(k.formula||'—')}</td>
+          <td style="padding:6px 8px">${_esc(k.valor_requerido||'—')}</td>
           <td style="padding:6px 8px">${_esc(k.frecuencia||'—')}</td>
         </tr>`).join('')}</tbody>
       </table></div>`:''}
@@ -21405,7 +21413,7 @@ async function openPerfilModal(empId, perfilId){
       <!-- KPIS DEL PUESTO (solo Ford) -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">KPIs del puesto</div>
       <div style="display:flex;gap:6px;padding:0 0 4px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">
-        <div style="flex:1.2">Indicador</div><div style="flex:1.4">Fórmula</div><div style="flex:.8">Frecuencia</div><div style="width:26px"></div>
+        <div style="flex:1.2">Indicador</div><div style="flex:1.4">Fórmula</div><div style="flex:.8">Valor requerido</div><div style="flex:.8">Frecuencia</div><div style="width:26px"></div>
       </div>
       <div id="pf-kpi-rows" style="margin-bottom:8px">
         ${((p.kpis_puesto&&p.kpis_puesto.length)?p.kpis_puesto:[{}]).map(r=>_pfKpiRowHTML(r)).join('')}
@@ -22715,28 +22723,31 @@ async function _buildPerfilPDFDoc(p){
   }
 
   // ── KPIS DEL PUESTO (solo Ford) ────────────────────────────────
-  const kpiRows=(p.empresa_id===_PF_KPI_EMPRESA_ID)?(p.kpis_puesto||[]).filter(k=>k.indicador||k.formula||k.frecuencia):[];
+  const kpiRows=(p.empresa_id===_PF_KPI_EMPRESA_ID)?(p.kpis_puesto||[]).filter(k=>k.indicador||k.formula||k.valor_requerido||k.frecuencia):[];
   if(kpiRows.length){
     section('KPIs del puesto');
     chkNewPage(10);
     doc.setFillColor(245,245,248);doc.rect(ml,y,mr-ml,7,'F');
     doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...darkGray);
     doc.text('Indicador',ml+2,y+5);
-    doc.text('Fórmula',ml+(mr-ml)*0.4,y+5);
-    doc.text('Frecuencia',ml+(mr-ml)*0.8,y+5);
+    doc.text('Fórmula',ml+(mr-ml)*0.32,y+5);
+    doc.text('Valor requerido',ml+(mr-ml)*0.64,y+5);
+    doc.text('Frecuencia',ml+(mr-ml)*0.82,y+5);
     y+=7;
     kpiRows.forEach(k=>{
       doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(...black);
-      const col1W=(mr-ml)*0.4-4, col2W=(mr-ml)*0.4-4, col3W=(mr-ml)*0.2-4;
+      const col1W=(mr-ml)*0.32-4, col2W=(mr-ml)*0.32-4, col3W=(mr-ml)*0.18-4, col4W=(mr-ml)*0.18-4;
       const l1=doc.splitTextToSize(k.indicador||'',col1W);
       const l2=doc.splitTextToSize(k.formula||'',col2W);
-      const l3=doc.splitTextToSize(k.frecuencia||'',col3W);
-      const maxLines=Math.max(l1.length,l2.length,l3.length,1);
+      const l3=doc.splitTextToSize(k.valor_requerido||'',col3W);
+      const l4=doc.splitTextToSize(k.frecuencia||'',col4W);
+      const maxLines=Math.max(l1.length,l2.length,l3.length,l4.length,1);
       const rowH=4+maxLines*4;
       chkNewPage(rowH);
       l1.forEach((l,i)=>doc.text(l,ml+2,y+4+i*4));
-      l2.forEach((l,i)=>doc.text(l,ml+(mr-ml)*0.4,y+4+i*4));
-      l3.forEach((l,i)=>doc.text(l,ml+(mr-ml)*0.8,y+4+i*4));
+      l2.forEach((l,i)=>doc.text(l,ml+(mr-ml)*0.32,y+4+i*4));
+      l3.forEach((l,i)=>doc.text(l,ml+(mr-ml)*0.64,y+4+i*4));
+      l4.forEach((l,i)=>doc.text(l,ml+(mr-ml)*0.82,y+4+i*4));
       doc.setDrawColor(...lineGray);doc.setLineWidth(0.3);doc.line(ml,y+rowH,mr,y+rowH);
       y+=rowH;
     });
@@ -23008,10 +23019,10 @@ async function _buildPerfilExcelWorkbook(p){
   }
 
   // ── KPIS DEL PUESTO (solo Ford) ──
-  const kpiRows=(p.empresa_id===_PF_KPI_EMPRESA_ID)?(p.kpis_puesto||[]).filter(k=>k.indicador||k.formula||k.frecuencia):[];
+  const kpiRows=(p.empresa_id===_PF_KPI_EMPRESA_ID)?(p.kpis_puesto||[]).filter(k=>k.indicador||k.formula||k.valor_requerido||k.frecuencia):[];
   if(kpiRows.length){
     addBanner('KPIs del puesto');
-    addTable(['Indicador','Fórmula','Frecuencia'],kpiRows.map(k=>[k.indicador||'',k.formula||'',k.frecuencia||'']));
+    addTable(['Indicador','Fórmula','Valor requerido','Frecuencia'],kpiRows.map(k=>[k.indicador||'',k.formula||'',k.valor_requerido||'',k.frecuencia||'']));
   }
 
   // ── AUTORIZACIONES ──

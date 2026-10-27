@@ -20789,6 +20789,8 @@ function previewPerfilPuesto(perfilId){
           <td style="padding:6px 8px">${_esc(k.frecuencia||'—')}</td>
         </tr>`).join('')}</tbody>
       </table></div>`:''}
+
+      ${p.autorizaciones_internas?sec('Autorizaciones internas')+rt(p.autorizaciones_internas):''}
     </div>
   </div>`;
   document.body.appendChild(modal);
@@ -21423,6 +21425,7 @@ async function openPerfilModal(empId, perfilId){
 
       <!-- AUTORIZACIONES -->
       <div style="background:var(--accent);color:#fff;font-weight:700;font-size:12px;text-align:center;padding:6px;border-radius:4px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Autorizaciones</div>
+      <div class="fg" style="margin-bottom:14px"><label>Autorizaciones internas</label>${_rtBox('pf-autorizaciones-internas',v('autorizaciones_internas'))}</div>
       <div class="fg" style="margin-bottom:14px"><label>Elaboró</label><input type="text" id="pf-elaboro" value="${v('elaboro')}"></div>
       ${_pfEsFord(empId)?`<div class="fg" style="margin-bottom:14px"><label>Jefe directo (comunicación)</label><input type="text" id="pf-jefe-directo" value="${v('jefe_directo_comunicacion')}"></div>`:''}
 
@@ -21476,6 +21479,7 @@ async function savePerfilPuesto(){
     resp_telefonia:gr('resp_telefonia'), resp_documentos:gr('resp_documentos'),
     resp_otros:gr('resp_otros'), resp_uniforme:gr('resp_uniforme'),
     entregables:_rtGet('pf-entregables'), elaboro:g('pf-elaboro'),
+    autorizaciones_internas:_rtGet('pf-autorizaciones-internas'),
     jefe_directo_comunicacion:g('pf-jefe-directo'),
     kpis_puesto:_pfGetKpiRows(),
     coordinadores_ids:Array.from(document.querySelectorAll('input[name="pf-coord"]:checked')).map(el=>el.value),
@@ -21520,6 +21524,7 @@ async function exportPerfilPDFBtn(){
     resp_automovil:gr('resp_automovil'), resp_telefonia:gr('resp_telefonia'),
     resp_documentos:gr('resp_documentos'), resp_otros:gr('resp_otros'), resp_uniforme:gr('resp_uniforme'),
     entregables:_rtGet('pf-entregables'), elaboro:g('pf-elaboro'),
+    autorizaciones_internas:_rtGet('pf-autorizaciones-internas'),
     jefe_directo_comunicacion:g('pf-jefe-directo'),
     kpis_puesto:_pfGetKpiRows(),
     updated_at:new Date().toISOString()
@@ -21558,6 +21563,7 @@ async function exportPerfilExcelBtn(){
     resp_automovil:gr('resp_automovil'), resp_telefonia:gr('resp_telefonia'),
     resp_documentos:gr('resp_documentos'), resp_otros:gr('resp_otros'), resp_uniforme:gr('resp_uniforme'),
     entregables:_rtGet('pf-entregables'), elaboro:g('pf-elaboro'),
+    autorizaciones_internas:_rtGet('pf-autorizaciones-internas'),
     jefe_directo_comunicacion:g('pf-jefe-directo'),
     kpis_puesto:_pfGetKpiRows(),
     updated_at:new Date().toISOString()
@@ -22757,6 +22763,10 @@ async function _buildPerfilPDFDoc(p){
   // ── AUTORIZACIONES ────────────────────────────────────────────
   if(y>220){doc.addPage();y=14;}
   section('Autorizaciones');
+  if(_rtToText(p.autorizaciones_internas||'').trim()){
+    subLabel('Autorizaciones internas');
+    bulletBlock(p.autorizaciones_internas);
+  }
   if((p.elaboro||'').trim()) infoRow([{label:'Elaboró',value:p.elaboro}]);
   if(esFordPDF&&(p.jefe_directo_comunicacion||'').trim()) infoRow([{label:'Jefe directo (comunicación)',value:p.jefe_directo_comunicacion}]);
   y+=6;
@@ -23027,6 +23037,10 @@ async function _buildPerfilExcelWorkbook(p){
 
   // ── AUTORIZACIONES ──
   addBanner('Autorizaciones');
+  if(_rtToText(p.autorizaciones_internas||'').trim()){
+    addSubHeader('Autorizaciones internas');
+    addBullets(p.autorizaciones_internas);
+  }
   addLabelValue('Elaboró',p.elaboro);
   if(esFordXl) addLabelValue('Jefe directo (comunicación)',p.jefe_directo_comunicacion);
 

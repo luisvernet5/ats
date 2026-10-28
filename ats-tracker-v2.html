@@ -3717,6 +3717,25 @@ function _sortEmpresas(){
 function _sortReclutadores(){
   DB.reclutadores.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
 }
+// Supabase/PostgREST silently caps an unpaginated select() at its configured row limit
+// (commonly 1000). candidatos has already grown past that, so a plain select('*') was
+// leaving newer rows out of DB.candidatos entirely — not a display bug, the records were
+// never fetched into memory, making some candidates invisible (and inconsistently so,
+// since Postgres gives no ordering guarantee without ORDER BY) across searches/screens.
+async function _fetchAllRows(table,applyFilter){
+  const batchSize=1000;
+  let offset=0, allRows=[];
+  while(true){
+    let q=sbClient.from(table).select('*');
+    if(applyFilter) q=applyFilter(q);
+    const {data,error}=await q.range(offset,offset+batchSize-1);
+    if(error) return {data:allRows,error};
+    allRows=allRows.concat(data||[]);
+    if(!data||data.length<batchSize) break;
+    offset+=batchSize;
+  }
+  return {data:allRows,error:null};
+}
 async function loadDB(silent=false){
   try{
     if(SANDBOX_MODE){
@@ -3736,8 +3755,8 @@ async function loadDB(silent=false){
     const _rhEmpId=currentUserData?.empresa_id||null;
     const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand,perfiles,evals,evEnv,procEval,procEnv]=await Promise.all([
       sbClient.from('empresas').select('*'),
-      (_isRhC&&_rhEmpId?sbClient.from('vacantes').select('*').filter('data->>empresa_id','eq',_rhEmpId):sbClient.from('vacantes').select('*')),
-      sbClient.from('candidatos').select('*'),
+      (_isRhC&&_rhEmpId?_fetchAllRows('vacantes',q=>q.filter('data->>empresa_id','eq',_rhEmpId)):_fetchAllRows('vacantes')),
+      _fetchAllRows('candidatos'),
       sbClient.from('reclutadores').select('*'),
       sbClient.from('referencias').select('*'),
       sbClient.from('ese').select('*'),

@@ -3389,15 +3389,15 @@ async function renderActivityLog(){
   console.log('renderActivityLog ejecutado');
   const page = document.getElementById('page-activity-log');
   if(!page) return;
-  page.innerHTML='<div style="padding:24px 28px;color:var(--text3)">Cargando...</div>';
+  page.innerHTML='<div style="color:var(--text3)">Cargando...</div>';
 
   let data, error;
   try{
     data = await _fetchAllRows(()=>sbClient.from('activity_log').select('*').order('created_at',{ascending:false}));
   }catch(e){ error = e; }
 
-  if(error){ page.innerHTML=`<div style="padding:24px 28px;color:var(--err)">${error.message}</div>`; return; }
-  if(!data?.length){ page.innerHTML='<div style="padding:24px 28px;color:var(--text3);font-size:13px">Sin actividad registrada.</div>'; return; }
+  if(error){ page.innerHTML=`<div style="color:var(--err)">${error.message}</div>`; return; }
+  if(!data?.length){ page.innerHTML='<div style="color:var(--text3);font-size:13px">Sin actividad registrada.</div>'; return; }
 
   window._logData = data;
   logPaginaActual = 1;
@@ -3408,7 +3408,7 @@ async function renderActivityLog(){
   const logAccionOptsList = [...new Set(data.map(d=>d.accion))]
     .map(a=>({value:a,label:a}));
 
-  page.innerHTML=`<div style="padding:24px 28px">
+  page.innerHTML=`<div>
     <div class="fbar" style="margin-bottom:18px;flex-wrap:wrap;gap:8px">
       <div id="wrap-log-flt-user" style="flex:none"><button id="btn-log-flt-user" onclick="_mfOpen('log-flt-user',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:160px;justify-content:space-between"><span id="lbl-log-flt-user">Todos los usuarios</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <div id="wrap-log-flt-accion" style="flex:none"><button id="btn-log-flt-accion" onclick="_mfOpen('log-flt-accion',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:160px;justify-content:space-between"><span id="lbl-log-flt-accion">Todas las acciones</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
@@ -4292,13 +4292,13 @@ function _renderModuloDashboard(pageId,onClickFn,moduloKey){
     const emp=DB.empresas.find(e=>e.id===empIdScope&&(!moduloKey||e.modulos?.[moduloKey]!==false));
     if(emp){ window[onClickFn](emp.id); return; }
   }
-  page.innerHTML=`<div style="padding:24px 28px">${_renderEmpresaCardsGrid(onClickFn,moduloKey)}</div>`;
+  page.innerHTML=`<div>${_renderEmpresaCardsGrid(onClickFn,moduloKey)}</div>`;
 }
 function _renderModuloEmpresaDetalle(pageId,icono,titulo,empId,backFn){
   const page=document.getElementById(pageId); if(!page) return;
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const color=emp.color||'#2AAADE';
-  page.innerHTML=`<div style="padding:24px 28px">
+  page.innerHTML=`<div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
       <button class="btn btn-ghost btn-sm" onclick="${backFn}()"><i class="fa fa-arrow-left"></i> Empresas</button>
       ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
@@ -4357,7 +4357,7 @@ function _contRenderEmpresa(empId){
   const page=document.getElementById('page-contratos'); if(!page) return;
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const color=emp.color||'#2AAADE';
-  page.innerHTML=`<div style="padding:24px 28px">
+  page.innerHTML=`<div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="contratosBack()"><i class="fa fa-arrow-left"></i> Empresas</button>
       ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
@@ -6921,7 +6921,7 @@ function _hcaRenderProyectos(empId){
   };
   const filas=proyectos.map(([nombre,s])=>fila(nombre,s.puestos,s.cantidad,nombre,`hcaAbrirProyecto('${nombre.replace(/'/g,"\\'")}')`)).join('')
     + (sinProyecto?fila('Sin proyecto asignado',sinProyecto,_hcaData.filter(r=>!(r.origen_tipo==='proyecto'&&r.origen)).reduce((s,r)=>s+(r.cantidad||0),0),'__sin_proyecto__',`hcaAbrirProyecto('__sin_proyecto__')`):'');
-  page.innerHTML=`<div style="padding:24px 28px">
+  page.innerHTML=`<div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="headcountAutorizadoBack()"><i class="fa fa-arrow-left"></i> Empresas</button>
       ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
@@ -7014,7 +7014,7 @@ function _hcaRenderListado(empId){
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const color=emp.color||'#2AAADE';
   const esSinProyecto=_hcaProyectoActual==='__sin_proyecto__';
-  page.innerHTML=`<div style="padding:24px 28px">
+  page.innerHTML=`<div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="hcaVolverProyectos()"><i class="fa fa-arrow-left"></i> Proyectos</button>
       ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
@@ -11254,7 +11254,7 @@ function renderEvaluacionesEliminadas(){
   const page = document.getElementById('page-evaluaciones-eliminadas');
   if(!page) return;
   const lista = DB.evaluacionesEliminadas||[];
-  page.innerHTML = `<div style="padding:24px 28px">
+  page.innerHTML = `<div>
     ${!lista.length ? '<div style="color:var(--text3);font-size:13px">No hay evaluaciones eliminadas.</div>' :
     `<div class="table-wrap"><table class="table">
       <thead><tr><th>#</th><th>Nombre</th><th>Preguntas</th><th>Fecha eliminación</th><th></th></tr></thead>
@@ -11297,7 +11297,7 @@ function renderPerfilesEliminados(){
   const page = document.getElementById('page-perfiles-eliminados');
   if(!page) return;
   const lista = DB.perfilesEliminados||[];
-  page.innerHTML = `<div style="padding:24px 28px">
+  page.innerHTML = `<div>
     ${!lista.length ? '<div style="color:var(--text3);font-size:13px">No hay perfiles eliminados.</div>' :
     `<div class="table-wrap"><table class="table">
       <thead><tr><th>#</th><th>Puesto</th><th>Empresa</th><th>Departamento</th><th>Fecha eliminación</th><th></th></tr></thead>
@@ -11342,7 +11342,7 @@ function renderVacantesEliminadas(){
   if(!page) return;
   const eliminadas = DB.vacantesEliminadas||[];
   if(!eliminadas.length){
-    page.innerHTML='<div style="padding:24px 28px"><div style="color:var(--text3);font-size:13px">No hay vacantes eliminadas.</div></div>';
+    page.innerHTML='<div><div style="color:var(--text3);font-size:13px">No hay vacantes eliminadas.</div></div>';
     return;
   }
   const rows = eliminadas.map((item,i)=>{
@@ -11394,7 +11394,7 @@ function renderVacantesEliminadas(){
         </td>
       </tr>`;
   }).join('');
-  page.innerHTML=`<div style="padding:24px 28px">
+  page.innerHTML=`<div>
     <div class="table-wrap">
       <table>
         <thead><tr><th style="width:36px;text-align:center">#</th><th>Vacante</th><th>Empresa</th><th>Folio</th><th>Estado</th><th>Eliminada</th><th>Cands.</th><th>Acción</th></tr></thead>
@@ -14036,11 +14036,11 @@ function setGarOrden(orden){
 async function renderGarantias(){
   const page = document.getElementById('page-garantias');
   if(!page) return;
-  page.innerHTML='<div style="padding:24px 28px;color:var(--text3)">Cargando...</div>';
+  page.innerHTML='<div style="color:var(--text3)">Cargando...</div>';
 
   const vacsConGarantia = DB.vacantes.filter(v=>v.aplica_garantia);
   if(!vacsConGarantia.length){
-    page.innerHTML='<div style="padding:24px 28px"><div style="color:var(--text3);font-size:13px">Sin vacantes con garantía registradas.</div></div>';
+    page.innerHTML='<div><div style="color:var(--text3);font-size:13px">Sin vacantes con garantía registradas.</div></div>';
     return;
   }
 
@@ -14211,7 +14211,7 @@ async function renderGarantias(){
   const gRecOptsList = [...new Set(vacsConGarantia.map(v=>v.reclutador_id).filter(Boolean))]
     .map(rid=>{ const r=DB.reclutadores.find(x=>x.id===rid)||{}; return {value:rid,label:r.nombre||rid}; });
 
-  page.innerHTML=`<div style="padding:24px 28px">
+  page.innerHTML=`<div>
     <div class="fbar" style="margin-bottom:18px">
       <div id="wrap-g-flt-emp" style="flex:none"><button id="btn-g-flt-emp" onclick="_mfOpen('g-flt-emp',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:160px;justify-content:space-between"><span id="lbl-g-flt-emp">Todas las empresas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <div id="wrap-g-flt-rec" style="flex:none"><button id="btn-g-flt-rec" onclick="_mfOpen('g-flt-rec',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:160px;justify-content:space-between"><span id="lbl-g-flt-rec">Todos los reclutadores</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
@@ -15868,7 +15868,7 @@ function renderContratados(){
   page._ctPage = 1;
   page._ctPageSize = 30;
 
-  page.innerHTML=`<div style="padding:24px 28px">
+  page.innerHTML=`<div>
     <div class="fbar" style="margin-bottom:18px">
       <div id="wrap-ct-emp-filter" style="flex:none"><button id="btn-ct-emp-filter" onclick="_mfOpen('ct-emp-filter',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:160px;justify-content:space-between"><span id="lbl-ct-emp-filter">Todas las empresas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <div id="wrap-ct-rec-filter" style="flex:none"><button id="btn-ct-rec-filter" onclick="_mfOpen('ct-rec-filter',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between"><span id="lbl-ct-rec-filter">Todos los reclutadores</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
@@ -16136,7 +16136,7 @@ function _persRenderDashboard(){
       <div style="height:3px;border-radius:2px;background:${color}33;overflow:hidden"><div style="height:100%;width:100%;background:${color};border-radius:2px"></div></div>
     </div>`;
   }).join('');
-  page.innerHTML=`<div style="padding:24px 28px">
+  page.innerHTML=`<div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">
       ${cards||'<div style="color:var(--text3);font-size:13px;grid-column:1/-1;text-align:center;padding:40px"><i class="fa fa-building" style="font-size:28px;display:block;margin-bottom:12px;opacity:.4"></i>Sin empresas registradas</div>'}
     </div>
@@ -16195,7 +16195,7 @@ function _persRenderDetalle(empId){
       <button class="btn btn-danger btn-sm" onclick="eliminarColaborador('${c.id}','${empId}')" title="Eliminar"><i class="fa fa-trash"></i></button>
     </td>
   </tr>`).join('');
-  page.innerHTML=`<div style="padding:24px 28px">
+  page.innerHTML=`<div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="personalBack()"><i class="fa fa-arrow-left"></i> Empresas</button>
       ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
@@ -16493,7 +16493,7 @@ function _expRenderDashboard(){
       <div style="height:3px;border-radius:2px;background:${color}33;overflow:hidden"><div style="height:100%;width:100%;background:${color};border-radius:2px"></div></div>
     </div>`;
   }).join('');
-  page.innerHTML=`<div style="padding:24px 28px">
+  page.innerHTML=`<div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">
       ${cards||'<div style="color:var(--text3);font-size:13px;grid-column:1/-1;text-align:center;padding:40px"><i class="fa fa-building" style="font-size:28px;display:block;margin-bottom:12px;opacity:.4"></i>Sin empresas registradas</div>'}
     </div>
@@ -16545,7 +16545,7 @@ function _expRenderDetalle(empId){
       <td style="text-align:center;width:36px"><i class="fa fa-chevron-right" style="color:var(--text3);font-size:12px"></i></td>
     </tr>`;
   }).join('');
-  page.innerHTML=`<div style="padding:24px 28px">
+  page.innerHTML=`<div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="expBack()"><i class="fa fa-arrow-left"></i> Empresas</button>
       ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
@@ -17574,7 +17574,7 @@ function _bdRenderDashboard(){
       ${pct!==null?`<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px"><span>Ocupación plantilla</span><span>${pct}%</span></div><div style="height:5px;background:var(--border2);border-radius:3px"><div style="height:100%;width:${Math.min(pct,100)}%;background:${color};border-radius:3px"></div></div></div>`:''}
     </div>`;
   }).join('');
-  page.innerHTML=`<div style="padding:24px 28px">
+  page.innerHTML=`<div>
     <div style="font-size:12px;color:var(--text3);margin-bottom:18px"><i class="fa fa-info-circle"></i> Datos del módulo HeadCount (semana más reciente). Las empresas sin datos HC muestran <strong>—</strong>.</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">${cards||'<div style="color:var(--text3)">Sin empresas registradas.</div>'}</div>
   </div>`;
@@ -17659,7 +17659,7 @@ function _bdRenderDetail(empId){
     ${c(p.carpeta)}
   </tr>`).join('');
   const th=t=>`<th style="white-space:nowrap;font-size:11px;padding:8px 10px">${t}</th>`;
-  page.innerHTML=`<div style="padding:24px 28px">
+  page.innerHTML=`<div>
     <div style="margin-bottom:18px">
       <button class="btn btn-ghost btn-sm" onclick="bdBack()"><i class="fa fa-arrow-left"></i> Volver a empresas</button>
     </div>
@@ -18370,7 +18370,7 @@ function renderConfig(){
   const page = document.getElementById('page-config');
   if(!page) return;
   page.innerHTML=`
-    <div style="padding:24px 28px">
+    <div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:16px">
         ${currentUser?.email==='lukaarrever@gmail.com'?`
         <button class="btn btn-ghost btn-sm config-tab-btn" id="cfg-tab-usuarios" onclick="switchConfigTab('usuarios')">
@@ -23734,7 +23734,7 @@ function renderNom035(){
   if(!page) return;
   if(!_n035EmpresaATS){
     _n035Built = false;
-    page.innerHTML = `<div style="padding:24px 28px">
+    page.innerHTML = `<div>
       ${_renderEmpresaCardsGrid('n035SeleccionarEmpresaATS','nom035')}
     </div>`;
     return;

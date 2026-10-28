@@ -3722,7 +3722,7 @@ function _sortReclutadores(){
 // leaving newer rows out of DB.candidatos entirely — not a display bug, the records were
 // never fetched into memory, making some candidates invisible (and inconsistently so,
 // since Postgres gives no ordering guarantee without ORDER BY) across searches/screens.
-async function _fetchAllRows(table,applyFilter){
+async function _fetchAllRowsPaged(table,applyFilter){
   const batchSize=1000;
   let offset=0, allRows=[];
   while(true){
@@ -3755,18 +3755,18 @@ async function loadDB(silent=false){
     const _rhEmpId=currentUserData?.empresa_id||null;
     const [emp,vac,cand,rec,refs,eseRes,docPlt,docCand,perfiles,evals,evEnv,procEval,procEnv]=await Promise.all([
       sbClient.from('empresas').select('*'),
-      (_isRhC&&_rhEmpId?_fetchAllRows('vacantes',q=>q.filter('data->>empresa_id','eq',_rhEmpId)):_fetchAllRows('vacantes')),
-      _fetchAllRows('candidatos'),
+      (_isRhC&&_rhEmpId?_fetchAllRowsPaged('vacantes',q=>q.filter('data->>empresa_id','eq',_rhEmpId)):_fetchAllRowsPaged('vacantes')),
+      _fetchAllRowsPaged('candidatos'),
       sbClient.from('reclutadores').select('*'),
-      sbClient.from('referencias').select('*'),
+      _fetchAllRowsPaged('referencias'),
       sbClient.from('ese').select('*'),
       sbClient.from('doc_plantillas').select('*'),
-      sbClient.from('doc_candidato').select('*'),
-      sbClient.from('perfiles_puesto').select('*'),
+      _fetchAllRowsPaged('doc_candidato'),
+      _fetchAllRowsPaged('perfiles_puesto'),
       sbClient.from('evaluaciones').select('*'),
       sbClient.from('evaluaciones_enviadas').select('*'),
       sbClient.from('procesos_evaluacion').select('*'),
-      sbClient.from('procesos_enviados').select('*'),
+      _fetchAllRowsPaged('procesos_enviados'),
     ]);
     DB.empresas=(emp.data||[]).map(r=>r.data).filter(Boolean);
     _sortEmpresas();
@@ -3801,8 +3801,8 @@ async function loadDB(silent=false){
     try{const procRes=await sbClient.from('procedimientos').select('*');DB.procedimientos=(procRes.data||[]).map(r=>({id:r.id,...(r.data||r), coordinadores_ids:r.coordinadores_ids||r.data?.coordinadores_ids||[]})).filter(Boolean);}catch(e){DB.procedimientos=[];}
     try{const usrRes=await sbClient.from('usuarios').select('*');DB.usuarios=(usrRes.data||[]).filter(Boolean);}catch(e){DB.usuarios=[];}
     try{const coordRes=await sbClient.from('coordinadores').select('*');DB.coordinadores=(coordRes.data||[]).filter(Boolean);}catch(e){DB.coordinadores=[];}
-    try{const cdRes=await sbClient.from('candidato_documentos').select('*');DB.candidatoDocumentos=(cdRes.data||[]).filter(Boolean);}catch(e){DB.candidatoDocumentos=[];}
-    try{const seRes=await sbClient.from('solicitudes_empleo').select('*');DB.solicitudesEmpleo=(seRes.data||[]).map(r=>r.data||r).filter(Boolean);}catch(e){DB.solicitudesEmpleo=[];}
+    try{const cdRes=await _fetchAllRowsPaged('candidato_documentos');DB.candidatoDocumentos=(cdRes.data||[]).filter(Boolean);}catch(e){DB.candidatoDocumentos=[];}
+    try{const seRes=await _fetchAllRowsPaged('solicitudes_empleo');DB.solicitudesEmpleo=(seRes.data||[]).map(r=>r.data||r).filter(Boolean);}catch(e){DB.solicitudesEmpleo=[];}
   }catch(e){
     console.error('[loadDB] ERROR:',e?.message||e);
     showToast('Error al cargar datos: '+(e?.message||'revisa la consola'),'err');

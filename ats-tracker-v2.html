@@ -3630,8 +3630,7 @@ function resolverNombre(campo, valor){
 function _filterSidebarNav(q){
   const nav = document.querySelector('.sb-nav');
   if(!nav) return;
-  const norm = s => (s||'').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-  const query = norm(q).trim();
+  const query = _searchNorm(q).trim();
   let currentSection = null;
   let sectionHasVisible = false;
   const closeSection = () => {
@@ -3645,7 +3644,7 @@ function _filterSidebarNav(q){
       return;
     }
     if(el.classList.contains('nav-item')){
-      const label = norm(el.dataset.tooltip || el.textContent);
+      const label = _searchNorm(el.dataset.tooltip || el.textContent);
       const roleHidden = el.style.display === 'none';
       const matches = !query || label.includes(query);
       el.classList.toggle('sb-search-hide', !!query && !matches);
@@ -4029,6 +4028,7 @@ let openCandRows=new Set();
 function uid(){return Date.now().toString(36)+Math.random().toString(36).substr(2,5)}
 function today(){return new Date().toISOString().split('T')[0]}
 function _esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function _searchNorm(s){return (s==null?'':String(s)).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
 function fmt(d){if(!d)return'—';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`}
 function daysBetween(d1,d2){
   if(!d1)return null;
@@ -7018,9 +7018,9 @@ function _hcaDatosProyecto(){
   return _hcaData.filter(r=>esSinProyecto?!(r.origen_tipo==='proyecto'&&r.origen):(r.origen_tipo==='proyecto'&&r.origen===_hcaProyectoActual));
 }
 function _hcaDatosFiltrados(){
-  const q=(document.getElementById('hca-listado-q')?.value||'').trim().toLowerCase();
+  const q=_searchNorm((document.getElementById('hca-listado-q')?.value||'').trim());
   let datos=_hcaDatosProyecto();
-  if(q) datos=datos.filter(r=>(r.puesto||'').toLowerCase().includes(q)||(r.puesto_nomina||'').toLowerCase().includes(q));
+  if(q) datos=datos.filter(r=>_searchNorm(r.puesto).includes(q)||_searchNorm(r.puesto_nomina).includes(q));
   return datos;
 }
 function hcaFiltrarListado(empId){
@@ -7773,8 +7773,8 @@ async function deleteEmpresa(id){
    EMPRESA RENDER
    ============================================================ */
 function renderEmpresas(){
-  const q=(document.getElementById('flt-emp-q')||{}).value||'';
-  let list=DB.empresas.filter(e=>!q||e.nombre.toLowerCase().includes(q.toLowerCase()));
+  const q=_searchNorm((document.getElementById('flt-emp-q')||{}).value||'');
+  let list=DB.empresas.filter(e=>!q||_searchNorm(e.nombre).includes(q));
   list=[...list].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
   const grid=document.getElementById('empresas-grid');
   if(!list.length){grid.innerHTML='<div style="color:var(--text3);padding:20px">Sin empresas registradas. Crea la primera.</div>';return}
@@ -11527,7 +11527,7 @@ function renderVacantesTable(){
   const deptos=[...new Set(baseForOpts.map(v=>v.departamento).filter(Boolean))].sort();
   _mfPopulate('flt-vac-dep',deptos.map(d=>({value:d,label:d})),'Departamento');
   let list=base.filter(v=>{const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};if(v.proyecto&&(emp.proyectos_inactivos||[]).includes(v.proyecto))return false;if(v.departamento&&(emp.departamentos_inactivos||[]).includes(v.departamento))return false;return true;});
-  if(q){const qq=q.toLowerCase();list=list.filter(v=>(v.nombre||'').toLowerCase().includes(qq)||(v.folio||'').toLowerCase().includes(qq));}
+  if(q){const qq=_searchNorm(q);list=list.filter(v=>_searchNorm(v.nombre).includes(qq)||_searchNorm(v.folio).includes(qq));}
   const mfVacEmp=_mfGet('flt-vac-emp');if(mfVacEmp)list=list.filter(v=>mfVacEmp.has(v.empresa_id||''));
   const mfVacEst=_mfGet('flt-vac-est');if(mfVacEst)list=list.filter(v=>mfVacEst.has(v.estado||''));
   const mfVacRec=_mfGet('flt-vac-rec');if(mfVacRec)list=list.filter(v=>mfVacRec.has(v.reclutador_id||''));
@@ -11636,7 +11636,7 @@ function exportarVacantesExcel(){
   const _recIdV=currentUserData?.rol==='reclutador'?currentUserData?.reclutador_id:null;
   const _empIdV=_userEmpresaId();
   let list=(_recIdV?DB.vacantes.filter(v=>v.reclutador_id===_recIdV):_empIdV?DB.vacantes.filter(v=>v.empresa_id===_empIdV):DB.vacantes).filter(v=>{const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};if(v.proyecto&&(emp.proyectos_inactivos||[]).includes(v.proyecto))return false;if(v.departamento&&(emp.departamentos_inactivos||[]).includes(v.departamento))return false;return true;});
-  if(q){const qq=q.toLowerCase();list=list.filter(v=>(v.nombre||'').toLowerCase().includes(qq)||(v.folio||'').toLowerCase().includes(qq));}
+  if(q){const qq=_searchNorm(q);list=list.filter(v=>_searchNorm(v.nombre).includes(qq)||_searchNorm(v.folio).includes(qq));}
   const mfEmp=_mfGet('flt-vac-emp');if(mfEmp)list=list.filter(v=>mfEmp.has(v.empresa_id||''));
   const mfEst=_mfGet('flt-vac-est');if(mfEst)list=list.filter(v=>mfEst.has(v.estado||''));
   const mfRec=_mfGet('flt-vac-rec');if(mfRec)list=list.filter(v=>mfRec.has(v.reclutador_id||''));
@@ -12073,7 +12073,7 @@ function _filtrarDescartados(){
   const desde=(document.getElementById('desc-desde')||{}).value||'';
   const hasta=(document.getElementById('desc-hasta')||{}).value||'';
   let lista=_descartadosBase();
-  if(q)lista=lista.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
+  if(q)lista=lista.filter(c=>_searchNorm(c.nombre).includes(_searchNorm(q)));
   const mfDescEmp=_mfGet('desc-emp');if(mfDescEmp){const vids=DB.vacantes.filter(v=>mfDescEmp.has(v.empresa_id||'')).map(v=>v.id);lista=lista.filter(c=>vids.includes(c.vacante_id));}
   const mfDescRec=_mfGet('desc-rec');if(mfDescRec)lista=lista.filter(c=>mfDescRec.has(c.reclutador_id||''));
   const mfDescProy=_mfGet('desc-proy');if(mfDescProy)lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return mfDescProy.has(v?.proyecto||'');});
@@ -12094,7 +12094,7 @@ function exportDescartadosExcel(){
   const desde=(document.getElementById('desc-desde')||{}).value||'';
   const hasta=(document.getElementById('desc-hasta')||{}).value||'';
   let lista=_descartadosBase();
-  if(q)lista=lista.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
+  if(q)lista=lista.filter(c=>_searchNorm(c.nombre).includes(_searchNorm(q)));
   const mfDescEmp=_mfGet('desc-emp');if(mfDescEmp){const vids=DB.vacantes.filter(v=>mfDescEmp.has(v.empresa_id||'')).map(v=>v.id);lista=lista.filter(c=>vids.includes(c.vacante_id));}
   const mfDescRec=_mfGet('desc-rec');if(mfDescRec)lista=lista.filter(c=>mfDescRec.has(c.reclutador_id||''));
   const mfDescProy=_mfGet('desc-proy');if(mfDescProy)lista=lista.filter(c=>{const v=DB.vacantes.find(x=>x.id===c.vacante_id);return mfDescProy.has(v?.proyecto||'');});
@@ -12431,7 +12431,7 @@ function exportCandidatosExcel(){
                 : DB.vacantes;
   let list = (_recIdC||_empIdC) ? DB.candidatos.filter(c=>_vacsC.find(v=>v.id===c.vacante_id)) : [...DB.candidatos];
   if(!window._filtroMostrarDescartados) list = list.filter(c=>!_esCandDescartado(c));
-  if(q) list = list.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
+  if(q) list = list.filter(c=>_searchNorm(c.nombre).includes(_searchNorm(q)));
   const mfEmp = _mfGet('flt-cand-emp');
   if(mfEmp){ const vids=_vacsC.filter(v=>mfEmp.has(v.empresa_id||'')).map(v=>v.id); list=list.filter(c=>vids.includes(c.vacante_id)); }
   const mfRec = _mfGet('flt-cand-rec');
@@ -12525,7 +12525,7 @@ function renderCandidatosTable(){
   let list = (_recIdC||_empIdC) ? DB.candidatos.filter(c=>_vacsC.find(v=>v.id===c.vacante_id)) : DB.candidatos;
   list=list.filter(c=>{const v=_vacsC.find(x=>x.id===c.vacante_id)||{};const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};if(v.proyecto&&(emp.proyectos_inactivos||[]).includes(v.proyecto))return false;if(v.departamento&&(emp.departamentos_inactivos||[]).includes(v.departamento))return false;return true;});
   if(!window._filtroMostrarDescartados) list = list.filter(c=>!_esCandDescartado(c));
-  if(q)list=list.filter(c=>c.nombre.toLowerCase().includes(q.toLowerCase()));
+  if(q)list=list.filter(c=>_searchNorm(c.nombre).includes(_searchNorm(q)));
   const mfCandEmp=_mfGet('flt-cand-emp');if(mfCandEmp){const vids=_vacsC.filter(v=>mfCandEmp.has(v.empresa_id||'')).map(v=>v.id);list=list.filter(c=>vids.includes(c.vacante_id));}
   const mfCandRec=_mfGet('flt-cand-rec');if(mfCandRec)list=list.filter(c=>mfCandRec.has(c.reclutador_id||''));
   const mfCandProy=_mfGet('flt-cand-proy');if(mfCandProy){const pvids=_vacsC.filter(v=>mfCandProy.has(v.proyecto||'')).map(v=>v.id);list=list.filter(c=>pvids.includes(c.vacante_id));}
@@ -13673,11 +13673,11 @@ function _renderTiemposCharts(){
 function filterTiemposVacs(){
   const empId=document.getElementById('tf-empresa')?.value||'';
   const recId=document.getElementById('tf-reclutador')?.value||'';
-  const q=(document.getElementById('tf-posicion')?.value||'').toLowerCase().trim();
+  const q=_searchNorm((document.getElementById('tf-posicion')?.value||'').trim());
   let vacs=DB.vacantes.filter(v=>v.estado==='Abierta');
   if(empId)vacs=vacs.filter(v=>v.empresa_id===empId);
   if(recId)vacs=vacs.filter(v=>v.reclutador_id===recId);
-  if(q)vacs=vacs.filter(v=>v.nombre.toLowerCase().includes(q));
+  if(q)vacs=vacs.filter(v=>_searchNorm(v.nombre).includes(q));
   const rows=vacs.map(v=>{
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const r=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
@@ -13898,11 +13898,11 @@ function renderRankingTable(tipo) {
 function filterRankingVacs(){
   const mfEmp=_mfGet('rk-empresa');
   const mfRec=_mfGet('rk-reclutador');
-  const q=(document.getElementById('rk-posicion')?.value||'').toLowerCase().trim();
+  const q=_searchNorm((document.getElementById('rk-posicion')?.value||'').trim());
   let vacs=DB.vacantes.filter(v=>v.estado==='Abierta');
   if(mfEmp)vacs=vacs.filter(v=>mfEmp.has(v.empresa_id||''));
   if(mfRec)vacs=vacs.filter(v=>mfRec.has(v.reclutador_id||''));
-  if(q)vacs=vacs.filter(v=>v.nombre.toLowerCase().includes(q));
+  if(q)vacs=vacs.filter(v=>_searchNorm(v.nombre).includes(q));
   _rkVacData=vacs.map(v=>{
     const emp=DB.empresas.find(x=>x.id===v.empresa_id)||{};
     const r=DB.reclutadores.find(x=>x.id===v.reclutador_id)||{};
@@ -16182,9 +16182,9 @@ function personalOpenEmpresa(empId){_persQ='';_persOpenEmpId=empId;renderPersona
 function personalBack(){_persQ='';_persOpenEmpId=null;renderPersonal();}
 
 function _persColabList(empId){
-  const q=_persQ.trim().toLowerCase();
+  const q=_searchNorm(_persQ.trim());
   let list=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId);
-  if(q) list=list.filter(c=>(c.nombre||'').toLowerCase().includes(q)||(c.puesto||'').toLowerCase().includes(q)||(c.numero_colaborador||'').toLowerCase().includes(q));
+  if(q) list=list.filter(c=>_searchNorm(c.nombre).includes(q)||_searchNorm(c.puesto).includes(q)||_searchNorm(c.numero_colaborador).includes(q));
   const mfRazon=_mfGet('pers-flt-razon'); if(mfRazon) list=list.filter(c=>mfRazon.has(c.razon_social||''));
   const mfProy=_mfGet('pers-flt-proyecto'); if(mfProy) list=list.filter(c=>mfProy.has(c.proyecto||''));
   const mfDep=_mfGet('pers-flt-depto'); if(mfDep) list=list.filter(c=>mfDep.has(c.departamento||''));
@@ -16544,9 +16544,9 @@ async function expOpenEmpresa(empId){
 function expBack(){_expQ='';_expOpenEmpId=null;renderExpedientes();}
 
 function _expColabList(empId){
-  const q=_expQ.trim().toLowerCase();
+  const q=_searchNorm(_expQ.trim());
   let list=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId);
-  if(q) list=list.filter(c=>(c.nombre||'').toLowerCase().includes(q)||(c.puesto||'').toLowerCase().includes(q)||(c.numero_colaborador||'').toLowerCase().includes(q));
+  if(q) list=list.filter(c=>_searchNorm(c.nombre).includes(q)||_searchNorm(c.puesto).includes(q)||_searchNorm(c.numero_colaborador).includes(q));
   return list.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
 }
 function _expSearchDebounce(empId){clearTimeout(_expSearchTimer);_expSearchTimer=setTimeout(()=>_expRenderDetalle(empId),220);}
@@ -17622,8 +17622,8 @@ function _bdRenderDetail(empId){
   const color=emp.color||'var(--accent)';
   let lista=_bdPersonalEmp(empId);
   if(_bdQ){
-    const q=_bdQ.toLowerCase();
-    lista=lista.filter(p=>(p.nombre||'').toLowerCase().includes(q)||(p.puesto_organigrama||'').toLowerCase().includes(q)||(p.proyecto||'').toLowerCase().includes(q)||(p.puesto_contrato_nomina||'').toLowerCase().includes(q)||(String(p.id_nomina||'')).toLowerCase().includes(q));
+    const q=_searchNorm(_bdQ);
+    lista=lista.filter(p=>_searchNorm(p.nombre).includes(q)||_searchNorm(p.puesto_organigrama).includes(q)||_searchNorm(p.proyecto).includes(q)||_searchNorm(p.puesto_contrato_nomina).includes(q)||_searchNorm(p.id_nomina).includes(q));
   }
   lista=[...lista]
     .filter(p=>p.nombre&&p.nombre.trim())
@@ -17877,8 +17877,8 @@ function _desHistorialRowsHTML(des){
   }).join('');
 }
 function _filtrarDesHistorial(){
-  const term=(document.getElementById('des-historial-search')?.value||'').trim().toLowerCase();
-  const des=DB.candidatos.filter(_esCandDesercion).filter(c=>!term||(c.nombre||'').toLowerCase().includes(term));
+  const term=_searchNorm((document.getElementById('des-historial-search')?.value||'').trim());
+  const des=DB.candidatos.filter(_esCandDesercion).filter(c=>!term||_searchNorm(c.nombre).includes(term));
   const tbody=document.getElementById('des-historial-tbody');
   if(tbody) tbody.innerHTML=_desHistorialRowsHTML(des)||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin resultados</td></tr>';
   const countEl=document.getElementById('des-historial-count');
@@ -18573,7 +18573,7 @@ async function _renderPermisosTab(){
   const rolBadge=u=>u.rol==='admin'?'bb':u.rol==='rh_cliente'?'bp':u.rol==='coordinador'?'bx':u.rol==='facturacion'?'ba':'bg';
   const userRows=list.map(u=>`
     <div id="perm-usr-${u.id}" onclick="_permisosSelectUser('${u.id}')"
-      data-search="${_esc((u.nombre||'').toLowerCase())} ${_esc((u.email||'').toLowerCase())}"
+      data-search="${_esc(_searchNorm(u.nombre))} ${_esc(_searchNorm(u.email))}"
       style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;cursor:pointer;transition:background .12s;border:1px solid transparent">
       <div style="width:34px;height:34px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600;flex-shrink:0">
         ${(u.nombre||u.email||'?')[0].toUpperCase()}
@@ -18662,7 +18662,7 @@ async function _permisosSelectUser(userId){
 }
 
 function _permisosFilterUsers(q){
-  const term=q.trim().toLowerCase();
+  const term=_searchNorm(q.trim());
   document.querySelectorAll('#perm-usr-list [data-search]').forEach(el=>{
     el.style.display=!term||el.dataset.search.includes(term)?'':'none';
   });
@@ -18947,7 +18947,7 @@ async function renderCoordinadoresConfig(){
     const emp = DB.empresas.find(e=>e.id===c.empresa_id);
     const hasUser = DB.usuarios.some(u=>u.coordinador_id===c.id);
     const area = _coordAreaLabel(c);
-    return`<tr style="${c.activo===false?'opacity:.55':''}" data-search="${_esc((c.nombre||'').toLowerCase())}">
+    return`<tr style="${c.activo===false?'opacity:.55':''}" data-search="${_esc(_searchNorm(c.nombre))}">
       <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
       <td class="td-p" style="font-weight:500">${_esc(c.nombre||'—')}</td>
       <td style="font-size:13px;color:var(--text2)">${_esc(area)}</td>
@@ -18999,7 +18999,7 @@ async function renderCoordinadoresConfig(){
 }
 
 function _filterTableRows(term,tbodyId){
-  term=(term||'').trim().toLowerCase();
+  term=_searchNorm((term||'').trim());
   document.querySelectorAll('#'+tbodyId+' tr[data-search]').forEach(tr=>{
     tr.style.display=!term||tr.dataset.search.includes(term)?'':'none';
   });
@@ -19159,11 +19159,11 @@ function _usrLimpiarFiltros(){
 }
 
 function _usrRenderTabla() {
-  const q=(document.getElementById('usr-search')?.value||'').trim().toLowerCase();
+  const q=_searchNorm((document.getElementById('usr-search')?.value||'').trim());
   const mfRol=_mfGet('usr-flt-rol');
   const mfEmp=_mfGet('usr-flt-emp');
   let list=_usrAllList;
-  if(q) list=list.filter(u=>(u.nombre||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q));
+  if(q) list=list.filter(u=>_searchNorm(u.nombre).includes(q)||_searchNorm(u.email).includes(q));
   if(mfRol) list=list.filter(u=>mfRol.has(u.rol||''));
   if(mfEmp) list=list.filter(u=>mfEmp.has(u.empresa_id||''));
   const rows = list.map((u,i) => {
@@ -20294,7 +20294,7 @@ function _pfDicTipHide(){
 function _pfActDicItemsHTML(selected=[]){
   return [..._ACTITUDES_DIC].sort((a,b)=>a.n.localeCompare(b.n,'es')).map(a=>{
     const sel=selected.includes(a.n);
-    return `<span class="pf-dic-item" data-search="${_esc(a.n.toLowerCase())}" data-dic-tip="${_esc(a.d)}" onmouseenter="_pfDicTipShow(this)" onmouseleave="_pfDicTipHide()" onclick="_pfActDicToggle(this,'${a.n.replace(/'/g,"&#39;")}')"
+    return `<span class="pf-dic-item" data-search="${_esc(_searchNorm(a.n))}" data-dic-tip="${_esc(a.d)}" onmouseenter="_pfDicTipShow(this)" onmouseleave="_pfDicTipHide()" onclick="_pfActDicToggle(this,'${a.n.replace(/'/g,"&#39;")}')"
       style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
       background:${sel?'var(--accent)':'var(--surface3)'};color:${sel?'#fff':'#000000'};transition:all .15s">
       ${a.n}</span>`;
@@ -20310,7 +20310,7 @@ function _pfActDicHTML(selected=[]){
     </div>`;
 }
 function _pfActDicFilter(){
-  const term=(document.getElementById('pf-act-dic-search')?.value||'').trim().toLowerCase();
+  const term=_searchNorm((document.getElementById('pf-act-dic-search')?.value||'').trim());
   const grid=document.getElementById('pf-act-dic-grid');
   if(!grid) return;
   let anyVisible=false;
@@ -20361,7 +20361,7 @@ function _pfHabModeSwitch(mode){
 function _pfHabDicItemsHTML(selected=[]){
   return [..._COMPETENCIAS].sort((a,b)=>a.n.localeCompare(b.n,'es')).map(c=>{
     const sel=selected.includes(c.n);
-    return `<span class="pf-dic-item" data-search="${_esc(c.n.toLowerCase())}" data-dic-tip="${_esc(c.d)}" onmouseenter="_pfDicTipShow(this)" onmouseleave="_pfDicTipHide()" onclick="_pfHabDicToggle(this,'${c.n.replace(/'/g,"&#39;")}')"
+    return `<span class="pf-dic-item" data-search="${_esc(_searchNorm(c.n))}" data-dic-tip="${_esc(c.d)}" onmouseenter="_pfDicTipShow(this)" onmouseleave="_pfDicTipHide()" onclick="_pfHabDicToggle(this,'${c.n.replace(/'/g,"&#39;")}')"
       style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border2);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
       background:${sel?'var(--accent)':'var(--surface3)'};color:${sel?'#fff':'#000000'};transition:all .15s">
       ${c.n}</span>`;
@@ -20377,7 +20377,7 @@ function _pfHabDicHTML(selected=[]){
     </div>`;
 }
 function _pfHabDicFilter(){
-  const term=(document.getElementById('pf-hab-dic-search')?.value||'').trim().toLowerCase();
+  const term=_searchNorm((document.getElementById('pf-hab-dic-search')?.value||'').trim());
   const grid=document.getElementById('pf-hab-dic-grid');
   if(!grid) return;
   let anyVisible=false;
@@ -23282,7 +23282,7 @@ function exportarDocumentacionExcel(){
 }
 
 function _docCandidatosFiltrados(){
-  const q = _docQ.toLowerCase().trim();
+  const q = _searchNorm(_docQ.trim());
   const recId = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   const empIdCliente = _userEmpresaId();
   // Empresas donde el reclutador tiene vacantes asignadas
@@ -23297,7 +23297,7 @@ function _docCandidatosFiltrados(){
     return true; // admin ve todo
   };
   const porBusqueda = q
-    ? DB.candidatos.filter(c=>scope(c) && (c.nombre||'').toLowerCase().includes(q))
+    ? DB.candidatos.filter(c=>scope(c) && _searchNorm(c.nombre).includes(q))
     : [];
   // Unir con anclados (siempre visibles), sin duplicados
   const ids = new Set(porBusqueda.map(c=>c.id));
@@ -23447,9 +23447,9 @@ function eseSearchCandidato(q){
   const sugg = document.getElementById('ese-cand-sugg');
   if(!sugg) return;
   if(!q.trim()){ sugg.style.display='none'; return; }
-  const ql = q.toLowerCase();
+  const ql = _searchNorm(q);
   const matches = DB.candidatos
-    .filter(c=>(c.nombre||'').toLowerCase().includes(ql))
+    .filter(c=>_searchNorm(c.nombre).includes(ql))
     .sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''))
     .slice(0,12);
   if(!matches.length){ sugg.style.display='none'; return; }
@@ -23481,10 +23481,10 @@ function _eseFmt(d){ return d ? new Date(d+'T12:00:00').toLocaleDateString('es-M
 function _eseFiltered(){
   let list = [...DB.ese];
   if(_eseQ){
-    const q = _eseQ.toLowerCase();
+    const q = _searchNorm(_eseQ);
     list = list.filter(e=>{
       const cand = DB.candidatos.find(c=>c.id===e.candidato_id);
-      return (cand?.nombre||'').toLowerCase().includes(q);
+      return _searchNorm(cand?.nombre).includes(q);
     });
   }
   const mfEst = _mfGet('ese-estado');
@@ -24746,7 +24746,7 @@ function n035RenderLikert(cuest,res,fname,cats,thr){
   ],'Todos los niveles');
 }
 
-function n035Ftbl(id,q){q=q.toLowerCase();document.querySelectorAll('#'+id+' tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none'});}
+function n035Ftbl(id,q){q=_searchNorm(q);document.querySelectorAll('#'+id+' tbody tr').forEach(r=>{r.style.display=_searchNorm(r.textContent).includes(q)?'':'none'});}
 function n035FtblS(id,q,col){document.querySelectorAll('#'+id+' tbody tr').forEach(r=>{r.style.display=!q||(r.cells[col]&&r.cells[col].textContent.includes(q))?'':'none'});}
 
 // ── Filtro de tabla usando el mismo componente multi-select (_mf) que
@@ -28284,7 +28284,7 @@ function openEnviarEvalModal(evalId=null){
 function evalBuscarCand(q){
   const list = document.getElementById('env-eval-cand-list');
   if(!q.trim()){ list.style.display='none'; return; }
-  const res = DB.candidatos.filter(c=>(c.nombre||'').toLowerCase().includes(q.toLowerCase())).slice(0,8);
+  const res = DB.candidatos.filter(c=>_searchNorm(c.nombre).includes(_searchNorm(q))).slice(0,8);
   if(!res.length){ list.style.display='none'; return; }
   list.innerHTML = res.map(c=>`<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px" onmousedown="evalSelectCand('${c.id}','${(c.nombre||'').replace(/'/g,"\\'")}')">
     ${c.nombre} <span style="font-size:11px;color:var(--text3)">${DB.vacantes.find(v=>v.id===c.vacante_id)?.nombre||''}</span>
@@ -28931,7 +28931,7 @@ function renderPERespuestas(){
     _mfPopulate('pe-resp-flt-proceso',opts,'Todos los procesos');
   }
   const mfProc=_mfGet('pe-resp-flt-proceso');
-  const fltPersona=(document.getElementById('pe-resp-flt-persona')?.value||'').trim().toLowerCase();
+  const fltPersona=_searchNorm((document.getElementById('pe-resp-flt-persona')?.value||'').trim());
 
   let completados=(DB.procesosEnviados||[]).filter(e=>e.estado==='completado');
   if(empIdUsuario){
@@ -28940,7 +28940,7 @@ function renderPERespuestas(){
     completados=completados.filter(e=>{const vac=DB.vacantes.find(x=>x.id===e.vacante_id)||{};return mfEmp.has(vac.empresa_id||'');});
   }
   if(mfProc) completados=completados.filter(e=>mfProc.has(e.proceso_id||''));
-  if(fltPersona) completados=completados.filter(e=>(e.candidato_nombre||'').toLowerCase().includes(fltPersona));
+  if(fltPersona) completados=completados.filter(e=>_searchNorm(e.candidato_nombre).includes(fltPersona));
 
   if(!completados.length){
     tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin respuestas que coincidan.</td></tr>`;
@@ -29038,8 +29038,8 @@ function _peRenderPicker(){
   }
   let evals=(DB.evaluaciones||[]).filter(e=>e.activa!==false);
   if(filt) evals=evals.filter(e=>e.categoria===filt);
-  const searchTerm=(window._peSearchFilt||'').trim().toLowerCase();
-  if(searchTerm) evals=evals.filter(e=>(e.nombre||'').toLowerCase().includes(searchTerm));
+  const searchTerm=_searchNorm((window._peSearchFilt||'').trim());
+  if(searchTerm) evals=evals.filter(e=>_searchNorm(e.nombre).includes(searchTerm));
   const existing=new Set([...document.querySelectorAll('#pe-pruebas-list [data-eval-id]')].map(el=>el.dataset.evalId));
   const cardsEl=document.getElementById('pe-eval-cards');
   if(!cardsEl)return;
@@ -29221,8 +29221,8 @@ const _PE_PREFIXES=[
 function _renderPrefixList(filter){
   const list=document.getElementById('env-pe-prefix-list');
   if(!list)return;
-  const f=(filter||'').toLowerCase();
-  const items=_PE_PREFIXES.filter(p=>p.label.toLowerCase().includes(f));
+  const f=_searchNorm(filter||'');
+  const items=_PE_PREFIXES.filter(p=>_searchNorm(p.label).includes(f));
   list.innerHTML=items.map(p=>`<div onclick="selectPrefix('${p.val}',this.textContent)" style="padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">${p.label}</div>`).join('')||`<div style="padding:12px;text-align:center;font-size:13px;color:var(--text3)">Sin resultados</div>`;
 }
 

@@ -30019,33 +30019,8 @@ let _procPerfilId=null;
 
 /* --- Nivel 1: dashboard de empresas --- */
 function renderProcedimientos(){
-  const page=document.getElementById('page-procedimientos');
-  if(!page)return;
   _procEmpId=null;_procPerfilId=null;
-  const rol=currentUserData?.rol||'admin';
-  let empresas=DB.empresas.filter(e=>e.modulos?.procedimientos!==false);
-  if(_isEmpresaRole()){
-    const eId=currentUserData?.empresa_id;
-    empresas=empresas.filter(e=>e.id===eId);
-    if(empresas.length===1){renderProcedimientosEmpresa(empresas[0].id);return;}
-  }
-  const cards=empresas.map(emp=>{
-    const count=(DB.procedimientos||[]).filter(p=>p.empresa_id===emp.id).length;
-    const color=emp.color||'#2AAADE';
-    return`<div class="card" style="cursor:pointer;display:flex;flex-direction:column;gap:10px;transition:box-shadow .15s" onclick="renderProcedimientosEmpresa('${emp.id}')" onmouseenter="this.style.boxShadow='0 4px 16px rgba(0,0,0,.12)'" onmouseleave="this.style.boxShadow=''">
-      <div style="display:flex;align-items:center;gap:12px">
-        ${emp.logo?`<img src="${emp.logo}" style="width:40px;height:40px;object-fit:contain;border-radius:8px;flex-shrink:0">`:`<div style="width:40px;height:40px;flex-shrink:0;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color};font-size:18px"></i></div>`}
-        <div style="min-width:0">
-          <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(emp.nombre)}</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:2px">${count} procedimiento${count!==1?'s':''}</div>
-        </div>
-      </div>
-      <div style="height:3px;border-radius:2px;background:${color}33;overflow:hidden"><div style="height:100%;width:100%;background:${color};border-radius:2px"></div></div>
-    </div>`;
-  }).join('');
-  page.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">
-    ${cards||'<div style="color:var(--text3);font-size:13px">Sin empresas registradas</div>'}
-  </div>`;
+  _renderModuloDashboard('page-procedimientos','renderProcedimientosEmpresa','procedimientos');
 }
 
 /* --- Nivel 2: perfiles de puesto de la empresa --- */

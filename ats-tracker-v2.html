@@ -5671,7 +5671,6 @@ function _ctHtmlToPdfDoc(html){
   const tmp=document.createElement('div');
   tmp.innerHTML=html;
   procesarNodo(tmp,'left');
-  _stampPdfFooter(doc);
   return doc;
 }
 function _ctGenerarDocPdf(contrato,empId){

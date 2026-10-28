@@ -7803,18 +7803,6 @@ function openEmpresaDetail(empId){
   const edDepOptsList  = _edOrdenar([...new Set(_edVacsAll.map(v=>v.departamento).filter(Boolean))], e.departamentos||[]).map(d=>({value:d,label:d}));
   const edRecOptsList  = [...new Set(_edVacsAll.map(v=>v.reclutador_id).filter(Boolean))].map(rid=>{const r=DB.reclutadores.find(x=>x.id===rid)||{};return{value:rid,label:r.nombre||rid};});
 
-  // Process flow for this company
-  const processHtml=etapas.map((et,i)=>{
-    const n=allCands.filter(c=>c.etapa===et.label).length;
-    return`<div style="display:flex;align-items:center;gap:6px">
-      <div style="background:${et.color}22;border:1px solid ${et.color}44;border-radius:8px;padding:8px 14px;min-width:100px;text-align:center">
-        <div style="font-size:18px;font-weight:600;color:${et.color};font-family:var(--mono)">${n}</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:2px">${et.label}</div>
-      </div>
-      ${i<etapas.length-1?`<i class="fa fa-chevron-right" style="color:var(--text3);font-size:12px"></i>`:''}
-    </div>`;
-  }).join('');
-
   document.getElementById('empresa-detail-content').innerHTML=`
     <div class="empresa-detail-header">
       <div class="ed-left">
@@ -7844,10 +7832,6 @@ function openEmpresaDetail(empId){
     </div>
     <div id="ed-kpi-view" style="display:none"></div>
     <div id="ed-normal-view">
-      <div style="margin-bottom:20px">
-        <div class="sec-title">Proceso de reclutamiento configurado</div>
-        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${processHtml}</div>
-      </div>
       <div id="ed-filter-bar" style="display:flex;align-items:center;gap:5px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px">
         <strong style="white-space:nowrap;font-size:13px;flex-shrink:0">Vacantes</strong>
         <button id="btn-vista-folio" class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="cambiarVistaEmpresa('folio')"><i class="fa fa-list-ol"></i> Por folio</button>

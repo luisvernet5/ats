@@ -66,7 +66,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   transform: translateY(-50%);
 }
 #sb-toggle { transition: right .25s; }
-.main{flex:1;overflow-y:auto;background:var(--bg)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.main-scroll{flex:1;overflow-y:auto;min-height:0}
+#app-footer{flex-shrink:0;padding:8px 28px;text-align:center;font-size:11px;color:var(--text3);background:var(--bg);border-top:1px solid var(--border)}
 .sb-logo{padding:20px 18px 16px;border-bottom:1px solid var(--border)}
 .sb-logo .brand{font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.08em;text-transform:uppercase}
 .sb-logo .sub{font-size:11px;color:var(--text3);margin-top:2px}
@@ -723,6 +725,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
 </aside>
 
 <main class="main">
+<div class="main-scroll">
   <div class="topbar">
     <button class="mob-menu-btn" onclick="toggleMobileMenu()" style="display:none;background:var(--accent);color:#fff;border:none;border-radius:6px;width:34px;height:34px;font-size:17px;cursor:pointer;flex-shrink:0">☰</button>
     <div class="topbar-title" id="page-title">Dashboard</div>
@@ -1031,7 +1034,8 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
       </div>
     </div>
   </div>
-
+</div>
+  <div id="app-footer">ATS Tracker Copyright © 2026 - Todos los derechos reservados</div>
 </main>
 </div>
 
@@ -2774,7 +2778,7 @@ function adaptUIToRole() {
       const pg=document.createElement('div');
       pg.className='page';
       pg.id='page-garantias';
-      document.querySelector('.main').appendChild(pg);
+      document.querySelector('.main-scroll').appendChild(pg);
     }
   } else if(rol === 'facturacion') {
     // Ocultar todos los ítems y secciones del menú
@@ -2805,7 +2809,7 @@ function adaptUIToRole() {
       const pg = document.createElement('div');
       pg.className = 'page';
       pg.id = 'page-garantias';
-      document.querySelector('.main').appendChild(pg);
+      document.querySelector('.main-scroll').appendChild(pg);
     }
   }
   if(currentUser?.email==='lukaarrever@gmail.com') {
@@ -2827,7 +2831,7 @@ function adaptUIToRole() {
       const page = document.createElement('div');
       page.className = 'page';
       page.id = 'page-vacantes-eliminadas';
-      document.querySelector('.main').appendChild(page);
+      document.querySelector('.main-scroll').appendChild(page);
     }
   }
   if(rol === 'admin'){
@@ -2846,7 +2850,7 @@ function adaptUIToRole() {
         const pg = document.createElement('div');
         pg.className = 'page';
         pg.id = 'page-'+pageId;
-        document.querySelector('.main').appendChild(pg);
+        document.querySelector('.main-scroll').appendChild(pg);
       }
     };
     _addAdminNav('nav-evaluaciones-eliminadas', 'Evaluaciones eliminadas', 'fa-clipboard-check', 'evaluaciones-eliminadas');
@@ -2869,7 +2873,7 @@ function adaptUIToRole() {
       const pg = document.createElement('div');
       pg.className = 'page';
       pg.id = 'page-garantias';
-      document.querySelector('.main').appendChild(pg);
+      document.querySelector('.main-scroll').appendChild(pg);
     }
   }
   // Documentación — admin, reclutador, rh_cliente y coordinador
@@ -2924,7 +2928,7 @@ function adaptUIToRole() {
       const pg=document.createElement('div');
       pg.className='page';
       pg.id='page-personal';
-      document.querySelector('.main').appendChild(pg);
+      document.querySelector('.main-scroll').appendChild(pg);
     }
   }
 
@@ -2946,7 +2950,7 @@ function adaptUIToRole() {
       const pg=document.createElement('div');
       pg.className='page';
       pg.id='page-expedientes';
-      document.querySelector('.main').appendChild(pg);
+      document.querySelector('.main-scroll').appendChild(pg);
     }
   }
 
@@ -2968,7 +2972,7 @@ function adaptUIToRole() {
       const pg=document.createElement('div');
       pg.className='page';
       pg.id='page-contratos';
-      document.querySelector('.main').appendChild(pg);
+      document.querySelector('.main-scroll').appendChild(pg);
     }
   }
 
@@ -2990,7 +2994,7 @@ function adaptUIToRole() {
       const pg=document.createElement('div');
       pg.className='page';
       pg.id='page-capacitacion';
-      document.querySelector('.main').appendChild(pg);
+      document.querySelector('.main-scroll').appendChild(pg);
     }
   }
 
@@ -3012,7 +3016,7 @@ function adaptUIToRole() {
       const pg=document.createElement('div');
       pg.className='page';
       pg.id='page-headcount-autorizado';
-      document.querySelector('.main').appendChild(pg);
+      document.querySelector('.main-scroll').appendChild(pg);
     }
   }
 
@@ -3034,7 +3038,7 @@ function adaptUIToRole() {
       const pg=document.createElement('div');
       pg.className='page';
       pg.id='page-nom035';
-      document.querySelector('.main').appendChild(pg);
+      document.querySelector('.main-scroll').appendChild(pg);
     }
   }
 
@@ -3101,7 +3105,7 @@ function adaptUIToRole() {
       const pg = document.createElement('div');
       pg.className = 'page';
       pg.id = 'page-candidatos-descartados';
-      document.querySelector('.main').appendChild(pg);
+      document.querySelector('.main-scroll').appendChild(pg);
     }
   }
   if(currentUserData?.rol==='admin' && !document.getElementById('nav-activity-log')){
@@ -3120,7 +3124,7 @@ function adaptUIToRole() {
       const pg = document.createElement('div');
       pg.className = 'page';
       pg.id = 'page-activity-log';
-      document.querySelector('.main').appendChild(pg);
+      document.querySelector('.main-scroll').appendChild(pg);
     }
   }
   const nav = document.querySelector('.sb-nav');
@@ -3198,7 +3202,7 @@ function _permsEnsureNavItem(sec){
     const pg = document.createElement('div');
     pg.className = 'page';
     pg.id = pageId;
-    document.querySelector('.main')?.appendChild(pg);
+    document.querySelector('.main-scroll')?.appendChild(pg);
   }
   // Insertar antes del botón de logout
   const logout = nav.lastElementChild;

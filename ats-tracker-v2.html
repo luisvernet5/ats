@@ -19480,17 +19480,21 @@ function _stampPdfFooter(doc){
   try{
     const pages=doc.internal.getNumberOfPages();
     const logoH=4, logoW=logoH*(125/32);
-    const marginX=10;
+    const gap=2.5;
+    const legend='ATS Tracker Copyright © 2026 - Todos los derechos reservados';
     for(let i=1;i<=pages;i++){
       doc.setPage(i);
       const pageW=doc.internal.pageSize.getWidth();
       const pageH=doc.internal.pageSize.getHeight();
       const baseY=pageH-7;
-      try{ doc.addImage(_ATS_FOOTER_LOGO_B64,'PNG',marginX,baseY-logoH+1,logoW,logoH); }catch(e){}
       doc.setFont('helvetica','normal');
       doc.setFontSize(7);
+      const textW=doc.getTextWidth(legend);
+      const blockW=logoW+gap+textW;
+      const startX=(pageW-blockW)/2;
+      try{ doc.addImage(_ATS_FOOTER_LOGO_B64,'PNG',startX,baseY-logoH+1,logoW,logoH); }catch(e){}
       doc.setTextColor(140);
-      doc.text('ATS Tracker Copyright © 2026 - Todos los derechos reservados',marginX+logoW+2.5,baseY);
+      doc.text(legend,startX+logoW+gap,baseY);
     }
   }catch(e){ console.warn('[_stampPdfFooter]',e?.message||e); }
 }

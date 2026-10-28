@@ -4161,6 +4161,15 @@ function getEmpresaEtapas(empId){
 }
 function _isEmpresaRole(){ return ['rh_cliente','coordinador'].includes(currentUserData?.rol); }
 function _userEmpresaId(){ return _isEmpresaRole() ? (currentUserData?.empresa_id||null) : null; }
+// Igual que filtrar DB.vacantes por reclutador_id/empresa_id, pero también incluye las
+// vacantes marcadas "Eliminada" (excluidas de DB.vacantes). Sin esto, un candidato cuya
+// vacante fue eliminada después desaparece por completo de la vista del reclutador/empresa
+// dueño de esa vacante, aunque el candidato en sí siga activo.
+function _vacsScopedAll(reclutadorId, empresaId){
+  if(!reclutadorId && !empresaId) return DB.vacantes;
+  const all=(DB.vacantes||[]).concat(DB.vacantesEliminadas||[]);
+  return reclutadorId ? all.filter(v=>v.reclutador_id===reclutadorId) : all.filter(v=>v.empresa_id===empresaId);
+}
 function _coordsEmpresa(empId){ return (DB.coordinadores||[]).filter(c=>c.empresa_id===empId&&c.activo!==false); }
 function _coordRecord(){
   if(currentUserData?.rol!=='coordinador') return null;
@@ -10814,14 +10823,13 @@ function getChain(id){
 function renderDashboard(){
   const recId = currentUserData?.rol === 'reclutador' ? currentUserData?.reclutador_id : null;
   const empId = _userEmpresaId();
-  let vacantes = recId
-    ? DB.vacantes.filter(v=>v.reclutador_id===recId)
-    : empId
-      ? DB.vacantes.filter(v=>v.empresa_id===empId)
-      : DB.vacantes;
+  let vacantes = recId ? DB.vacantes.filter(v=>v.reclutador_id===recId) : empId ? DB.vacantes.filter(v=>v.empresa_id===empId) : DB.vacantes;
   if(currentUserData?.rol==='coordinador') vacantes = vacantes.filter(_coordVacanteMatch);
+  // incluye vacantes eliminadas solo para no perder del conteo a candidatos cuya vacante fue
+  // eliminada después (las KPIs de "vacantes" arriba siguen usando solo las activas)
+  const vacantesConElim = _vacsScopedAll(recId, empId);
   const candidatos = recId || empId
-    ? DB.candidatos.filter(c=>vacantes.find(v=>v.id===c.vacante_id))
+    ? DB.candidatos.filter(c=>vacantesConElim.find(v=>v.id===c.vacante_id))
     : DB.candidatos;
   const empresas = (recId
     ? DB.empresas.filter(e=>vacantes.find(v=>v.empresa_id===e.id))
@@ -11068,7 +11076,7 @@ function renderPipeline(){
   _mfPopulate('flt-pip-rec',DB.reclutadores.map(r=>({value:r.id,label:r.nombre})),'Todos los reclutadores');
   const _recIdP = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   const _empIdP = _userEmpresaId();
-  let _vacsP = _recIdP ? DB.vacantes.filter(v=>v.reclutador_id===_recIdP) : _empIdP ? DB.vacantes.filter(v=>v.empresa_id===_empIdP) : DB.vacantes;
+  let _vacsP = _vacsScopedAll(_recIdP, _empIdP);
   if(currentUserData?.rol==='coordinador') _vacsP = _vacsP.filter(_coordVacanteMatch);
   const pipVacOpts=_vacsP.map(v=>({value:v.id,label:v.nombre}));
   _mfPopulate('flt-pip-vac',pipVacOpts,'Todas las vacantes');
@@ -12430,9 +12438,7 @@ function exportCandidatosExcel(){
   const q = (document.getElementById('flt-cand-q')||{}).value||'';
   const _recIdC = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   const _empIdC = _userEmpresaId();
-  const _vacsC  = _recIdC ? DB.vacantes.filter(v=>v.reclutador_id===_recIdC)
-                : _empIdC ? DB.vacantes.filter(v=>v.empresa_id===_empIdC)
-                : DB.vacantes;
+  const _vacsC  = _vacsScopedAll(_recIdC, _empIdC);
   let list = (_recIdC||_empIdC) ? DB.candidatos.filter(c=>_vacsC.find(v=>v.id===c.vacante_id)) : [...DB.candidatos];
   if(!window._filtroMostrarDescartados) list = list.filter(c=>!_esCandDescartado(c));
   if(q) list = list.filter(c=>_searchNorm(c.nombre).includes(_searchNorm(q)));
@@ -12520,7 +12526,7 @@ function renderCandidatosTable(){
 
   const _recIdC = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   const _empIdC = _userEmpresaId();
-  let _vacsC = _recIdC ? DB.vacantes.filter(v=>v.reclutador_id===_recIdC) : _empIdC ? DB.vacantes.filter(v=>v.empresa_id===_empIdC) : DB.vacantes;
+  let _vacsC = _vacsScopedAll(_recIdC, _empIdC);
   if(currentUserData?.rol==='coordinador') _vacsC = _vacsC.filter(_coordVacanteMatch);
   // populate proyecto y departamento solo con las empresas seleccionadas en el filtro de Empresa
   const _vacsCParaOpts = mfCandEmpPre ? _vacsC.filter(v=>mfCandEmpPre.has(v.empresa_id||'')) : _vacsC;
@@ -23315,13 +23321,14 @@ function _docCandidatosFiltrados(){
   const q = _searchNorm(_docQ.trim());
   const recId = currentUserData?.rol==='reclutador' ? currentUserData?.reclutador_id : null;
   const empIdCliente = _userEmpresaId();
-  // Empresas donde el reclutador tiene vacantes asignadas
+  // Empresas donde el reclutador tiene vacantes asignadas (incluye eliminadas, para no
+  // perder del alcance a candidatos cuya vacante fue eliminada después)
   const recEmpIds = recId
-    ? new Set(DB.vacantes.filter(v=>v.reclutador_id===recId).map(v=>v.empresa_id).filter(Boolean))
+    ? new Set(_vacsScopedAll(recId, null).map(v=>v.empresa_id).filter(Boolean))
     : null;
   const scope = c => {
     if(c.descartado) return false;
-    const vac = DB.vacantes.find(v=>v.id===c.vacante_id)||{};
+    const vac = DB.vacantes.find(v=>v.id===c.vacante_id)||(DB.vacantesEliminadas||[]).find(v=>v.id===c.vacante_id)||{};
     if(empIdCliente) return vac.empresa_id===empIdCliente;
     if(recEmpIds) return recEmpIds.has(vac.empresa_id);
     return true; // admin ve todo

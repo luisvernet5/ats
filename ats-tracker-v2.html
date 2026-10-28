@@ -5671,6 +5671,7 @@ function _ctHtmlToPdfDoc(html){
   const tmp=document.createElement('div');
   tmp.innerHTML=html;
   procesarNodo(tmp,'left');
+  _stampPdfFooter(doc);
   return doc;
 }
 function _ctGenerarDocPdf(contrato,empId){
@@ -5923,6 +5924,7 @@ function _capVencerExportarPDF(empId){
     });
     y+=7;
   });
+  _stampPdfFooter(doc);
   doc.save(`Cursos_por_vencer_${(emp.nombre||'empresa').replace(/[^a-zA-Z0-9]/g,'_')}.pdf`);
 }
 function _capMatrizHtml(empId){
@@ -6280,6 +6282,7 @@ async function descargarConstanciaCapacitacion(cursoId,colabId){
     const {jsPDF}=window.jspdf;
     const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'letter'});
     _drawConstanciaPage(doc,curso,colab,asistencia,emp,logoB64,logoDims);
+    _stampPdfFooter(doc);
     doc.save(`Constancia_${(colab.nombre||'colaborador').replace(/[^a-zA-Z0-9]/g,'_')}_${(curso.nombre||'curso').replace(/[^a-zA-Z0-9]/g,'_')}.pdf`);
   }catch(e){
     showToast('Error al generar PDF: '+e.message,'err');
@@ -6302,6 +6305,7 @@ async function descargarConstanciasCurso(cursoId){
       if(!primero) doc.addPage(); primero=false;
       _drawConstanciaPage(doc,curso,colab,asistencia,emp,logoB64,logoDims);
     });
+    _stampPdfFooter(doc);
     doc.save(`Constancias_${(curso.nombre||'curso').replace(/[^a-zA-Z0-9]/g,'_')}.pdf`);
   }catch(e){
     showToast('Error al generar PDF: '+e.message,'err');
@@ -9991,6 +9995,7 @@ async function _buildSolicitudEmpleoPDFDoc(se,candId){
   doc.setFontSize(7.5);doc.setTextColor(130);
   doc.text(`Completada el ${se.fecha_completada?new Date(se.fecha_completada).toLocaleDateString('es-MX'):''}`,W/2,y+13,{align:'center'});
 
+  _stampPdfFooter(doc);
   return doc;
 }
 async function previsualizarSolicitudEmpleoPDF(candId){
@@ -13523,6 +13528,7 @@ function exportTeDesglosePDF(){
     doc.text(`${emp.nombre||''} · Análisis de tiempos · Pág. ${p} de ${total}`,W/2,205,{align:'center'});
   }
   const per=_teMes?`${MESES_CORTO[_teMes]}_${_teAnio}`:String(_teAnio);
+  _stampPdfFooter(doc);
   doc.save(`tiempos_desglose_${(emp.nombre||'empresa').replace(/\s/g,'_')}_${per}.pdf`);
   showToast('PDF exportado','ok');
 }
@@ -19463,6 +19469,26 @@ async function urlToBase64(url) {
   } catch(e) { return null; }
 }
 
+const _ATS_FOOTER_LOGO_B64='data:image/png;base64,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';
+function _stampPdfFooter(doc){
+  if(!doc) return;
+  try{
+    const pages=doc.internal.getNumberOfPages();
+    const logoH=4, logoW=logoH*(125/32);
+    const marginX=10;
+    for(let i=1;i<=pages;i++){
+      doc.setPage(i);
+      const pageW=doc.internal.pageSize.getWidth();
+      const pageH=doc.internal.pageSize.getHeight();
+      const baseY=pageH-7;
+      try{ doc.addImage(_ATS_FOOTER_LOGO_B64,'PNG',marginX,baseY-logoH+1,logoW,logoH); }catch(e){}
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(7);
+      doc.setTextColor(140);
+      doc.text('ATS Tracker Copyright © 2026 - Todos los derechos reservados',marginX+logoW+2.5,baseY);
+    }
+  }catch(e){ console.warn('[_stampPdfFooter]',e?.message||e); }
+}
 function _imgFit(b64, maxW, maxH) {
   return new Promise(resolve => {
     const img = new Image();
@@ -19628,6 +19654,7 @@ async function exportEntrevistaPDF() {
   r2('Recomendación',val('ei-recomendacion'),'Firma entrevistador',val('ei-firma-entrevistador'));
 
   const nombreArchivo = (candDB.nombre || candNombre).replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_áéíóúÁÉÍÓÚñÑ]/g,'');
+  _stampPdfFooter(doc);
   doc.save(`Entrevista_${nombreArchivo}_${fechaEnt}.pdf`);
   showToast('PDF generado ✓');
 }
@@ -19714,6 +19741,7 @@ async function exportRefLaboralesPDF() {
     if(obs){chkPg(12);y+=3;doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(100);doc.text('Observaciones:',M,y);doc.setFont('helvetica','normal');doc.setTextColor(30);const w=doc.splitTextToSize(obs,CW);y+=4;doc.text(w,M,y);y+=w.length*4;}
     y+=10;
   });
+  _stampPdfFooter(doc);
   doc.save(`RefLaborales_${candNombre.replace(/[^a-zA-Z0-9]/g,'_')}_${today()}.pdf`);
   showToast('PDF referencias laborales generado ✓');
 }
@@ -19758,6 +19786,7 @@ async function exportRefPersonalesPDF() {
     if(obs){r1('Observaciones',obs);}
     y+=8;
   });
+  _stampPdfFooter(doc);
   doc.save(`RefPersonales_${candNombre.replace(/[^a-zA-Z0-9]/g,'_')}_${today()}.pdf`);
   showToast('PDF referencias personales generado ✓');
 }
@@ -19948,6 +19977,7 @@ async function exportRefNuimCamPDF(tipo='lab'){
   if(rec?.nombre){doc.setFont('helvetica','normal');doc.setFontSize(7);doc.text(rec.nombre,PM+vW/2,y+10,{align:'center'});}
 
   const _sufijoTipo=tipo==='per'?'Personales':'Laborales';
+  _stampPdfFooter(doc);
   doc.save(`RefVerificacion_NuimCam_${_sufijoTipo}_${candNombre.replace(/[^a-zA-Z0-9]/g,'_')}_${today()}.pdf`);
   showToast(`PDF NuimCam (${tipo==='per'?'referencias personales':'referencias laborales'}) generado ✓`);
 }
@@ -22827,6 +22857,7 @@ async function _buildPerfilPDFDoc(p){
 
   const clean=s=>(s||'').trim().replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s]/g,'').trim();
   const fname=`Perfil de puesto ${clean(p.nombre_puesto)} ${clean(emp.nombre)}.pdf`;
+  _stampPdfFooter(doc);
   return {doc,fname};
 }
 
@@ -28546,6 +28577,7 @@ async function generarInformeEvalPDF(){
     }
     doc.setTextColor(40,40,40); doc.setDrawColor(235,235,235); doc.line(M,y+1.5,M+CW,y+1.5); y+=6;
   }
+  _stampPdfFooter(doc);
   doc.save(`evaluacion_${(env.candidato_nombre||'candidato').replace(/\s/g,'_')}.pdf`);
 }
 
@@ -30690,6 +30722,7 @@ async function _buildProcedimientoPDFDoc(p){
     });
   }
 
+  _stampPdfFooter(doc);
   return doc;
 }
 

@@ -739,7 +739,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
   <!-- EMPRESAS -->
   <div class="page" id="page-empresas">
     <div class="fbar">
-      <input type="text" id="flt-emp-q" placeholder="Buscar empresa..." oninput="renderEmpresas()">
+      <input type="text" id="flt-emp-q" placeholder="Buscar empresa..." oninput="renderEmpresas()" style="width:220px;flex-shrink:0;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
       <span class="sp"></span>
       <button class="btn btn-primary" onclick="openEmpresaModal()"><i class="fa fa-plus"></i> Nueva empresa</button>
     </div>
@@ -790,7 +790,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
   <!-- VACANTES -->
   <div class="page" id="page-vacantes">
     <div class="fbar" style="flex-wrap:nowrap;overflow-x:auto;gap:4px">
-      <input type="text" id="flt-vac-q" placeholder="Buscar por nombre o folio..." oninput="renderVacantesTable()" style="min-width:180px;max-width:220px;flex-shrink:0">
+      <input type="text" id="flt-vac-q" placeholder="Buscar por nombre o folio..." oninput="renderVacantesTable()" style="min-width:180px;max-width:220px;flex-shrink:0;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
       <div id="wrap-flt-vac-emp" style="flex:none"><button id="btn-flt-vac-emp" onclick="_mfOpen('flt-vac-emp',event)" style="display:flex;align-items:center;gap:4px;padding:0 8px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:120px;justify-content:space-between"><span id="lbl-flt-vac-emp">Empresas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <div id="wrap-flt-vac-est" style="flex:none"><button id="btn-flt-vac-est" onclick="_mfOpen('flt-vac-est',event)" style="display:flex;align-items:center;gap:4px;padding:0 8px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:100px;justify-content:space-between"><span id="lbl-flt-vac-est">Estado</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <div id="wrap-flt-vac-rec" style="flex:none"><button id="btn-flt-vac-rec" onclick="_mfOpen('flt-vac-rec',event)" style="display:flex;align-items:center;gap:4px;padding:0 8px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:100px;justify-content:space-between"><span id="lbl-flt-vac-rec">Reclutador</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
@@ -818,7 +818,7 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
   <!-- CANDIDATOS -->
   <div class="page" id="page-candidatos">
     <div class="fbar" style="gap:6px">
-      <input type="text" id="flt-cand-q" placeholder="Buscar candidato..." oninput="renderCandidatosTable()" style="min-width:110px;font-size:12px;height:32px">
+      <input type="text" id="flt-cand-q" placeholder="Buscar candidato..." oninput="renderCandidatosTable()" style="min-width:180px;max-width:220px;flex-shrink:0;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
       <div id="wrap-flt-cand-emp" style="flex:none"><button id="btn-flt-cand-emp" onclick="_mfOpen('flt-cand-emp',event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:110px;justify-content:space-between"><span id="lbl-flt-cand-emp">Empresa</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <div id="wrap-flt-cand-rec" style="flex:none"><button id="btn-flt-cand-rec" onclick="_mfOpen('flt-cand-rec',event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:120px;justify-content:space-between"><span id="lbl-flt-cand-rec">Reclutador</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
       <div id="flt-cand-etapa-wrap" style="flex:none">
@@ -919,9 +919,9 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
         <button id="petab-respuestas" class="btn btn-ghost btn-sm" onclick="peSetTab('respuestas')"><i class="fa fa-check-double"></i> Respuestas</button>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <div id="wrap-pe-flt-empresa" style="flex:none"><button id="btn-pe-flt-empresa" onclick="_mfOpen('pe-flt-empresa',event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:28px;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:11px;white-space:nowrap;min-width:110px;max-width:180px;justify-content:space-between"><span id="lbl-pe-flt-empresa" style="overflow:hidden;text-overflow:ellipsis">Todas las empresas</span><i class="fa fa-chevron-down" style="font-size:9px;color:var(--text3);flex-shrink:0"></i></button></div>
-        <div id="wrap-pe-resp-flt-proceso" style="flex:none;display:none"><button id="btn-pe-resp-flt-proceso" onclick="_mfOpen('pe-resp-flt-proceso',event)" style="display:flex;align-items:center;gap:5px;padding:0 8px;height:28px;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:11px;white-space:nowrap;min-width:120px;max-width:200px;justify-content:space-between"><span id="lbl-pe-resp-flt-proceso" style="overflow:hidden;text-overflow:ellipsis">Todos los procesos</span><i class="fa fa-chevron-down" style="font-size:9px;color:var(--text3);flex-shrink:0"></i></button></div>
-        <input type="text" id="pe-resp-flt-persona" placeholder="Buscar persona evaluada..." oninput="renderPERespuestas()" style="display:none;height:28px;font-size:11px;padding:2px 8px;border:1px solid var(--border2);border-radius:6px;width:170px">
+        <div id="wrap-pe-flt-empresa" style="flex:none"><button id="btn-pe-flt-empresa" onclick="_mfOpen('pe-flt-empresa',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:110px;max-width:180px;justify-content:space-between"><span id="lbl-pe-flt-empresa" style="overflow:hidden;text-overflow:ellipsis">Todas las empresas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3);flex-shrink:0"></i></button></div>
+        <div id="wrap-pe-resp-flt-proceso" style="flex:none;display:none"><button id="btn-pe-resp-flt-proceso" onclick="_mfOpen('pe-resp-flt-proceso',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:120px;max-width:200px;justify-content:space-between"><span id="lbl-pe-resp-flt-proceso" style="overflow:hidden;text-overflow:ellipsis">Todos los procesos</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3);flex-shrink:0"></i></button></div>
+        <input type="text" id="pe-resp-flt-persona" placeholder="Buscar persona evaluada..." oninput="renderPERespuestas()" style="display:none;width:200px;height:36px;font-size:13px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
         <button class="btn btn-ghost btn-sm" id="btn-pe-refresh" onclick="peRecargarDatos()"><i class="fa fa-sync"></i> Actualizar</button>
         <button class="btn btn-primary btn-sm" onclick="openProcesoEvalModal()"><i class="fa fa-plus"></i> Nuevo proceso</button>
       </div>
@@ -12004,7 +12004,7 @@ function renderCandidatosDescartados(){
   if(!document.getElementById('desc-fbar')){
     pg.innerHTML=`
       <div class="fbar" id="desc-fbar" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:14px">
-        <input type="text" id="desc-q" placeholder="Buscar..." style="display:inline-block;width:auto;min-width:140px;height:36px;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" oninput="_filtrarDescartados()">
+        <input type="text" id="desc-q" placeholder="Buscar..." style="width:200px;flex-shrink:0;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" oninput="_filtrarDescartados()">
         <div style="flex:none"><button id="btn-desc-emp" onclick="_mfOpen('desc-emp',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:130px;justify-content:space-between"><span id="lbl-desc-emp">Empresa</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
         <div style="flex:none"><button id="btn-desc-rec" onclick="_mfOpen('desc-rec',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:120px;justify-content:space-between"><span id="lbl-desc-rec">Reclutador</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
         <div style="flex:none"><button id="btn-desc-proy" onclick="_mfOpen('desc-proy',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:110px;justify-content:space-between"><span id="lbl-desc-proy">Proyecto</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
@@ -12997,9 +12997,9 @@ function renderTiempos(){
     </div>
     <div id="tiempos-panel-vacantes" style="display:none">
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
-        <select id="tf-empresa" onchange="filterTiemposVacs()" style="width:auto;min-width:160px"><option value="">Todas las empresas</option>${empOptsF}</select>
-        <select id="tf-reclutador" onchange="filterTiemposVacs()" style="width:auto;min-width:160px"><option value="">Todos los reclutadores</option>${recOptsF}</select>
-        <input id="tf-posicion" placeholder="Buscar posición..." oninput="filterTiemposVacs()" style="width:auto;min-width:160px">
+        <select id="tf-empresa" onchange="filterTiemposVacs()" style="width:auto;min-width:160px;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)"><option value="">Todas las empresas</option>${empOptsF}</select>
+        <select id="tf-reclutador" onchange="filterTiemposVacs()" style="width:auto;min-width:160px;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)"><option value="">Todos los reclutadores</option>${recOptsF}</select>
+        <input id="tf-posicion" placeholder="Buscar posición..." oninput="filterTiemposVacs()" style="width:200px;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
       </div>
       <div class="table-wrap" id="tiempos-vacs-table"></div>
     </div>
@@ -13687,8 +13687,8 @@ function renderRanking(){
   document.getElementById('ranking-filters').innerHTML=`
     <div id="wrap-rk-empresa" style="flex:none"><button id="btn-rk-empresa" onclick="_mfOpen('rk-empresa',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between"><span id="lbl-rk-empresa">Todas las empresas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
     <div id="wrap-rk-reclutador" style="flex:none"><button id="btn-rk-reclutador" onclick="_mfOpen('rk-reclutador',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between"><span id="lbl-rk-reclutador">Todos los reclutadores</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
-    <input id="rk-posicion" placeholder="Buscar posición..." oninput="_rkVacPage=1;filterRankingVacs()" style="width:auto;min-width:160px">
-    <select id="rk-page-size" onchange="_rkVacPage=1;filterRankingVacs()" style="width:auto;min-width:130px">
+    <input id="rk-posicion" placeholder="Buscar posición..." oninput="_rkVacPage=1;filterRankingVacs()" style="width:200px;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
+    <select id="rk-page-size" onchange="_rkVacPage=1;filterRankingVacs()" style="width:auto;min-width:130px;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
       <option value="30">30 por página</option>
       <option value="100">100 por página</option>
       <option value="0">Todos</option>
@@ -16207,7 +16207,7 @@ function _persRenderDetalle(empId){
       <button class="btn btn-primary btn-sm" onclick="abrirColaboradorModal('${empId}')"><i class="fa fa-user-plus"></i> Agregar colaborador</button>
     </div>
     <div class="fbar" style="margin-bottom:20px;flex-wrap:wrap;gap:6px;row-gap:8px">
-      <input type="text" placeholder="Buscar..." value="${_esc(_persQ)}" oninput="_persQ=this.value;_persSearchDebounce('${empId}')" style="width:130px;flex-shrink:0;padding:0 8px;height:32px;font-size:12px">
+      <input type="text" placeholder="Buscar..." value="${_esc(_persQ)}" oninput="_persQ=this.value;_persSearchDebounce('${empId}')" style="width:200px;flex-shrink:0;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
       <div id="wrap-pers-flt-razon" style="flex-shrink:0"><button id="btn-pers-flt-razon" onclick="_mfOpen('pers-flt-razon',event)" style="display:flex;align-items:center;gap:4px;padding:0 8px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:120px;justify-content:space-between"><span id="lbl-pers-flt-razon">Razón social</span><i class="fa fa-chevron-down" style="font-size:9px;color:var(--text3)"></i></button></div>
       <div id="wrap-pers-flt-proyecto" style="flex-shrink:0"><button id="btn-pers-flt-proyecto" onclick="_mfOpen('pers-flt-proyecto',event)" style="display:flex;align-items:center;gap:4px;padding:0 8px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:100px;justify-content:space-between"><span id="lbl-pers-flt-proyecto">Proyecto</span><i class="fa fa-chevron-down" style="font-size:9px;color:var(--text3)"></i></button></div>
       <div id="wrap-pers-flt-depto" style="flex-shrink:0"><button id="btn-pers-flt-depto" onclick="_mfOpen('pers-flt-depto',event)" style="display:flex;align-items:center;gap:4px;padding:0 8px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;min-width:120px;justify-content:space-between"><span id="lbl-pers-flt-depto">Departamento</span><i class="fa fa-chevron-down" style="font-size:9px;color:var(--text3)"></i></button></div>
@@ -16551,7 +16551,7 @@ function _expRenderDetalle(empId){
       ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
       <span style="font-size:16px;font-weight:700">${_esc(emp.nombre||'')}</span>
       <span style="flex:1"></span>
-      <input type="text" placeholder="Buscar nombre, puesto o número..." value="${_esc(_expQ)}" oninput="_expQ=this.value;_expSearchDebounce('${empId}')" style="width:240px">
+      <input type="text" placeholder="Buscar nombre, puesto o número..." value="${_esc(_expQ)}" oninput="_expQ=this.value;_expSearchDebounce('${empId}')" style="width:260px;flex-shrink:0;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
       <button class="btn btn-ghost btn-sm" onclick="abrirPersonalizarCategoriasExpediente('${empId}')" title="Elegir qué documentos aplican para esta empresa"><i class="fa fa-list-check"></i> Personalizar categorías</button>
     </div>
     <div class="table-wrap"><table>
@@ -17671,7 +17671,7 @@ function _bdRenderDetail(empId){
         <div style="font-size:12px;color:var(--text3)">Base de datos de personal — ${lista.length} registros</div>
       </div>
       <span style="flex:1"></span>
-      <input type="text" placeholder="Buscar nombre, puesto, proyecto, ID nómina..." value="${_bdQ}" oninput="_bdQ=this.value;_bdSearchDebounce('${empId}')" style="width:300px;padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--text);font-size:13px">
+      <input type="text" placeholder="Buscar nombre, puesto, proyecto, ID nómina..." value="${_bdQ}" oninput="_bdQ=this.value;_bdSearchDebounce('${empId}')" style="width:300px;flex-shrink:0;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
       <button class="btn btn-green btn-sm" onclick="bdExportEmp('${empId}')"><i class="fa fa-file-csv"></i> Exportar</button>
       <button class="btn btn-primary btn-sm" onclick="bdAbrirAlta('${empId}')"><i class="fa fa-user-plus"></i> Alta trabajador</button>
     </div>
@@ -17866,7 +17866,7 @@ function renderDesercion(){
       <div id="des-graficas-inner"></div>
     </div>
     <div id="des-panel-historial" style="display:none">
-      <input type="text" id="des-historial-search" placeholder="Buscar por nombre..." oninput="_filtrarDesHistorial()" style="width:280px;margin-bottom:12px;padding:7px 10px;border-radius:6px;border:1px solid var(--border);font-size:13px">
+      <input type="text" id="des-historial-search" placeholder="Buscar por nombre..." oninput="_filtrarDesHistorial()" style="width:240px;margin-bottom:12px;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
       <div class="table-wrap"><table><thead><tr><th style="width:36px;text-align:center">#</th><th>Candidato</th><th>Vacante</th><th>Empresa</th><th>Reclutador</th><th>Tipo</th><th>Motivo</th><th>Días</th><th>Fecha</th></tr></thead><tbody id="des-historial-tbody">${rows||'<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Sin deserciones</td></tr>'}</tbody></table></div>
       <div style="padding:8px 0;">
         <span id="des-historial-count" style="font-size:12px;color:var(--text3)">Mostrando <strong>${des.length}</strong> registros</span>
@@ -18555,7 +18555,7 @@ async function _renderPermisosTab(){
       <div style="border-right:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;min-height:0">
         <div style="padding:12px 14px;border-bottom:1px solid var(--border);flex-shrink:0">
           <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Usuarios</div>
-          <input type="text" id="perm-usr-search" placeholder="Buscar por nombre o email..." oninput="_permisosFilterUsers(this.value)" style="font-size:13px">
+          <input type="text" id="perm-usr-search" placeholder="Buscar por nombre o email..." oninput="_permisosFilterUsers(this.value)" style="width:240px;flex-shrink:0;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
         </div>
         <div id="perm-usr-list" style="overflow-y:auto;flex:1;padding:6px">${userRows}</div>
       </div>
@@ -18943,7 +18943,7 @@ async function renderCoordinadoresConfig(){
     <div>
       <p style="font-size:13px;color:var(--text2);margin-bottom:16px;max-width:920px">Registra los coordinadores o jefes de departamento. Después asígnalos a los perfiles de puesto y procedimientos que deben visualizar. Usa <b>Invitar</b> para darles acceso al sistema.</p>
       <div class="fg" style="max-width:320px;margin-bottom:14px">
-        <input type="text" id="coord-search" placeholder="Buscar coordinador por nombre..." oninput="_filterTableRows(this.value,'coord-tbody')">
+        <input type="text" id="coord-search" placeholder="Buscar coordinador por nombre..." oninput="_filterTableRows(this.value,'coord-tbody')" style="width:260px;flex-shrink:0;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
       </div>
       ${coords.length===0
         ?`<div style="text-align:center;padding:40px 0;color:var(--text3)"><i class="fa fa-user-check" style="font-size:36px;display:block;margin-bottom:10px"></i>No hay coordinadores registrados</div>`
@@ -19098,7 +19098,7 @@ async function loadUsuarios() {
         </button>
       </div>
       <div class="fbar" style="margin-bottom:14px">
-        <input type="text" id="usr-search" placeholder="Buscar por nombre o email..." oninput="_usrRenderTabla()" style="width:220px">
+        <input type="text" id="usr-search" placeholder="Buscar por nombre o email..." oninput="_usrRenderTabla()" style="width:240px;flex-shrink:0;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
         <div id="wrap-usr-flt-rol" style="flex:none"><button id="btn-usr-flt-rol" onclick="_mfOpen('usr-flt-rol',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:130px;justify-content:space-between"><span id="lbl-usr-flt-rol">Todos los roles</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
         <div id="wrap-usr-flt-emp" style="flex:none"><button id="btn-usr-flt-emp" onclick="_mfOpen('usr-flt-emp',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between"><span id="lbl-usr-flt-emp">Todas las empresas</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
         <button class="btn btn-ghost btn-sm" onclick="_usrLimpiarFiltros()">× Limpiar</button>
@@ -23175,7 +23175,7 @@ function renderDocumentacion(){
             <i class="fa fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px"></i>
             <input type="text" id="doc-q" placeholder="Buscar candidato..."
               oninput="_docQ=this.value;_docRenderResultados()"
-              style="padding-left:32px;width:100%">
+              style="padding-left:32px;width:100%;height:36px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
           </div>
           <span class="sp"></span>
           <button class="btn btn-green btn-sm" onclick="exportarDocumentacionExcel()"><i class="fa fa-file-excel"></i> Exportar Excel</button>
@@ -26646,7 +26646,7 @@ function renderESE(){
       <div style="padding:20px">
         <div class="fbar">
           <input type="text" id="ese-q" placeholder="Buscar candidato..."
-            oninput="_eseQ=this.value;_eseRenderTable()" style="min-width:200px">
+            oninput="_eseQ=this.value;_eseRenderTable()" style="min-width:200px;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
           <div id="wrap-ese-estado" style="flex:none"><button id="btn-ese-estado" onclick="_mfOpen('ese-estado',event)" style="display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;white-space:nowrap;min-width:150px;justify-content:space-between"><span id="lbl-ese-estado">Todos los estados</span><i class="fa fa-chevron-down" style="font-size:10px;color:var(--text3)"></i></button></div>
           <input type="date" id="ese-fecha-desde" title="Fecha desde" onchange="_eseRenderTable()" style="width:140px;font-size:13px">
           <input type="date" id="ese-fecha-hasta" title="Fecha hasta" onchange="_eseRenderTable()" style="width:140px;font-size:13px">

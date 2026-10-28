@@ -26647,10 +26647,6 @@ function renderESE(){
   if(!document.getElementById('ese-results')){
     _eseQ = '';
     page.innerHTML = `
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px">
-        <button class="btn btn-green" onclick="exportESEExcel()"><i class="fa fa-file-excel"></i> Exportar Excel</button>
-        <button class="btn btn-primary" onclick="openESEModal()"><i class="fa fa-plus"></i> Agregar ESE</button>
-      </div>
       <div style="padding:20px">
         <div class="fbar">
           <input type="text" id="ese-q" placeholder="Buscar candidato..."
@@ -26659,12 +26655,13 @@ function renderESE(){
           <input type="date" id="ese-fecha-desde" title="Fecha desde" onchange="_eseRenderTable()" style="width:140px;font-size:13px">
           <input type="date" id="ese-fecha-hasta" title="Fecha hasta" onchange="_eseRenderTable()" style="width:140px;font-size:13px">
           <button onclick="_eseLimpiarFechas()" style="display:flex;align-items:center;gap:4px;padding:0 10px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text2);cursor:pointer;font-size:13px;white-space:nowrap">× Limpiar</button>
-          <span class="sp"></span>
-          <span id="ese-count" style="font-size:13px;color:var(--text3)"></span>
         </div>
-        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
           <button id="ese-ord-reciente" class="btn btn-primary btn-sm" onclick="setEseOrden('reciente')"><i class="fa fa-arrow-down"></i> Más recientes</button>
           <button id="ese-ord-antiguo"  class="btn btn-ghost   btn-sm" onclick="setEseOrden('antiguo')"><i class="fa fa-arrow-up"></i> Más antiguo</button>
+          <span class="sp"></span>
+          <button class="btn btn-green btn-sm" onclick="exportESEExcel()"><i class="fa fa-file-excel"></i> Exportar Excel</button>
+          <button class="btn btn-primary btn-sm" onclick="openESEModal()"><i class="fa fa-plus"></i> Agregar ESE</button>
         </div>
         <div id="ese-results"></div>
       </div>
@@ -26682,10 +26679,8 @@ function renderESE(){
 
 function _eseRenderTable(){
   const res = document.getElementById('ese-results');
-  const cnt = document.getElementById('ese-count');
   if(!res) return;
   const lista = _eseFiltered();
-  if(cnt) cnt.textContent = `${lista.length} registro${lista.length!==1?'s':''}`;
   res.innerHTML = lista.length === 0
     ? `<div style="text-align:center;padding:60px 0;color:var(--text3)"><i class="fa fa-file-alt" style="font-size:40px;margin-bottom:12px;display:block"></i>No hay registros ESE</div>`
     : `<div class="table-wrap"><table id="ese-table">
@@ -26700,7 +26695,8 @@ function _eseRenderTable(){
           <th>Fecha realizado</th><th>Estado</th><th style="text-align:center">Pago</th><th style="text-align:center">Cobro</th><th>Motivo no cobro</th><th></th>
         </tr></thead>
         <tbody>${lista.map((e,i)=>_eseRow(e,i+1)).join('')}</tbody>
-      </table></div>`;
+      </table></div>
+      <div style="font-size:12px;color:var(--text3);padding:8px 0">Mostrando <strong>${lista.length}</strong> registros</div>`;
 }
 
 function _eseModalHTML(){

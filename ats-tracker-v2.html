@@ -3551,7 +3551,8 @@ function filtrarLog(){
   tbody.innerHTML = pagina.map((d,i)=>{
     const fecha = new Date(d.created_at).toLocaleString('es-MX');
     const col = accionColor(d.accion);
-    return`<tr>
+    const clickable = !!d.entidad_id;
+    return`<tr ${clickable?`style="cursor:pointer" title="Clic para abrir el registro" onclick="logGoTo('${d.entidad||''}','${d.entidad_id}')" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''"`:''}>
       <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${inicio+i+1}</td>
       <td style="font-size:11px;color:var(--text3);white-space:nowrap">${fecha}</td>
       <td class="td-p">
@@ -3578,6 +3579,134 @@ function filtrarLog(){
 function logIrPagina(n){
   logPaginaActual = n;
   filtrarLog();
+}
+
+// Lleva al usuario a la pantalla donde vive el registro al que se refiere un log de actividad.
+async function logGoTo(entidad, entidadId){
+  if(!entidadId){ showToast('Este registro no tiene un elemento asociado para abrir','err'); return; }
+  try{
+    switch(entidad){
+      case 'vacantes':
+      case 'garantias': {
+        const v = DB.vacantes?.find(x=>x.id===entidadId) || (DB.vacantesEliminadas||[]).find(x=>x.id===entidadId);
+        if(!v){ showToast('Esta vacante ya no existe','err'); return; }
+        openVacanteDetailView(v.id, v.empresa_id);
+        return;
+      }
+      case 'candidatos': {
+        const c = DB.candidatos?.find(x=>x.id===entidadId);
+        if(!c){ showToast('Este candidato ya no existe','err'); return; }
+        const v = DB.vacantes?.find(x=>x.id===c.vacante_id) || (DB.vacantesEliminadas||[]).find(x=>x.id===c.vacante_id);
+        if(v) openVacanteDetailView(v.id, v.empresa_id);
+        else showPage('candidatos');
+        setTimeout(()=>editCandidato(c.id), 200);
+        return;
+      }
+      case 'empresas': {
+        if(!DB.empresas?.find(x=>x.id===entidadId)){ showToast('Esta empresa ya no existe','err'); return; }
+        openEmpresaDetail(entidadId);
+        return;
+      }
+      case 'documentacion': {
+        const c = DB.candidatos?.find(x=>x.id===entidadId);
+        if(c){
+          showPage('documentacion');
+          setTimeout(()=>abrirDocumentosCandidato(c.id), 200);
+          return;
+        }
+        if(DB.empresas?.find(x=>x.id===entidadId)){
+          showPage('config');
+          setTimeout(()=>switchConfigTab('documentacion'), 200);
+          return;
+        }
+        showToast('No se encontró el registro de documentación','err');
+        return;
+      }
+      case 'perfiles': {
+        const p = (DB.perfilesPuesto||[]).find(x=>x.id===entidadId);
+        if(!p){ showToast('Este perfil ya no existe','err'); return; }
+        showPage('perfiles');
+        setTimeout(()=>renderPerfilesEmpresa(p.empresa_id), 200);
+        return;
+      }
+      case 'usuarios': {
+        if(!DB.usuarios?.find(x=>x.id===entidadId)){ showToast('Este usuario ya no existe','err'); return; }
+        showPage('config');
+        setTimeout(()=>{ switchConfigTab('usuarios'); setTimeout(()=>openUsuarioModal(entidadId), 150); }, 200);
+        return;
+      }
+      case 'colaboradores': {
+        const {data} = await sbClient.from('colaboradores').select('empresa_id').eq('id',entidadId).maybeSingle();
+        if(!data?.empresa_id){ showToast('Este colaborador ya no existe','err'); return; }
+        showPage('personal');
+        setTimeout(()=>personalOpenEmpresa(data.empresa_id), 200);
+        return;
+      }
+      case 'contratos': {
+        const {data} = await sbClient.from('contratos').select('data').eq('id',entidadId).maybeSingle();
+        const empId = data?.data?.empresa_id;
+        if(!empId){ showToast('Este contrato ya no existe','err'); return; }
+        showPage('contratos');
+        setTimeout(()=>contratosOpenEmpresa(empId), 200);
+        return;
+      }
+      case 'capacitacion_cursos': {
+        const {data} = await sbClient.from('capacitacion_cursos').select('data').eq('id',entidadId).maybeSingle();
+        const empId = data?.data?.empresa_id;
+        if(!empId){ showToast('Este curso ya no existe','err'); return; }
+        showPage('capacitacion');
+        setTimeout(()=>capacitacionOpenEmpresa(empId), 200);
+        return;
+      }
+      case 'capacitacion_asistencias': {
+        const {data} = await sbClient.from('colaboradores').select('empresa_id').eq('id',entidadId).maybeSingle();
+        if(!data?.empresa_id){ showToast('No se encontró la empresa de esta constancia','err'); return; }
+        showPage('capacitacion');
+        setTimeout(()=>capacitacionOpenEmpresa(data.empresa_id), 200);
+        return;
+      }
+      case 'headcount_autorizado': {
+        let empId = DB.empresas?.find(x=>x.id===entidadId)?.id;
+        if(!empId){
+          const {data} = await sbClient.from('headcount_autorizado').select('empresa_id').eq('id',entidadId).maybeSingle();
+          empId = data?.empresa_id;
+        }
+        if(!empId){ showToast('No se encontró la empresa de este registro','err'); return; }
+        showPage('headcount-autorizado');
+        setTimeout(()=>headcountAutorizadoOpenEmpresa(empId), 200);
+        return;
+      }
+      case 'nom035_evaluaciones': {
+        const {data} = await sbClient.from('nom035_evaluaciones').select('empresa_id').eq('id',entidadId).maybeSingle();
+        if(!data?.empresa_id){ showToast('Esta evaluación NOM-035 ya no existe','err'); return; }
+        showPage('nom035');
+        setTimeout(()=>n035SeleccionarEmpresaATS(data.empresa_id), 200);
+        return;
+      }
+      case 'ese': {
+        const {data} = await sbClient.from('ese').select('candidato_id').eq('id',entidadId).maybeSingle();
+        const cand = data?.candidato_id ? DB.candidatos?.find(x=>x.id===data.candidato_id) : null;
+        showPage('ese');
+        if(cand){
+          setTimeout(()=>{
+            const q=document.getElementById('ese-q');
+            if(q){ q.value=cand.nombre; _eseQ=cand.nombre; _eseRenderTable(); }
+          }, 200);
+        }
+        return;
+      }
+      case 'evaluaciones':
+      case 'evaluaciones_enviadas': {
+        showPage('evaluaciones');
+        return;
+      }
+      default:
+        showToast('No se puede abrir este tipo de registro todavía','err');
+    }
+  }catch(e){
+    console.warn('[logGoTo] error:', e?.message||e);
+    showToast('No se pudo abrir el registro','err');
+  }
 }
 
 async function logActivity(accion, entidad, entidadId, detalle, anterior, nuevo){

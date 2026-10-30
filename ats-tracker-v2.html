@@ -15520,16 +15520,24 @@ function exportHCPlantHistoricoExcel(){
   const empId  = window._hcPlantHistEmpId || window.hcCurrentEmpId;
   const emp    = DB.empresas.find(x=>x.id===empId)||{};
   const rows   = [['Semana','Planta Auth.','Activos','Mín 7.5%','Máx 3.5%','Cumpl. %']];
+  const cumNums = [];
   for(let s=desde; s<=hasta; s++){
     const plant = document.getElementById(`hphi-plant-${s}`)?.value ?? '';
     const act   = document.getElementById(`hphi-act-${s}`)?.value ?? '';
     const min   = document.getElementById(`hphi-min-${s}`)?.textContent ?? '';
     const max   = document.getElementById(`hphi-max-${s}`)?.textContent ?? '';
-    const cum   = document.getElementById(`hphi-cum-${s}`)?.textContent ?? '';
-    rows.push([`Sem. ${s}`, plant, act, min, max, cum]);
+    const cumTxt= document.getElementById(`hphi-cum-${s}`)?.textContent ?? '';
+    const cumNum= parseFloat(cumTxt.replace(',','.').replace('%',''));
+    rows.push([`Sem. ${s}`, plant, act, min, max, cumTxt]);
+    cumNums.push(isNaN(cumNum)?null:cumNum);
   }
   const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Úistórico');
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  cumNums.forEach((val,i)=>{
+    if(val===null) return;
+    ws[XLSX.utils.encode_cell({r:i+1,c:5})]={v:val,t:'n',numFmt:'0.00"%"'};
+  });
+  XLSX.utils.book_append_sheet(wb,ws,'Úistórico');
   XLSX.writeFile(wb,`historico-plantilla-${emp.nombre||empId}-${gAnio}.xlsx`);
 }
 

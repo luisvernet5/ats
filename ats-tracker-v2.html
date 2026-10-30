@@ -3597,9 +3597,14 @@ async function logGoTo(entidad, entidadId){
         const c = DB.candidatos?.find(x=>x.id===entidadId);
         if(!c){ showToast('Este candidato ya no existe','err'); return; }
         const v = DB.vacantes?.find(x=>x.id===c.vacante_id) || (DB.vacantesEliminadas||[]).find(x=>x.id===c.vacante_id);
-        if(v) openVacanteDetailView(v.id, v.empresa_id);
-        else showPage('candidatos');
-        setTimeout(()=>editCandidato(c.id), 200);
+        if(v){
+          openVacanteDetailView(v.id, v.empresa_id, 'vacantes');
+          setTimeout(()=>vdResaltarCandidato(c.id), 200);
+        } else {
+          // Candidato sin vacante asociada: no hay tabla donde filtrarlo, se abre su ficha directamente
+          showPage('candidatos');
+          setTimeout(()=>editCandidato(c.id), 200);
+        }
         return;
       }
       case 'empresas': {
@@ -11843,6 +11848,109 @@ function _vdToggleSort(){
   openVacanteDetailView(p.vacId, p.empId, p.origen, p.origenId);
 }
 
+function _vdCandRowHtml(c,i,etapas,v,empId){
+  const r2 = DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
+  const d = processTotal(c);
+  const cd = clienteDays(c);
+  const fechasHtml = etapas.map((e,i)=>{
+    const f = c['f_'+i];
+    return f?`<div style="font-size:10px;color:var(--text3)">${e.label}: <b style="color:var(--text2)">${fmt(f)}</b></div>`:'';
+  }).filter(Boolean).join('');
+  const isSalida=ETAPAS_SALIDA.includes(c.etapa);
+  const _allEtapaLabels=[...etapas.map(e=>e.label),...ETAPAS_SALIDA];
+  const _etapaDisplay=_allEtapaLabels.includes(c.etapa)?c.etapa:(etapas.find(e=>e.tipo==='cierre')?.label||'Validado');
+  const _dropdownOpts=isSalida?[...etapas.map(e=>e.label),c.etapa]:etapas.map(e=>e.label);
+  const etapaOpts=_dropdownOpts.map(lbl=>`<option value="${lbl}" ${_etapaDisplay===lbl?'selected':''}>${lbl}</option>`).join('');
+  const motivoOpts=MOTIVOS.map(m=>`<option value="${m}" ${c.motivo_desercion===m?'selected':''}>${m}</option>`).join('');
+  const timelineRows=etapas.map((et,ti)=>{
+    const dateVal=c['f_'+ti]||'';
+    const prevDate=ti===0?v.fecha_apertura:(c['f_'+(ti-1)]||'');
+    const dDiff=(dateVal&&prevDate)?daysBetween(prevDate,dateVal):null;
+    return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <div style="width:8px;height:8px;border-radius:50%;background:${et.color};flex-shrink:0"></div>
+      <div style="font-size:12px;color:var(--text2);min-width:120px;flex-shrink:0">${et.label}</div>
+      <input type="date" id="vdci-f-${c.id}-${ti}" value="${dateVal}" style="font-size:12px;padding:4px 8px;width:130px;background:var(--surface);border:1px solid var(--border2);border-radius:6px;color:var(--text)">
+      ${dDiff!==null?`<span style="font-size:11px;color:var(--text3)">+${dDiff}d</span>`:''}
+    </div>`;
+  }).join('');
+  return `<tr>
+    <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
+    <td class="td-p">${c.nombre}<div style="font-size:10px;color:var(--text3)">${c.contacto||''}</div></td>
+    <td>${r2.nombre||'—'}</td>
+    <td style="cursor:pointer;white-space:nowrap" onclick="vdToggleCandRow('${c.id}')"><div style="display:inline-flex;align-items:center;gap:5px">${badgeEtapa(c.etapa, empId)}<i class="fa fa-pencil-alt" style="font-size:10px;color:var(--text3);flex-shrink:0"></i></div></td>
+    <td style="font-size:11px">${fechasHtml||'—'}</td>
+    <td>${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:'—'}</td>
+    <td>${cd!==null?`<span class="dpill dwarn">${cd}d</span>`:'—'}</td>
+    <td style="color:var(--red);font-size:12px">${c.motivo_desercion||'—'}</td>
+    <td>${fmt(c.fecha_salida)}</td>
+    <td>
+      <button class="btn btn-ghost btn-sm" onclick="openPanel('${c.id}')"><i class="fa fa-eye"></i></button>
+      <button class="btn btn-ghost btn-sm" onclick="editCandidato('${c.id}')"><i class="fa fa-edit"></i></button>
+    </td>
+  </tr>
+  <tr class="vac-expand-row" id="vdcx-${c.id}">
+    <td colspan="10" class="cand-expand-td" style="padding:0">
+      <div style="padding:14px 16px">
+        <div class="sep" style="margin-top:0">Edición del proceso</div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:start">
+          <div>
+            <div class="fg" style="margin-bottom:10px">
+              <label>Etapa actual</label>
+              <select id="vdci-etapa-${c.id}" onchange="vdCandInlineEtapaChange('${c.id}')">${etapaOpts}</select>
+            </div>
+            <div id="vdci-motivo-div-${c.id}" style="display:${isSalida?'block':'none'};margin-bottom:10px">
+              <div class="fg">
+                <label>Motivo deserción</label>
+                <select id="vdci-motivo-${c.id}"><option value="">Sin especificar</option>${motivoOpts}</select>
+              </div>
+              <div class="fg" style="margin-top:8px">
+                <label>Fecha salida</label>
+                <input type="date" id="vdci-fsalida-${c.id}" value="${c.fecha_salida||''}">
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="vdSaveCandEtapa('${c.id}')"><i class="fa fa-save"></i> Guardar</button>
+          </div>
+          <div>
+            ${timelineRows||'<div style="font-size:12px;color:var(--text3)">Sin etapas configuradas</div>'}
+          </div>
+        </div>
+      </div>
+    </td>
+  </tr>`;
+}
+
+// Filtra/resalta la tabla de candidatos de la vacante (usado por la búsqueda manual y por el log de actividad)
+function vdFiltrarCandidatos(){
+  const p = window._vdParams; if(!p) return;
+  const v = DB.vacantes.find(x=>x.id===p.vacId)||(DB.vacantesEliminadas||[]).find(x=>x.id===p.vacId)||{};
+  const etapas = getEmpresaEtapas(p.empId);
+  const q = _searchNorm(document.getElementById('vd-cand-q')?.value||'');
+  let cands = DB.candidatos.filter(c=>c.vacante_id===p.vacId);
+  cands.sort((a,b)=>{
+    const da=a.f_0||''; const db2=b.f_0||'';
+    if(!da&&!db2) return 0; if(!da) return 1; if(!db2) return -1;
+    return window._vdSortDir==='desc' ? db2.localeCompare(da) : da.localeCompare(db2);
+  });
+  if(q) cands = cands.filter(c=>_searchNorm(c.nombre).includes(q)||_searchNorm(c.contacto||'').includes(q));
+  const tbody = document.getElementById('vd-cands-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = cands.length ? cands.map((c,i)=>_vdCandRowHtml(c,i,etapas,v,p.empId)).join('')
+    : `<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:32px">Sin candidatos que coincidan con la búsqueda.</td></tr>`;
+}
+
+// Deja la tabla de candidatos de la vacante como si se hubiera buscado un candidato puntual (usado desde el log de actividad)
+function vdResaltarCandidato(candId){
+  const p = window._vdParams; if(!p) return;
+  const c = DB.candidatos.find(x=>x.id===candId);
+  if(!c) return;
+  const v = DB.vacantes.find(x=>x.id===p.vacId)||(DB.vacantesEliminadas||[]).find(x=>x.id===p.vacId)||{};
+  const etapas = getEmpresaEtapas(p.empId);
+  const q = document.getElementById('vd-cand-q');
+  if(q) q.value = c.nombre||'';
+  const tbody = document.getElementById('vd-cands-tbody');
+  if(tbody) tbody.innerHTML = _vdCandRowHtml(c,0,etapas,v,p.empId);
+}
+
 function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {
   window._vdParams = {vacId, empId, origen, origenId};
   if(window._vdSortDir===undefined) window._vdSortDir='asc';
@@ -11916,81 +12024,14 @@ function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {
     return window._vdSortDir==='desc' ? db2.localeCompare(da) : da.localeCompare(db2);
   });
 
-  const rows = sortedCands.length ? sortedCands.map((c,i)=>{
-    const r2 = DB.reclutadores.find(x=>x.id===c.reclutador_id)||{};
-    const d = processTotal(c);
-    const cd = clienteDays(c);
-    const fechasHtml = etapas.map((e,i)=>{
-      const f = c['f_'+i];
-      return f?`<div style="font-size:10px;color:var(--text3)">${e.label}: <b style="color:var(--text2)">${fmt(f)}</b></div>`:'';
-    }).filter(Boolean).join('');
-    const isSalida=ETAPAS_SALIDA.includes(c.etapa);
-    const _allEtapaLabels=[...etapas.map(e=>e.label),...ETAPAS_SALIDA];
-    const _etapaDisplay=_allEtapaLabels.includes(c.etapa)?c.etapa:(etapas.find(e=>e.tipo==='cierre')?.label||'Validado');
-    const _dropdownOpts=isSalida?[...etapas.map(e=>e.label),c.etapa]:etapas.map(e=>e.label);
-    const etapaOpts=_dropdownOpts.map(lbl=>`<option value="${lbl}" ${_etapaDisplay===lbl?'selected':''}>${lbl}</option>`).join('');
-    const motivoOpts=MOTIVOS.map(m=>`<option value="${m}" ${c.motivo_desercion===m?'selected':''}>${m}</option>`).join('');
-    const timelineRows=etapas.map((et,ti)=>{
-      const dateVal=c['f_'+ti]||'';
-      const prevDate=ti===0?v.fecha_apertura:(c['f_'+(ti-1)]||'');
-      const dDiff=(dateVal&&prevDate)?daysBetween(prevDate,dateVal):null;
-      return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <div style="width:8px;height:8px;border-radius:50%;background:${et.color};flex-shrink:0"></div>
-        <div style="font-size:12px;color:var(--text2);min-width:120px;flex-shrink:0">${et.label}</div>
-        <input type="date" id="vdci-f-${c.id}-${ti}" value="${dateVal}" style="font-size:12px;padding:4px 8px;width:130px;background:var(--surface);border:1px solid var(--border2);border-radius:6px;color:var(--text)">
-        ${dDiff!==null?`<span style="font-size:11px;color:var(--text3)">+${dDiff}d</span>`:''}
-      </div>`;
-    }).join('');
-    return `<tr>
-      <td style="text-align:center;font-size:12px;color:var(--text3);font-family:var(--mono);width:36px">${i+1}</td>
-      <td class="td-p">${c.nombre}<div style="font-size:10px;color:var(--text3)">${c.contacto||''}</div></td>
-      <td>${r2.nombre||'—'}</td>
-      <td style="cursor:pointer;white-space:nowrap" onclick="vdToggleCandRow('${c.id}')"><div style="display:inline-flex;align-items:center;gap:5px">${badgeEtapa(c.etapa, empId)}<i class="fa fa-pencil-alt" style="font-size:10px;color:var(--text3);flex-shrink:0"></i></div></td>
-      <td style="font-size:11px">${fechasHtml||'—'}</td>
-      <td>${d!==null?`<span class="dpill ${dClass(d)}">${d}d</span>`:'—'}</td>
-      <td>${cd!==null?`<span class="dpill dwarn">${cd}d</span>`:'—'}</td>
-      <td style="color:var(--red);font-size:12px">${c.motivo_desercion||'—'}</td>
-      <td>${fmt(c.fecha_salida)}</td>
-      <td>
-        <button class="btn btn-ghost btn-sm" onclick="openPanel('${c.id}')"><i class="fa fa-eye"></i></button>
-        <button class="btn btn-ghost btn-sm" onclick="editCandidato('${c.id}')"><i class="fa fa-edit"></i></button>
-      </td>
-    </tr>
-    <tr class="vac-expand-row" id="vdcx-${c.id}">
-      <td colspan="10" class="cand-expand-td" style="padding:0">
-        <div style="padding:14px 16px">
-          <div class="sep" style="margin-top:0">Edición del proceso</div>
-          <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:start">
-            <div>
-              <div class="fg" style="margin-bottom:10px">
-                <label>Etapa actual</label>
-                <select id="vdci-etapa-${c.id}" onchange="vdCandInlineEtapaChange('${c.id}')">${etapaOpts}</select>
-              </div>
-              <div id="vdci-motivo-div-${c.id}" style="display:${isSalida?'block':'none'};margin-bottom:10px">
-                <div class="fg">
-                  <label>Motivo deserción</label>
-                  <select id="vdci-motivo-${c.id}"><option value="">Sin especificar</option>${motivoOpts}</select>
-                </div>
-                <div class="fg" style="margin-top:8px">
-                  <label>Fecha salida</label>
-                  <input type="date" id="vdci-fsalida-${c.id}" value="${c.fecha_salida||''}">
-                </div>
-              </div>
-              <button class="btn btn-primary btn-sm" onclick="vdSaveCandEtapa('${c.id}')"><i class="fa fa-save"></i> Guardar</button>
-            </div>
-            <div>
-              ${timelineRows||'<div style="font-size:12px;color:var(--text3)">Sin etapas configuradas</div>'}
-            </div>
-          </div>
-        </div>
-      </td>
-    </tr>`;
-  }).join('') : `<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:32px">Sin candidatos registrados para esta vacante. <button class="btn btn-primary btn-sm" onclick="openCandModal('${vacId}')">+ Agregar candidato</button></td></tr>`;
+  const rows = sortedCands.length ? sortedCands.map((c,i)=>_vdCandRowHtml(c,i,etapas,v,empId)).join('')
+    : `<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:32px">Sin candidatos registrados para esta vacante. <button class="btn btn-primary btn-sm" onclick="openCandModal('${vacId}')">+ Agregar candidato</button></td></tr>`;
 
   const tablaHtml = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <div class="sec-title" style="margin:0">Candidatos</div>
-      <div style="display:flex;gap:6px;align-items:center">
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <input type="text" id="vd-cand-q" placeholder="Buscar candidato..." oninput="vdFiltrarCandidatos()" style="height:32px;padding:0 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);width:180px">
         <button class="btn btn-sm ${window._vdSortDir==='asc'?'btn-primary':'btn-ghost'}" onclick="_vdToggleSort()" title="Más antiguo primero"><i class="fa fa-arrow-up"></i> Más antiguo</button>
         <button class="btn btn-sm ${window._vdSortDir==='desc'?'btn-primary':'btn-ghost'}" onclick="_vdToggleSort()" title="Más reciente primero"><i class="fa fa-arrow-down"></i> Más reciente</button>
         <button class="btn btn-primary btn-sm" onclick="openCandModal('${vacId}')"><i class="fa fa-user-plus"></i> Agregar candidato</button>
@@ -12001,7 +12042,7 @@ function openVacanteDetailView(vacId, empId, origen='empresa', origenId=null) {
         <th style="width:36px;text-align:center">#</th><th>Candidato</th><th>Reclutador</th><th>Etapa</th><th>Fechas del proceso</th>
         <th>Días proceso</th><th>Días cliente</th><th>Motivo salida</th><th>Fecha salida</th><th>Acción</th>
       </tr></thead>
-      <tbody>${rows}</tbody></table>
+      <tbody id="vd-cands-tbody">${rows}</tbody></table>
     </div>`;
 
   document.getElementById('vacante-detail-content').innerHTML = headerHtml + kpisHtml + tablaHtml;

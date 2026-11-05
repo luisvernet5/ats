@@ -1961,6 +1961,26 @@ input[type=checkbox],input[type=radio]{width:auto;min-width:auto;max-width:auto;
             <input type="text" id="ei-dependientes-info" placeholder="Ej. 2 hijos (5 y 8 años)">
           </div>
         </div>
+        <div id="ei-nuim-familiares-wrap" style="display:none">
+          <div class="fr">
+            <div class="fg">
+              <label>¿Tienes familiares laborando en planta Audi o VW?</label>
+              <div style="display:flex;gap:16px;margin-top:8px">
+                <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ei-fam-audi-vw" value="Sí" onchange="eiToggle('ei-fam-audi-vw-info-div',true)"> Sí</label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer"><input type="radio" name="ei-fam-audi-vw" value="No" onchange="eiToggle('ei-fam-audi-vw-info-div',false)"> No</label>
+              </div>
+            </div>
+            <div></div>
+          </div>
+          <div id="ei-fam-audi-vw-info-div" style="display:none" class="fr full">
+            <div class="fg"><label>Parentesco</label>
+              <input type="text" id="ei-fam-audi-vw-parentesco" placeholder="Ej. Hermano, primo, etc.">
+            </div>
+            <div class="fg"><label>Puesto que ocupa</label>
+              <input type="text" id="ei-fam-audi-vw-puesto" placeholder="Puesto del familiar">
+            </div>
+          </div>
+        </div>
         <!-- VII. Créditos -->
         <div class="sep">VII — Créditos</div>
         <div class="fr">
@@ -10753,6 +10773,7 @@ function _collectEntrevistaData(){
     area_interes:v('ei-area-interes'),puesto_aspirado:v('ei-puesto-aspirado'),expectativa_salarial:v('ei-expectativa-salarial'),metas:v('ei-metas'),
     disponibilidad_viajar:rad('ei-viajar'),disponibilidad_residencia:rad('ei-residencia'),
     nucleo_familiar:v('ei-nucleo-familiar'),dependientes_info:v('ei-dependientes-info'),
+    fam_audi_vw:rad('ei-fam-audi-vw'),fam_audi_vw_parentesco:v('ei-fam-audi-vw-parentesco'),fam_audi_vw_puesto:v('ei-fam-audi-vw-puesto'),
     infonavit:rad('ei-infonavit'),infonavit_retencion:v('ei-infonavit-retencion'),fonacot:rad('ei-fonacot'),fonacot_retencion:v('ei-fonacot-retencion'),
     impresion_general:v('ei-impresion-general'),areas_oportunidad:v('ei-areas-oportunidad'),recomendacion:v('ei-recomendacion'),firma_entrevistador:v('ei-firma-entrevistador'),fecha_entrevista:v('ei-fecha-entrevista'),
   };
@@ -10775,6 +10796,15 @@ function _loadEntrevistaData(c){
   if(c.disponibilidad_residencia)sr('ei-residencia',c.disponibilidad_residencia);
   s('ei-nucleo-familiar',c.nucleo_familiar);s('ei-dependientes-info',c.dependientes_info);
   s('ei-impresion-general',c.impresion_general);s('ei-areas-oportunidad',c.areas_oportunidad);s('ei-recomendacion',c.recomendacion);s('ei-firma-entrevistador',c.firma_entrevistador);s('ei-fecha-entrevista',c.fecha_entrevista);
+  // Sección exclusiva de Nuim Cam: familiares laborando en planta Audi o VW
+  const _vacEnt=DB.vacantes.find(x=>x.id===c.vacante_id)||(DB.vacantesEliminadas||[]).find(x=>x.id===c.vacante_id);
+  const _empEnt=_vacEnt?DB.empresas.find(x=>x.id===_vacEnt.empresa_id):null;
+  const _nuimWrap=document.getElementById('ei-nuim-familiares-wrap');
+  if(_nuimWrap) _nuimWrap.style.display = _empEnt?.nombre?.toLowerCase().includes('nuim') ? '' : 'none';
+  document.querySelectorAll('input[name="ei-fam-audi-vw"]').forEach(el=>el.checked=false);
+  if(c.fam_audi_vw) sr('ei-fam-audi-vw',c.fam_audi_vw);
+  s('ei-fam-audi-vw-parentesco',c.fam_audi_vw_parentesco);s('ei-fam-audi-vw-puesto',c.fam_audi_vw_puesto);
+  eiToggle('ei-fam-audi-vw-info-div',c.fam_audi_vw==='Sí');
   calcEdad();
 }
 async function saveCandidato(){
@@ -19855,6 +19885,10 @@ async function exportEntrevistaPDF() {
   sec('VI — Ámbito Familiar');
   r2('Dependientes económicos',radio('ei-dependientes'),'','');
   if(radio('ei-dependientes')==='Sí'){r2('Información dependientes',val('ei-dependientes-info'),'Núcleo familiar',val('ei-nucleo-familiar'));}
+  if(emp.nombre?.toLowerCase().includes('nuim')){
+    r2('Familiares en planta Audi o VW',radio('ei-fam-audi-vw'),'','');
+    if(radio('ei-fam-audi-vw')==='Sí'){r2('Parentesco',val('ei-fam-audi-vw-parentesco'),'Puesto que ocupa',val('ei-fam-audi-vw-puesto'));}
+  }
 
   sec('VII — Créditos');
   r2('Crédito INFONAVIT',radio('ei-infonavit'),'Retención mensual',radio('ei-infonavit')==='Sí'?val('ei-infonavit-retencion'):'N/A');

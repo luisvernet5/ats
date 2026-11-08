@@ -1,17 +1,31 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/ats-tracker-v2.html" }],
-  "headers": [
+  "rewrites": [
     {
       "source": "/(.*)",
+      "destination": "/ats-tracker-v2.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/((?!favicon.).*)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
-        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
       ]
     },
     {
-      "source": "/favicon.png",
+      "source": "/favicon.(png|ico)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=86400" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
       ]
     }
   ]

@@ -7300,52 +7300,74 @@ async function _indCargarAcciones(empId){
   }
 }
 
+function _indAccionItemHtml(a,i){
+  return`<div draggable="true"
+    ondragstart="_indAccDragStart(event,${i})"
+    ondragover="_indAccDragOver(event,this)"
+    ondragleave="this.style.outline=''"
+    ondrop="_indAccDrop(event,${i})"
+    ondragend="_indAccDragEnd()"
+    style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--border)">
+    <i class="fa fa-grip-lines" style="font-size:11px;color:var(--text3);opacity:.5;flex-shrink:0;cursor:grab"></i>
+    <i class="fa fa-list-check" style="font-size:14px;color:var(--accent);flex-shrink:0;width:18px;text-align:center"></i>
+    <div style="min-width:0;flex:1;display:flex;align-items:center;gap:6px">
+      <span id="ind-acc-nm-${a.id}" style="font-size:13px;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(a.nombre)}</span>
+      <button onclick="_indEditarNombreAccion('${a.id}')" title="Renombrar" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;flex-shrink:0"><i class="fa fa-pencil-alt" style="font-size:11px"></i></button>
+    </div>
+    <button class="btn btn-danger btn-sm" onclick="_indEliminarAccion('${a.id}')" title="Eliminar actividad"><i class="fa fa-trash"></i></button>
+  </div>`;
+}
+
 function _indRenderAccionesPanel(){
   const panel=document.getElementById('ind-panel-acciones'); if(!panel) return;
   const empId=_indOpenEmpId;
-  const colabs=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId&&c.estado!=='Baja').sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
-  const acciones=_indAccionesCache;
   const addBarHtml=`<div style="display:flex;gap:8px;margin-bottom:14px">
     <input type="text" id="ind-accion-nueva" placeholder="Ej. Recorrido por planta, Entrega de uniforme..." style="flex:1;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" onkeydown="if(event.key==='Enter'){_indAgregarAccion('${empId}')}">
     <button class="btn btn-primary btn-sm" onclick="_indAgregarAccion('${empId}')"><i class="fa fa-plus"></i> Agregar actividad</button>
   </div>`;
-  if(!acciones.length){
-    panel.innerHTML=addBarHtml+`<div style="text-align:center;padding:40px;color:var(--text3)"><i class="fa fa-list-check" style="font-size:32px;display:block;margin-bottom:10px;opacity:.4"></i>Agrega al menos una actividad de inducción para poder armar el checklist.</div>`;
-    return;
-  }
-  if(!colabs.length){
-    panel.innerHTML=addBarHtml+`<div style="text-align:center;padding:40px;color:var(--text3)"><i class="fa fa-users" style="font-size:32px;display:block;margin-bottom:10px;opacity:.4"></i>Esta empresa no tiene colaboradores activos en Administrador de Personal.</div>`;
-    return;
-  }
-  const estatusMap={};
-  _indEstatusCache.forEach(e=>{ estatusMap[e.colaborador_id+'|'+e.accion_id]=e; });
-  const headCols=acciones.map(a=>`<th style="min-width:150px;max-width:150px;white-space:normal">
-    <div style="display:flex;align-items:center;justify-content:center;gap:4px">
-      <span title="${_esc(a.nombre)}">${_esc(a.nombre)}</span>
-      <button onclick="_indEliminarAccion('${a.id}')" title="Eliminar actividad" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;flex-shrink:0"><i class="fa fa-trash" style="font-size:10px"></i></button>
-    </div>
-  </th>`).join('');
-  const rows=colabs.map(c=>{
-    const cells=acciones.map(a=>{
-      const est=estatusMap[c.id+'|'+a.id];
-      const done=!!est?.completado;
-      return `<td style="padding:4px 6px;text-align:center">
-        <button onclick="_indToggleAccion('${empId}','${c.id}','${a.id}')" class="btn btn-sm ${done?'btn-green':'btn-ghost'}" style="font-size:11px;padding:5px 10px;white-space:nowrap">
-          ${done?`<i class="fa fa-check"></i> ${est.fecha_completado?fmt(est.fecha_completado):'Completado'}`:'Pendiente'}
-        </button>
-      </td>`;
-    }).join('');
-    return `<tr><td class="td-p" style="white-space:nowrap;position:sticky;left:0;background:var(--surface)">
-        <div style="font-weight:600">${_esc(c.nombre||'')}</div>
-        <div style="font-size:11px;color:var(--text3)">${_esc(c.puesto||'Sin puesto')}</div>
-      </td>${cells}</tr>`;
-  }).join('');
-  panel.innerHTML=addBarHtml+`<div style="font-size:11px;color:var(--text3);margin-bottom:8px">Da clic en una celda para marcar la actividad como completada o pendiente.</div>
-    <div class="table-wrap" style="overflow-x:auto"><table>
-      <thead><tr><th style="position:sticky;left:0;background:var(--surface2);z-index:1;min-width:180px">Colaborador</th>${headCols}</tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>`;
+  const items=_indAccionesCache.map((a,i)=>_indAccionItemHtml(a,i)).join('')
+    || `<div style="padding:28px;text-align:center;color:var(--text3);font-size:13px">Sin actividades en el checklist. Agrega una abajo, por ejemplo "Recorrido por planta" o "Entrega de uniforme".</div>`;
+  panel.innerHTML=addBarHtml+`<div class="card" style="padding:4px 14px" id="ind-acc-list">${items}</div>`;
 }
+
+function _indEditarNombreAccion(accionId){
+  const nm=document.getElementById(`ind-acc-nm-${accionId}`);
+  if(!nm) return;
+  const cur=_indAccionesCache.find(a=>a.id===accionId)?.nombre||'';
+  nm.outerHTML=`<input type="text" id="ind-acc-nm-${accionId}" value="${_esc(cur)}" style="width:100%;font-size:13px;padding:2px 6px;border:1px solid var(--accent);border-radius:4px;background:var(--surface);color:var(--text)" onkeydown="if(event.key==='Enter'){this.blur()}else if(event.key==='Escape'){_indRenderAccionesPanel()}" onblur="_indGuardarNombreAccion('${accionId}',this.value)">`;
+  const inp=document.getElementById(`ind-acc-nm-${accionId}`);
+  inp.focus(); inp.select();
+}
+async function _indGuardarNombreAccion(accionId,val){
+  const v=(val||'').trim();
+  const a=_indAccionesCache.find(x=>x.id===accionId);
+  if(!a) return;
+  if(!v||v===a.nombre){ _indRenderAccionesPanel(); return; }
+  try{
+    const {error}=await sbClient.from('induccion_acciones').update({nombre:v}).eq('id',accionId);
+    if(error) throw error;
+    a.nombre=v;
+    showToast('Actividad renombrada ✓');
+  }catch(e){ showToast('Error: '+e.message,'err'); }
+  _indRenderAccionesPanel();
+}
+
+let _indAccDragIdx=null;
+function _indAccDragStart(e,idx){ _indAccDragIdx=idx; e.dataTransfer.effectAllowed='move'; setTimeout(()=>e.target.style.opacity='0.4',0); }
+function _indAccDragOver(e,el){ e.preventDefault(); e.dataTransfer.dropEffect='move'; el.style.outline='2px solid var(--accent)'; }
+async function _indAccDrop(e,targetIdx){
+  e.preventDefault();
+  if(_indAccDragIdx===null||_indAccDragIdx===targetIdx)return;
+  const [moved]=_indAccionesCache.splice(_indAccDragIdx,1);
+  _indAccionesCache.splice(targetIdx,0,moved);
+  _indAccDragIdx=null;
+  _indRenderAccionesPanel();
+  try{
+    await Promise.all(_indAccionesCache.map((a,i)=>sbClient.from('induccion_acciones').update({orden:i}).eq('id',a.id)));
+    _indAccionesCache.forEach((a,i)=>a.orden=i);
+  }catch(e){ showToast('Error al guardar el orden: '+e.message,'err'); }
+}
+function _indAccDragEnd(){ _indAccDragIdx=null; _indRenderAccionesPanel(); }
 
 async function _indAgregarAccion(empId){
   const input=document.getElementById('ind-accion-nueva');

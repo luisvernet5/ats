@@ -4339,7 +4339,7 @@ function _setupRealtime(){
   };
   const TABLAS=['candidatos','vacantes','empresas','reclutadores','ese',
     'hc_resumen','hc_plantilla','garantias','referencias','activity_log',
-    'perfiles_puesto','evaluaciones','kpis','procedimientos','usuarios','induccion_documentos'];
+    'perfiles_puesto','evaluaciones','kpis','procedimientos','usuarios','induccion_documentos','induccion_acciones','induccion_acciones_estatus'];
   const ch=sbClient.channel('ats-realtime-v1');
   TABLAS.forEach(t=>ch.on('postgres_changes',{event:'*',schema:'public',table:t},_scheduleReload));
   ch.subscribe(st=>{
@@ -7113,6 +7113,10 @@ function _dc2Overlay(page,font,d){
 let _indOpenEmpId=null;
 let _indDocsCache=[];
 let _indDragIdx=null;
+let _indTab='documentacion';
+let _indAccionesCache=[];
+let _indEstatusCache=[];
+let _indAccionesLoaded=false;
 const ICONOS_INDUCCION=[
   {icon:'fa-file-lines',label:'Documento general'},
   {icon:'fa-file-powerpoint',label:'Presentación'},
@@ -7141,12 +7145,31 @@ function renderInduccion(){
 
 async function induccionOpenEmpresa(empId){
   _indOpenEmpId=empId;
+  _indTab='documentacion';
+  _indAccionesLoaded=false;
   const page=document.getElementById('page-induccion');
   if(page) page.innerHTML='<div style="padding:60px;text-align:center;color:var(--text3)"><i class="fa fa-spinner fa-spin" style="font-size:22px;margin-bottom:12px;display:block"></i>Cargando...</div>';
   await _indCargarDocumentos(empId);
   renderInduccion();
 }
 function induccionBack(){_indOpenEmpId=null;renderInduccion();}
+
+async function indSetTab(tab){
+  _indTab=tab;
+  ['documentacion','acciones'].forEach(t=>{
+    const panel=document.getElementById('ind-panel-'+t);
+    if(panel) panel.style.display=t===tab?'':'none';
+    const btn=document.getElementById('indtab-'+t);
+    if(btn) btn.className=`btn btn-sm ${t===tab?'btn-primary':'btn-ghost'}`;
+  });
+  if(tab==='acciones'){
+    if(!_indAccionesLoaded){
+      await _indCargarAcciones(_indOpenEmpId);
+      _indAccionesLoaded=true;
+    }
+    _indRenderAccionesPanel();
+  }
+}
 
 async function _indCargarDocumentos(empId){
   if(SANDBOX_MODE){ _indDocsCache=[]; return; }
@@ -7231,13 +7254,149 @@ function _indRenderEmpresa(empId){
       ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
       <span style="font-size:16px;font-weight:700">${_esc(emp.nombre||'')}</span>
     </div>
-    <div class="sec-title">Documentación de inducción</div>
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      <input type="text" id="ind-nuevo-nombre" placeholder="Ej. Presentación de inducción, Reglamento interno de trabajo..." style="flex:1;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" onkeydown="if(event.key==='Enter'){_indAgregarDocumento('${empId}')}">
-      <button class="btn btn-primary btn-sm" onclick="_indAgregarDocumento('${empId}')"><i class="fa fa-plus"></i> Agregar documento</button>
+    <div style="display:flex;gap:6px;margin-bottom:16px">
+      <button id="indtab-documentacion" class="btn btn-sm ${_indTab==='documentacion'?'btn-primary':'btn-ghost'}" onclick="indSetTab('documentacion')"><i class="fa fa-folder-open"></i> Documentación</button>
+      <button id="indtab-acciones" class="btn btn-sm ${_indTab==='acciones'?'btn-primary':'btn-ghost'}" onclick="indSetTab('acciones')"><i class="fa fa-list-check"></i> Acciones</button>
     </div>
-    <div class="card" style="padding:4px 14px" id="ind-list">${items}</div>
+    <div id="ind-panel-documentacion" style="display:${_indTab==='documentacion'?'':'none'}">
+      <div class="sec-title">Documentación de inducción</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <input type="text" id="ind-nuevo-nombre" placeholder="Ej. Presentación de inducción, Reglamento interno de trabajo..." style="flex:1;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" onkeydown="if(event.key==='Enter'){_indAgregarDocumento('${empId}')}">
+        <button class="btn btn-primary btn-sm" onclick="_indAgregarDocumento('${empId}')"><i class="fa fa-plus"></i> Agregar documento</button>
+      </div>
+      <div class="card" style="padding:4px 14px" id="ind-list">${items}</div>
+    </div>
+    <div id="ind-panel-acciones" style="display:${_indTab==='acciones'?'':'none'}"></div>
   </div>`;
+  if(_indTab==='acciones') indSetTab('acciones');
+}
+
+async function _indCargarAcciones(empId){
+  if(SANDBOX_MODE){ _indAccionesCache=[]; _indEstatusCache=[]; return; }
+  try{
+    if(!_persLoaded){
+      const {data,error}=await sbClient.from('colaboradores').select('*');
+      if(error) throw error;
+      DB.colaboradores=data||[];
+      _persLoaded=true;
+    }
+  }catch(e){ console.warn('[Inducción] Error al cargar colaboradores:',e.message); }
+  try{
+    const [{data:acc,error:e1},{data:est,error:e2}]=await Promise.all([
+      sbClient.from('induccion_acciones').select('*').eq('empresa_id',empId).order('orden',{ascending:true}),
+      sbClient.from('induccion_acciones_estatus').select('*').eq('empresa_id',empId),
+    ]);
+    if(e1) throw e1; if(e2) throw e2;
+    _indAccionesCache=acc||[];
+    _indEstatusCache=est||[];
+  }catch(e){
+    console.warn('[Inducción] Error al cargar acciones:',e.message);
+    _indAccionesCache=[]; _indEstatusCache=[];
+  }
+}
+
+function _indRenderAccionesPanel(){
+  const panel=document.getElementById('ind-panel-acciones'); if(!panel) return;
+  const empId=_indOpenEmpId;
+  const colabs=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId&&c.estado!=='Baja').sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
+  const acciones=_indAccionesCache;
+  const addBarHtml=`<div style="display:flex;gap:8px;margin-bottom:14px">
+    <input type="text" id="ind-accion-nueva" placeholder="Ej. Recorrido por planta, Entrega de uniforme..." style="flex:1;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" onkeydown="if(event.key==='Enter'){_indAgregarAccion('${empId}')}">
+    <button class="btn btn-primary btn-sm" onclick="_indAgregarAccion('${empId}')"><i class="fa fa-plus"></i> Agregar actividad</button>
+  </div>`;
+  if(!acciones.length){
+    panel.innerHTML=addBarHtml+`<div style="text-align:center;padding:40px;color:var(--text3)"><i class="fa fa-list-check" style="font-size:32px;display:block;margin-bottom:10px;opacity:.4"></i>Agrega al menos una actividad de inducción para poder armar el checklist.</div>`;
+    return;
+  }
+  if(!colabs.length){
+    panel.innerHTML=addBarHtml+`<div style="text-align:center;padding:40px;color:var(--text3)"><i class="fa fa-users" style="font-size:32px;display:block;margin-bottom:10px;opacity:.4"></i>Esta empresa no tiene colaboradores activos en Administrador de Personal.</div>`;
+    return;
+  }
+  const estatusMap={};
+  _indEstatusCache.forEach(e=>{ estatusMap[e.colaborador_id+'|'+e.accion_id]=e; });
+  const headCols=acciones.map(a=>`<th style="min-width:150px;max-width:150px;white-space:normal">
+    <div style="display:flex;align-items:center;justify-content:center;gap:4px">
+      <span title="${_esc(a.nombre)}">${_esc(a.nombre)}</span>
+      <button onclick="_indEliminarAccion('${a.id}')" title="Eliminar actividad" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;flex-shrink:0"><i class="fa fa-trash" style="font-size:10px"></i></button>
+    </div>
+  </th>`).join('');
+  const rows=colabs.map(c=>{
+    const cells=acciones.map(a=>{
+      const est=estatusMap[c.id+'|'+a.id];
+      const done=!!est?.completado;
+      return `<td style="padding:4px 6px;text-align:center">
+        <button onclick="_indToggleAccion('${empId}','${c.id}','${a.id}')" class="btn btn-sm ${done?'btn-green':'btn-ghost'}" style="font-size:11px;padding:5px 10px;white-space:nowrap">
+          ${done?`<i class="fa fa-check"></i> ${est.fecha_completado?fmt(est.fecha_completado):'Completado'}`:'Pendiente'}
+        </button>
+      </td>`;
+    }).join('');
+    return `<tr><td class="td-p" style="white-space:nowrap;position:sticky;left:0;background:var(--surface)">
+        <div style="font-weight:600">${_esc(c.nombre||'')}</div>
+        <div style="font-size:11px;color:var(--text3)">${_esc(c.puesto||'Sin puesto')}</div>
+      </td>${cells}</tr>`;
+  }).join('');
+  panel.innerHTML=addBarHtml+`<div style="font-size:11px;color:var(--text3);margin-bottom:8px">Da clic en una celda para marcar la actividad como completada o pendiente.</div>
+    <div class="table-wrap" style="overflow-x:auto"><table>
+      <thead><tr><th style="position:sticky;left:0;background:var(--surface2);z-index:1;min-width:180px">Colaborador</th>${headCols}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+async function _indAgregarAccion(empId){
+  const input=document.getElementById('ind-accion-nueva');
+  const val=(input?.value||'').trim();
+  if(!val){ showToast('Escribe el nombre de la actividad','err'); return; }
+  const id='indacc-'+Date.now()+'-'+Math.random().toString(36).substr(2,6);
+  const registro={id,empresa_id:empId,nombre:val,orden:_indAccionesCache.length,created_at:new Date().toISOString()};
+  try{
+    const {error}=await sbClient.from('induccion_acciones').insert(registro);
+    if(error) throw error;
+    _indAccionesCache.push(registro);
+    await logActivity('Agregar actividad de inducción','induccion_acciones',id,`${val} — ${(DB.empresas.find(e=>e.id===empId)||{}).nombre||empId}`);
+    if(input) input.value='';
+    showToast('Actividad agregada ✓');
+    _indRenderAccionesPanel();
+  }catch(e){ showToast('Error: '+e.message,'err'); }
+}
+
+async function _indEliminarAccion(accionId){
+  if(!confirm('¿Eliminar esta actividad del checklist? También se borrará el estatus de todos los colaboradores para esta actividad.')) return;
+  const a=_indAccionesCache.find(x=>x.id===accionId);
+  try{
+    await sbClient.from('induccion_acciones_estatus').delete().eq('accion_id',accionId);
+    const {error}=await sbClient.from('induccion_acciones').delete().eq('id',accionId);
+    if(error) throw error;
+    _indAccionesCache=_indAccionesCache.filter(x=>x.id!==accionId);
+    _indEstatusCache=_indEstatusCache.filter(e=>e.accion_id!==accionId);
+    const emp=DB.empresas.find(e=>e.id===_indOpenEmpId)||{};
+    await logActivity('Eliminar actividad de inducción','induccion_acciones',accionId,`${a?.nombre||accionId} — ${emp.nombre||_indOpenEmpId}`);
+    showToast('Actividad eliminada ✓');
+    _indRenderAccionesPanel();
+  }catch(e){ showToast('Error: '+e.message,'err'); }
+}
+
+async function _indToggleAccion(empId,colabId,accionId){
+  const existing=_indEstatusCache.find(e=>e.colaborador_id===colabId&&e.accion_id===accionId);
+  const nuevoCompletado=!(existing?.completado);
+  const cambios={
+    completado:nuevoCompletado,
+    fecha_completado:nuevoCompletado?today():null,
+    completado_por:nuevoCompletado?(currentUserData?.nombre||currentUser?.email||null):null,
+  };
+  try{
+    if(existing){
+      const {error}=await sbClient.from('induccion_acciones_estatus').update(cambios).eq('id',existing.id);
+      if(error) throw error;
+      Object.assign(existing,cambios);
+    } else {
+      const id='indest-'+Date.now()+'-'+Math.random().toString(36).substr(2,6);
+      const registro={id,empresa_id:empId,colaborador_id:colabId,accion_id:accionId,...cambios};
+      const {error}=await sbClient.from('induccion_acciones_estatus').insert(registro);
+      if(error) throw error;
+      _indEstatusCache.push(registro);
+    }
+    _indRenderAccionesPanel();
+  }catch(e){ showToast('Error: '+e.message,'err'); }
 }
 
 function _indDragStart(e,idx){ _indDragIdx=idx; e.dataTransfer.effectAllowed='move'; setTimeout(()=>e.target.style.opacity='0.4',0); }
@@ -18893,6 +19052,7 @@ const RESPALDO_TABLAS = [
   'expediente_documentos','candidato_documentos','solicitudes_empleo',
   'capacitacion_cursos','capacitacion_asistencias','capacitacion_matriz','contratos',
   'nom035_evaluaciones','nom035_resultados','headcount_autorizado','induccion_documentos',
+  'induccion_acciones','induccion_acciones_estatus',
 ];
 
 async function exportarRespaldo(){

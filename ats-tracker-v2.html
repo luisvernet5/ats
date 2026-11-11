@@ -7117,6 +7117,8 @@ let _indTab='documentacion';
 let _indAccionesCache=[];
 let _indEstatusCache=[];
 let _indAccionesLoaded=false;
+let _indControlColabId=null;
+let _indControlQ='';
 const ICONOS_INDUCCION=[
   {icon:'fa-file-lines',label:'Documento general'},
   {icon:'fa-file-powerpoint',label:'Presentación'},
@@ -7156,18 +7158,19 @@ function induccionBack(){_indOpenEmpId=null;renderInduccion();}
 
 async function indSetTab(tab){
   _indTab=tab;
-  ['documentacion','acciones'].forEach(t=>{
+  ['documentacion','acciones','control'].forEach(t=>{
     const panel=document.getElementById('ind-panel-'+t);
     if(panel) panel.style.display=t===tab?'':'none';
     const btn=document.getElementById('indtab-'+t);
     if(btn) btn.className=`btn btn-sm ${t===tab?'btn-primary':'btn-ghost'}`;
   });
-  if(tab==='acciones'){
+  if(tab==='acciones'||tab==='control'){
     if(!_indAccionesLoaded){
       await _indCargarAcciones(_indOpenEmpId);
       _indAccionesLoaded=true;
     }
-    _indRenderAccionesPanel();
+    if(tab==='acciones') _indRenderAccionesPanel();
+    else { _indControlColabId=null; _indControlQ=''; _indRenderControlPanel(); }
   }
 }
 
@@ -7257,6 +7260,7 @@ function _indRenderEmpresa(empId){
     <div style="display:flex;gap:6px;margin-bottom:16px">
       <button id="indtab-documentacion" class="btn btn-sm ${_indTab==='documentacion'?'btn-primary':'btn-ghost'}" onclick="indSetTab('documentacion')"><i class="fa fa-folder-open"></i> Documentación</button>
       <button id="indtab-acciones" class="btn btn-sm ${_indTab==='acciones'?'btn-primary':'btn-ghost'}" onclick="indSetTab('acciones')"><i class="fa fa-list-check"></i> Acciones</button>
+      <button id="indtab-control" class="btn btn-sm ${_indTab==='control'?'btn-primary':'btn-ghost'}" onclick="indSetTab('control')"><i class="fa fa-id-card-clip"></i> Control de inducción</button>
     </div>
     <div id="ind-panel-documentacion" style="display:${_indTab==='documentacion'?'':'none'}">
       <div class="sec-title">Documentación de inducción</div>
@@ -7267,8 +7271,9 @@ function _indRenderEmpresa(empId){
       <div class="card" style="padding:4px 14px" id="ind-list">${items}</div>
     </div>
     <div id="ind-panel-acciones" style="display:${_indTab==='acciones'?'':'none'}"></div>
+    <div id="ind-panel-control" style="display:${_indTab==='control'?'':'none'}"></div>
   </div>`;
-  if(_indTab==='acciones') indSetTab('acciones');
+  if(_indTab==='acciones'||_indTab==='control') indSetTab(_indTab);
 }
 
 async function _indCargarAcciones(empId){
@@ -7396,7 +7401,174 @@ async function _indToggleAccion(empId,colabId,accionId){
       _indEstatusCache.push(registro);
     }
     _indRenderAccionesPanel();
+    _indRenderControlPanel();
   }catch(e){ showToast('Error: '+e.message,'err'); }
+}
+
+function _indControlFiltrar(q){
+  _indControlQ=q;
+  _indRenderControlPanel();
+}
+
+function _indControlSeleccionar(colabId){
+  _indControlColabId=colabId;
+  _indRenderControlPanel();
+}
+
+function _indControlVolver(){
+  _indControlColabId=null;
+  _indRenderControlPanel();
+}
+
+function _indRenderControlPanel(){
+  const panel=document.getElementById('ind-panel-control'); if(!panel) return;
+  const empId=_indOpenEmpId;
+  if(_indControlColabId){
+    _indRenderControlDetalle(panel,empId,_indControlColabId);
+    return;
+  }
+  const colabs=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId&&c.estado!=='Baja').sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
+  const q=_searchNorm(_indControlQ);
+  const filtrados=q?colabs.filter(c=>_searchNorm(c.nombre).includes(q)||_searchNorm(c.puesto||'').includes(q)):colabs;
+  const estatusMap={};
+  _indEstatusCache.forEach(e=>{ if(e.completado) estatusMap[e.colaborador_id]=(estatusMap[e.colaborador_id]||0)+1; });
+  const totalAcciones=_indAccionesCache.length;
+  const rows=filtrados.map(c=>{
+    const hechas=estatusMap[c.id]||0;
+    const completo=totalAcciones>0&&hechas===totalAcciones;
+    return`<div onclick="_indControlSeleccionar('${c.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;cursor:pointer;margin-bottom:8px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div style="width:36px;height:36px;border-radius:50%;background:var(--accent)22;display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:600;flex-shrink:0">${(c.nombre||'?')[0].toUpperCase()}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px">${_esc(c.nombre||'')}</div>
+        <div style="font-size:11px;color:var(--text3)">${_esc(c.puesto||'Sin puesto')}</div>
+      </div>
+      ${totalAcciones>0?`<span style="font-size:11px;font-weight:600;color:${completo?'var(--green)':'var(--text3)'};background:${completo?'var(--green)18':'var(--surface2)'};padding:4px 10px;border-radius:20px;white-space:nowrap">${hechas}/${totalAcciones} completadas</span>`:''}
+      <i class="fa fa-chevron-right" style="color:var(--text3);font-size:12px"></i>
+    </div>`;
+  }).join('');
+  panel.innerHTML=`
+    <input type="text" placeholder="Buscar colaborador..." value="${_esc(_indControlQ)}" oninput="_indControlFiltrar(this.value)" style="width:260px;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);margin-bottom:14px">
+    <div>${rows||'<div style="text-align:center;padding:40px;color:var(--text3)">Sin colaboradores que coincidan.</div>'}</div>`;
+}
+
+function _indRenderControlDetalle(panel,empId,colabId){
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const c=(DB.colaboradores||[]).find(x=>x.id===colabId);
+  if(!c){ _indControlColabId=null; _indRenderControlPanel(); return; }
+  const estatusMap={};
+  _indEstatusCache.forEach(e=>{ estatusMap[e.colaborador_id+'|'+e.accion_id]=e; });
+  const acciones=_indAccionesCache;
+  const items=acciones.length?acciones.map(a=>{
+    const est=estatusMap[colabId+'|'+a.id];
+    const done=!!est?.completado;
+    return`<div onclick="_indToggleAccion('${empId}','${colabId}','${a.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer">
+      <div style="width:20px;height:20px;border-radius:5px;border:2px solid ${done?'var(--green)':'var(--border2)'};background:${done?'var(--green)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        ${done?'<i class="fa fa-check" style="color:#fff;font-size:11px"></i>':''}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:500">${_esc(a.nombre)}</div>
+        ${done&&est.fecha_completado?`<div style="font-size:11px;color:var(--text3)">Completado: ${fmt(est.fecha_completado)}</div>`:''}
+      </div>
+    </div>`;
+  }).join('') : `<div style="text-align:center;padding:28px;color:var(--text3);font-size:13px">Esta empresa aún no tiene actividades de inducción definidas (ve a la pestaña "Acciones").</div>`;
+  panel.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <button class="btn btn-ghost btn-sm" onclick="_indControlVolver()"><i class="fa fa-arrow-left"></i> Colaboradores</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-primary btn-sm" onclick="_indControlGenerarPDF('${colabId}')"><i class="fa fa-file-pdf"></i> Generar cédula PDF</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+      ${emp.logo?`<img src="${emp.logo}" style="height:40px;object-fit:contain;border-radius:4px">`:''}
+      <div>
+        <div style="font-size:15px;font-weight:700">${_esc(c.nombre||'')}</div>
+        <div style="font-size:12px;color:var(--text3)">${_esc(c.puesto||'Sin puesto')}${c.departamento?' · '+_esc(c.departamento):''}${c.fecha_ingreso?' · Ingreso: '+fmt(c.fecha_ingreso):''}</div>
+      </div>
+    </div>
+    <div class="card" style="padding:4px 14px">${items}</div>`;
+}
+
+async function _indControlGenerarPDF(colabId){
+  if(!window.jspdf){ showToast('jsPDF no disponible','err'); return; }
+  const { jsPDF } = window.jspdf;
+  const c=(DB.colaboradores||[]).find(x=>x.id===colabId);
+  if(!c){ showToast('Colaborador no encontrado','err'); return; }
+  const emp=DB.empresas.find(e=>e.id===_indOpenEmpId)||{};
+  const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
+  const W=216, M=20, CW=176;
+  const extra=`Fecha: ${today()}`;
+  let y=await _pdfHeader(doc,'CÉDULA DE CONTROL DE INDUCCIÓN', c.nombre+(emp.nombre?'\n'+emp.nombre:''), emp, extra);
+
+  const metaCols=[
+    ['Puesto', c.puesto||'—'],
+    ['Departamento', c.departamento||'—'],
+    ['Fecha de ingreso', c.fecha_ingreso?fmt(c.fecha_ingreso):'—'],
+    ['Número de colaborador', c.numero_colaborador||'—'],
+  ];
+  const cw4=CW/4;
+  let metaMaxLines=1;
+  metaCols.forEach(([l,v],i)=>{
+    const x=M+i*cw4;
+    doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(120);
+    doc.text(l+':',x,y);
+    doc.setFont('helvetica','normal'); doc.setTextColor(30); doc.setFontSize(8.5);
+    const wrapped=doc.splitTextToSize(v,cw4-4);
+    doc.text(wrapped,x,y+5);
+    if(wrapped.length>metaMaxLines) metaMaxLines=wrapped.length;
+  });
+  y+=7+metaMaxLines*4.5+8;
+  doc.setDrawColor(200); doc.setLineWidth(0.3); doc.line(M,y,W-M,y);
+  y+=10;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(42,170,222);
+  doc.text('Actividades de inducción',M,y); y+=9; doc.setTextColor(0);
+
+  const acciones=_indAccionesCache;
+  const estatusMap={};
+  _indEstatusCache.forEach(e=>{ estatusMap[e.colaborador_id+'|'+e.accion_id]=e; });
+  if(!acciones.length){
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(120);
+    doc.text('Sin actividades registradas para esta empresa.',M,y);
+    y+=8;
+  } else {
+    acciones.forEach(a=>{
+      if(y>252){ doc.addPage(); y=M; }
+      const est=estatusMap[colabId+'|'+a.id];
+      const done=!!est?.completado;
+      doc.setDrawColor(100); doc.setLineWidth(0.4);
+      doc.rect(M,y-3.6,4.2,4.2);
+      if(done){
+        doc.setLineWidth(0.6); doc.setDrawColor(42,170,222);
+        doc.line(M+0.6,y-1.6,M+1.8,y+0.3);
+        doc.line(M+1.8,y+0.3,M+3.8,y-3.2);
+      }
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30);
+      doc.text(a.nombre,M+7.5,y);
+      doc.setFontSize(7.5);
+      if(done){
+        doc.setTextColor(120);
+        doc.text(est.fecha_completado?`Completado: ${fmt(est.fecha_completado)}`:'Completado',W-M,y,{align:'right'});
+      } else {
+        doc.setTextColor(190);
+        doc.text('Pendiente',W-M,y,{align:'right'});
+      }
+      y+=9;
+    });
+  }
+
+  y+=16;
+  if(y>230){ doc.addPage(); y=M+16; }
+  doc.setDrawColor(150); doc.setLineWidth(0.3);
+  doc.line(M,y,M+70,y);
+  doc.line(W-M-70,y,W-M,y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(90);
+  doc.text('Firma del trabajador',M+35,y+5,{align:'center'});
+  doc.text('Firma de Recursos Humanos',W-M-35,y+5,{align:'center'});
+
+  _stampPdfFooter(doc);
+  const nombreArchivo=(c.nombre||'trabajador').replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_áéíóúÁÉÍÓÚñÑ]/g,'');
+  doc.save(`CedulaInduccion_${nombreArchivo}_${today()}.pdf`);
+  await logActivity('Generar cédula de control de inducción','induccion_acciones_estatus',colabId,`${c.nombre||colabId} — ${emp.nombre||_indOpenEmpId}`);
+  showToast('PDF generado ✓');
 }
 
 function _indDragStart(e,idx){ _indDragIdx=idx; e.dataTransfer.effectAllowed='move'; setTimeout(()=>e.target.style.opacity='0.4',0); }

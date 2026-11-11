@@ -7113,6 +7113,26 @@ function _dc2Overlay(page,font,d){
 let _indOpenEmpId=null;
 let _indDocsCache=[];
 let _indDragIdx=null;
+const ICONOS_INDUCCION=[
+  {icon:'fa-file-lines',label:'Documento general'},
+  {icon:'fa-file-powerpoint',label:'Presentación'},
+  {icon:'fa-file-pdf',label:'PDF'},
+  {icon:'fa-book',label:'Reglamento / Manual'},
+  {icon:'fa-gavel',label:'Políticas internas'},
+  {icon:'fa-hard-hat',label:'Seguridad e higiene'},
+  {icon:'fa-shield-halved',label:'Seguridad'},
+  {icon:'fa-building',label:'Empresa / Instalaciones'},
+  {icon:'fa-sitemap',label:'Organigrama'},
+  {icon:'fa-handshake',label:'Bienvenida'},
+  {icon:'fa-video',label:'Video'},
+  {icon:'fa-clipboard-check',label:'Checklist'},
+  {icon:'fa-file-signature',label:'Carta de aceptación'},
+  {icon:'fa-chalkboard-user',label:'Capacitación'},
+  {icon:'fa-graduation-cap',label:'Curso'},
+  {icon:'fa-notes-medical',label:'Salud / IMSS'},
+  {icon:'fa-user-group',label:'Equipo / RH'},
+  {icon:'fa-map',label:'Mapa / Recorrido'},
+];
 
 function renderInduccion(){
   if(_indOpenEmpId){_indRenderEmpresa(_indOpenEmpId);return;}
@@ -7147,7 +7167,9 @@ function _indItemHtml(d,i){
     ondragend="_indDragEnd()"
     style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--border)">
     <i class="fa fa-grip-lines" style="font-size:11px;color:var(--text3);opacity:.5;flex-shrink:0;cursor:grab"></i>
-    <i class="fa ${hasFile?_expIconoArchivo(d.archivo_nombre||''):'fa-circle-question'}" style="font-size:16px;color:${hasFile?'var(--green)':'var(--text3)'};flex-shrink:0;width:18px;text-align:center"></i>
+    <button onclick="event.stopPropagation();_indAbrirIconos('${d.id}',event)" title="Elegir ícono" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;width:30px;height:30px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center">
+      <i class="fa ${d.icono||'fa-file-lines'}" style="color:var(--accent);font-size:14px"></i>
+    </button>
     <div style="min-width:0;flex:1">
       <div style="display:flex;align-items:center;gap:6px">
         <span id="ind-nm-${d.id}" style="font-size:13px;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(d.nombre)}</span>
@@ -7176,11 +7198,11 @@ function _indRenderEmpresa(empId){
       <span style="font-size:16px;font-weight:700">${_esc(emp.nombre||'')}</span>
     </div>
     <div class="sec-title">Documentación de inducción</div>
-    <div class="card" style="padding:4px 14px" id="ind-list">${items}</div>
-    <div style="display:flex;gap:8px;margin-top:14px">
+    <div style="display:flex;gap:8px;margin-bottom:14px">
       <input type="text" id="ind-nuevo-nombre" placeholder="Ej. Presentación de inducción, Reglamento interno de trabajo..." style="flex:1;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" onkeydown="if(event.key==='Enter'){_indAgregarDocumento('${empId}')}">
       <button class="btn btn-primary btn-sm" onclick="_indAgregarDocumento('${empId}')"><i class="fa fa-plus"></i> Agregar documento</button>
     </div>
+    <div class="card" style="padding:4px 14px" id="ind-list">${items}</div>
   </div>`;
 }
 
@@ -7230,7 +7252,7 @@ async function _indAgregarDocumento(empId){
   const val=(input?.value||'').trim();
   if(!val){ showToast('Escribe el nombre del documento','err'); return; }
   const id='ind-'+Date.now()+'-'+Math.random().toString(36).substr(2,6);
-  const registro={id,empresa_id:empId,nombre:val,orden:_indDocsCache.length,created_at:new Date().toISOString()};
+  const registro={id,empresa_id:empId,nombre:val,orden:_indDocsCache.length,icono:'fa-file-lines',created_at:new Date().toISOString()};
   try{
     const {error}=await sbClient.from('induccion_documentos').insert(registro);
     if(error) throw error;
@@ -7253,6 +7275,30 @@ async function _indEliminarDocumento(docId){
     const emp=DB.empresas.find(e=>e.id===_indOpenEmpId)||{};
     await logActivity('Eliminar documento de inducción','induccion_documentos',docId,`${d?.nombre||docId} — ${emp.nombre||_indOpenEmpId}`);
     showToast('Documento eliminado ✓');
+    _indRenderEmpresa(_indOpenEmpId);
+  }catch(e){ showToast('Error: '+e.message,'err'); }
+}
+
+function _indAbrirIconos(docId,e){
+  e.stopPropagation();
+  document.getElementById('ind-icon-panel')?.remove();
+  const rect=e.currentTarget.getBoundingClientRect();
+  const panel=document.createElement('div');
+  panel.id='ind-icon-panel';
+  panel.style.cssText=`position:fixed;top:${rect.bottom+4}px;left:${Math.min(rect.left,window.innerWidth-260)}px;z-index:3400;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 8px 24px #0004;padding:10px;width:240px;max-height:280px;overflow-y:auto;display:grid;grid-template-columns:repeat(6,1fr);gap:6px`;
+  panel.innerHTML=ICONOS_INDUCCION.map(o=>`<button title="${_esc(o.label)}" onclick="event.stopPropagation();_indElegirIcono('${docId}','${o.icon}')" style="width:32px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="fa ${o.icon}" style="color:var(--text2);font-size:14px"></i></button>`).join('');
+  document.body.appendChild(panel);
+  setTimeout(()=>document.addEventListener('click',_indCerrarIconosOnce,{once:true}),0);
+}
+function _indCerrarIconosOnce(){ document.getElementById('ind-icon-panel')?.remove(); }
+async function _indElegirIcono(docId,icon){
+  document.getElementById('ind-icon-panel')?.remove();
+  const d=_indDocsCache.find(x=>x.id===docId);
+  if(!d) return;
+  try{
+    const {error}=await sbClient.from('induccion_documentos').update({icono:icon}).eq('id',docId);
+    if(error) throw error;
+    d.icono=icon;
     _indRenderEmpresa(_indOpenEmpId);
   }catch(e){ showToast('Error: '+e.message,'err'); }
 }

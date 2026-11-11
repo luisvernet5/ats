@@ -3029,6 +3029,28 @@ function adaptUIToRole() {
     }
   }
 
+  // INDUCCIÓN — justo debajo de Capacitación
+  if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-induccion')){
+    const navEl = document.querySelector('.sb-nav');
+    if(navEl){
+      const indItem = document.createElement('div');
+      indItem.className = 'nav-item';
+      indItem.id = 'nav-induccion';
+      indItem.dataset.tooltip = 'Inducción';
+      indItem.innerHTML = '<i class="fa fa-user-graduate"></i><span class="nav-item-text"> Inducción</span>';
+      indItem.setAttribute('onclick', "showPage('induccion')");
+      const anchor = document.getElementById('nav-capacitacion');
+      if(anchor) anchor.parentNode.insertBefore(indItem, anchor.nextSibling);
+      else navEl.appendChild(indItem);
+    }
+    if(!document.getElementById('page-induccion')){
+      const pg=document.createElement('div');
+      pg.className='page';
+      pg.id='page-induccion';
+      document.querySelector('.main-scroll').appendChild(pg);
+    }
+  }
+
   // HEADCOUNT AUTORIZADO — justo debajo de Capacitación
   if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-headcount-autorizado')){
     const navEl = document.querySelector('.sb-nav');
@@ -3194,7 +3216,7 @@ function adaptUIToRole() {
       {titulo:'Reclutamiento', ids:['nav-dashboard','nav-vacantes','nav-candidatos','nav-pipeline','nav-descartados','nav-perfiles']},
       {titulo:'Evaluación', ids:['nav-evaluaciones','nav-procesos-eval']},
       {titulo:'Empresas y Equipo', ids:['nav-empresas','nav-reclutadores']},
-      {titulo:'Gestión de Personal', ids:['nav-personal','nav-expedientes','nav-contratos','nav-capacitacion','nav-headcount-autorizado','nav-nom035','nav-procedimientos']},
+      {titulo:'Gestión de Personal', ids:['nav-personal','nav-expedientes','nav-contratos','nav-capacitacion','nav-induccion','nav-headcount-autorizado','nav-nom035','nav-procedimientos']},
       {titulo:'Estudios y Garantías', ids:['nav-ese','nav-garantias']},
       {titulo:'Análisis y Reportes', ids:['nav-kpis','nav-headcount','nav-contratados','nav-tiempos','nav-ranking','nav-desercion']},
       {titulo:'Papelera', ids:['nav-vacantes-eliminadas','nav-evaluaciones-eliminadas','nav-perfiles-eliminados']},
@@ -4152,6 +4174,7 @@ const PERMISOS_SECCIONES=[
   {key:'expedientes',            label:'Expedientes',             grupo:'Gestión',    icon:'fa-folder-open'},
   {key:'contratos',              label:'Contratos',               grupo:'Gestión',    icon:'fa-file-contract'},
   {key:'capacitacion',           label:'Capacitación',            grupo:'Gestión',    icon:'fa-chalkboard-user'},
+  {key:'induccion',              label:'Inducción',               grupo:'Gestión',    icon:'fa-user-graduate'},
   {key:'headcount-autorizado',   label:'Headcount Autorizado',    grupo:'Gestión',    icon:'fa-users-gear'},
   {key:'nom035',                 label:'NOM 035',                 grupo:'Gestión',    icon:'fa-heart-pulse'},
   {key:'ese',                    label:'ESE',                     grupo:'Gestión',    icon:'fa-file-alt'},
@@ -4313,7 +4336,7 @@ function _setupRealtime(){
   };
   const TABLAS=['candidatos','vacantes','empresas','reclutadores','ese',
     'hc_resumen','hc_plantilla','garantias','referencias','activity_log',
-    'perfiles_puesto','evaluaciones','kpis','procedimientos','usuarios'];
+    'perfiles_puesto','evaluaciones','kpis','procedimientos','usuarios','induccion_documentos'];
   const ch=sbClient.channel('ats-realtime-v1');
   TABLAS.forEach(t=>ch.on('postgres_changes',{event:'*',schema:'public',table:t},_scheduleReload));
   ch.subscribe(st=>{
@@ -4449,7 +4472,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',kpis:'KPIs',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'Headcount Semanal',perfiles:'Perfiles de Puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal',personal:'Administrador de Personal',expedientes:'Expedientes',contratos:'Contratos',capacitacion:'Capacitación','headcount-autorizado':'Headcount Autorizado',procedimientos:'Procedimientos',nom035:'NOM 035','evaluaciones-eliminadas':'Evaluaciones eliminadas','perfiles-eliminados':'Perfiles eliminados'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',kpis:'KPIs',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'Headcount Semanal',perfiles:'Perfiles de Puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal',personal:'Administrador de Personal',expedientes:'Expedientes',contratos:'Contratos',capacitacion:'Capacitación',induccion:'Inducción','headcount-autorizado':'Headcount Autorizado',procedimientos:'Procedimientos',nom035:'NOM 035','evaluaciones-eliminadas':'Evaluaciones eliminadas','perfiles-eliminados':'Perfiles eliminados'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);
@@ -4488,6 +4511,7 @@ async function renderPage(p){
   if(p==='expedientes'){renderExpedientes();return;}
   if(p==='contratos'){renderContratos();return;}
   if(p==='capacitacion'){renderCapacitacion();return;}
+  if(p==='induccion'){renderInduccion();return;}
   if(p==='headcount-autorizado'){renderHeadcountAutorizado();return;}
   if(p==='nom035'){renderNom035();return;}
 }
@@ -7082,6 +7106,203 @@ function _dc2Overlay(page,font,d){
   }
 }
 
+/* ══════════════ INDUCCIÓN ══════════════ */
+let _indOpenEmpId=null;
+let _indDocsCache=[];
+let _indDragIdx=null;
+
+function renderInduccion(){
+  if(_indOpenEmpId){_indRenderEmpresa(_indOpenEmpId);return;}
+  _renderModuloDashboard('page-induccion','induccionOpenEmpresa','induccion');
+}
+
+async function induccionOpenEmpresa(empId){
+  _indOpenEmpId=empId;
+  const page=document.getElementById('page-induccion');
+  if(page) page.innerHTML='<div style="padding:60px;text-align:center;color:var(--text3)"><i class="fa fa-spinner fa-spin" style="font-size:22px;margin-bottom:12px;display:block"></i>Cargando...</div>';
+  await _indCargarDocumentos(empId);
+  renderInduccion();
+}
+function induccionBack(){_indOpenEmpId=null;renderInduccion();}
+
+async function _indCargarDocumentos(empId){
+  if(SANDBOX_MODE){ _indDocsCache=[]; return; }
+  try{
+    const {data,error}=await sbClient.from('induccion_documentos').select('*').eq('empresa_id',empId).order('orden',{ascending:true});
+    if(error) throw error;
+    _indDocsCache=data||[];
+  }catch(e){ console.warn('[Inducción] Error al cargar:',e.message); _indDocsCache=[]; }
+}
+
+function _indItemHtml(d,i){
+  const hasFile=!!d.storage_path;
+  return`<div draggable="true"
+    ondragstart="_indDragStart(event,${i})"
+    ondragover="_indDragOver(event,this)"
+    ondragleave="this.style.outline=''"
+    ondrop="_indDrop(event,${i})"
+    ondragend="_indDragEnd()"
+    style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--border)">
+    <i class="fa fa-grip-lines" style="font-size:11px;color:var(--text3);opacity:.5;flex-shrink:0;cursor:grab"></i>
+    <i class="fa ${hasFile?_expIconoArchivo(d.archivo_nombre||''):'fa-circle-question'}" style="font-size:16px;color:${hasFile?'var(--green)':'var(--text3)'};flex-shrink:0;width:18px;text-align:center"></i>
+    <div style="min-width:0;flex:1">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span id="ind-nm-${d.id}" style="font-size:13px;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(d.nombre)}</span>
+        <button onclick="_indEditarNombre('${d.id}')" title="Renombrar" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;flex-shrink:0"><i class="fa fa-pencil-alt" style="font-size:11px"></i></button>
+      </div>
+      <div style="font-size:11px;color:var(--text3)">${hasFile?`${_esc(d.archivo_nombre||'')}${_expFmtSize(d.tamano_bytes)?' · '+_expFmtSize(d.tamano_bytes):''}${d.created_at?' · '+new Date(d.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}):''}`:'Sin archivo subido'}</div>
+    </div>
+    <input type="file" id="ind-file-${d.id}" style="display:none" onchange="_indSubirArchivo('${d.id}')">
+    ${hasFile?`<a class="btn btn-ghost btn-sm" href="${d.url}" target="_blank" rel="noopener" title="Ver / descargar"><i class="fa fa-eye"></i></a>`:''}
+    <button class="btn ${hasFile?'btn-ghost':'btn-primary'} btn-sm" onclick="document.getElementById('ind-file-${d.id}').click()" title="${hasFile?'Reemplazar archivo':'Subir archivo'}"><i class="fa fa-upload"></i></button>
+    ${hasFile?`<button class="btn btn-ghost btn-sm" onclick="_indEliminarArchivo('${d.id}')" title="Quitar archivo"><i class="fa fa-file-circle-xmark"></i></button>`:''}
+    <button class="btn btn-danger btn-sm" onclick="_indEliminarDocumento('${d.id}')" title="Eliminar de la lista"><i class="fa fa-trash"></i></button>
+  </div>`;
+}
+
+function _indRenderEmpresa(empId){
+  const page=document.getElementById('page-induccion'); if(!page) return;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const color=emp.color||'#2AAADE';
+  const items=_indDocsCache.map((d,i)=>_indItemHtml(d,i)).join('')
+    || `<div style="padding:28px;text-align:center;color:var(--text3);font-size:13px">Sin documentos en la lista. Agrega uno abajo, por ejemplo "Presentación de inducción" o "Reglamento interno de trabajo".</div>`;
+  page.innerHTML=`<div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <button class="btn btn-ghost btn-sm" onclick="induccionBack()"><i class="fa fa-arrow-left"></i> Empresas</button>
+      ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
+      <span style="font-size:16px;font-weight:700">${_esc(emp.nombre||'')}</span>
+    </div>
+    <div class="sec-title">Documentación de inducción</div>
+    <div class="card" style="padding:4px 14px" id="ind-list">${items}</div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <input type="text" id="ind-nuevo-nombre" placeholder="Ej. Presentación de inducción, Reglamento interno de trabajo..." style="flex:1;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)" onkeydown="if(event.key==='Enter'){_indAgregarDocumento('${empId}')}">
+      <button class="btn btn-primary btn-sm" onclick="_indAgregarDocumento('${empId}')"><i class="fa fa-plus"></i> Agregar documento</button>
+    </div>
+  </div>`;
+}
+
+function _indDragStart(e,idx){ _indDragIdx=idx; e.dataTransfer.effectAllowed='move'; setTimeout(()=>e.target.style.opacity='0.4',0); }
+function _indDragOver(e,el){ e.preventDefault(); e.dataTransfer.dropEffect='move'; el.style.outline='2px solid var(--accent)'; }
+async function _indDrop(e,targetIdx){
+  e.preventDefault();
+  if(_indDragIdx===null||_indDragIdx===targetIdx)return;
+  const [moved]=_indDocsCache.splice(_indDragIdx,1);
+  _indDocsCache.splice(targetIdx,0,moved);
+  _indDragIdx=null;
+  _indRenderEmpresa(_indOpenEmpId);
+  await _indGuardarOrden();
+}
+function _indDragEnd(){ _indDragIdx=null; _indRenderEmpresa(_indOpenEmpId); }
+async function _indGuardarOrden(){
+  try{
+    await Promise.all(_indDocsCache.map((d,i)=>sbClient.from('induccion_documentos').update({orden:i}).eq('id',d.id)));
+    _indDocsCache.forEach((d,i)=>d.orden=i);
+  }catch(e){ showToast('Error al guardar el orden: '+e.message,'err'); }
+}
+
+function _indEditarNombre(docId){
+  const nm=document.getElementById(`ind-nm-${docId}`);
+  if(!nm) return;
+  const cur=_indDocsCache.find(d=>d.id===docId)?.nombre||'';
+  nm.outerHTML=`<input type="text" id="ind-nm-${docId}" value="${_esc(cur)}" style="width:100%;font-size:13px;padding:2px 6px;border:1px solid var(--accent);border-radius:4px;background:var(--surface);color:var(--text)" onkeydown="if(event.key==='Enter'){this.blur()}else if(event.key==='Escape'){_indRenderEmpresa('${_indOpenEmpId}')}" onblur="_indGuardarNombre('${docId}',this.value)">`;
+  const inp=document.getElementById(`ind-nm-${docId}`);
+  inp.focus(); inp.select();
+}
+async function _indGuardarNombre(docId,val){
+  const v=(val||'').trim();
+  const d=_indDocsCache.find(x=>x.id===docId);
+  if(!d) return;
+  if(!v || v===d.nombre){ _indRenderEmpresa(_indOpenEmpId); return; }
+  try{
+    const {error}=await sbClient.from('induccion_documentos').update({nombre:v}).eq('id',docId);
+    if(error) throw error;
+    d.nombre=v;
+    showToast('Documento renombrado ✓');
+  }catch(e){ showToast('Error: '+e.message,'err'); }
+  _indRenderEmpresa(_indOpenEmpId);
+}
+
+async function _indAgregarDocumento(empId){
+  const input=document.getElementById('ind-nuevo-nombre');
+  const val=(input?.value||'').trim();
+  if(!val){ showToast('Escribe el nombre del documento','err'); return; }
+  const id='ind-'+Date.now()+'-'+Math.random().toString(36).substr(2,6);
+  const registro={id,empresa_id:empId,nombre:val,orden:_indDocsCache.length,created_at:new Date().toISOString()};
+  try{
+    const {error}=await sbClient.from('induccion_documentos').insert(registro);
+    if(error) throw error;
+    _indDocsCache.push(registro);
+    await logActivity('Agregar documento de inducción','induccion_documentos',id,`${val} — ${(DB.empresas.find(e=>e.id===empId)||{}).nombre||empId}`);
+    if(input) input.value='';
+    showToast('Documento agregado ✓');
+    _indRenderEmpresa(empId);
+  }catch(e){ showToast('Error: '+e.message,'err'); }
+}
+
+async function _indEliminarDocumento(docId){
+  if(!confirm('¿Eliminar este documento de la lista? Si tiene un archivo subido también se eliminará.')) return;
+  const d=_indDocsCache.find(x=>x.id===docId);
+  try{
+    if(d?.storage_path) await sbClient.storage.from('induccion').remove([d.storage_path]).catch(()=>{});
+    const {error}=await sbClient.from('induccion_documentos').delete().eq('id',docId);
+    if(error) throw error;
+    _indDocsCache=_indDocsCache.filter(x=>x.id!==docId);
+    const emp=DB.empresas.find(e=>e.id===_indOpenEmpId)||{};
+    await logActivity('Eliminar documento de inducción','induccion_documentos',docId,`${d?.nombre||docId} — ${emp.nombre||_indOpenEmpId}`);
+    showToast('Documento eliminado ✓');
+    _indRenderEmpresa(_indOpenEmpId);
+  }catch(e){ showToast('Error: '+e.message,'err'); }
+}
+
+async function _indEnsureBucket(){
+  await sbClient.storage.createBucket('induccion',{public:true,fileSizeLimit:20971520}).catch(()=>{});
+}
+
+async function _indSubirArchivo(docId){
+  if(SANDBOX_MODE){showToast('La carga de documentos no está disponible en modo de prueba','err');return;}
+  const fileInput=document.getElementById(`ind-file-${docId}`);
+  const file=fileInput?.files?.[0];
+  if(!file) return;
+  const d=_indDocsCache.find(x=>x.id===docId);
+  if(!d) return;
+  try{
+    await _indEnsureBucket();
+    if(d.storage_path) await sbClient.storage.from('induccion').remove([d.storage_path]).catch(()=>{});
+    const ext=(file.name.split('.').pop()||'bin');
+    const path=`${d.empresa_id}/${docId}.${ext}`;
+    const {error:upErr}=await sbClient.storage.from('induccion').upload(path,file,{upsert:true});
+    if(upErr) throw new Error(upErr.message);
+    const {data:urlData}=sbClient.storage.from('induccion').getPublicUrl(path);
+    const cambios={archivo_nombre:file.name,storage_path:path,url:urlData.publicUrl,tamano_bytes:file.size,subido_por:currentUserData?.nombre||currentUser?.email||null,created_at:new Date().toISOString()};
+    const {error:updErr}=await sbClient.from('induccion_documentos').update(cambios).eq('id',docId);
+    if(updErr) throw new Error(updErr.message);
+    Object.assign(d,cambios);
+    const emp=DB.empresas.find(e=>e.id===d.empresa_id)||{};
+    await logActivity('Subir documento de inducción','induccion_documentos',docId,`${file.name} (${d.nombre}) — ${emp.nombre||d.empresa_id}`);
+    showToast('Archivo subido ✓');
+    _indRenderEmpresa(_indOpenEmpId);
+  }catch(e){
+    showToast('Error al subir: '+e.message,'err');
+  }finally{
+    if(fileInput) fileInput.value='';
+  }
+}
+
+async function _indEliminarArchivo(docId){
+  if(!confirm('¿Quitar el archivo subido? El documento seguirá en la lista, solo sin archivo.')) return;
+  const d=_indDocsCache.find(x=>x.id===docId);
+  if(!d) return;
+  try{
+    if(d.storage_path) await sbClient.storage.from('induccion').remove([d.storage_path]).catch(()=>{});
+    const cambios={archivo_nombre:null,storage_path:null,url:null,tamano_bytes:null};
+    const {error}=await sbClient.from('induccion_documentos').update(cambios).eq('id',docId);
+    if(error) throw error;
+    Object.assign(d,cambios);
+    showToast('Archivo eliminado ✓');
+    _indRenderEmpresa(_indOpenEmpId);
+  }catch(e){ showToast('Error: '+e.message,'err'); }
+}
+
 let _hcaData=[];
 let _hcaProyectoActual=null; // null = viendo tarjetas de proyecto; string = viendo el listado de ese proyecto; '__sin_proyecto__' = resto
 function renderHeadcountAutorizado(){
@@ -7842,6 +8063,7 @@ const EMPRESA_MODULOS=[
   {key:'dashboard',label:'Dashboard'},
   {key:'personal',label:'Administrador de Personal'},
   {key:'capacitacion',label:'Capacitación'},
+  {key:'induccion',label:'Inducción'},
   {key:'contratos',label:'Contratos'},
   {key:'expedientes',label:'Expedientes'},
   {key:'headcount_autorizado',label:'Headcount Autorizado'},
@@ -18587,7 +18809,7 @@ const RESPALDO_TABLAS = [
   'kpis','procedimientos','coordinadores','colaboradores','permisos_usuarios','activity_log',
   'expediente_documentos','candidato_documentos','solicitudes_empleo',
   'capacitacion_cursos','capacitacion_asistencias','capacitacion_matriz','contratos',
-  'nom035_evaluaciones','nom035_resultados','headcount_autorizado',
+  'nom035_evaluaciones','nom035_resultados','headcount_autorizado','induccion_documentos',
 ];
 
 async function exportarRespaldo(){

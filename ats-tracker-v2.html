@@ -3212,19 +3212,9 @@ function adaptUIToRole() {
     if(rol==='facturacion') return; // ese rol oculta todas las secciones a propósito
     const nav=document.querySelector('.sb-nav');
     if(!nav) return;
-    const grupos=[
-      {titulo:'Reclutamiento', ids:['nav-dashboard','nav-vacantes','nav-candidatos','nav-pipeline','nav-descartados','nav-perfiles']},
-      {titulo:'Evaluación', ids:['nav-evaluaciones','nav-procesos-eval']},
-      {titulo:'Empresas y Equipo', ids:['nav-empresas','nav-reclutadores']},
-      {titulo:'Gestión de Personal', ids:['nav-personal','nav-expedientes','nav-contratos','nav-capacitacion','nav-induccion','nav-headcount-autorizado','nav-nom035','nav-procedimientos']},
-      {titulo:'Estudios y Garantías', ids:['nav-ese','nav-garantias']},
-      {titulo:'Análisis y Reportes', ids:['nav-kpis','nav-headcount','nav-contratados','nav-tiempos','nav-ranking','nav-desercion']},
-      {titulo:'Papelera', ids:['nav-vacantes-eliminadas','nav-evaluaciones-eliminadas','nav-perfiles-eliminados']},
-      {titulo:'Sistema', ids:['nav-activity-log','nav-config']},
-    ];
     const logoutWrap=[...nav.children].find(el=>el.querySelector&&el.querySelector('#logout-btn'));
     nav.querySelectorAll('.nav-section').forEach(el=>el.remove());
-    grupos.forEach(g=>{
+    SIDEBAR_NAV_GRUPOS.forEach(g=>{
       const items=g.ids.map(id=>document.getElementById(id)).filter(Boolean);
       if(!items.length) return;
       const header=document.createElement('div');
@@ -4183,6 +4173,19 @@ const PERMISOS_SECCIONES=[
   {key:'perfiles-eliminados',    label:'Perfiles eliminados',     grupo:'Gestión',    icon:'fa-id-card'},
   {key:'evaluaciones-eliminadas',label:'Evaluaciones eliminadas', grupo:'Gestión',    icon:'fa-clipboard-list'},
   {key:'config',                 label:'Configuración',           grupo:'Sistema',    icon:'fa-cog'},
+];
+// Agrupación y orden canónicos del menú lateral — usados tanto para reorganizar
+// la barra lateral como para que la pantalla de permisos (Config > Permisos)
+// muestre las secciones en el mismo orden y bajo los mismos submenús.
+const SIDEBAR_NAV_GRUPOS=[
+  {titulo:'Reclutamiento', ids:['nav-dashboard','nav-vacantes','nav-candidatos','nav-documentacion','nav-pipeline','nav-descartados','nav-perfiles']},
+  {titulo:'Evaluación', ids:['nav-evaluaciones','nav-procesos-eval']},
+  {titulo:'Empresas y Equipo', ids:['nav-empresas','nav-reclutadores']},
+  {titulo:'Gestión de Personal', ids:['nav-personal','nav-expedientes','nav-contratos','nav-capacitacion','nav-induccion','nav-headcount-autorizado','nav-nom035','nav-procedimientos']},
+  {titulo:'Estudios y Garantías', ids:['nav-ese','nav-garantias']},
+  {titulo:'Análisis y Reportes', ids:['nav-kpis','nav-headcount','nav-contratados','nav-tiempos','nav-ranking','nav-desercion']},
+  {titulo:'Papelera', ids:['nav-vacantes-eliminadas','nav-evaluaciones-eliminadas','nav-perfiles-eliminados']},
+  {titulo:'Sistema', ids:['nav-activity-log','nav-config']},
 ];
 let _permisosMap={}; // userId → Set<sectionKey>
 // Clasifica candidatos de datos históricos (antes del campo descartado)
@@ -19087,15 +19090,18 @@ async function _permisosSelectUser(userId){
   const {data:saved}=await sbClient.from('permisos_usuarios').select('*').eq('user_id',userId).single();
   const savedSecs=new Set(saved?.secciones||[]);
   const hasSaved=!!(saved?.secciones);
-  // agrupar secciones
-  const grupos=[...new Set(PERMISOS_SECCIONES.map(s=>s.grupo))];
-  const gruposHTML=grupos.map(g=>{
-    const secs=PERMISOS_SECCIONES.filter(s=>s.grupo===g);
-    return`<div style="margin-bottom:16px">
-      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">${g}</div>
+  // agrupar secciones en el mismo orden y submenús que el menú lateral
+  const gruposHTML=SIDEBAR_NAV_GRUPOS.map(g=>{
+    const secs=g.ids.map(navId=>{
+      const bare=navId.replace(/^nav-/,'');
+      return PERMISOS_SECCIONES.find(s=>(s.navId||s.key)===bare);
+    }).filter(Boolean);
+    if(!secs.length) return '';
+    return`<div data-grupo style="margin-bottom:16px">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">${g.titulo}</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px">
         ${secs.map(s=>`
-          <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:13px;transition:background .12s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'">
+          <label data-search="${_searchNorm(s.label)}" style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:13px;transition:background .12s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'">
             <input type="checkbox" id="perm-chk-${s.key}" data-key="${s.key}" ${!hasSaved||savedSecs.has(s.key)?'checked':''} style="width:auto;padding:0;flex-shrink:0">
             <i class="fa ${s.icon}" style="width:14px;text-align:center;color:var(--accent);font-size:12px"></i>
             <span>${s.label}</span>
@@ -19115,6 +19121,11 @@ async function _permisosSelectUser(userId){
         <div style="font-size:12px;color:var(--text3)">${u.email||''} · <span class="badge ${rolBadge}">${u.rol}</span>${empNombre?` · <i class="fa fa-building" style="margin-left:4px;opacity:.6"></i> <span style="color:var(--text2)">${empNombre}</span>`:''}</div>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div style="position:relative">
+          <i class="fa fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:12px;pointer-events:none"></i>
+          <input type="text" id="perm-sec-search" placeholder="Buscar sección..." oninput="_permisosFilterSecciones(this.value)" style="width:170px;height:32px;padding:0 26px 0 28px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
+          <i class="fa fa-times-circle" id="perm-sec-search-clear" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:12px;cursor:pointer" onclick="_permisosClearSecSearch()" title="Borrar búsqueda"></i>
+        </div>
         <button class="btn btn-ghost btn-sm" onclick="_permisosToggleAll(true)" title="Marcar todas las secciones"><i class="fa fa-check-double"></i> Activar todos</button>
         <button class="btn btn-ghost btn-sm" onclick="_permisosToggleAll(false)" title="Desmarcar todas las secciones"><i class="fa fa-square"></i> Desactivar todos</button>
         <button class="btn btn-ghost btn-sm" onclick="_permisosClearUser('${userId}')" title="Quitar permisos personalizados (usar defaults del rol)"><i class="fa fa-undo"></i> Restaurar defaults</button>
@@ -19124,7 +19135,7 @@ async function _permisosSelectUser(userId){
     <div style="font-size:12px;color:var(--text3);margin-bottom:16px">
       ${hasSaved?'<i class="fa fa-check-circle" style="color:var(--green)"></i> Permisos personalizados activos':'<i class="fa fa-info-circle"></i> Sin personalización — usando permisos por defecto del rol'}
     </div>
-    <div>${gruposHTML}</div>`;
+    <div id="perm-secciones-wrap">${gruposHTML}</div>`;
 }
 
 function _permisosFilterUsers(q){
@@ -19136,6 +19147,29 @@ function _permisosFilterUsers(q){
 
 function _permisosToggleAll(check){
   document.querySelectorAll('[id^="perm-chk-"]').forEach(c=>c.checked=check);
+}
+
+function _permisosFilterSecciones(q){
+  const clearBtn=document.getElementById('perm-sec-search-clear');
+  if(clearBtn) clearBtn.style.display=q?'block':'none';
+  const query=_searchNorm(q).trim();
+  document.querySelectorAll('#perm-secciones-wrap [data-grupo]').forEach(grupoEl=>{
+    let anyVisible=false;
+    grupoEl.querySelectorAll('[data-search]').forEach(label=>{
+      const match=!query||label.dataset.search.includes(query);
+      label.style.display=match?'':'none';
+      if(match) anyVisible=true;
+    });
+    grupoEl.style.display=anyVisible?'':'none';
+  });
+}
+
+function _permisosClearSecSearch(){
+  const input=document.getElementById('perm-sec-search');
+  if(!input) return;
+  input.value='';
+  _permisosFilterSecciones('');
+  input.focus();
 }
 
 async function _permisosGuardar(userId){

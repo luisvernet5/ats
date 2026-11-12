@@ -3051,6 +3051,50 @@ function adaptUIToRole() {
     }
   }
 
+  // DISCIPLINA — justo debajo de Inducción
+  if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-disciplina')){
+    const navEl = document.querySelector('.sb-nav');
+    if(navEl){
+      const discItem = document.createElement('div');
+      discItem.className = 'nav-item';
+      discItem.id = 'nav-disciplina';
+      discItem.dataset.tooltip = 'Disciplina';
+      discItem.innerHTML = '<i class="fa fa-gavel"></i><span class="nav-item-text"> Disciplina</span>';
+      discItem.setAttribute('onclick', "showPage('disciplina')");
+      const anchor = document.getElementById('nav-induccion');
+      if(anchor) anchor.parentNode.insertBefore(discItem, anchor.nextSibling);
+      else navEl.appendChild(discItem);
+    }
+    if(!document.getElementById('page-disciplina')){
+      const pg=document.createElement('div');
+      pg.className='page';
+      pg.id='page-disciplina';
+      document.querySelector('.main-scroll').appendChild(pg);
+    }
+  }
+
+  // COMISIONES — justo debajo de Disciplina
+  if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-comisiones')){
+    const navEl = document.querySelector('.sb-nav');
+    if(navEl){
+      const comItem = document.createElement('div');
+      comItem.className = 'nav-item';
+      comItem.id = 'nav-comisiones';
+      comItem.dataset.tooltip = 'Comisiones';
+      comItem.innerHTML = '<i class="fa fa-people-group"></i><span class="nav-item-text"> Comisiones</span>';
+      comItem.setAttribute('onclick', "showPage('comisiones')");
+      const anchor = document.getElementById('nav-disciplina');
+      if(anchor) anchor.parentNode.insertBefore(comItem, anchor.nextSibling);
+      else navEl.appendChild(comItem);
+    }
+    if(!document.getElementById('page-comisiones')){
+      const pg=document.createElement('div');
+      pg.className='page';
+      pg.id='page-comisiones';
+      document.querySelector('.main-scroll').appendChild(pg);
+    }
+  }
+
   // HEADCOUNT AUTORIZADO — justo debajo de Capacitación
   if(['admin','reclutador'].includes(rol) && !document.getElementById('nav-headcount-autorizado')){
     const navEl = document.querySelector('.sb-nav');
@@ -4165,6 +4209,8 @@ const PERMISOS_SECCIONES=[
   {key:'contratos',              label:'Contratos',               grupo:'Gestión',    icon:'fa-file-contract'},
   {key:'capacitacion',           label:'Capacitación',            grupo:'Gestión',    icon:'fa-chalkboard-user'},
   {key:'induccion',              label:'Inducción',               grupo:'Gestión',    icon:'fa-user-graduate'},
+  {key:'disciplina',             label:'Disciplina',              grupo:'Gestión',    icon:'fa-gavel'},
+  {key:'comisiones',             label:'Comisiones',              grupo:'Gestión',    icon:'fa-people-group'},
   {key:'headcount-autorizado',   label:'Headcount Autorizado',    grupo:'Gestión',    icon:'fa-users-gear'},
   {key:'nom035',                 label:'NOM 035',                 grupo:'Gestión',    icon:'fa-heart-pulse'},
   {key:'ese',                    label:'ESE',                     grupo:'Gestión',    icon:'fa-file-alt'},
@@ -4181,7 +4227,7 @@ const SIDEBAR_NAV_GRUPOS=[
   {titulo:'Reclutamiento', ids:['nav-dashboard','nav-vacantes','nav-candidatos','nav-documentacion','nav-pipeline','nav-descartados','nav-perfiles']},
   {titulo:'Evaluación', ids:['nav-evaluaciones','nav-procesos-eval']},
   {titulo:'Empresas y Equipo', ids:['nav-empresas','nav-reclutadores']},
-  {titulo:'Gestión de Personal', ids:['nav-personal','nav-expedientes','nav-contratos','nav-capacitacion','nav-induccion','nav-headcount-autorizado','nav-nom035','nav-procedimientos']},
+  {titulo:'Gestión de Personal', ids:['nav-personal','nav-expedientes','nav-contratos','nav-capacitacion','nav-induccion','nav-disciplina','nav-comisiones','nav-headcount-autorizado','nav-nom035','nav-procedimientos']},
   {titulo:'Estudios y Garantías', ids:['nav-ese','nav-garantias']},
   {titulo:'Análisis y Reportes', ids:['nav-kpis','nav-headcount','nav-contratados','nav-tiempos','nav-ranking','nav-desercion']},
   {titulo:'Papelera', ids:['nav-vacantes-eliminadas','nav-evaluaciones-eliminadas','nav-perfiles-eliminados']},
@@ -4339,7 +4385,8 @@ function _setupRealtime(){
   };
   const TABLAS=['candidatos','vacantes','empresas','reclutadores','ese',
     'hc_resumen','hc_plantilla','garantias','referencias','activity_log',
-    'perfiles_puesto','evaluaciones','kpis','procedimientos','usuarios','induccion_documentos','induccion_acciones','induccion_acciones_estatus'];
+    'perfiles_puesto','evaluaciones','kpis','procedimientos','usuarios','induccion_documentos','induccion_acciones','induccion_acciones_estatus',
+    'disciplina_actas','comisiones_integrantes'];
   const ch=sbClient.channel('ats-realtime-v1');
   TABLAS.forEach(t=>ch.on('postgres_changes',{event:'*',schema:'public',table:t},_scheduleReload));
   ch.subscribe(st=>{
@@ -4475,7 +4522,7 @@ function showPage(p){
   if(pg)pg.classList.add('active');
   const ni=document.getElementById('nav-'+p);
   if(ni)ni.classList.add('active');
-  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',kpis:'KPIs',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'Headcount Semanal',perfiles:'Perfiles de Puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal',personal:'Administrador de Personal',expedientes:'Expedientes',contratos:'Contratos',capacitacion:'Capacitación',induccion:'Inducción','headcount-autorizado':'Headcount Autorizado',procedimientos:'Procedimientos',nom035:'NOM 035','evaluaciones-eliminadas':'Evaluaciones eliminadas','perfiles-eliminados':'Perfiles eliminados'};
+  const titles={dashboard:'Dashboard',empresas:'Empresas cliente','empresa-detail':'Detalle de empresa',pipeline:'Pipeline',vacantes:'Vacantes',candidatos:'Candidatos','candidatos-descartados':'Candidatos descartados',evaluaciones:'Librería de Evaluaciones','procesos-eval':'Procesos de Evaluación',kpis:'KPIs',reclutadores:'Reclutadores',tiempos:'Análisis de tiempos',ranking:'Ranking reclutadores',desercion:'Análisis de deserción',config:'Configuración','vacantes-eliminadas':'Vacantes eliminadas','contratados':'Contratados','garantias':'Garantías','activity-log':'Log de actividad','headcount':'Headcount Semanal',perfiles:'Perfiles de Puesto',ese:'ESE',documentacion:'Documentación',basedatos:'Base de datos de personal',personal:'Administrador de Personal',expedientes:'Expedientes',contratos:'Contratos',capacitacion:'Capacitación',induccion:'Inducción',disciplina:'Disciplina',comisiones:'Comisiones','headcount-autorizado':'Headcount Autorizado',procedimientos:'Procedimientos',nom035:'NOM 035','evaluaciones-eliminadas':'Evaluaciones eliminadas','perfiles-eliminados':'Perfiles eliminados'};
   document.getElementById('page-title').textContent=titles[p]||p;
   closePanel();
   setTimeout(()=>renderPage(p),0);
@@ -4515,6 +4562,8 @@ async function renderPage(p){
   if(p==='contratos'){renderContratos();return;}
   if(p==='capacitacion'){renderCapacitacion();return;}
   if(p==='induccion'){renderInduccion();return;}
+  if(p==='disciplina'){renderDisciplina();return;}
+  if(p==='comisiones'){renderComisiones();return;}
   if(p==='headcount-autorizado'){renderHeadcountAutorizado();return;}
   if(p==='nom035'){renderNom035();return;}
 }
@@ -7739,6 +7788,537 @@ async function _indEliminarArchivo(docId){
   }catch(e){ showToast('Error: '+e.message,'err'); }
 }
 
+/* ══════════════ DISCIPLINA ══════════════ */
+let _discOpenEmpId=null;
+let _discActasCache=[];
+let _discAnio=new Date().getFullYear();
+let _discQ='';
+const DISC_MEDIDAS=['Extrañamiento verbal','Amonestación escrita','Suspensión sin goce de sueldo','Rescisión de contrato','Otro'];
+
+function renderDisciplina(){
+  if(_discOpenEmpId){_discRenderEmpresa(_discOpenEmpId);return;}
+  _renderModuloDashboard('page-disciplina','disciplinaOpenEmpresa','disciplina');
+}
+
+async function disciplinaOpenEmpresa(empId){
+  _discOpenEmpId=empId;
+  _discQ='';
+  const page=document.getElementById('page-disciplina');
+  if(page) page.innerHTML='<div style="padding:60px;text-align:center;color:var(--text3)"><i class="fa fa-spinner fa-spin" style="font-size:22px;margin-bottom:12px;display:block"></i>Cargando...</div>';
+  if(!_persLoaded && !SANDBOX_MODE){
+    try{
+      const {data,error}=await sbClient.from('colaboradores').select('*');
+      if(error) throw error;
+      DB.colaboradores=data||[];
+      _persLoaded=true;
+    }catch(e){ console.warn('[Disciplina] Error al cargar colaboradores:',e.message); }
+  }
+  await _discCargarActas(empId);
+  renderDisciplina();
+}
+function disciplinaBack(){_discOpenEmpId=null;renderDisciplina();}
+
+async function _discCargarActas(empId){
+  if(SANDBOX_MODE){ _discActasCache=[]; return; }
+  try{
+    const {data,error}=await sbClient.from('disciplina_actas').select('*').eq('empresa_id',empId).order('fecha',{ascending:false});
+    if(error) throw error;
+    _discActasCache=data||[];
+  }catch(e){ console.warn('[Disciplina] Error al cargar actas:',e.message); _discActasCache=[]; }
+}
+
+function _discColabNombre(colabId){ return (DB.colaboradores||[]).find(c=>c.id===colabId)?.nombre || 'Colaborador eliminado'; }
+
+function _discConteoAnio(colabId,anio,hastaFecha){
+  return _discActasCache.filter(a=>a.colaborador_id===colabId && (a.fecha||'').slice(0,4)===String(anio) && (!hastaFecha||a.fecha<=hastaFecha)).length;
+}
+
+function _discRenderEmpresa(empId){
+  const page=document.getElementById('page-disciplina'); if(!page) return;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const color=emp.color||'#2AAADE';
+  const anios=[...new Set(_discActasCache.map(a=>(a.fecha||'').slice(0,4)).filter(Boolean))];
+  if(!anios.includes(String(_discAnio))) anios.push(String(_discAnio));
+  anios.sort((a,b)=>b-a);
+
+  const q=_searchNorm(_discQ);
+  let actas=_discActasCache.filter(a=>(a.fecha||'').slice(0,4)===String(_discAnio));
+  if(q) actas=actas.filter(a=>_searchNorm(_discColabNombre(a.colaborador_id)).includes(q));
+  actas=[...actas].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+
+  const conteoMap={};
+  _discActasCache.filter(a=>(a.fecha||'').slice(0,4)===String(_discAnio)).forEach(a=>{
+    conteoMap[a.colaborador_id]=(conteoMap[a.colaborador_id]||0)+1;
+  });
+  const resumen=Object.entries(conteoMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  const rows=actas.map(a=>{
+    const n=_discConteoAnio(a.colaborador_id,_discAnio,a.fecha);
+    const colab=(DB.colaboradores||[]).find(c=>c.id===a.colaborador_id);
+    return`<tr>
+      <td class="td-p">${fmt(a.fecha)}</td>
+      <td class="td-p">
+        <div style="font-weight:600">${_esc(_discColabNombre(a.colaborador_id))}</div>
+        <div style="font-size:11px;color:var(--text3)">${_esc(colab?.puesto||'Sin puesto')}</div>
+      </td>
+      <td>${_esc(a.motivo||'—')}</td>
+      <td>${_esc(a.medida||'—')}</td>
+      <td style="text-align:center"><span style="font-size:11px;font-weight:600;color:var(--amber);background:var(--amber)18;padding:3px 10px;border-radius:20px">${n} en ${_discAnio}</span></td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="_discVerPDF('${a.id}')" title="Generar PDF"><i class="fa fa-file-pdf"></i></button>
+        <button class="btn btn-ghost btn-sm" onclick="abrirActaDisciplinaModal('${empId}','${a.id}')" title="Editar"><i class="fa fa-edit"></i></button>
+        <button class="btn btn-danger btn-sm" onclick="_discEliminarActa('${a.id}')" title="Eliminar"><i class="fa fa-trash"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  page.innerHTML=`<div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <button class="btn btn-ghost btn-sm" onclick="disciplinaBack()"><i class="fa fa-arrow-left"></i> Empresas</button>
+      ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
+      <span style="font-size:16px;font-weight:700">${_esc(emp.nombre||'')}</span>
+    </div>
+    ${resumen.length?`
+    <div class="sec-title">Colaboradores con más actas en ${_discAnio}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
+      ${resumen.map(([cid,n])=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface)">
+        <span style="font-size:13px;font-weight:600">${_esc(_discColabNombre(cid))}</span>
+        <span style="font-size:11px;font-weight:700;color:var(--red);background:var(--red)18;padding:2px 8px;border-radius:20px">${n}</span>
+      </div>`).join('')}
+    </div>`:''}
+    <div class="fbar">
+      <select id="disc-flt-anio" onchange="_discAnio=parseInt(this.value);_discRenderEmpresa('${empId}')" style="height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
+        ${anios.map(a=>`<option value="${a}" ${parseInt(a)===_discAnio?'selected':''}>${a}</option>`).join('')}
+      </select>
+      <input type="text" id="disc-q" placeholder="Buscar colaborador..." value="${_esc(_discQ)}" oninput="_discQ=this.value;_discRenderEmpresa('${empId}')" style="width:220px;height:36px;padding:0 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">
+      <span class="sp"></span>
+      <button class="btn btn-primary btn-sm" onclick="abrirActaDisciplinaModal('${empId}')"><i class="fa fa-plus"></i> Nueva acta administrativa</button>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Fecha</th><th>Colaborador</th><th>Motivo</th><th>Medida</th><th style="text-align:center">No. en el año</th><th>Acción</th></tr></thead>
+      <tbody>${rows||`<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">Sin actas registradas en ${_discAnio}.</td></tr>`}</tbody>
+    </table></div>
+  </div>`;
+}
+
+function abrirActaDisciplinaModal(empId,actaId=null){
+  const acta=actaId?_discActasCache.find(a=>a.id===actaId):null;
+  const colabs=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId&&c.estado!=='Baja').sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
+  document.getElementById('modal-disc-acta')?.remove();
+  const modal=document.createElement('div');
+  modal.id='modal-disc-acta';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3200;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto';
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:560px;max-width:96vw;padding:24px;box-shadow:0 8px 32px #0004;max-height:92vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-weight:700;font-size:15px">${acta?'Editar':'Nueva'} acta administrativa</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-disc-acta').remove()"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="fg"><label>Colaborador</label>
+      <select id="disc-colaborador">
+        <option value="">Seleccionar...</option>
+        ${colabs.map(c=>`<option value="${c.id}" ${acta?.colaborador_id===c.id?'selected':''}>${_esc(c.nombre)} — ${_esc(c.puesto||'Sin puesto')}</option>`).join('')}
+      </select>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Fecha del acta</label><input type="date" id="disc-fecha" value="${acta?.fecha||today()}"></div>
+      <div class="fg"><label>Medida disciplinaria</label><select id="disc-medida">
+        <option value="">Seleccionar...</option>
+        ${DISC_MEDIDAS.map(m=>`<option value="${m}" ${acta?.medida===m?'selected':''}>${m}</option>`).join('')}
+      </select></div>
+    </div>
+    <div class="fg"><label>Motivo / falta cometida</label><input type="text" id="disc-motivo" value="${_esc(acta?.motivo||'')}" placeholder="Ej. Falta injustificada, incumplimiento de políticas..."></div>
+    <div class="fg"><label>Descripción de los hechos</label><textarea id="disc-descripcion" style="height:110px" placeholder="Narra los hechos ocurridos...">${_esc(acta?.descripcion||'')}</textarea></div>
+    <div class="fr">
+      <div class="fg"><label>Testigo 1 (opcional)</label><input type="text" id="disc-testigo1" value="${_esc(acta?.testigo1||'')}"></div>
+      <div class="fg"><label>Testigo 2 (opcional)</label><input type="text" id="disc-testigo2" value="${_esc(acta?.testigo2||'')}"></div>
+    </div>
+    <div style="display:flex;justify-content:${acta?'space-between':'flex-end'};gap:8px;margin-top:14px">
+      ${acta?`<button class="btn btn-ghost" style="color:#e5484d" onclick="_discEliminarActa('${acta.id}');document.getElementById('modal-disc-acta').remove()"><i class="fa fa-trash"></i> Eliminar</button>`:''}
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-disc-acta').remove()">Cancelar</button>
+        <button class="btn btn-primary" onclick="_discGuardarActa('${empId}','${actaId||''}')"><i class="fa fa-save"></i> Guardar</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+async function _discGuardarActa(empId,actaId){
+  const colaborador_id=document.getElementById('disc-colaborador').value;
+  const fecha=document.getElementById('disc-fecha').value;
+  const medida=document.getElementById('disc-medida').value;
+  const motivo=document.getElementById('disc-motivo').value.trim();
+  if(!colaborador_id||!fecha||!motivo){ showToast('Completa colaborador, fecha y motivo','err'); return; }
+  const registro={
+    id:actaId||('disc-'+Date.now()+'-'+Math.random().toString(36).substr(2,6)),
+    empresa_id:empId, colaborador_id, fecha, medida,
+    motivo, descripcion:document.getElementById('disc-descripcion').value.trim(),
+    testigo1:document.getElementById('disc-testigo1').value.trim()||null,
+    testigo2:document.getElementById('disc-testigo2').value.trim()||null,
+    elaborado_por:currentUserData?.nombre||currentUser?.email||null,
+    created_at: actaId ? (_discActasCache.find(a=>a.id===actaId)?.created_at||new Date().toISOString()) : new Date().toISOString(),
+  };
+  try{
+    const {error}=await sbClient.from('disciplina_actas').upsert(registro);
+    if(error) throw error;
+    const idx=_discActasCache.findIndex(a=>a.id===registro.id);
+    if(idx>=0) _discActasCache[idx]=registro; else _discActasCache.push(registro);
+    const colabNombre=_discColabNombre(colaborador_id);
+    await logActivity(actaId?'Editar acta administrativa':'Nueva acta administrativa','disciplina_actas',registro.id,`${colabNombre} — ${motivo}`);
+    document.getElementById('modal-disc-acta')?.remove();
+    showToast('Acta guardada ✓');
+    _discRenderEmpresa(empId);
+  }catch(e){ showToast('Error: '+e.message,'err'); }
+}
+
+async function _discEliminarActa(actaId){
+  if(!confirm('¿Eliminar esta acta administrativa?')) return;
+  const a=_discActasCache.find(x=>x.id===actaId);
+  try{
+    const {error}=await sbClient.from('disciplina_actas').delete().eq('id',actaId);
+    if(error) throw error;
+    _discActasCache=_discActasCache.filter(x=>x.id!==actaId);
+    if(a) await logActivity('Eliminar acta administrativa','disciplina_actas',actaId,`${_discColabNombre(a.colaborador_id)} — ${a.motivo||''}`);
+    showToast('Acta eliminada ✓');
+    _discRenderEmpresa(_discOpenEmpId);
+  }catch(e){ showToast('Error: '+e.message,'err'); }
+}
+
+async function _discVerPDF(actaId){
+  if(!window.jspdf){ showToast('jsPDF no disponible','err'); return; }
+  const { jsPDF } = window.jspdf;
+  const a=_discActasCache.find(x=>x.id===actaId);
+  if(!a){ showToast('Acta no encontrada','err'); return; }
+  const emp=DB.empresas.find(e=>e.id===a.empresa_id)||{};
+  const colab=(DB.colaboradores||[]).find(c=>c.id===a.colaborador_id);
+  const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
+  const W=216, M=20, CW=176;
+  let y=await _pdfHeader(doc,'ACTA ADMINISTRATIVA',(colab?.nombre||'Colaborador')+(emp.nombre?'\n'+emp.nombre:''),emp,`Fecha: ${fmt(a.fecha)}`);
+
+  const metaCols=[
+    ['Puesto', colab?.puesto||'—'],
+    ['Departamento', colab?.departamento||'—'],
+    ['No. de colaborador', colab?.numero_colaborador||'—'],
+    ['Actas en el año', String(_discConteoAnio(a.colaborador_id,(a.fecha||'').slice(0,4)))],
+  ];
+  const cw4=CW/4; let metaMaxLines=1;
+  metaCols.forEach(([l,v],i)=>{
+    const x=M+i*cw4;
+    doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(120);
+    doc.text(l+':',x,y);
+    doc.setFont('helvetica','normal'); doc.setTextColor(30); doc.setFontSize(8.5);
+    const wrapped=doc.splitTextToSize(v,cw4-4);
+    doc.text(wrapped,x,y+5);
+    if(wrapped.length>metaMaxLines) metaMaxLines=wrapped.length;
+  });
+  y+=7+metaMaxLines*4.5+8;
+  doc.setDrawColor(200); doc.setLineWidth(0.3); doc.line(M,y,W-M,y);
+  y+=9;
+
+  const r1=(l,v)=>{
+    doc.setFontSize(8.5); doc.setFont('helvetica','bold'); doc.setTextColor(100);
+    doc.text(l+':',M,y);
+    doc.setFont('helvetica','normal'); doc.setTextColor(30);
+    const w=doc.splitTextToSize(v||'—',CW); doc.text(w,M,y+5); y+=w.length*5+8;
+  };
+  r1('Motivo / falta cometida', a.motivo);
+  r1('Descripción de los hechos', a.descripcion);
+  r1('Medida disciplinaria aplicada', a.medida);
+
+  y+=10;
+  if(y>220){ doc.addPage(); y=M+10; }
+  const firmaY=y;
+  doc.setDrawColor(150); doc.setLineWidth(0.3);
+  doc.line(M,firmaY,M+60,firmaY);
+  doc.line(W-M-60,firmaY,W-M,firmaY);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(90);
+  doc.text('Firma del colaborador',M+30,firmaY+5,{align:'center'});
+  doc.text('Firma de Recursos Humanos',W-M-30,firmaY+5,{align:'center'});
+  if(a.testigo1||a.testigo2){
+    const y2=firmaY+22;
+    doc.line(M,y2,M+60,y2);
+    doc.line(W-M-60,y2,W-M,y2);
+    doc.text(a.testigo1?`Testigo: ${a.testigo1}`:'Testigo 1',M+30,y2+5,{align:'center'});
+    doc.text(a.testigo2?`Testigo: ${a.testigo2}`:'Testigo 2',W-M-30,y2+5,{align:'center'});
+  }
+
+  _stampPdfFooter(doc);
+  const nombreArchivo=(colab?.nombre||'colaborador').replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_áéíóúÁÉÍÓÚñÑ]/g,'');
+  doc.save(`ActaAdministrativa_${nombreArchivo}_${a.fecha}.pdf`);
+  await logActivity('Generar PDF de acta administrativa','disciplina_actas',actaId,`${colab?.nombre||actaId} — ${a.motivo||''}`);
+  showToast('PDF generado ✓');
+}
+
+/* ══════════════ COMISIONES ══════════════ */
+let _comOpenEmpId=null;
+let _comTipo='antiguedad';
+let _comIntegrantesCache=[];
+let _comConfigCache=null;
+let _comDragId=null;
+
+const COMISIONES_TIPOS=[
+  {key:'antiguedad', label:'Comisión Mixta de Antigüedad', icon:'fa-business-time',
+   intro:(emp)=>`En relación con las instalaciones de ${emp.nombre||'la empresa'}, con fundamento en lo dispuesto por el Contrato Colectivo de Trabajo aplicable y/o las políticas internas en materia de escalafón y antigüedad, la empresa y sus trabajadores acuerdan constituir la Comisión Mixta de Antigüedad, cuyo objeto es determinar y verificar la antigüedad de los trabajadores para efectos de ascensos, vacantes, escalafón y demás prestaciones que de ella se deriven, debiendo actuar con imparcialidad y apego a los criterios establecidos.`},
+  {key:'ptu', label:'Comisión Mixta para el Reparto de Utilidades (PTU)', icon:'fa-sack-dollar',
+   intro:(emp)=>`Con fundamento en el artículo 125 y demás relativos de la Ley Federal del Trabajo, la empresa ${emp.nombre||''} y sus trabajadores constituyen la Comisión Mixta para el Reparto de Utilidades, integrada de forma paritaria, cuyo objeto es formular el proyecto que determine la participación individual de cada trabajador en el reparto de utilidades (PTU) correspondiente al ejercicio fiscal, con base en los días laborados y los salarios devengados en el periodo, así como resolver las objeciones que al respecto se presenten.`},
+  {key:'seguridad_higiene', label:'Comisión de Seguridad e Higiene', icon:'fa-helmet-safety',
+   intro:(emp)=>`Con fundamento en los artículos 509 al 513 de la Ley Federal del Trabajo y la NOM-019-STPS-2011, la empresa ${emp.nombre||''} y sus trabajadores constituyen la Comisión de Seguridad e Higiene en el Trabajo, integrada de forma paritaria, cuyo objeto es investigar las causas de accidentes y enfermedades de trabajo, proponer medidas para prevenirlos, vigilar el cumplimiento de las disposiciones en materia de seguridad e higiene y realizar inspecciones periódicas en los centros de trabajo.`},
+];
+
+function renderComisiones(){
+  if(_comOpenEmpId){_comRenderEmpresa(_comOpenEmpId);return;}
+  _renderModuloDashboard('page-comisiones','comisionesOpenEmpresa','comisiones');
+}
+
+async function comisionesOpenEmpresa(empId){
+  _comOpenEmpId=empId;
+  _comTipo='antiguedad';
+  const page=document.getElementById('page-comisiones');
+  if(page) page.innerHTML='<div style="padding:60px;text-align:center;color:var(--text3)"><i class="fa fa-spinner fa-spin" style="font-size:22px;margin-bottom:12px;display:block"></i>Cargando...</div>';
+  await _comCargarTipo(empId,_comTipo);
+  renderComisiones();
+}
+function comisionesBack(){_comOpenEmpId=null;renderComisiones();}
+
+async function _comCargarTipo(empId,tipo){
+  if(SANDBOX_MODE){ _comIntegrantesCache=[]; _comConfigCache=null; return; }
+  try{
+    const [{data:ints,error:e1},{data:cfg,error:e2}]=await Promise.all([
+      sbClient.from('comisiones_integrantes').select('*').eq('empresa_id',empId).eq('tipo',tipo).order('orden',{ascending:true}),
+      sbClient.from('comisiones_config').select('*').eq('empresa_id',empId).eq('tipo',tipo).maybeSingle(),
+    ]);
+    if(e1) throw e1; if(e2) throw e2;
+    _comIntegrantesCache=ints||[];
+    _comConfigCache=cfg||null;
+  }catch(e){ console.warn('[Comisiones] Error al cargar:',e.message); _comIntegrantesCache=[]; _comConfigCache=null; }
+}
+
+async function comSetTipo(tipo){
+  _comTipo=tipo;
+  await _comCargarTipo(_comOpenEmpId,tipo);
+  _comRenderEmpresa(_comOpenEmpId);
+}
+
+function _comRenderEmpresa(empId){
+  const page=document.getElementById('page-comisiones'); if(!page) return;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const color=emp.color||'#2AAADE';
+  const patronales=_comIntegrantesCache.filter(i=>i.representacion==='Patronal');
+  const trabajadores=_comIntegrantesCache.filter(i=>i.representacion==='Trabajador');
+
+  const tabsHtml=COMISIONES_TIPOS.map(t=>`<button id="comtab-${t.key}" class="btn btn-sm ${_comTipo===t.key?'btn-primary':'btn-ghost'}" onclick="comSetTipo('${t.key}')"><i class="fa ${t.icon}"></i> ${t.label}</button>`).join('');
+
+  const integranteRow=(i)=>`<div draggable="true"
+      ondragstart="_comDragStart(event,'${i.id}')" ondragover="_comDragOver(event,this)" ondragleave="this.style.outline=''" ondrop="_comDrop(event,'${i.id}')" ondragend="_comDragEnd()"
+      style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border)">
+    <i class="fa fa-grip-lines" style="font-size:11px;color:var(--text3);opacity:.5;flex-shrink:0;cursor:grab"></i>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:600">${_esc(i.nombre)}</div>
+      <div style="font-size:11px;color:var(--text3)">${_esc(i.puesto||'Sin puesto')}</div>
+    </div>
+    <span style="font-size:11px;font-weight:600;color:${i.representacion==='Patronal'?'var(--accent)':'var(--green)'};background:${i.representacion==='Patronal'?'var(--accent)18':'var(--green)18'};padding:3px 10px;border-radius:20px;white-space:nowrap">${i.representacion==='Patronal'?'Patronal':'De los trabajadores'}</span>
+    <button class="btn btn-ghost btn-sm" onclick="abrirComIntegranteModal('${empId}','${i.id}')" title="Editar"><i class="fa fa-pencil-alt"></i></button>
+    <button class="btn btn-danger btn-sm" onclick="_comEliminarIntegrante('${i.id}')" title="Eliminar"><i class="fa fa-trash"></i></button>
+  </div>`;
+
+  const listaHtml=_comIntegrantesCache.length
+    ? _comIntegrantesCache.map(integranteRow).join('')
+    : `<div style="padding:24px;text-align:center;color:var(--text3);font-size:13px">Sin integrantes. Agrega representantes patronales y de los trabajadores.</div>`;
+
+  page.innerHTML=`<div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <button class="btn btn-ghost btn-sm" onclick="comisionesBack()"><i class="fa fa-arrow-left"></i> Empresas</button>
+      ${emp.logo?`<img src="${emp.logo}" style="height:32px;object-fit:contain;border-radius:4px">`:`<div style="width:32px;height:32px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center"><i class="fa fa-building" style="color:${color}"></i></div>`}
+      <span style="font-size:16px;font-weight:700">${_esc(emp.nombre||'')}</span>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">${tabsHtml}</div>
+    <div class="fr">
+      <div class="fg"><label>Fecha de constitución</label><input type="date" id="com-fecha-const" value="${_comConfigCache?.fecha_constitucion||''}" onchange="_comGuardarConfig('${empId}')"></div>
+      <div class="fg"><label>Periodo de vigencia (opcional)</label><input type="text" id="com-vigencia" value="${_esc(_comConfigCache?.vigencia||'')}" placeholder="Ej. 2026-2028" onchange="_comGuardarConfig('${empId}')"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px;flex-wrap:wrap;gap:8px">
+      <div class="sec-title" style="margin:0">Integrantes (${_comIntegrantesCache.length}) — ${patronales.length} patronales / ${trabajadores.length} de los trabajadores</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="abrirComIntegranteModal('${empId}')"><i class="fa fa-plus"></i> Agregar integrante</button>
+        <button class="btn btn-green btn-sm" onclick="_comGenerarPDF('${empId}')"><i class="fa fa-file-pdf"></i> Generar PDF</button>
+      </div>
+    </div>
+    <div class="card" style="padding:4px 14px" id="com-list">${listaHtml}</div>
+  </div>`;
+}
+
+function abrirComIntegranteModal(empId,intId=null){
+  const integ=intId?_comIntegrantesCache.find(i=>i.id===intId):null;
+  document.getElementById('modal-com-integrante')?.remove();
+  const modal=document.createElement('div');
+  modal.id='modal-com-integrante';
+  modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3200;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:420px;max-width:96vw;padding:24px;box-shadow:0 8px 32px #0004">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-weight:700;font-size:15px">${integ?'Editar':'Nuevo'} integrante</div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-com-integrante').remove()"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="fg"><label>Nombre completo</label><input type="text" id="com-int-nombre" value="${_esc(integ?.nombre||'')}"></div>
+    <div class="fg"><label>Puesto</label><input type="text" id="com-int-puesto" value="${_esc(integ?.puesto||'')}"></div>
+    <div class="fg"><label>Representación</label><select id="com-int-repr">
+      <option value="Patronal" ${integ?.representacion==='Patronal'?'selected':''}>Patronal</option>
+      <option value="Trabajador" ${integ?.representacion==='Trabajador'?'selected':''}>De los trabajadores</option>
+    </select></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-com-integrante').remove()">Cancelar</button>
+      <button class="btn btn-primary" onclick="_comGuardarIntegrante('${empId}','${intId||''}')"><i class="fa fa-save"></i> Guardar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('com-int-nombre').focus();
+}
+
+async function _comGuardarIntegrante(empId,intId){
+  const nombre=document.getElementById('com-int-nombre').value.trim();
+  const puesto=document.getElementById('com-int-puesto').value.trim();
+  const representacion=document.getElementById('com-int-repr').value;
+  if(!nombre){ showToast('Escribe el nombre del integrante','err'); return; }
+  const existing=intId?_comIntegrantesCache.find(i=>i.id===intId):null;
+  const registro={
+    id:intId||('comint-'+Date.now()+'-'+Math.random().toString(36).substr(2,6)),
+    empresa_id:empId, tipo:_comTipo, nombre, puesto, representacion,
+    orden: existing?existing.orden??_comIntegrantesCache.length : _comIntegrantesCache.length,
+    created_at: existing?existing.created_at||new Date().toISOString() : new Date().toISOString(),
+  };
+  try{
+    const {error}=await sbClient.from('comisiones_integrantes').upsert(registro);
+    if(error) throw error;
+    const idx=_comIntegrantesCache.findIndex(i=>i.id===registro.id);
+    if(idx>=0) _comIntegrantesCache[idx]=registro; else _comIntegrantesCache.push(registro);
+    const emp=DB.empresas.find(e=>e.id===empId)||{};
+    const tipoLabel=COMISIONES_TIPOS.find(t=>t.key===_comTipo)?.label||_comTipo;
+    await logActivity(intId?'Editar integrante de comisión':'Agregar integrante de comisión','comisiones_integrantes',registro.id,`${nombre} (${representacion}) — ${tipoLabel} — ${emp.nombre||empId}`);
+    document.getElementById('modal-com-integrante')?.remove();
+    showToast('Integrante guardado ✓');
+    _comRenderEmpresa(empId);
+  }catch(e){ showToast('Error: '+e.message,'err'); }
+}
+
+async function _comEliminarIntegrante(intId){
+  if(!confirm('¿Eliminar a este integrante de la comisión?')) return;
+  try{
+    const {error}=await sbClient.from('comisiones_integrantes').delete().eq('id',intId);
+    if(error) throw error;
+    _comIntegrantesCache=_comIntegrantesCache.filter(x=>x.id!==intId);
+    showToast('Integrante eliminado ✓');
+    _comRenderEmpresa(_comOpenEmpId);
+  }catch(e){ showToast('Error: '+e.message,'err'); }
+}
+
+function _comDragStart(e,id){ _comDragId=id; e.dataTransfer.effectAllowed='move'; setTimeout(()=>e.target.style.opacity='0.4',0); }
+function _comDragOver(e,el){ e.preventDefault(); e.dataTransfer.dropEffect='move'; el.style.outline='2px solid var(--accent)'; }
+async function _comDrop(e,targetId){
+  e.preventDefault();
+  if(_comDragId===null||_comDragId===targetId)return;
+  const fromIdx=_comIntegrantesCache.findIndex(i=>i.id===_comDragId);
+  const toIdx=_comIntegrantesCache.findIndex(i=>i.id===targetId);
+  if(fromIdx<0||toIdx<0) return;
+  const [moved]=_comIntegrantesCache.splice(fromIdx,1);
+  _comIntegrantesCache.splice(toIdx,0,moved);
+  _comDragId=null;
+  _comRenderEmpresa(_comOpenEmpId);
+  try{
+    await Promise.all(_comIntegrantesCache.map((i,idx)=>sbClient.from('comisiones_integrantes').update({orden:idx}).eq('id',i.id)));
+    _comIntegrantesCache.forEach((i,idx)=>i.orden=idx);
+  }catch(e){ showToast('Error al guardar el orden: '+e.message,'err'); }
+}
+function _comDragEnd(){ _comDragId=null; _comRenderEmpresa(_comOpenEmpId); }
+
+async function _comGuardarConfig(empId){
+  const fecha_constitucion=document.getElementById('com-fecha-const')?.value||null;
+  const vigencia=document.getElementById('com-vigencia')?.value.trim()||null;
+  const id=empId+'-'+_comTipo;
+  const registro={id,empresa_id:empId,tipo:_comTipo,fecha_constitucion,vigencia,updated_at:new Date().toISOString()};
+  try{
+    const {error}=await sbClient.from('comisiones_config').upsert(registro);
+    if(error) throw error;
+    _comConfigCache=registro;
+    showToast('Datos guardados ✓');
+  }catch(e){ showToast('Error: '+e.message,'err'); }
+}
+
+async function _comGenerarPDF(empId){
+  if(!window.jspdf){ showToast('jsPDF no disponible','err'); return; }
+  if(!_comIntegrantesCache.length){ showToast('Agrega al menos un integrante antes de generar el PDF','err'); return; }
+  const { jsPDF } = window.jspdf;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const tipoDef=COMISIONES_TIPOS.find(t=>t.key===_comTipo);
+  const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
+  const W=216, M=20, CW=176;
+  const fechaConst=_comConfigCache?.fecha_constitucion?fmt(_comConfigCache.fecha_constitucion):fmt(today());
+  let y=await _pdfHeader(doc,tipoDef.label.toUpperCase(),emp.nombre||'',emp,`Fecha: ${fechaConst}`);
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(30);
+  const intro=tipoDef.intro(emp)+(_comConfigCache?.vigencia?` La presente comisión tendrá vigencia durante el periodo ${_comConfigCache.vigencia}.`:'');
+  const introWrapped=doc.splitTextToSize(intro,CW);
+  doc.text(introWrapped,M,y);
+  y+=introWrapped.length*5+10;
+
+  const chkPg=(n=10)=>{ if(y+n>258){doc.addPage();y=M;} };
+
+  const seccion=(titulo,lista)=>{
+    chkPg(14);
+    doc.setFillColor(232,248,252); doc.rect(M,y,CW,7,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(42,170,222);
+    doc.text(titulo,M+2,y+5); doc.setTextColor(0); y+=11;
+    if(!lista.length){
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(150);
+      doc.text('Sin integrantes registrados.',M,y); y+=8; return;
+    }
+    lista.forEach((i,idx)=>{
+      chkPg(8);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30);
+      doc.text(`${idx+1}. ${i.nombre}`,M,y);
+      doc.setFontSize(8); doc.setTextColor(120);
+      doc.text(i.puesto||'—',W-M,y,{align:'right'});
+      y+=7;
+    });
+    y+=4;
+  };
+
+  const patronales=_comIntegrantesCache.filter(i=>i.representacion==='Patronal');
+  const trabajadores=_comIntegrantesCache.filter(i=>i.representacion==='Trabajador');
+  seccion('Representantes patronales',patronales);
+  seccion('Representantes de los trabajadores',trabajadores);
+
+  chkPg(12);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30);
+  const cierreWrapped=doc.splitTextToSize('En constancia de lo anterior, y de conformidad con la legislación laboral aplicable, firman de conformidad los integrantes de la presente comisión.',CW);
+  doc.text(cierreWrapped,M,y); y+=cierreWrapped.length*5+14;
+
+  const todos=[...patronales,...trabajadores];
+  const colW=CW/2-5;
+  for(let i=0;i<todos.length;i+=2){
+    chkPg(22);
+    const izq=todos[i], der=todos[i+1];
+    doc.setDrawColor(150); doc.setLineWidth(0.3);
+    doc.line(M,y,M+colW,y);
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(30);
+    doc.text(izq.nombre,M+colW/2,y+5,{align:'center'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(120);
+    doc.text(`${izq.puesto||''} — ${izq.representacion==='Patronal'?'Repr. Patronal':'Repr. Trabajadores'}`,M+colW/2,y+9,{align:'center'});
+    if(der){
+      doc.line(M+CW-colW,y,M+CW,y);
+      doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(30);
+      doc.text(der.nombre,M+CW-colW/2,y+5,{align:'center'});
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(120);
+      doc.text(`${der.puesto||''} — ${der.representacion==='Patronal'?'Repr. Patronal':'Repr. Trabajadores'}`,M+CW-colW/2,y+9,{align:'center'});
+    }
+    y+=22;
+  }
+
+  _stampPdfFooter(doc);
+  const nombreArchivo=(emp.nombre||'empresa').replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_áéíóúÁÉÍÓÚñÑ]/g,'');
+  doc.save(`${tipoDef.label.replace(/[^a-zA-Z0-9]/g,'_')}_${nombreArchivo}_${today()}.pdf`);
+  await logActivity('Generar acta de comisión','comisiones_integrantes',empId,`${tipoDef.label} — ${emp.nombre||empId}`);
+  showToast('PDF generado ✓');
+}
+
 let _hcaData=[];
 let _hcaProyectoActual=null; // null = viendo tarjetas de proyecto; string = viendo el listado de ese proyecto; '__sin_proyecto__' = resto
 function renderHeadcountAutorizado(){
@@ -8500,6 +9080,8 @@ const EMPRESA_MODULOS=[
   {key:'personal',label:'Administrador de Personal'},
   {key:'capacitacion',label:'Capacitación'},
   {key:'induccion',label:'Inducción'},
+  {key:'disciplina',label:'Disciplina'},
+  {key:'comisiones',label:'Comisiones'},
   {key:'contratos',label:'Contratos'},
   {key:'expedientes',label:'Expedientes'},
   {key:'headcount_autorizado',label:'Headcount Autorizado'},
@@ -19246,7 +19828,7 @@ const RESPALDO_TABLAS = [
   'expediente_documentos','candidato_documentos','solicitudes_empleo',
   'capacitacion_cursos','capacitacion_asistencias','capacitacion_matriz','contratos',
   'nom035_evaluaciones','nom035_resultados','headcount_autorizado','induccion_documentos',
-  'induccion_acciones','induccion_acciones_estatus',
+  'induccion_acciones','induccion_acciones_estatus','disciplina_actas','comisiones_integrantes',
 ];
 
 async function exportarRespaldo(){

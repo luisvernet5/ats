@@ -8048,7 +8048,7 @@ async function _discVerPDF(actaId){
 
   // Párrafo de apertura formal
   doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30);
-  const apertura=`En ${a.lugar_elaboracion||'las instalaciones de la empresa'}, siendo las ${a.hora_acta||'_____'} horas del día ${_ctFechaLarga(a.fecha)}, se reunieron los abajo firmantes con el objeto de levantar la presente ACTA ADMINISTRATIVA en contra del(la) C. ${colab?.nombre||'—'}, por parte de ${razonSocial||'la empresa'}, con fundamento en lo dispuesto por los artículos 423, 47 y demás relativos y aplicables de la Ley Federal del Trabajo, el Reglamento Interior de Trabajo y/o el Contrato Colectivo de Trabajo vigente, al tenor de los siguientes hechos y consideraciones.`;
+  const apertura=`En ${a.lugar_elaboracion||'las instalaciones de la empresa'}, siendo las ${a.hora_acta||'_____'} horas del día ${_ctFechaLarga(a.fecha)}, se reunieron los abajo firmantes con el objeto de levantar la presente ACTA ADMINISTRATIVA en contra del(la) C. ${colab?.nombre||'—'}, por parte de ${_empRazonSocialTexto(emp,a.razon_social)}, con fundamento en lo dispuesto por los artículos 423, 47 y demás relativos y aplicables de la Ley Federal del Trabajo, el Reglamento Interior de Trabajo y/o el Contrato Colectivo de Trabajo vigente, al tenor de los siguientes hechos y consideraciones.`;
   const aperturaWrapped=doc.splitTextToSize(apertura,CW);
   doc.text(aperturaWrapped,M,y,{align:'justify',maxWidth:CW}); y+=aperturaWrapped.length*4.6+8;
 
@@ -8334,7 +8334,7 @@ async function _comGenerarPDF(empId){
   const { jsPDF } = window.jspdf;
   const emp=DB.empresas.find(e=>e.id===empId)||{};
   const razonSocial=_comConfigCache?.razon_social||emp.nombre||'';
-  const empParaTexto={...emp,nombre:razonSocial};
+  const empParaTexto={...emp,nombre:_empRazonSocialTexto(emp,_comConfigCache?.razon_social)};
   const tipoDef=COMISIONES_TIPOS.find(t=>t.key===_comTipo);
   const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
   const W=216, M=20, CW=176;
@@ -21105,6 +21105,17 @@ function _imgFit(b64, maxW, maxH) {
     img.onerror = () => resolve({ w: maxW, h: maxH });
     img.src = b64;
   });
+}
+
+// Texto de identificación legal para el cuerpo de un documento: la razón social
+// elegida (si hay) junto con sus datos (RFC y domicilio de la empresa), o el
+// nombre comercial de la empresa si no se eligió ninguna razón social.
+function _empRazonSocialTexto(emp,razonSocial){
+  if(!razonSocial) return emp?.nombre||'la empresa';
+  const datos=[];
+  if(emp?.rfc) datos.push(`R.F.C. ${emp.rfc}`);
+  if(emp?.dir) datos.push(`domicilio en ${emp.dir}`);
+  return datos.length ? `${razonSocial} (${datos.join(', ')})` : razonSocial;
 }
 
 function _pdfHeader(doc, titulo, candNombre, emp, extra) {

@@ -7925,7 +7925,13 @@ function abrirActaDisciplinaModal(empId,actaId=null){
       <div class="fg"><label>Lugar de elaboración</label><input type="text" id="disc-lugar-elab" value="${_esc(acta?.lugar_elaboracion||emp.dir||'')}" placeholder="Ej. Puebla, Puebla"></div>
       <div class="fg"><label>Fecha del acta</label><input type="date" id="disc-fecha" value="${acta?.fecha||today()}"></div>
     </div>
-    <div class="fg" style="max-width:200px"><label>Hora del acta</label><input type="time" id="disc-hora-acta" value="${acta?.hora_acta||''}"></div>
+    <div class="fr">
+      <div class="fg" style="max-width:200px"><label>Hora del acta</label><input type="time" id="disc-hora-acta" value="${acta?.hora_acta||''}"></div>
+      ${(emp.razones_sociales||[]).length?`<div class="fg"><label>Razón social</label><select id="disc-razon-social">
+        <option value="">${_esc(emp.nombre||'Nombre de la empresa')} (nombre de la empresa)</option>
+        ${emp.razones_sociales.map(r=>`<option value="${_esc(r)}" ${acta?.razon_social===r?'selected':''}>${_esc(r)}</option>`).join('')}
+      </select></div>`:''}
+    </div>
 
     <div class="sep">II — Hechos</div>
     <div class="fr">
@@ -7976,6 +7982,7 @@ async function _discGuardarActa(empId,actaId){
     motivo, descripcion:document.getElementById('disc-descripcion').value.trim(),
     lugar_elaboracion:document.getElementById('disc-lugar-elab').value.trim()||null,
     hora_acta:document.getElementById('disc-hora-acta').value||null,
+    razon_social:document.getElementById('disc-razon-social')?.value||null,
     fecha_hechos:document.getElementById('disc-fecha-hechos').value||fecha,
     hora_hechos:document.getElementById('disc-hora-hechos').value||null,
     lugar_hechos:document.getElementById('disc-lugar-hechos').value.trim()||null,
@@ -8031,18 +8038,19 @@ async function _discVerPDF(actaId){
   const a=_discActasCache.find(x=>x.id===actaId);
   if(!a){ showToast('Acta no encontrada','err'); return; }
   const emp=DB.empresas.find(e=>e.id===a.empresa_id)||{};
+  const razonSocial=a.razon_social||emp.nombre||'';
   const colab=(DB.colaboradores||[]).find(c=>c.id===a.colaborador_id);
   const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
   const W=216, M=20, CW=176;
-  let y=await _pdfHeader(doc,'ACTA ADMINISTRATIVA',(colab?.nombre||'Colaborador')+(emp.nombre?'\n'+emp.nombre:''),emp,`Fecha: ${fmt(a.fecha)}${a.hora_acta?' '+a.hora_acta+' hrs':''}`);
+  let y=await _pdfHeader(doc,'ACTA ADMINISTRATIVA',(colab?.nombre||'Colaborador')+(razonSocial?'\n'+razonSocial:''),emp,`Fecha: ${fmt(a.fecha)}${a.hora_acta?' '+a.hora_acta+' hrs':''}`);
 
   const chkPg=(n=10)=>{ if(y+n>258){doc.addPage();y=M;} };
 
   // Párrafo de apertura formal
   doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30);
-  const apertura=`En ${a.lugar_elaboracion||'las instalaciones de la empresa'}, siendo las ${a.hora_acta||'_____'} horas del día ${_ctFechaLarga(a.fecha)}, se reunieron los abajo firmantes con el objeto de levantar la presente ACTA ADMINISTRATIVA en contra del(la) C. ${colab?.nombre||'—'}, con fundamento en lo dispuesto por los artículos 423, 47 y demás relativos y aplicables de la Ley Federal del Trabajo, el Reglamento Interior de Trabajo y/o el Contrato Colectivo de Trabajo vigente, al tenor de los siguientes hechos y consideraciones.`;
+  const apertura=`En ${a.lugar_elaboracion||'las instalaciones de la empresa'}, siendo las ${a.hora_acta||'_____'} horas del día ${_ctFechaLarga(a.fecha)}, se reunieron los abajo firmantes con el objeto de levantar la presente ACTA ADMINISTRATIVA en contra del(la) C. ${colab?.nombre||'—'}, por parte de ${razonSocial||'la empresa'}, con fundamento en lo dispuesto por los artículos 423, 47 y demás relativos y aplicables de la Ley Federal del Trabajo, el Reglamento Interior de Trabajo y/o el Contrato Colectivo de Trabajo vigente, al tenor de los siguientes hechos y consideraciones.`;
   const aperturaWrapped=doc.splitTextToSize(apertura,CW);
-  doc.text(aperturaWrapped,M,y); y+=aperturaWrapped.length*4.6+8;
+  doc.text(aperturaWrapped,M,y,{align:'justify',maxWidth:CW}); y+=aperturaWrapped.length*4.6+8;
 
   const antig=_discAntiguedad(colab?.fecha_ingreso,a.fecha);
   const metaCols=[
@@ -8073,7 +8081,7 @@ async function _discVerPDF(actaId){
   };
   const parrafo=(txt)=>{
     chkPg(10); doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30);
-    const w=doc.splitTextToSize(txt||'—',CW); doc.text(w,M,y); y+=w.length*4.6+8;
+    const w=doc.splitTextToSize(txt||'—',CW); doc.text(w,M,y,{align:'justify',maxWidth:CW}); y+=w.length*4.6+8;
   };
 
   sec('I. HECHOS');
@@ -8209,6 +8217,10 @@ function _comRenderEmpresa(empId){
       <div class="fg"><label>Fecha de constitución</label><input type="date" id="com-fecha-const" value="${_comConfigCache?.fecha_constitucion||''}" onchange="_comGuardarConfig('${empId}')"></div>
       <div class="fg"><label>Periodo de vigencia (opcional)</label><input type="text" id="com-vigencia" value="${_esc(_comConfigCache?.vigencia||'')}" placeholder="Ej. 2026-2028" onchange="_comGuardarConfig('${empId}')"></div>
     </div>
+    ${(emp.razones_sociales||[]).length?`<div class="fg" style="max-width:360px"><label>Razón social a usar en el acta</label><select id="com-razon-social" onchange="_comGuardarConfig('${empId}')">
+      <option value="">${_esc(emp.nombre||'Nombre de la empresa')} (nombre de la empresa)</option>
+      ${emp.razones_sociales.map(r=>`<option value="${_esc(r)}" ${_comConfigCache?.razon_social===r?'selected':''}>${_esc(r)}</option>`).join('')}
+    </select></div>`:''}
     <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px;flex-wrap:wrap;gap:8px">
       <div class="sec-title" style="margin:0">Integrantes (${_comIntegrantesCache.length}) — ${patronales.length} patronales / ${trabajadores.length} de los trabajadores</div>
       <div style="display:flex;gap:8px">
@@ -8305,8 +8317,9 @@ function _comDragEnd(){ _comDragId=null; _comRenderEmpresa(_comOpenEmpId); }
 async function _comGuardarConfig(empId){
   const fecha_constitucion=document.getElementById('com-fecha-const')?.value||null;
   const vigencia=document.getElementById('com-vigencia')?.value.trim()||null;
+  const razon_social=document.getElementById('com-razon-social')?.value||null;
   const id=empId+'-'+_comTipo;
-  const registro={id,empresa_id:empId,tipo:_comTipo,fecha_constitucion,vigencia,updated_at:new Date().toISOString()};
+  const registro={id,empresa_id:empId,tipo:_comTipo,fecha_constitucion,vigencia,razon_social,updated_at:new Date().toISOString()};
   try{
     const {error}=await sbClient.from('comisiones_config').upsert(registro);
     if(error) throw error;
@@ -8320,16 +8333,18 @@ async function _comGenerarPDF(empId){
   if(!_comIntegrantesCache.length){ showToast('Agrega al menos un integrante antes de generar el PDF','err'); return; }
   const { jsPDF } = window.jspdf;
   const emp=DB.empresas.find(e=>e.id===empId)||{};
+  const razonSocial=_comConfigCache?.razon_social||emp.nombre||'';
+  const empParaTexto={...emp,nombre:razonSocial};
   const tipoDef=COMISIONES_TIPOS.find(t=>t.key===_comTipo);
   const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
   const W=216, M=20, CW=176;
   const fechaConst=_comConfigCache?.fecha_constitucion?fmt(_comConfigCache.fecha_constitucion):fmt(today());
-  let y=await _pdfHeader(doc,tipoDef.label.toUpperCase(),emp.nombre||'',emp,`Fecha: ${fechaConst}`);
+  let y=await _pdfHeader(doc,tipoDef.label.toUpperCase(),razonSocial,emp,`Fecha: ${fechaConst}`);
 
   doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(30);
-  const intro=tipoDef.intro(emp)+(_comConfigCache?.vigencia?` La presente comisión tendrá vigencia durante el periodo ${_comConfigCache.vigencia}.`:'');
+  const intro=tipoDef.intro(empParaTexto)+(_comConfigCache?.vigencia?` La presente comisión tendrá vigencia durante el periodo ${_comConfigCache.vigencia}.`:'');
   const introWrapped=doc.splitTextToSize(intro,CW);
-  doc.text(introWrapped,M,y);
+  doc.text(introWrapped,M,y,{align:'justify',maxWidth:CW});
   y+=introWrapped.length*5+10;
 
   const chkPg=(n=10)=>{ if(y+n>258){doc.addPage();y=M;} };
@@ -8362,7 +8377,7 @@ async function _comGenerarPDF(empId){
   chkPg(12);
   doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30);
   const cierreWrapped=doc.splitTextToSize('En constancia de lo anterior, y de conformidad con la legislación laboral aplicable, firman de conformidad los integrantes de la presente comisión.',CW);
-  doc.text(cierreWrapped,M,y); y+=cierreWrapped.length*5+14;
+  doc.text(cierreWrapped,M,y,{align:'justify',maxWidth:CW}); y+=cierreWrapped.length*5+14;
 
   const todos=[...patronales,...trabajadores];
   const colW=CW/2-5;
@@ -21096,17 +21111,26 @@ function _pdfHeader(doc, titulo, candNombre, emp, extra) {
   const W=216, M=20;
   let y = M;
   return Promise.resolve().then(async () => {
+    let logoW=0;
     if(emp?.logo) {
       const b64 = await urlToBase64(emp.logo);
       if(b64) {
         try {
           const { w, h } = await _imgFit(b64, 38, 18);
           doc.addImage(b64, 'PNG', M, y, w, h);
+          logoW = w;
         } catch(e){}
       }
     }
-    doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(42,170,222);
-    doc.text(titulo, W/2, y+10, {align:'center'});
+    // El título nunca debe empalmarse con el logo: se reduce la fuente hasta
+    // que quepa centrado sin invadir el espacio del logo; si aun así no cabe
+    // (título muy largo), se alinea a la izquierda del espacio libre.
+    const leftClear = logoW ? M+logoW+6 : M;
+    doc.setFont('helvetica','bold'); doc.setTextColor(42,170,222);
+    let fs=13; doc.setFontSize(fs); let tw=doc.getTextWidth(titulo);
+    while(fs>8 && (W/2 - tw/2) < leftClear){ fs-=0.5; doc.setFontSize(fs); tw=doc.getTextWidth(titulo); }
+    if((W/2 - tw/2) < leftClear) doc.text(titulo, leftClear, y+10);
+    else doc.text(titulo, W/2, y+10, {align:'center'});
     doc.setFontSize(10); doc.setTextColor(70); doc.setFont('helvetica','normal');
     doc.text(candNombre, W/2, y+18, {align:'center'});
     if(extra) { doc.setFontSize(8); doc.setTextColor(120); doc.text(extra, W-M, y+18, {align:'right'}); }

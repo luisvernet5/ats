@@ -7903,16 +7903,18 @@ function _discRenderEmpresa(empId){
 
 function abrirActaDisciplinaModal(empId,actaId=null){
   const acta=actaId?_discActasCache.find(a=>a.id===actaId):null;
+  const emp=DB.empresas.find(e=>e.id===empId)||{};
   const colabs=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId&&c.estado!=='Baja').sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'}));
   document.getElementById('modal-disc-acta')?.remove();
   const modal=document.createElement('div');
   modal.id='modal-disc-acta';
   modal.style.cssText='position:fixed;inset:0;background:#0008;z-index:3200;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto';
-  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:560px;max-width:96vw;padding:24px;box-shadow:0 8px 32px #0004;max-height:92vh;overflow-y:auto">
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:12px;width:640px;max-width:96vw;padding:24px;box-shadow:0 8px 32px #0004;max-height:92vh;overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div style="font-weight:700;font-size:15px">${acta?'Editar':'Nueva'} acta administrativa</div>
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-disc-acta').remove()"><i class="fa fa-times"></i></button>
     </div>
+    <div class="sep" style="margin-top:0">I — Datos generales</div>
     <div class="fg"><label>Colaborador</label>
       <select id="disc-colaborador">
         <option value="">Seleccionar...</option>
@@ -7920,19 +7922,38 @@ function abrirActaDisciplinaModal(empId,actaId=null){
       </select>
     </div>
     <div class="fr">
+      <div class="fg"><label>Lugar de elaboración</label><input type="text" id="disc-lugar-elab" value="${_esc(acta?.lugar_elaboracion||emp.dir||'')}" placeholder="Ej. Puebla, Puebla"></div>
       <div class="fg"><label>Fecha del acta</label><input type="date" id="disc-fecha" value="${acta?.fecha||today()}"></div>
-      <div class="fg"><label>Medida disciplinaria</label><select id="disc-medida">
-        <option value="">Seleccionar...</option>
-        ${DISC_MEDIDAS.map(m=>`<option value="${m}" ${acta?.medida===m?'selected':''}>${m}</option>`).join('')}
-      </select></div>
     </div>
-    <div class="fg"><label>Motivo / falta cometida</label><input type="text" id="disc-motivo" value="${_esc(acta?.motivo||'')}" placeholder="Ej. Falta injustificada, incumplimiento de políticas..."></div>
-    <div class="fg"><label>Descripción de los hechos</label><textarea id="disc-descripcion" style="height:110px" placeholder="Narra los hechos ocurridos...">${_esc(acta?.descripcion||'')}</textarea></div>
+    <div class="fg" style="max-width:200px"><label>Hora del acta</label><input type="time" id="disc-hora-acta" value="${acta?.hora_acta||''}"></div>
+
+    <div class="sep">II — Hechos</div>
     <div class="fr">
-      <div class="fg"><label>Testigo 1 (opcional)</label><input type="text" id="disc-testigo1" value="${_esc(acta?.testigo1||'')}"></div>
-      <div class="fg"><label>Testigo 2 (opcional)</label><input type="text" id="disc-testigo2" value="${_esc(acta?.testigo2||'')}"></div>
+      <div class="fg"><label>Fecha de los hechos</label><input type="date" id="disc-fecha-hechos" value="${acta?.fecha_hechos||acta?.fecha||today()}"></div>
+      <div class="fg"><label>Hora de los hechos</label><input type="time" id="disc-hora-hechos" value="${acta?.hora_hechos||''}"></div>
     </div>
-    <div style="display:flex;justify-content:${acta?'space-between':'flex-end'};gap:8px;margin-top:14px">
+    <div class="fg"><label>Lugar de los hechos</label><input type="text" id="disc-lugar-hechos" value="${_esc(acta?.lugar_hechos||'')}" placeholder="Ej. Área de producción, planta 2"></div>
+    <div class="fg"><label>Motivo / falta cometida</label><input type="text" id="disc-motivo" value="${_esc(acta?.motivo||'')}" placeholder="Ej. Falta injustificada, incumplimiento de políticas..."></div>
+    <div class="fg"><label>Descripción de los hechos</label><textarea id="disc-descripcion" style="height:90px" placeholder="Narra los hechos ocurridos, con el mayor detalle posible...">${_esc(acta?.descripcion||'')}</textarea></div>
+
+    <div class="sep">III — Fundamento y derecho de audiencia</div>
+    <div class="fg"><label>Fundamento (artículo del Reglamento Interior, CCT o LFT)</label><input type="text" id="disc-fundamento" value="${_esc(acta?.fundamento||'')}" placeholder="Ej. Artículo 12 fracción III del Reglamento Interior de Trabajo"></div>
+    <div class="fg"><label>Manifestación del trabajador (derecho de audiencia)</label><textarea id="disc-manifestacion" style="height:70px" placeholder="Se le concedió el uso de la voz y manifestó lo siguiente... (o indica que no deseó manifestar nada)">${_esc(acta?.manifestacion||'')}</textarea></div>
+
+    <div class="sep">IV — Resolución y testigos</div>
+    <div class="fg"><label>Medida disciplinaria</label><select id="disc-medida">
+      <option value="">Seleccionar...</option>
+      ${DISC_MEDIDAS.map(m=>`<option value="${m}" ${acta?.medida===m?'selected':''}>${m}</option>`).join('')}
+    </select></div>
+    <div class="fr">
+      <div class="fg"><label>Testigo 1</label><input type="text" id="disc-testigo1" value="${_esc(acta?.testigo1||'')}"></div>
+      <div class="fg"><label>Testigo 2</label><input type="text" id="disc-testigo2" value="${_esc(acta?.testigo2||'')}"></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;cursor:pointer;margin-top:4px">
+      <input type="checkbox" id="disc-negativa-firmar" ${acta?.negativa_firmar?'checked':''}> El trabajador se negó a firmar esta acta
+    </label>
+
+    <div style="display:flex;justify-content:${acta?'space-between':'flex-end'};gap:8px;margin-top:18px">
       ${acta?`<button class="btn btn-ghost" style="color:#e5484d" onclick="_discEliminarActa('${acta.id}');document.getElementById('modal-disc-acta').remove()"><i class="fa fa-trash"></i> Eliminar</button>`:''}
       <div style="display:flex;gap:8px">
         <button class="btn btn-ghost" onclick="document.getElementById('modal-disc-acta').remove()">Cancelar</button>
@@ -7953,6 +7974,14 @@ async function _discGuardarActa(empId,actaId){
     id:actaId||('disc-'+Date.now()+'-'+Math.random().toString(36).substr(2,6)),
     empresa_id:empId, colaborador_id, fecha, medida,
     motivo, descripcion:document.getElementById('disc-descripcion').value.trim(),
+    lugar_elaboracion:document.getElementById('disc-lugar-elab').value.trim()||null,
+    hora_acta:document.getElementById('disc-hora-acta').value||null,
+    fecha_hechos:document.getElementById('disc-fecha-hechos').value||fecha,
+    hora_hechos:document.getElementById('disc-hora-hechos').value||null,
+    lugar_hechos:document.getElementById('disc-lugar-hechos').value.trim()||null,
+    fundamento:document.getElementById('disc-fundamento').value.trim()||null,
+    manifestacion:document.getElementById('disc-manifestacion').value.trim()||null,
+    negativa_firmar:document.getElementById('disc-negativa-firmar').checked,
     testigo1:document.getElementById('disc-testigo1').value.trim()||null,
     testigo2:document.getElementById('disc-testigo2').value.trim()||null,
     elaborado_por:currentUserData?.nombre||currentUser?.email||null,
@@ -7984,6 +8013,18 @@ async function _discEliminarActa(actaId){
   }catch(e){ showToast('Error: '+e.message,'err'); }
 }
 
+function _discAntiguedad(fechaIngreso,fechaRef){
+  if(!fechaIngreso) return null;
+  const ini=new Date(fechaIngreso+'T00:00:00');
+  const fin=new Date((fechaRef||today())+'T00:00:00');
+  let anios=fin.getFullYear()-ini.getFullYear();
+  let meses=fin.getMonth()-ini.getMonth();
+  if(fin.getDate()<ini.getDate()) meses--;
+  if(meses<0){ anios--; meses+=12; }
+  if(anios<0) return null;
+  return `${anios} año${anios!==1?'s':''}, ${meses} mes${meses!==1?'es':''}`;
+}
+
 async function _discVerPDF(actaId){
   if(!window.jspdf){ showToast('jsPDF no disponible','err'); return; }
   const { jsPDF } = window.jspdf;
@@ -7993,15 +8034,25 @@ async function _discVerPDF(actaId){
   const colab=(DB.colaboradores||[]).find(c=>c.id===a.colaborador_id);
   const doc=new jsPDF({orientation:'p',unit:'mm',format:'letter'});
   const W=216, M=20, CW=176;
-  let y=await _pdfHeader(doc,'ACTA ADMINISTRATIVA',(colab?.nombre||'Colaborador')+(emp.nombre?'\n'+emp.nombre:''),emp,`Fecha: ${fmt(a.fecha)}`);
+  let y=await _pdfHeader(doc,'ACTA ADMINISTRATIVA',(colab?.nombre||'Colaborador')+(emp.nombre?'\n'+emp.nombre:''),emp,`Fecha: ${fmt(a.fecha)}${a.hora_acta?' '+a.hora_acta+' hrs':''}`);
 
+  const chkPg=(n=10)=>{ if(y+n>258){doc.addPage();y=M;} };
+
+  // Párrafo de apertura formal
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30);
+  const apertura=`En ${a.lugar_elaboracion||'las instalaciones de la empresa'}, siendo las ${a.hora_acta||'_____'} horas del día ${_ctFechaLarga(a.fecha)}, se reunieron los abajo firmantes con el objeto de levantar la presente ACTA ADMINISTRATIVA en contra del(la) C. ${colab?.nombre||'—'}, con fundamento en lo dispuesto por los artículos 423, 47 y demás relativos y aplicables de la Ley Federal del Trabajo, el Reglamento Interior de Trabajo y/o el Contrato Colectivo de Trabajo vigente, al tenor de los siguientes hechos y consideraciones.`;
+  const aperturaWrapped=doc.splitTextToSize(apertura,CW);
+  doc.text(aperturaWrapped,M,y); y+=aperturaWrapped.length*4.6+8;
+
+  const antig=_discAntiguedad(colab?.fecha_ingreso,a.fecha);
   const metaCols=[
     ['Puesto', colab?.puesto||'—'],
     ['Departamento', colab?.departamento||'—'],
     ['No. de colaborador', colab?.numero_colaborador||'—'],
-    ['Actas en el año', String(_discConteoAnio(a.colaborador_id,(a.fecha||'').slice(0,4)))],
+    ['Antigüedad', antig||'—'],
   ];
   const cw4=CW/4; let metaMaxLines=1;
+  chkPg(16);
   metaCols.forEach(([l,v],i)=>{
     const x=M+i*cw4;
     doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(120);
@@ -8011,35 +8062,57 @@ async function _discVerPDF(actaId){
     doc.text(wrapped,x,y+5);
     if(wrapped.length>metaMaxLines) metaMaxLines=wrapped.length;
   });
-  y+=7+metaMaxLines*4.5+8;
+  y+=7+metaMaxLines*4.5+6;
   doc.setDrawColor(200); doc.setLineWidth(0.3); doc.line(M,y,W-M,y);
   y+=9;
 
-  const r1=(l,v)=>{
-    doc.setFontSize(8.5); doc.setFont('helvetica','bold'); doc.setTextColor(100);
-    doc.text(l+':',M,y);
-    doc.setFont('helvetica','normal'); doc.setTextColor(30);
-    const w=doc.splitTextToSize(v||'—',CW); doc.text(w,M,y+5); y+=w.length*5+8;
+  const sec=(t)=>{
+    chkPg(14); doc.setFillColor(232,248,252); doc.rect(M,y,CW,7,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(42,170,222);
+    doc.text(t,M+2,y+5); doc.setTextColor(0); y+=10;
   };
-  r1('Motivo / falta cometida', a.motivo);
-  r1('Descripción de los hechos', a.descripcion);
-  r1('Medida disciplinaria aplicada', a.medida);
+  const parrafo=(txt)=>{
+    chkPg(10); doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30);
+    const w=doc.splitTextToSize(txt||'—',CW); doc.text(w,M,y); y+=w.length*4.6+8;
+  };
 
-  y+=10;
-  if(y>220){ doc.addPage(); y=M+10; }
-  const firmaY=y;
-  doc.setDrawColor(150); doc.setLineWidth(0.3);
-  doc.line(M,firmaY,M+60,firmaY);
-  doc.line(W-M-60,firmaY,W-M,firmaY);
-  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(90);
-  doc.text('Firma del colaborador',M+30,firmaY+5,{align:'center'});
-  doc.text('Firma de Recursos Humanos',W-M-30,firmaY+5,{align:'center'});
+  sec('I. HECHOS');
+  const hechosIntro=`El día ${a.fecha_hechos?_ctFechaLarga(a.fecha_hechos):_ctFechaLarga(a.fecha)}${a.hora_hechos?`, siendo aproximadamente las ${a.hora_hechos} horas,`:''}${a.lugar_hechos?` en ${a.lugar_hechos},`:''} ocurrió lo siguiente: ${a.motivo||''}.`;
+  parrafo(hechosIntro);
+  parrafo(a.descripcion);
+
+  sec('II. FUNDAMENTO');
+  parrafo(a.fundamento||'La presente falta se analiza conforme a la Ley Federal del Trabajo, el Reglamento Interior de Trabajo y/o el Contrato Colectivo de Trabajo vigente en la empresa.');
+
+  sec('III. DERECHO DE AUDIENCIA');
+  parrafo('De conformidad con lo dispuesto por el artículo 47, último párrafo, de la Ley Federal del Trabajo, se le concedió al trabajador el uso de la voz a efecto de que manifestara lo que a su derecho conviniera, exponiendo lo siguiente:');
+  parrafo(a.manifestacion||'El trabajador no realizó manifestación alguna.');
+
+  sec('IV. RESOLUCIÓN');
+  parrafo(`En virtud de los hechos narrados, y previo análisis de las circunstancias del caso, la empresa determina aplicar la siguiente medida disciplinaria: ${a.medida||'—'}. Esta es la ${_discConteoAnio(a.colaborador_id,(a.fecha||'').slice(0,4),a.fecha)}ª acta administrativa levantada al trabajador durante el año ${(a.fecha||'').slice(0,4)}.`);
+
+  chkPg(16);
+  parrafo('Leída que fue la presente acta a todos los que en ella intervinieron, y enterados de su contenido y alcance legal, firman al calce para constancia. En caso de que el trabajador se negara a firmar la presente, ello no invalida su contenido ni los efectos legales que de la misma se deriven, siendo válida con la firma de los testigos que en ella intervienen, de conformidad con lo dispuesto por los artículos 47 y 991 de la Ley Federal del Trabajo.');
+
+  y+=6;
+  if(y>215){ doc.addPage(); y=M+10; }
+  const firmaRow=(y0,izqTitulo,izqSub,derTitulo,derSub)=>{
+    doc.setDrawColor(150); doc.setLineWidth(0.3);
+    doc.line(M,y0,M+60,y0);
+    doc.line(W-M-60,y0,W-M,y0);
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(30);
+    doc.text(izqTitulo,M+30,y0+5,{align:'center'});
+    doc.text(derTitulo,W-M-30,y0+5,{align:'center'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(120);
+    if(izqSub) doc.text(izqSub,M+30,y0+9,{align:'center'});
+    if(derSub) doc.text(derSub,W-M-30,y0+9,{align:'center'});
+  };
+  firmaRow(y, a.negativa_firmar?'Se negó a firmar':(colab?.nombre||'Trabajador'), a.negativa_firmar?'(Ver nota de validez)':'Firma del trabajador', emp.nombre||'Empresa', 'Firma de Recursos Humanos');
+  y+=24;
   if(a.testigo1||a.testigo2){
-    const y2=firmaY+22;
-    doc.line(M,y2,M+60,y2);
-    doc.line(W-M-60,y2,W-M,y2);
-    doc.text(a.testigo1?`Testigo: ${a.testigo1}`:'Testigo 1',M+30,y2+5,{align:'center'});
-    doc.text(a.testigo2?`Testigo: ${a.testigo2}`:'Testigo 2',W-M-30,y2+5,{align:'center'});
+    chkPg(16);
+    firmaRow(y, a.testigo1||'Testigo 1', 'Testigo', a.testigo2||'Testigo 2', 'Testigo');
+    y+=24;
   }
 
   _stampPdfFooter(doc);

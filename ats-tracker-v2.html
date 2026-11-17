@@ -3994,12 +3994,18 @@ function _sortReclutadores(){
 // leaving newer rows out of DB.candidatos entirely — not a display bug, the records were
 // never fetched into memory, making some candidates invisible (and inconsistently so,
 // since Postgres gives no ordering guarantee without ORDER BY) across searches/screens.
-async function _fetchAllRowsPaged(table,applyFilter){
+async function _fetchAllRowsPaged(table,applyFilter,orderCol='id'){
   const batchSize=1000;
   let offset=0, allRows=[];
   while(true){
     let q=sbClient.from(table).select('*');
     if(applyFilter) q=applyFilter(q);
+    // Sin un orden explícito y estable, Postgres/PostgREST no garantiza el mismo
+    // orden de filas entre llamadas sucesivas de .range(): eso puede hacer que,
+    // en tablas con más de 1000 registros (batchSize), algún registro quede
+    // fuera de todas las páginas (o se duplique). Ordenar por una columna
+    // estable asegura que cada página traiga siempre el mismo bloque de filas.
+    if(orderCol) q=q.order(orderCol,{ascending:true});
     const {data,error}=await q.range(offset,offset+batchSize-1);
     if(error) return {data:allRows,error};
     allRows=allRows.concat(data||[]);
@@ -4033,7 +4039,7 @@ async function loadDB(silent=false){
       _fetchAllRowsPaged('referencias'),
       sbClient.from('ese').select('*'),
       sbClient.from('doc_plantillas').select('*'),
-      _fetchAllRowsPaged('doc_candidato'),
+      _fetchAllRowsPaged('doc_candidato',null,'candidato_id'),
       _fetchAllRowsPaged('perfiles_puesto'),
       sbClient.from('evaluaciones').select('*'),
       sbClient.from('evaluaciones_enviadas').select('*'),

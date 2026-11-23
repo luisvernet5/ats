@@ -19002,6 +19002,10 @@ function handleImportColabFile(e,empId){
         return '';
       };
       _impColabRows=[];
+      // Colaboradores activos ya existentes en esta empresa, para detectar repetidos
+      const existentes=(DB.colaboradores||[]).filter(c=>c.empresa_id===empId&&c.estado!=='Baja');
+      const vistosCurp=new Set(), vistosNum=new Set(), vistosNombre=new Set();
+      const duplicadosDetectados=[];
       for(let i=1;i<raw.length;i++){
         const r=raw[i];
         if(r.every(c=>String(c).trim()==='')) continue;
@@ -19012,19 +19016,39 @@ function handleImportColabFile(e,empId){
         const curpImp=get(colIdx.curp).toUpperCase();
         const rfcImp=get(colIdx.rfc).toUpperCase();
         const nssImp=get(colIdx.nss);
+        const numImp=get(colIdx.numero_colaborador);
         const curpOk=!curpImp||curpImp.length===18;
         const rfcOk=!rfcImp||rfcImp.length===12||rfcImp.length===13;
         const nssOk=!nssImp||(nssImp.length===11&&/^\d+$/.test(nssImp));
         if(!curpOk) errors.push('CURP debe tener 18 caracteres (tiene '+curpImp.length+')');
         if(!rfcOk) errors.push('RFC debe tener 12 o 13 caracteres (tiene '+rfcImp.length+')');
         if(!nssOk) errors.push('NSS debe tener 11 dígitos numéricos');
+        // Validar que no esté repetido: ni ya en la base, ni dos veces en el mismo archivo
+        const nombreNorm=_searchNorm(nombre);
+        let dupMsg=null;
+        if(curpImp){
+          if(existentes.some(c=>(c.curp||'').toUpperCase()===curpImp)) dupMsg='Ya existe en la base (mismo CURP)';
+          else if(vistosCurp.has(curpImp)) dupMsg='CURP repetido en el archivo';
+        }
+        if(!dupMsg&&numImp){
+          if(existentes.some(c=>String(c.numero_colaborador||'').trim()===numImp)) dupMsg='Ya existe en la base (mismo número de colaborador)';
+          else if(vistosNum.has(numImp)) dupMsg='Número de colaborador repetido en el archivo';
+        }
+        if(!dupMsg&&nombreNorm){
+          if(existentes.some(c=>_searchNorm(c.nombre)===nombreNorm)) dupMsg='Ya existe en la base (mismo nombre)';
+          else if(vistosNombre.has(nombreNorm)) dupMsg='Nombre repetido en el archivo';
+        }
+        if(dupMsg){ errors.push(dupMsg); duplicadosDetectados.push(nombre||`Fila ${i+1}`); }
+        if(curpImp) vistosCurp.add(curpImp);
+        if(numImp) vistosNum.add(numImp);
+        if(nombreNorm) vistosNombre.add(nombreNorm);
         const estadoRaw=get(colIdx.estado);
         const estado=/baja/i.test(estadoRaw)?'Baja':'Activo';
         const campos_extra={};
         customIdx.forEach(cf=>{ const v=get(cf.idx); if(v) campos_extra[cf.key]=v; });
         _impColabRows.push({
-          _row:i+1,_errors:errors,_curpOk:curpOk,_rfcOk:rfcOk,_nssOk:nssOk,
-          numero_colaborador:get(colIdx.numero_colaborador)||null,
+          _row:i+1,_errors:errors,_curpOk:curpOk,_rfcOk:rfcOk,_nssOk:nssOk,_dup:!!dupMsg,
+          numero_colaborador:numImp||null,
           nombre, puesto:get(colIdx.puesto)||null, proyecto:get(colIdx.proyecto)||null, departamento:get(colIdx.departamento)||null, razon_social:get(colIdx.razon_social)||null,
           fecha_ingreso:normFecha(r[colIdx.fecha_ingreso])||null, estado,
           salario_mensual:get(colIdx.salario_mensual)||null, talla_uniforme:get(colIdx.talla_uniforme)||null,
@@ -19040,6 +19064,10 @@ function handleImportColabFile(e,empId){
         });
       }
       _impColabRenderPreview(empId);
+      if(duplicadosDetectados.length){
+        const lista=duplicadosDetectados.slice(0,8).join(', ')+(duplicadosDetectados.length>8?` y ${duplicadosDetectados.length-8} más`:'');
+        showToast(`${duplicadosDetectados.length} colaborador${duplicadosDetectados.length!==1?'es':''} ya existen y no se subirán: ${lista}`,'err');
+      }
     }catch(err){
       showToast('Error al leer el archivo: '+err.message,'err');
     }
@@ -19065,8 +19093,8 @@ function _impColabRenderPreview(empId){
       :`<span style="color:var(--red);font-size:11px" title="${_esc(r._errors.join('; '))}"><i class="fa fa-times"></i> ${_esc(r._errors.join('; '))}</span>`;
     return `<tr style="${bg}">
       <td style="padding:5px 8px;color:var(--text3)">${r._row}</td>
-      <td style="padding:5px 8px">${_esc(r.numero_colaborador)||'—'}</td>
-      <td style="padding:5px 8px">${_esc(r.nombre)||'—'}</td>
+      <td style="padding:5px 8px;${r._dup?badCell:''}">${_esc(r.numero_colaborador)||'—'}</td>
+      <td style="padding:5px 8px;${r._dup?badCell:''}" title="${r._dup?'Este colaborador ya existe en la base de datos':''}">${_esc(r.nombre)||'—'}</td>
       <td style="padding:5px 8px;${r._curpOk?'':badCell}" title="${r._curpOk?'':'CURP inválido: debe tener 18 caracteres'}">${_esc(r.curp)||'—'}</td>
       <td style="padding:5px 8px;${r._rfcOk?'':badCell}" title="${r._rfcOk?'':'RFC inválido: debe tener 12 o 13 caracteres'}">${_esc(r.rfc)||'—'}</td>
       <td style="padding:5px 8px;${r._nssOk?'':badCell}" title="${r._nssOk?'':'NSS inválido: debe tener 11 dígitos numéricos'}">${_esc(r.nss)||'—'}</td>

@@ -19119,7 +19119,9 @@ async function doImportColaboradores(empId){
   if(btn){btn.disabled=true;btn.innerHTML='<i class="fa fa-spinner fa-spin"></i> Importando...';}
   const _tImp=Date.now();
   const nuevos=valid.map((r,i)=>{
-    const {_row,_errors,_curpOk,_rfcOk,_nssOk,...datos}=r;
+    // Cualquier campo interno de validación de la vista previa empieza con "_"
+    // (p.ej. _row, _errors, _curpOk, _dup); nunca deben llegar a la base de datos.
+    const datos=Object.fromEntries(Object.entries(r).filter(([k])=>!k.startsWith('_')));
     return {id:'col-'+(_tImp+i)+'-'+Math.random().toString(36).substr(2,6),empresa_id:empId,...datos};
   });
   try{

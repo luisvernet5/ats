@@ -14008,6 +14008,10 @@ function exportCandidatosExcel(){
   const mfExpProy=_mfGet('flt-cand-proy');if(mfExpProy){const pvids=_vacsC.filter(v=>mfExpProy.has(v.proyecto||'')).map(v=>v.id);list=list.filter(c=>pvids.includes(c.vacante_id));}
   const mfExpDep=_mfGet('flt-cand-dep');if(mfExpDep){const dvids=_vacsC.filter(v=>mfExpDep.has(v.departamento||'')).map(v=>v.id);list=list.filter(c=>dvids.includes(c.vacante_id));}
   if(window._etapaFiltroSet) list = list.filter(c=>window._etapaFiltroSet.has(c.etapa||''));
+  const _cDesde=(document.getElementById('flt-cand-desde')||{}).value||'';
+  const _cHasta=(document.getElementById('flt-cand-hasta')||{}).value||'';
+  if(_cDesde) list=list.filter(c=>(c.creado||c.f_0||'')>=_cDesde);
+  if(_cHasta) list=list.filter(c=>(c.creado||c.f_0||'')<=_cHasta);
 
   // — mismo orden que la vista activa —
   const vista = _candVistaActual||'folio';
